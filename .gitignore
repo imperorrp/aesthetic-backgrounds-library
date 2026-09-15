@@ -1,0 +1,14 @@
+node_modules
+dist
+.DS_Store
+*.local
+.env
+.env.*
+!.env.example
+tsconfig.tsbuildinfo
+node_modules/.tmp
+
+# Local notes — never commit
+docs/PRIVATE.md
+docs/private/
+*.private.md
