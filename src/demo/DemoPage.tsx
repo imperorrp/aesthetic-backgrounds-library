@@ -7,6 +7,8 @@ import {
   PALETTE_OPTIONS,
   applyPalette,
   randomSeedString,
+  driftingDustSkin,
+  voidTacticalSkin,
   type AmbientLayerFlags,
   type BackgroundConfig,
   type LabelDensity,
@@ -67,6 +69,9 @@ export default function DemoPage() {
   const [detail, setDetail] = useState<LabelDensity>('low');
   const [density, setDensity] = useState(1);
   const [palette, setPalette] = useState<PaletteId>('void-cyan');
+  const [skinId, setSkinId] = useState<'void-tactical' | 'drifting-dust'>('void-tactical');
+
+  const activeSkin = skinId === 'drifting-dust' ? driftingDustSkin : voidTacticalSkin;
 
   useEffect(() => {
     applyPalette(palette);
@@ -105,7 +110,7 @@ export default function DemoPage() {
   return (
     <div className="demo-root">
       <AmbientOverlays layers={overlayFlags}>
-        {layers.simulation && <BackgroundCanvas config={simConfig} />}
+        {layers.simulation && <BackgroundCanvas config={simConfig} skin={activeSkin} />}
       </AmbientOverlays>
 
       {layers.cursor && <CursorTrail />}
@@ -122,7 +127,15 @@ export default function DemoPage() {
 
         {panelOpen && (
           <div className="demo-panel">
-            <p className="demo-kicker">Background engine · void-tactical</p>
+            <p className="demo-kicker">Background engine · {activeSkin.id}</p>
+
+            <label className="demo-field">
+              <span>Skin</span>
+              <select value={skinId} onChange={(e) => setSkinId(e.target.value as any)}>
+                <option value="void-tactical">Void Tactical</option>
+                <option value="drifting-dust">Drifting Dust</option>
+              </select>
+            </label>
 
             <label className="demo-field">
               <span>Seed</span>

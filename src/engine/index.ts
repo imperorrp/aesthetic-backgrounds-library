@@ -13,7 +13,7 @@ export type { MountOptions, MountHandle } from './core/mount';
 export type { BackgroundSkin, BackgroundHandle, SkinHost, SkinInstance, Camera, Viewport } from './core/skin';
 
 export { voidTacticalSkin } from './skins/void-tactical/runtime';
-
+export { driftingDustSkin } from './skins/drifting-dust';
 export { default as BackgroundCanvas } from './BackgroundCanvas';
 export type { BackgroundCanvasProps } from './BackgroundCanvas';
 export { default as CursorTrail } from './CursorTrail';
