@@ -5,6 +5,7 @@ export type { CreateBackgroundOptions } from './engine/core/createBackground';
 export type { BackgroundSkin, BackgroundHandle, SkinHost, SkinInstance } from './engine/core/skin';
 export { voidTacticalSkin } from './engine/skins/void-tactical/runtime';
 export { driftingDustSkin } from './engine/skins/drifting-dust';
+export { matrixRainSkin } from './engine/skins/matrix-rain';
 export { applyPalette, PALETTES, PALETTE_OPTIONS } from './engine/palette';
 export type { PaletteId, Palette } from './engine/palette';
 export { resolveBackgroundConfig, DETAIL_OPTIONS } from './engine/config';

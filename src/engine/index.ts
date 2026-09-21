@@ -12,8 +12,11 @@ export { mount } from './core/mount';
 export type { MountOptions, MountHandle } from './core/mount';
 export type { BackgroundSkin, BackgroundHandle, SkinHost, SkinInstance, Camera, Viewport } from './core/skin';
 
-export { voidTacticalSkin } from './skins/void-tactical/runtime';
+export { voidTacticalSkin } from './skins/void-tactical';
 export { driftingDustSkin } from './skins/drifting-dust';
+export { matrixRainSkin } from './skins/matrix-rain';
+export type { NetworkSkinOptions } from './skins/drifting-dust';
+export type { MatrixSkinOptions } from './skins/matrix-rain';
 export { default as BackgroundCanvas } from './BackgroundCanvas';
 export type { BackgroundCanvasProps } from './BackgroundCanvas';
 export { default as CursorTrail } from './CursorTrail';

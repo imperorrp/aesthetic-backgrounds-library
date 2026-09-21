@@ -8,6 +8,7 @@ import {
   randomSeedString,
   driftingDustSkin,
   voidTacticalSkin,
+  matrixRainSkin,
   type BackgroundConfig,
   type LabelDensity,
   type PaletteId,
@@ -68,9 +69,9 @@ export default function DemoPage() {
   const [detail, setDetail] = useState<LabelDensity>('low');
   const [density, setDensity] = useState(1);
   const [palette, setPalette] = useState<PaletteId>('void-cyan');
-  const [skinId, setSkinId] = useState<'void-tactical' | 'drifting-dust'>('void-tactical');
+  const [skinId, setSkinId] = useState<'void-tactical' | 'drifting-dust' | 'matrix-rain'>('void-tactical');
 
-  const activeSkin = skinId === 'drifting-dust' ? driftingDustSkin : voidTacticalSkin;
+  const activeSkin = skinId === 'drifting-dust' ? driftingDustSkin : skinId === 'matrix-rain' ? matrixRainSkin : voidTacticalSkin;
 
   useEffect(() => {
     applyPalette(palette);
@@ -137,6 +138,7 @@ export default function DemoPage() {
               <select value={skinId} onChange={(e) => setSkinId(e.target.value as any)}>
                 <option value="void-tactical">Void Tactical</option>
                 <option value="drifting-dust">Drifting Dust</option>
+                <option value="matrix-rain">Matrix Rain</option>
               </select>
             </label>
 
