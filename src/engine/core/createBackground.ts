@@ -4,19 +4,20 @@ import { applyPalette } from '../palette';
 import { voidTacticalSkin } from '../skins/void-tactical/runtime';
 import type { BackgroundHandle, BackgroundSkin, Viewport } from './skin';
 
-export type CreateBackgroundOptions = {
+export type CreateBackgroundOptions<T = any> = {
   config?: BackgroundConfig;
   /** Defaults to the void-tactical skin. Swap this to run a different background. */
-  skin?: BackgroundSkin;
+  skin?: BackgroundSkin<T>;
+  options?: T;
 };
 
 /**
  * Framework-free mount. Pass a canvas (or a container — a canvas is created).
  * React, Svelte, or a static page can all call this.
  */
-export function createBackground(
+export function createBackground<T = any>(
   target: HTMLCanvasElement | HTMLElement,
-  options: CreateBackgroundOptions = {},
+  options: CreateBackgroundOptions<T> = {},
 ): BackgroundHandle {
   const canvas = ensureCanvas(target);
   const ctx = canvas.getContext('2d', { alpha: true });
@@ -28,7 +29,7 @@ export function createBackground(
   const rng = createRng(resolved.seed);
   const skin = options.skin ?? voidTacticalSkin;
 
-  const instance = skin.mount({ canvas, ctx, rng, config: resolved });
+  const instance = skin.mount({ canvas, ctx, rng, config: resolved, options: options.options as T });
 
   let width = 0;
   let height = 0;

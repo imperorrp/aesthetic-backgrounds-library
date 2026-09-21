@@ -10,4 +10,3 @@ export type { PaletteId, Palette } from './engine/palette';
 export { resolveBackgroundConfig, DETAIL_OPTIONS } from './engine/config';
 export type { BackgroundConfig, ResolvedBackgroundConfig, LabelDensity } from './engine/config';
 export { randomSeedString, createRng } from './engine/rng';
-export type { OverlayFlags, OverlayId } from './engine/overlays/flags';

@@ -55,7 +55,6 @@ class BgEngineElement extends HTMLElement {
       palette: (this.getAttribute('palette') as PaletteId | null) ?? undefined,
       density: densityAttr ? Number(densityAttr) : undefined,
       cameraSpeed: speedAttr ? Number(speedAttr) : undefined,
-      fonts: this.getAttribute('fonts') !== 'false',
     };
     this.#handle = mount(this, options);
   }

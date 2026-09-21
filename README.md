@@ -1,16 +1,19 @@
 # Aesthetic Background Engine
 
-A lightweight, zero-dependency engine for mounting premium, generative backgrounds onto any website or web application. 
+A lightweight, high-performance engine for dropping premium, generative backgrounds into any web project. 
 
-Creating beautiful, animated canvas backgrounds that play nicely with the DOM (handling resize, DPI scaling, and performance budgets) is notoriously tedious. This engine abstracts away the boilerplate. You provide a **skin** (the visual aesthetic), and the engine handles the host lifecycle, DOM overlay injection, deterministic seeding, and the render loop.
+Creating beautiful, animated canvas backgrounds that play nicely with the DOM is notoriously tedious. This engine abstracts away the boilerplate. It handles the host lifecycle, DOM injection, exact deterministic seeding, high-performance requestAnimationFrame loops, and automatic devicePixelRatio (DPR) scaling without a single runtime dependency.
 
-While the default skin (`void-tactical`) happens to be a sci-fi sector, the engine itself is completely theme-agnostic. It is designed to run any generative aesthetic—from calm gradients and cosmic dust to terminal emulators and abstract geometry.
+You provide a **skin** (the visual aesthetic), and the engine handles the rest.
 
-Styles and fonts are injected automatically. Page content stays fully clickable (`pointer-events: none` on the background stack).
+While the default skin (`void-tactical`) happens to be a sci-fi sector, the engine itself is completely theme-agnostic. It is designed to run any generative aesthetic—from calm gradients and cosmic networks to terminal emulators and abstract geometry.
+
+Page content stays fully clickable (`pointer-events: none` on the background stack).
 
 ## 30-Second Drop-In
 
 **Via CDN (Web Component):**
+The zero-dependency Web Component works in any framework or vanilla HTML file.
 
 ```html
 <script type="module" src="https://unpkg.com/space-background-engine/dist/element.js"></script>
@@ -29,13 +32,14 @@ Styles and fonts are injected automatically. Page content stays fully clickable 
 </script>
 ```
 
-## Installation & Framework Usage
+## Installation & React Usage
 
 ```bash
 pnpm add space-background-engine
 ```
 
 **React:**
+The React hook wrapper guarantees clean unmounting and handles dynamic config updates instantly.
 
 ```tsx
 import { Background } from 'space-background-engine/react';
@@ -50,40 +54,34 @@ export function App() {
 }
 ```
 
-**Vanilla TypeScript:**
-
-```ts
-import { mount } from 'space-background-engine';
-
-mount(document.body, {
-  seed: 'orion-7',
-  density: 1,
-  detail: 'low',        // 'none' | 'low' | 'medium' | 'high'
-  palette: 'void-cyan', // 'void-cyan' | 'amber' | 'violet'
-});
-```
-
 ## Configuration Knobs
 
 Control the aesthetic with simple, high-level parameters.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `seed` | random | The PRNG seed. The same seed always generates the exact same visual field. |
+| `seed` | random | The PRNG seed. The exact same seed guarantees the exact same visual generation across all browsers. |
 | `density` | `1` | Multiplier for the population/density of generated entities. |
 | `detail` | `'low'` | Detail budget (`none`, `low`, `medium`, `high`). Controls how much visual noise or annotation is allowed. |
 | `palette` | `'void-cyan'` | CSS token set injected into the root (`void-cyan`, `amber`, `violet`). |
 | `cameraSpeed` | `0.25` | Base panning speed in world units. |
-| `layers` | sensible defaults | Toggles for specific CSS/DOM overlays (e.g., `noise`, `clouds`, `asciiGrid`). |
 | `skin` | `voidTacticalSkin` | Swap the entire visual aesthetic. The engine runs whatever skin you provide. |
+| `options` | `{}` | Generic options object passed to the active skin for custom aesthetic controls. |
 
-*Note: `<bg-engine>` web component attributes mirror these options: `seed`, `density`, `detail`, `palette`, and `speed`.*
+*Note: `<bg-engine>` web component attributes mirror these core options: `seed`, `density`, `detail`, `palette`, and `speed`.*
+
+## Architecture Highlights
+
+This engine is built to be a robust, drop-in utility for creative developers.
+- **Deterministic PRNG:** `Math.random()` is banished. The engine provides a Mulberry32 seeded generator. Passing `seed="orion-7"` guarantees the exact same visual layout, particle positions, and stars on every reload and every device.
+- **High-Performance DOM Interop:** The engine isolates the canvas via a strict `ResizeObserver`, scales the context via `devicePixelRatio` for retina displays, and throttles the `requestAnimationFrame` loop to hit specific target FPS budgets, ensuring your main thread remains snappy.
+- **Zero Dependencies:** The engine provides a React component, a Custom Web Component, and a Vanilla JS adapter all without a single external dependency payload.
 
 ## Custom Skins & Extensibility
 
 The engine's architecture strictly separates the **Host** (canvas sizing, loop management, config) from the **Skin** (world generation, draw routines). 
 
-You can easily write your own skin to create entirely new aesthetics. See the [Direction & Architecture Guide](docs/DIRECTION.md) for details on the `BackgroundSkin` API and how you can leverage generative AI to quickly bootstrap new visual themes.
+You can easily write your own skin to create entirely new aesthetics, taking advantage of the new generic `<SkinOptions>` schema to declare your own custom controls. See the [Direction & Architecture Guide](docs/DIRECTION.md) for details on the `BackgroundSkin` API and how you can leverage generative AI to quickly bootstrap new visual themes.
 
 ---
 

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  AmbientOverlays,
   BackgroundCanvas,
   CursorTrail,
   DETAIL_OPTIONS,
@@ -9,11 +8,11 @@ import {
   randomSeedString,
   driftingDustSkin,
   voidTacticalSkin,
-  type AmbientLayerFlags,
   type BackgroundConfig,
   type LabelDensity,
   type PaletteId,
 } from '../engine';
+import { AmbientOverlays, type AmbientLayerFlags } from '../engine/skins/void-tactical/AmbientOverlays';
 import './DemoPage.css';
 
 type LayerKey = keyof AmbientLayerFlags | 'simulation' | 'cursor';
@@ -109,9 +108,13 @@ export default function DemoPage() {
 
   return (
     <div className="demo-root">
-      <AmbientOverlays layers={overlayFlags}>
-        {layers.simulation && <BackgroundCanvas config={simConfig} skin={activeSkin} />}
-      </AmbientOverlays>
+      {skinId === 'void-tactical' ? (
+        <AmbientOverlays layers={overlayFlags}>
+          {layers.simulation && <BackgroundCanvas config={simConfig} skin={activeSkin} />}
+        </AmbientOverlays>
+      ) : (
+        layers.simulation && <BackgroundCanvas config={simConfig} skin={activeSkin} />
+      )}
 
       {layers.cursor && <CursorTrail />}
 
@@ -173,14 +176,11 @@ export default function DemoPage() {
             </label>
 
             <label className="demo-field">
-              <span>Detail</span>
-              <select
-                value={detail}
-                onChange={(e) => setDetail(e.target.value as LabelDensity)}
-              >
-                {DETAIL_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
+              <span>Detail level</span>
+              <select value={detail} onChange={(e) => setDetail(e.target.value as any)}>
+                {DETAIL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
                   </option>
                 ))}
               </select>
@@ -198,23 +198,26 @@ export default function DemoPage() {
               />
             </label>
 
-            <ul className="demo-layer-list">
-              {LAYER_LABELS.map((item) => (
-                <li key={item.key}>
-                  <label>
+            {skinId === 'void-tactical' && (
+              <div className="demo-toggles">
+                <p className="demo-kicker" style={{ marginTop: '1rem' }}>
+                  Ambient Layers
+                </p>
+                {LAYER_LABELS.map((item) => (
+                  <label key={item.key} className="demo-toggle-field">
                     <input
                       type="checkbox"
                       checked={layers[item.key]}
                       onChange={() => toggle(item.key)}
                     />
-                    <span>
-                      <strong>{item.label}</strong>
-                      <em>{item.hint}</em>
-                    </span>
+                    <div className="demo-toggle-text">
+                      <span className="demo-toggle-label">{item.label}</span>
+                      <span className="demo-toggle-hint">{item.hint}</span>
+                    </div>
                   </label>
-                </li>
-              ))}
-            </ul>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </header>

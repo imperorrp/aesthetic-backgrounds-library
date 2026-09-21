@@ -7,12 +7,13 @@ import { voidTacticalSkin } from './skins/void-tactical/runtime';
 import type { BackgroundConfig } from './config';
 import type { BackgroundSkin } from './core/skin';
 
-export type BackgroundCanvasProps = {
+export type BackgroundCanvasProps<T = any> = {
   config?: BackgroundConfig;
-  skin?: BackgroundSkin;
+  skin?: BackgroundSkin<T>;
+  options?: T;
 };
 
-const BackgroundCanvas: React.FC<BackgroundCanvasProps> = ({ config, skin = voidTacticalSkin }) => {
+const BackgroundCanvas = <T = any>({ config, skin = voidTacticalSkin as any, options }: BackgroundCanvasProps<T>) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const key = useMemo(
     () => JSON.stringify({
@@ -22,15 +23,16 @@ const BackgroundCanvas: React.FC<BackgroundCanvasProps> = ({ config, skin = void
       cameraSpeed: config?.cameraSpeed,
       targetFps: config?.targetFps,
       palette: config?.palette,
-      skin: skin.id,
+      skin: skin?.id,
+      options,
     }),
-    [config?.seed, config?.density, config?.detail, config?.labelDensity, config?.cameraSpeed, config?.targetFps, config?.palette, skin.id],
+    [config?.seed, config?.density, config?.detail, config?.labelDensity, config?.cameraSpeed, config?.targetFps, config?.palette, skin?.id, options],
   );
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const handle = createBackground(canvas, { config, skin });
+    const handle = createBackground(canvas, { config, skin, options });
     return () => handle.destroy();
   }, [key, config, skin]);
 

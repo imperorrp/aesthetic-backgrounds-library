@@ -1,17 +1,13 @@
 import { applyPalette } from '../palette';
 import { createBackground, type CreateBackgroundOptions } from './createBackground';
-import { createOverlayStack, injectEngineFonts, injectEngineStyles } from '../overlays/stack';
-import type { OverlayFlags } from '../overlays/flags';
 import type { BackgroundConfig } from '../config';
 import type { BackgroundHandle, BackgroundSkin } from './skin';
 
-export type MountOptions = BackgroundConfig & {
-  skin?: BackgroundSkin;
-  layers?: OverlayFlags;
+export type MountOptions<T = any> = BackgroundConfig & {
+  skin?: BackgroundSkin<T>;
+  options?: T;
   /** Stack z-index. Default 0 so page content can sit above. */
   zIndex?: number;
-  /** Load Orbit / Syne Mono from Google Fonts. Default true. */
-  fonts?: boolean;
 };
 
 export type MountHandle = BackgroundHandle & {
@@ -25,21 +21,18 @@ export type MountHandle = BackgroundHandle & {
  * @example
  * mount(document.body, { seed: 'orion-7', detail: 'low' })
  */
-export function mount(
+export function mount<T = any>(
   target: string | HTMLElement = document.body,
-  options: MountOptions = {},
+  options: MountOptions<T> = {},
 ): MountHandle {
   const el = resolveTarget(target);
   const {
     skin,
-    layers,
+    options: skinOptions,
     zIndex = 0,
-    fonts = true,
     ...config
   } = options;
 
-  injectEngineStyles();
-  if (fonts) injectEngineFonts();
   applyPalette(config.palette ?? 'void-cyan');
 
   const positioned = window.getComputedStyle(el).position;
@@ -49,8 +42,10 @@ export function mount(
     el.style.position = 'relative';
   }
 
-  const stack = createOverlayStack(el, layers);
-  const root = stack.root;
+  const root = document.createElement('div');
+  root.className = 'bg-engine-root';
+  el.appendChild(root);
+  
   if (el === document.body || el === document.documentElement) {
     root.style.position = 'fixed';
   } else {
@@ -69,14 +64,15 @@ export function mount(
   const loop = createBackground(canvas, {
     skin,
     config,
-  } satisfies CreateBackgroundOptions);
+    options: skinOptions,
+  } satisfies CreateBackgroundOptions<T>);
 
   return {
     canvas: loop.canvas,
     root,
     destroy() {
       loop.destroy();
-      stack.destroy();
+      root.remove();
     },
   };
 }

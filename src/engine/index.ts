@@ -17,8 +17,6 @@ export { driftingDustSkin } from './skins/drifting-dust';
 export { default as BackgroundCanvas } from './BackgroundCanvas';
 export type { BackgroundCanvasProps } from './BackgroundCanvas';
 export { default as CursorTrail } from './CursorTrail';
-export { AmbientOverlays } from './AmbientOverlays';
-export type { AmbientLayerFlags } from './AmbientOverlays';
 
 export { resolveBackgroundConfig, DETAIL_OPTIONS, LABEL_DENSITY_OPTIONS } from './config';
 export type { BackgroundConfig, ResolvedBackgroundConfig, LabelDensity } from './config';
@@ -26,7 +24,6 @@ export { applyPalette, PALETTES, PALETTE_OPTIONS } from './palette';
 export type { PaletteId, Palette } from './palette';
 export { createRng, hashSeed, mulberry32, randomSeedString } from './rng';
 export type { Rng } from './rng';
-export type { OverlayFlags, OverlayId } from './overlays/flags';
 
 export { ParticleHero } from './particles/ParticleHero';
 export type { ParticleHeroProps } from './particles/ParticleHero';

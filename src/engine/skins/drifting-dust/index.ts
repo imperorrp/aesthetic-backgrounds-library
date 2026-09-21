@@ -1,45 +1,49 @@
 import type { BackgroundSkin, SkinHost, Viewport } from '../../core/skin';
-import { applyPalette } from '../../palette';
 
-type DustParticle = {
+type Node = {
   x: number;
   y: number;
   vx: number;
   vy: number;
   radius: number;
-  opacity: number;
   parallax: number;
 };
 
-export const driftingDustSkin: BackgroundSkin = {
+// Extensibility proof: custom config schema specific to the network skin
+export type NetworkSkinOptions = {
+  connectionRadius?: number;
+  maxNodes?: number;
+};
+
+export const driftingDustSkin: BackgroundSkin<NetworkSkinOptions> = {
   id: 'drifting-dust',
-  mount(host: SkinHost) {
-    const { canvas, ctx, rng, config } = host;
+  mount(host: SkinHost<NetworkSkinOptions>) {
+    const { canvas, ctx, rng, config, options } = host;
     let width = canvas.clientWidth || window.innerWidth;
     let height = canvas.clientHeight || window.innerHeight;
     
-    // Create particles deterministically
-    // We base the count on the density config.
-    const baseParticleCount = 200;
-    const count = Math.floor(baseParticleCount * (config.density ?? 1));
-    const particles: DustParticle[] = [];
+    // Config interpretation
+    const densityMult = Math.max(0.1, config.density ?? 1);
+    const maxNodes = options?.maxNodes ?? 250;
+    const count = Math.min(maxNodes, Math.floor(150 * densityMult));
+    const baseConnectionRadius = options?.connectionRadius ?? 120;
+    const connectionRadius = baseConnectionRadius * (1 + (densityMult - 1) * 0.2);
 
-    // The palette config determines the ambient CSS custom properties,
-    // but the engine core injects them into the root or canvas for us.
-    // For rendering on the canvas, we'll extract the accent color from the CSS vars
-    // in the frame loop so we can respond to theme changes dynamically, or just use a fallback.
-    let accentRgbaCache = 'rgba(200, 200, 255, 1)';
+    const nodes: Node[] = [];
+
+    // Cache palette
+    let accentRgbaCache = 'rgba(200, 200, 255, ';
     let paletteCached = false;
 
+    // Initialize nodes
     for (let i = 0; i < count; i++) {
-      particles.push({
+      nodes.push({
         x: rng() * width,
         y: rng() * height,
-        vx: (rng() - 0.5) * 0.2,
-        vy: (rng() - 0.5) * 0.2,
-        radius: rng() * 2 + 0.5,
-        opacity: rng() * 0.5 + 0.1,
-        parallax: rng() * 0.5 + 0.5, // 0.5 to 1.0
+        vx: (rng() - 0.5) * 0.4,
+        vy: (rng() - 0.5) * 0.4,
+        radius: rng() * 1.5 + 1.0,
+        parallax: rng() * 0.4 + 0.6, // 0.6 to 1.0
       });
     }
 
@@ -57,12 +61,10 @@ export const driftingDustSkin: BackgroundSkin = {
         const dt = lastTime ? (timestamp - lastTime) / 16.66 : 1;
         lastTime = timestamp;
 
-        // Extract palette accent once per skin mount
         if (!paletteCached) {
           const computed = getComputedStyle(document.body);
           const accentStr = computed.getPropertyValue('--bg-accent').trim();
           if (accentStr) {
-            // Assuming rgb values like "10, 255, 200"
             const parts = accentStr.split(',').map(s => parseInt(s.trim(), 10));
             if (parts.length === 3 && !parts.some(isNaN)) {
               accentRgbaCache = `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, `;
@@ -71,43 +73,66 @@ export const driftingDustSkin: BackgroundSkin = {
           paletteCached = true;
         }
 
-        // Camera Pan
         const speed = config.cameraSpeed ?? 0.25;
         cameraX += speed * dt;
         cameraY += (speed * 0.5) * dt;
 
         ctx.clearRect(0, 0, width, height);
 
-        for (const p of particles) {
-          // Move
-          p.x += p.vx * dt;
-          p.y += p.vy * dt;
+        // Calculate positions
+        const positions: { x: number; y: number; r: number; p: number }[] = [];
+        for (let i = 0; i < count; i++) {
+          const n = nodes[i];
+          n.x += n.vx * dt;
+          n.y += n.vy * dt;
 
-          // Parallax camera offset
-          const drawX = p.x - (cameraX * p.parallax);
-          const drawY = p.y - (cameraY * p.parallax);
+          const drawX = n.x - (cameraX * n.parallax);
+          const drawY = n.y - (cameraY * n.parallax);
 
-          // Wrap around viewport
           const wrapX = ((drawX % width) + width) % width;
           const wrapY = ((drawY % height) + height) % height;
-
-          // Render
-          const alpha = p.opacity;
-          const color = accentRgbaCache.endsWith(', ') 
-            ? `${accentRgbaCache}${alpha})` 
-            : `rgba(255, 255, 255, ${alpha})`;
-
-          ctx.beginPath();
-          ctx.arc(wrapX, wrapY, p.radius, 0, Math.PI * 2);
-          ctx.fillStyle = color;
-          ctx.fill();
-
-          // Slight glow
-          ctx.shadowBlur = p.radius * 2;
-          ctx.shadowColor = color;
+          
+          positions.push({ x: wrapX, y: wrapY, r: n.radius, p: n.parallax });
         }
-        
-        ctx.shadowBlur = 0;
+
+        // Draw connections O(n^2) but optimized by skipping faraway nodes
+        // (For a real skin with 10k nodes we'd use a quadtree, but for 150-250 this is fine)
+        ctx.lineWidth = 1;
+        for (let i = 0; i < count; i++) {
+          const p1 = positions[i];
+          for (let j = i + 1; j < count; j++) {
+            const p2 = positions[j];
+            
+            // Fast bounding box check
+            if (Math.abs(p1.x - p2.x) > connectionRadius) continue;
+            if (Math.abs(p1.y - p2.y) > connectionRadius) continue;
+
+            const dx = p1.x - p2.x;
+            const dy = p1.y - p2.y;
+            const distSq = dx * dx + dy * dy;
+            const radSq = connectionRadius * connectionRadius;
+
+            if (distSq < radSq) {
+              const dist = Math.sqrt(distSq);
+              // Opacity decays with distance
+              const alpha = (1 - dist / connectionRadius) * 0.4;
+              ctx.strokeStyle = `${accentRgbaCache}${alpha})`;
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Draw nodes
+        for (let i = 0; i < count; i++) {
+          const p = positions[i];
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `${accentRgbaCache}0.8)`;
+          ctx.fill();
+        }
       },
 
       destroy() {
