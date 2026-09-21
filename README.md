@@ -1,51 +1,41 @@
-# Background engine
+# Aesthetic Background Engine
 
-Procedural, seeded backgrounds for any site. The default skin (`void-tactical`) is a slow sci-fi sector; the engine is a host + skins, not a single look.
+A lightweight, zero-dependency engine for mounting premium, generative backgrounds onto any website or web application. 
 
-Styles and fonts are injected by `mount()` / `<bg-engine>`. Page content stays clickable (`pointer-events: none` on the stack).
+Creating beautiful, animated canvas backgrounds that play nicely with the DOM (handling resize, DPI scaling, and performance budgets) is notoriously tedious. This engine abstracts away the boilerplate. You provide a **skin** (the visual aesthetic), and the engine handles the host lifecycle, DOM overlay injection, deterministic seeding, and the render loop.
 
-## 30-second drop-in
+While the default skin (`void-tactical`) happens to be a sci-fi sector, the engine itself is completely theme-agnostic. It is designed to run any generative aesthetic—from calm gradients and cosmic dust to terminal emulators and abstract geometry.
 
-Custom element (CDN, after publish):
+Styles and fonts are injected automatically. Page content stays fully clickable (`pointer-events: none` on the background stack).
+
+## 30-Second Drop-In
+
+**Via CDN (Web Component):**
 
 ```html
 <script type="module" src="https://unpkg.com/space-background-engine/dist/element.js"></script>
 <bg-engine seed="orion-7" detail="low"></bg-engine>
 ```
 
-Or one function:
+**Via Vanilla JS:**
 
 ```html
 <div id="bg"></div>
 <script type="module">
   import { mount } from 'https://unpkg.com/space-background-engine/dist/index.js';
+  
+  // Injects the background into the specified element
   mount('#bg', { seed: 'orion-7', detail: 'low' });
 </script>
 ```
 
-Locally, with this repo running (`pnpm dev`):
-
-- [http://127.0.0.1:5174/quick.html](http://127.0.0.1:5174/quick.html) — `mount()`
-- [http://127.0.0.1:5174/element.html](http://127.0.0.1:5174/element.html) — `<bg-engine>`
-
-## npm
+## Installation & Framework Usage
 
 ```bash
 pnpm add space-background-engine
 ```
 
-```ts
-import { mount } from 'space-background-engine';
-
-mount(document.body, {
-  seed: 'orion-7',
-  density: 1,
-  detail: 'low',      // none | low | medium | high
-  palette: 'void-cyan', // void-cyan | amber | violet
-});
-```
-
-React:
+**React:**
 
 ```tsx
 import { Background } from 'space-background-engine/react';
@@ -53,34 +43,55 @@ import { Background } from 'space-background-engine/react';
 export function App() {
   return (
     <>
-      <Background seed="orion-7" detail="low" />
-      <main>{/* your site */}</main>
+      <Background seed="orion-7" detail="low" palette="void-cyan" />
+      <main>{/* your site content goes here */}</main>
     </>
   );
 }
 ```
 
-## Options
+**Vanilla TypeScript:**
 
-| Option | Default | |
+```ts
+import { mount } from 'space-background-engine';
+
+mount(document.body, {
+  seed: 'orion-7',
+  density: 1,
+  detail: 'low',        // 'none' | 'low' | 'medium' | 'high'
+  palette: 'void-cyan', // 'void-cyan' | 'amber' | 'violet'
+});
+```
+
+## Configuration Knobs
+
+Control the aesthetic with simple, high-level parameters.
+
+| Option | Default | Description |
 | --- | --- | --- |
-| `seed` | random name | Same seed → same field |
-| `density` | `1` | Population |
-| `detail` | `'low'` | How much annotation speaks |
-| `palette` | `'void-cyan'` | CSS tokens |
-| `cameraSpeed` | `0.25` | Pan |
-| `layers` | sensible defaults | Overlay flags (`mesh`, `clouds`, `ascii1`, …) |
-| `skin` | `voidTacticalSkin` | Swap the whole look |
+| `seed` | random | The PRNG seed. The same seed always generates the exact same visual field. |
+| `density` | `1` | Multiplier for the population/density of generated entities. |
+| `detail` | `'low'` | Detail budget (`none`, `low`, `medium`, `high`). Controls how much visual noise or annotation is allowed. |
+| `palette` | `'void-cyan'` | CSS token set injected into the root (`void-cyan`, `amber`, `violet`). |
+| `cameraSpeed` | `0.25` | Base panning speed in world units. |
+| `layers` | sensible defaults | Toggles for specific CSS/DOM overlays (e.g., `noise`, `clouds`, `asciiGrid`). |
+| `skin` | `voidTacticalSkin` | Swap the entire visual aesthetic. The engine runs whatever skin you provide. |
 
-`<bg-engine>` attributes: `seed`, `density`, `detail`, `palette`, `speed`.
+*Note: `<bg-engine>` web component attributes mirror these options: `seed`, `density`, `detail`, `palette`, and `speed`.*
 
-## Develop this repo
+## Custom Skins & Extensibility
+
+The engine's architecture strictly separates the **Host** (canvas sizing, loop management, config) from the **Skin** (world generation, draw routines). 
+
+You can easily write your own skin to create entirely new aesthetics. See the [Direction & Architecture Guide](docs/DIRECTION.md) for details on the `BackgroundSkin` API and how you can leverage generative AI to quickly bootstrap new visual themes.
+
+---
+
+## Local Development
 
 ```bash
 pnpm install
-pnpm dev          # playground
-pnpm test
-pnpm build:lib    # dist/ for npm / CDN
+pnpm dev          # Run the interactive playground (localhost:5174)
+pnpm test         # Run the deterministic generation test suite
+pnpm build:lib    # Build the package for npm / CDN
 ```
-
-Direction: [docs/DIRECTION.md](docs/DIRECTION.md)
