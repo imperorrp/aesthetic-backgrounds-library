@@ -1,8 +1,7 @@
 import { hashSeed, randomSeedString } from './rng';
-import type { LabelDensity } from './types';
 import type { PaletteId } from './palette';
 
-export type { LabelDensity };
+export type LabelDensity = 'none' | 'low' | 'medium' | 'high';
 
 export type BackgroundConfig = {
   /** Same seed → same generated field. */

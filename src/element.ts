@@ -1,5 +1,5 @@
 import { mount, type MountHandle, type MountOptions } from './engine/core/mount';
-import type { LabelDensity } from './engine/types';
+import type { LabelDensity } from './engine/config';
 import type { PaletteId } from './engine/palette';
 
 /**

@@ -150,8 +150,9 @@ export interface TacticalElement {
   createdAt: number;
 }
 
-export type LabelDensity = 'none' | 'low' | 'medium' | 'high';
+import type { LabelDensity } from '../../config';
 
+export type { LabelDensity };
 export interface SimSettings {
   labelDensity: LabelDensity;
   overlaySpawnRate: number;

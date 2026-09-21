@@ -13,7 +13,7 @@
  */
 
 import type { SystemState, Fleet, SystemNode, Telemetry, Anomaly, Star, Constellation, CelestialBody, StarSystem, Planet, Structure, SimSettings } from './types';
-import type { Rng } from './rng';
+import type { Rng } from '../../rng';
 
 const defaultRng: Rng = Math.random;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createRng, hashSeed } from './rng';
-import { generateSystem, generateSingleSystem, generateSingleStructure } from './generators';
+import { generateSystem, generateSingleSystem, generateSingleStructure } from './skins/void-tactical/generators';
 import { resolveBackgroundConfig } from './config';
 import { voidTacticalSkin } from './skins/void-tactical/runtime';
 

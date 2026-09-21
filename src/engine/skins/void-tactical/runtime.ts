@@ -1,13 +1,13 @@
-import type { Structure, SystemState } from '../../types';
+import type { Structure, SystemState } from './types';
 import {
   generateSystem,
   generateSingleSystem,
   generateSingleStructure,
   generateSingleFleet,
   generateSingleAnomaly,
-} from '../../generators';
-import { renderSystem } from '../../renderers';
-import { WORLD_SPEED_MULTIPLIER } from '../../renderers/utils';
+} from './generators';
+import { renderSystem } from './renderers';
+import { WORLD_SPEED_MULTIPLIER } from './renderers/utils';
 import { createRng } from '../../rng';
 import type { BackgroundSkin, SkinHost, Viewport } from '../../core/skin';
 
