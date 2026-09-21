@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bg-engine CDN example</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; }
+      main {
+        position: relative;
+        z-index: 1;
+        padding: 3rem 1.5rem;
+        color: #e8f4f8;
+        font-family: system-ui, sans-serif;
+      }
+    </style>
+    <!-- After publish: swap the src for unpkg / jsDelivr -->
+    <script type="module" src="../dist/element.js"></script>
+  </head>
+  <body>
+    <bg-engine seed="orion-7" detail="low"></bg-engine>
+    <main>
+      <h1>Your site</h1>
+      <p>The custom element is behind this copy. Clicks and scroll still work.</p>
+    </main>
+  </body>
+</html>

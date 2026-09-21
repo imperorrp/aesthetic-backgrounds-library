@@ -1,0 +1,12 @@
+export { mount } from './engine/core/mount';
+export type { MountOptions, MountHandle } from './engine/core/mount';
+export { createBackground } from './engine/core/createBackground';
+export type { CreateBackgroundOptions } from './engine/core/createBackground';
+export type { BackgroundSkin, BackgroundHandle, SkinHost, SkinInstance } from './engine/core/skin';
+export { voidTacticalSkin } from './engine/skins/void-tactical/runtime';
+export { applyPalette, PALETTES, PALETTE_OPTIONS } from './engine/palette';
+export type { PaletteId, Palette } from './engine/palette';
+export { resolveBackgroundConfig, DETAIL_OPTIONS } from './engine/config';
+export type { BackgroundConfig, ResolvedBackgroundConfig, LabelDensity } from './engine/config';
+export { randomSeedString, createRng } from './engine/rng';
+export type { OverlayFlags, OverlayId } from './engine/overlays/flags';

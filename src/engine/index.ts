@@ -8,6 +8,8 @@
 
 export { createBackground } from './core/createBackground';
 export type { CreateBackgroundOptions } from './core/createBackground';
+export { mount } from './core/mount';
+export type { MountOptions, MountHandle } from './core/mount';
 export type { BackgroundSkin, BackgroundHandle, SkinHost, SkinInstance, Camera, Viewport } from './core/skin';
 
 export { voidTacticalSkin } from './skins/void-tactical/runtime';
@@ -24,6 +26,7 @@ export { applyPalette, PALETTES, PALETTE_OPTIONS } from './palette';
 export type { PaletteId, Palette } from './palette';
 export { createRng, hashSeed, mulberry32, randomSeedString } from './rng';
 export type { Rng } from './rng';
+export type { OverlayFlags, OverlayId } from './overlays/flags';
 
 export { ParticleHero } from './particles/ParticleHero';
 export type { ParticleHeroProps } from './particles/ParticleHero';

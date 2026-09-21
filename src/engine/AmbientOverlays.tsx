@@ -4,30 +4,9 @@
  */
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import './overlays.css';
+import { DEFAULT_OVERLAYS, type OverlayFlags } from './overlays/flags';
 
-export type AmbientLayerFlags = {
-  gradient?: boolean;
-  mesh?: boolean;
-  asciiGrid?: boolean;
-  ascii1?: boolean;
-  ascii2?: boolean;
-  clouds?: boolean;
-  noise?: boolean;
-  starfield?: boolean;
-  mouseGlow?: boolean;
-};
-
-const ALL_ON: Required<AmbientLayerFlags> = {
-  gradient: true,
-  mesh: true,
-  asciiGrid: true,
-  ascii1: false,
-  ascii2: false,
-  clouds: true,
-  noise: true,
-  starfield: false,
-  mouseGlow: true,
-};
+export type AmbientLayerFlags = OverlayFlags;
 
 export function AmbientOverlays({
   layers,
@@ -37,7 +16,7 @@ export function AmbientOverlays({
   /** Extra layers (typically the space-sim canvas) rendered inside the stack. */
   children?: ReactNode;
 }) {
-  const flags = { ...ALL_ON, ...layers };
+  const flags = { ...DEFAULT_OVERLAYS, ...layers };
   const glowRef = useRef<HTMLDivElement>(null);
 
   return (

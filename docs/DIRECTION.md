@@ -69,7 +69,7 @@ The intended OSS story: people drop this on a site, then later replace the skin 
 2. **Generic host + skin interface** — in progress (`createBackground`, `voidTacticalSkin`).
 3. Move void-tactical files fully under `skins/` so core stays theme-agnostic.
 4. Document writing a second, smaller skin (even a quiet gradient + dust) to prove the interface.
-5. Vanilla package entry (no React in the core publish).
+5. **Publishable host** — `mount()`, `<bg-engine>`, `space-background-engine/react`. Done.
 6. Then skin-quality work (parallax, docking timers, new looks) — not more one-off HUD chrome on the default skin.
 
 ---

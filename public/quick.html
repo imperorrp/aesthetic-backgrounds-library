@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mount() smoke test</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #030308; }
+      main {
+        position: relative;
+        z-index: 1;
+        max-width: 36rem;
+        padding: 3rem 1.5rem;
+        color: #e8f4f8;
+        font-family: system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>This page uses <code>mount(document.body)</code> — the same API as the published package. Site content sits above the background.</p>
+    </main>
+    <script type="module">
+      import { mount } from '/src/lib.ts';
+      mount(document.body, { seed: 'orion-7', detail: 'low' });
+    </script>
+  </body>
+</html>

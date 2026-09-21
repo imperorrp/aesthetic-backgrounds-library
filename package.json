@@ -1,23 +1,71 @@
 {
   "name": "space-background-engine",
-  "private": true,
   "version": "0.1.0",
+  "private": false,
   "type": "module",
-  "description": "Procedural background engine. Seeded skins, layered atmosphere, vanilla or React host. Default skin: void-tactical.",
+  "license": "MIT",
+  "description": "Procedural background engine. Seeded skins, layered atmosphere. Drop onto any site via mount() or <bg-engine>.",
+  "keywords": [
+    "background",
+    "canvas",
+    "procedural",
+    "generative",
+    "web-component"
+  ],
+  "sideEffects": [
+    "./dist/element.js",
+    "*.css"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./element": {
+      "types": "./types/element.d.ts",
+      "import": "./dist/element.js"
+    },
+    "./react": {
+      "types": "./types/react.d.ts",
+      "import": "./dist/react.js"
+    }
+  },
+  "files": [
+    "dist",
+    "types",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:lib": "vite build --config vite.lib.config.ts",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "pnpm test && pnpm build:lib"
   },
-  "dependencies": {
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+  "peerDependencies": {
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
   },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "dependencies": {},
   "devDependencies": {
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
     "vitest": "^5.0.0"
