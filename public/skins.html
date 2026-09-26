@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>container mounts + skin ids</title>
+    <style>
+      html, body { margin: 0; background: #0b0d12; color: #e8f4f8; font-family: system-ui, sans-serif; }
+      main { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem; }
+      .card { position: relative; height: 40vh; border: 1px solid #263140; border-radius: 12px; overflow: hidden; }
+      .card h2 { position: relative; z-index: 1; margin: 0; padding: 1rem; font-size: 0.85rem; letter-spacing: 0.1em; text-transform: uppercase; }
+      .card.tall { grid-column: 1 / -1; height: 50vh; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card tall"><h2>void-tactical (default) — mount('#a')</h2><div id="a" style="position:absolute;inset:0"></div></div>
+      <div class="card"><h2>matrix-rain via string id, amber</h2><div id="b" style="position:absolute;inset:0"></div></div>
+      <div class="card"><h2>drifting-dust via string id, violet</h2><div id="c" style="position:absolute;inset:0"></div></div>
+    </main>
+    <script type="module">
+      import { mount } from '/src/lib.ts';
+      mount('#a', { seed: 'orion-7', detail: 'low' });
+      mount('#b', { seed: 'orion-7', skin: 'matrix-rain', palette: 'amber', options: { fontSize: 14 } });
+      mount('#c', { seed: 'orion-7', skin: 'drifting-dust', palette: 'violet' });
+    </script>
+  </body>
+</html>

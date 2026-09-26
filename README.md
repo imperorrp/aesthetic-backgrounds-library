@@ -1,23 +1,30 @@
 # Aesthetic Background Engine
 
-A lightweight, high-performance engine for dropping premium, generative backgrounds into any web project. 
+A lightweight, zero-dependency engine for dropping premium, generative backgrounds into any web project.
 
-Creating beautiful, animated canvas backgrounds that play nicely with the DOM is notoriously tedious. This engine abstracts away the boilerplate. It handles the host lifecycle, DOM injection, exact deterministic seeding, high-performance requestAnimationFrame loops, and automatic devicePixelRatio (DPR) scaling without a single runtime dependency.
+Creating beautiful, animated canvas backgrounds that play nicely with the DOM is notoriously tedious. This engine abstracts away the boilerplate: DOM injection, container-aware sizing, devicePixelRatio scaling, a throttled `requestAnimationFrame` loop, seeded generation, palette tokens, and clean teardown.
 
 You provide a **skin** (the visual aesthetic), and the engine handles the rest.
 
-While the default skin (`void-tactical`) happens to be a sci-fi sector, the engine itself is completely theme-agnostic. It is designed to run any generative aesthetic—from calm gradients and cosmic networks to terminal emulators and abstract geometry.
+The default skin (`void-tactical`) is a sci-fi sector map, but the engine is theme-agnostic. It runs any generative aesthetic, from calm gradients and particle networks to glyph rain and abstract geometry.
 
-Page content stays fully clickable (`pointer-events: none` on the background stack).
+Page content stays fully clickable (`pointer-events: none` on the whole background stack).
+
+> **Status:** early. The architecture, current gaps, and the plan are in [docs/ROADMAP.md](docs/ROADMAP.md). The API below is stable enough to try, not yet to depend on.
 
 ## 30-Second Drop-In
 
 **Via CDN (Web Component):**
-The zero-dependency Web Component works in any framework or vanilla HTML file.
 
 ```html
 <script type="module" src="https://unpkg.com/space-background-engine/dist/element.js"></script>
 <bg-engine seed="orion-7" detail="low"></bg-engine>
+```
+
+Pick a different built-in skin with an attribute:
+
+```html
+<bg-engine skin="matrix-rain" palette="amber"></bg-engine>
 ```
 
 **Via Vanilla JS:**
@@ -26,11 +33,16 @@ The zero-dependency Web Component works in any framework or vanilla HTML file.
 <div id="bg"></div>
 <script type="module">
   import { mount } from 'https://unpkg.com/space-background-engine/dist/index.js';
-  
-  // Injects the background into the specified element
-  mount('#bg', { seed: 'orion-7', detail: 'low' });
+
+  // Full-page background behind everything
+  mount(document.body, { seed: 'orion-7', detail: 'low' });
+
+  // Or inside a positioned container, with a skin picked by id
+  mount('#bg', { skin: 'drifting-dust', palette: 'violet' });
 </script>
 ```
+
+`mount()` returns a handle with `canvas`, `root`, and `destroy()`.
 
 ## Installation & React Usage
 
@@ -39,7 +51,6 @@ pnpm add space-background-engine
 ```
 
 **React:**
-The React hook wrapper guarantees clean unmounting and handles dynamic config updates instantly.
 
 ```tsx
 import { Background } from 'space-background-engine/react';
@@ -54,34 +65,72 @@ export function App() {
 }
 ```
 
-## Configuration Knobs
+`Background` wraps `mount()`. Any prop change tears the background down and mounts it again with the new settings.
 
-Control the aesthetic with simple, high-level parameters.
+## Configuration Knobs
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `seed` | random | The PRNG seed. The exact same seed guarantees the exact same visual generation across all browsers. |
-| `density` | `1` | Multiplier for the population/density of generated entities. |
-| `detail` | `'low'` | Detail budget (`none`, `low`, `medium`, `high`). Controls how much visual noise or annotation is allowed. |
-| `palette` | `'void-cyan'` | CSS token set injected into the root (`void-cyan`, `amber`, `violet`). |
-| `cameraSpeed` | `0.25` | Base panning speed in world units. |
-| `skin` | `voidTacticalSkin` | Swap the entire visual aesthetic. The engine runs whatever skin you provide. |
-| `options` | `{}` | Generic options object passed to the active skin for custom aesthetic controls. |
+| `seed` | random | PRNG seed. The same seed generates the same world layout on every device. |
+| `skin` | `'void-tactical'` | A skin object or the id of a registered skin (`'void-tactical'`, `'drifting-dust'`, `'matrix-rain'`). |
+| `options` | `{}` | Skin-specific options. See each skin's exported options type. |
+| `palette` | `'void-cyan'` | Color tokens shared by the canvas and CSS layers (`void-cyan`, `amber`, `violet`). |
+| `density` | `1` | Population multiplier for generated entities (clamped 0.25–2). |
+| `detail` | `'low'` | Label / HUD budget for the default skin (`none`, `low`, `medium`, `high`). |
+| `cameraSpeed` | `0.25` | Base drift speed. |
+| `targetFps` | `60` | Frame cap for the render loop. |
+| `zIndex` | `0` | z-index of the background root. |
+| `fonts` | `false` | Load the display fonts used by built-in canvas text (Orbit, Syne Mono) from Google Fonts. Off by default so the package makes no network requests. |
 
-*Note: `<bg-engine>` web component attributes mirror these core options: `seed`, `density`, `detail`, `palette`, and `speed`.*
+`<bg-engine>` attributes: `seed`, `skin`, `density`, `detail`, `palette`, `speed`, `fonts`, `z-index`.
 
-## Architecture Highlights
+## What the engine guarantees today
 
-This engine is built to be a robust, drop-in utility for creative developers.
-- **Deterministic PRNG:** `Math.random()` is banished. The engine provides a Mulberry32 seeded generator. Passing `seed="orion-7"` guarantees the exact same visual layout, particle positions, and stars on every reload and every device.
-- **High-Performance DOM Interop:** The engine isolates the canvas via a strict `ResizeObserver`, scales the context via `devicePixelRatio` for retina displays, and throttles the `requestAnimationFrame` loop to hit specific target FPS budgets, ensuring your main thread remains snappy.
-- **Zero Dependencies:** The engine provides a React component, a Custom Web Component, and a Vanilla JS adapter all without a single external dependency payload.
+- **Seeded generation.** `Math.random` is replaced by a Mulberry32 generator seeded from your string. World *layout* (stars, systems, structures, node fields) is identical for the same seed. Frame-to-frame *animation* in the default skin is not yet deterministic; that is tracked in the roadmap.
+- **Container-aware sizing.** The canvas fills whatever it is mounted in and follows it through a `ResizeObserver`, with a window fallback. Backing store is scaled by `devicePixelRatio`, capped at 1.5x.
+- **DOM isolation.** Everything lives in a `.bg-engine-root` with `pointer-events: none`, fixed for page mounts and absolute inside containers.
+- **Clean teardown.** `destroy()` removes the DOM, disconnects observers, cancels the loop, and is safe to call twice.
+- **Zero dependencies.** Vanilla, React, and Web Component entry points with no runtime payload beyond the engine.
 
-## Custom Skins & Extensibility
+## Custom Skins
 
-The engine's architecture strictly separates the **Host** (canvas sizing, loop management, config) from the **Skin** (world generation, draw routines). 
+The engine separates the **Host** (sizing, loop, config, palette) from the **Skin** (world generation and drawing). A skin is a small object:
 
-You can easily write your own skin to create entirely new aesthetics, taking advantage of the new generic `<SkinOptions>` schema to declare your own custom controls. See the [Direction & Architecture Guide](docs/DIRECTION.md) for details on the `BackgroundSkin` API and how you can leverage generative AI to quickly bootstrap new visual themes.
+```ts
+import type { BackgroundSkin } from 'space-background-engine';
+
+export const ripples: BackgroundSkin<{ rings?: number }> = {
+  id: 'ripples',
+  mount({ ctx, rng, palette, options }) {
+    const rings = options?.rings ?? 6;
+    const seeds = Array.from({ length: rings }, () => ({ x: rng(), y: rng(), phase: rng() * Math.PI * 2 }));
+    let width = 0, height = 0;
+    return {
+      resize(v) { width = v.width; height = v.height; },
+      frame(t) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.strokeStyle = `rgba(${palette.accentRgb.split(' ').join(', ')}, 0.25)`;
+        for (const s of seeds) {
+          const r = ((t / 1000 + s.phase) % 4) * 60;
+          ctx.beginPath(); ctx.arc(s.x * width, s.y * height, r, 0, Math.PI * 2); ctx.stroke();
+        }
+      },
+      destroy() {},
+    };
+  },
+};
+```
+
+Then either pass the object (`mount(el, { skin: ripples })`) or register it once and use the id everywhere, including `<bg-engine skin="ripples">`:
+
+```ts
+import { registerSkin } from 'space-background-engine';
+registerSkin(ripples);
+```
+
+Skins can also add GPU-friendly DOM layers behind the canvas (gradients, SVG textures, grain) by implementing the optional `layers(root, context)` hook. The default skin uses it for its atmosphere stack.
+
+Conventions that keep skins portable: use `host.rng` instead of `Math.random`, read colors from `host.palette`, treat `frame(timestamp)` deltas as time rather than assuming 60 fps, and clean up in `destroy()`. See the [Direction & Architecture Guide](docs/DIRECTION.md) for the contract and [docs/ROADMAP.md](docs/ROADMAP.md) for where the contract is heading.
 
 ---
 
@@ -89,7 +138,10 @@ You can easily write your own skin to create entirely new aesthetics, taking adv
 
 ```bash
 pnpm install
-pnpm dev          # Run the interactive playground (localhost:5174)
-pnpm test         # Run the deterministic generation test suite
-pnpm build:lib    # Build the package for npm / CDN
+pnpm dev          # Interactive playground (localhost:5174)
+pnpm test         # Unit + DOM tests (vitest, jsdom)
+pnpm typecheck    # tsc across app and tooling configs
+pnpm build:lib    # Library bundle + generated type declarations
 ```
+
+Smoke pages served by the dev server: `/quick.html` (`mount(document.body)`), `/element.html` (`<bg-engine>`), `/skins.html` (container mounts with skin ids).

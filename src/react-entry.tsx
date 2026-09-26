@@ -1,5 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { mount, type MountOptions } from './engine/core/mount';
+// Registers the built-in skins so `skin="matrix-rain"` resolves.
+import './engine/skins';
 
 export type BackgroundProps = MountOptions & {
   className?: string;
@@ -7,7 +9,8 @@ export type BackgroundProps = MountOptions & {
 };
 
 /**
- * React wrapper around `mount`. One component = full background (overlays + canvas).
+ * React wrapper around `mount`. One component = full background (layers + canvas).
+ * Any prop change tears the background down and mounts it again.
  */
 export function Background({ className, style, ...options }: BackgroundProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -19,6 +22,9 @@ export function Background({ className, style, ...options }: BackgroundProps) {
     cameraSpeed: options.cameraSpeed,
     targetFps: options.targetFps,
     zIndex: options.zIndex,
+    fonts: options.fonts,
+    skin: typeof options.skin === 'string' ? options.skin : options.skin?.id,
+    options: options.options,
   });
 
   useEffect(() => {

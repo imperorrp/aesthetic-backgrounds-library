@@ -1,6 +1,8 @@
 import overlayCss from '../overlays.css?inline';
 import { DEFAULT_OVERLAYS, OVERLAY_CLASS, type OverlayFlags, type OverlayId } from './flags';
 
+export { injectEngineFonts } from '../../../core/fonts';
+
 let styleInjected = false;
 
 export function injectEngineStyles(): void {
@@ -16,30 +18,27 @@ export function injectEngineStyles(): void {
   styleInjected = true;
 }
 
-export function injectEngineFonts(): void {
-  if (typeof document === 'undefined') return;
-  if (document.querySelector('link[data-bg-engine-fonts]')) return;
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = 'https://fonts.googleapis.com/css2?family=Orbit&family=Syne+Mono&display=swap';
-  link.dataset.bgEngineFonts = '1';
-  document.head.appendChild(link);
-}
-
 export type OverlayStackHandle = {
   root: HTMLDivElement;
   destroy(): void;
 };
 
+export type OverlayStackOptions = {
+  /** `fixed` (default) covers the viewport; `absolute` fills a positioned parent such as the engine root. */
+  position?: 'fixed' | 'absolute';
+};
+
 export function createOverlayStack(
   parent: HTMLElement,
   layers: OverlayFlags = {},
+  { position = 'fixed' }: OverlayStackOptions = {},
 ): OverlayStackHandle {
   injectEngineStyles();
   const flags = { ...DEFAULT_OVERLAYS, ...layers };
   const root = document.createElement('div');
-  root.className = 'ambient-stack bg-engine-root';
+  root.className = 'ambient-stack';
   root.setAttribute('aria-hidden', 'true');
+  root.style.position = position;
 
   (Object.keys(OVERLAY_CLASS) as Exclude<OverlayId, 'mouseGlow'>[]).forEach((id) => {
     if (!flags[id]) return;

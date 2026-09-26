@@ -40,6 +40,7 @@ const BackgroundCanvas = <T = any>({ config, skin = voidTacticalSkin as any, opt
     <canvas
       ref={canvasRef}
       className="space-sim-canvas bg-engine-canvas"
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', pointerEvents: 'none', zIndex: 10 }}
       aria-hidden="true"
     />
   );

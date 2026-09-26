@@ -44,15 +44,16 @@ graph TD
 ```
 
 **The Host (`core`)**
-- Manages the `canvas` element, DOM injection, and resize observers.
+- Manages the `canvas` element, DOM injection, and container-aware sizing (`ResizeObserver` with a window fallback).
 - Runs the `requestAnimationFrame` loop, throttled to a `targetFps`.
-- Provides the skin with a deterministic PRNG (`rng`), canvas context (`ctx`), and the parsed configuration (budget, seed).
+- Provides the skin with a deterministic PRNG (`rng`), canvas context (`ctx`), resolved palette tokens (`palette`), and the parsed configuration (budget, seed).
+- Resolves skins by object or by registered string id (`registerSkin`), so JSON configs and the `<bg-engine>` element can pick skins.
 
 **The Skin (`skins/*`)**
 - Implements the simple `BackgroundSkin` interface.
 - Owns its internal state, entities, and drawing logic.
 - Can accept arbitrary `options` extending the generic `<SkinOptions>` type for custom aesthetic knobs.
-- Knows nothing about React, Web Components, or the DOM.
+- May implement the optional `layers(root, context)` hook to add DOM layers (CSS gradients, SVG textures, grain) behind its canvas. Otherwise it knows nothing about React, Web Components, or the DOM.
 
 ---
 
@@ -60,10 +61,11 @@ graph TD
 
 To truly understand the engine's generalizability, it is built on a few core mechanisms:
 
-1. **Deterministic PRNG**: The engine replaces `Math.random()` with a Mulberry32 seeded generator. This means that if two users pass `seed="orion"`, they are mathematically guaranteed to generate the exact same constellation, network, or particle layout, regardless of their browser.
-2. **DOM Isolation**: The engine creates an absolute/fixed positioned `<div class="bg-engine-root">` with `pointer-events: none`. The background renders beautifully behind your content without ever interfering with clicks, scrolls, or layout.
-3. **Hardware Acceleration**: Heavy ambient visual effects (like SVG turbulence, radial gradients, or CSS grids) are offloaded to isolated DOM layers. Skins can inject these layers underneath the canvas, relying on GPU-accelerated CSS rather than choking the Canvas 2D context.
-4. **Generic Configuration**: While the engine defines global budgets (`density`, `detail`, `cameraSpeed`), every skin can define its own specific schema via the `<T>` generic (e.g., `options: { maxNodes: 100 }`), automatically flowing down from the React wrapper or Vanilla mount function.
+1. **Deterministic PRNG**: The engine replaces `Math.random()` with a Mulberry32 seeded generator. If two users pass `seed="orion"`, they generate the exact same constellation, network, or particle *layout*, regardless of their browser. Frame-by-frame animation of the default skin is not yet deterministic (it still reads wall-clock time); an injectable clock is planned in the roadmap's M1.
+2. **DOM Isolation**: The engine creates an absolute/fixed positioned `<div class="bg-engine-root">` with `pointer-events: none`. The background renders behind your content without interfering with clicks, scrolls, or layout.
+3. **Hardware Acceleration**: Heavy ambient effects (SVG turbulence, radial gradients, CSS grids) are offloaded to DOM layers. A skin injects them through its optional `layers(root, context)` hook and `mount()` places them underneath the canvas, relying on GPU-composited CSS rather than the Canvas 2D context.
+4. **Generic Configuration**: The engine defines global budgets (`density`, `detail`, `cameraSpeed`); every skin can define its own schema via the `<T>` generic (e.g., `options: { maxNodes: 100 }`), flowing down from the React wrapper, the Vanilla mount function, or the element. `detail` and the overlay budgets are still HUD-flavored leftovers from the default skin and are slated to move into it.
+5. **Palette as values**: Skins receive resolved palette tokens on `host.palette` rather than reading CSS variables. The host also writes the tokens as CSS variables for CSS layers; today those land on `:root` under generic names, which the roadmap replaces with engine-scoped variables.
 
 ---
 
@@ -77,12 +79,15 @@ export type SkinHost<T = Record<string, unknown>> = {
   ctx: CanvasRenderingContext2D;
   rng: Rng;
   config: ResolvedBackgroundConfig;
+  palette: Palette;
   options?: T;
 };
 
 export type BackgroundSkin<T = Record<string, unknown>> = {
   id: string;
   mount(host: SkinHost<T>): SkinInstance;
+  /** Optional DOM layers behind the canvas. Return a cleanup. */
+  layers?(root: HTMLElement, context: { config; palette; options?: T }): () => void;
 };
 ```
 
@@ -94,7 +99,9 @@ This simplicity makes the engine incredibly powerful when combined with **Genera
 > 
 > The aesthetic I want is: [DESCRIBE YOUR AESTHETIC HERE, e.g., a retro-futuristic synthwave grid].
 > 
-> Use the provided `rng()` (which returns a number between 0 and 1) instead of `Math.random()` to ensure deterministic generation. Only return the TypeScript code for the skin."
+> Use the provided `rng()` (which returns a number between 0 and 1) instead of `Math.random()` to ensure deterministic generation. Read colors from `host.palette` (`accent`, `accentRgb`, `ink`, `bg`) instead of hardcoding them. Treat the difference between successive `frame(timestamp)` values as elapsed time rather than assuming 60 fps. Only return the TypeScript code for the skin."
+
+A fuller authoring kit (scaffold, check command, questionnaire-driven skill) is planned; see [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -103,6 +110,9 @@ This simplicity makes the engine incredibly powerful when combined with **Genera
 1. **Extraction & Abstraction**: Pull the original `void-tactical` code out of the legacy codebase, establish the `BackgroundSkin` interface, and build the generic host. *(Done)*
 2. **Packaging**: Create zero-dependency publishable targets for Vanilla, React, and Web Components. *(Done)*
 3. **Skin Isolation**: Move any remaining `void-tactical` specific files (like `AmbientOverlays` and CSS) fully inside the `skins/void-tactical/` directory so the core engine remains strictly theme-agnostic. *(Done)*
-4. **Validation Skins**: Document and write secondary skins (e.g., the interactive Simplex Network) with custom generic options schemas to definitively prove the interface. *(Done)*
-5. **Ecosystem & Matrix Rain**: Build a classic text-rendering skin (Matrix Rain) to prove font/grid capabilities.
-6. **Publishing**: Refine the documentation and publish to encourage the open-source community to build and share their own aesthetic skins.
+4. **Validation Skins**: Write secondary skins (`drifting-dust`, a particle network) with custom generic options schemas to prove the interface. *(Done)*
+5. **Ecosystem & Matrix Rain**: Build a classic text-rendering skin (`matrix-rain`) to prove font/grid capabilities. *(Done)*
+6. **Repair the drop-in path (ROADMAP M0)**: Container-aware sizing, injected layer stack for `mount()` and `<bg-engine>`, skin registry with string ids, palette values on the host, generated type declarations, honest README. *(Done 2026-09-26)*
+7. **Host contract v2 (ROADMAP M1)**: Injectable clock and `dt`-based motion, reduced-motion policy, visibility pause, scoped palette variables, pointer/noise inputs, core decoupled from the default skin, per-skin subpath exports.
+8. **Layers, primitives, presets (ROADMAP M2–M3)**: Composable layer model, a standard layer library, and the aesthetic bar (contrast ceiling, palette coherence, flagship presets).
+9. **Publishing and the authoring kit (ROADMAP M4)**: Refine the documentation, ship the scaffold and skill, and publish to encourage the community to build and share skins.

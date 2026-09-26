@@ -7,10 +7,13 @@ export type Palette = {
   ink: string;
   inkDim: string;
   accent: string;
+  /** Space-separated RGB triplet, e.g. "6 182 212". Use `rgba()` to turn it into a CSS color. */
   accentRgb: string;
   hazard: string;
   hazardRgb: string;
 };
+
+export const DEFAULT_PALETTE_ID: PaletteId = 'void-cyan';
 
 export const PALETTES: Record<PaletteId, Palette> = {
   'void-cyan': {
@@ -52,9 +55,20 @@ export const PALETTE_OPTIONS: { value: PaletteId; label: string }[] = (
   Object.values(PALETTES).map((p) => ({ value: p.id, label: p.label }))
 );
 
+/** Resolves a palette id to its token object, falling back to the default palette. */
+export function resolvePalette(id?: PaletteId | string | null): Palette {
+  return (id && PALETTES[id as PaletteId]) || PALETTES[DEFAULT_PALETTE_ID];
+}
+
+/** Turns an RGB triplet ("6 182 212" or "6, 182, 212") into an rgba() color string. */
+export function rgba(rgbTriplet: string, alpha = 1): string {
+  const parts = rgbTriplet.trim().split(/[\s,]+/).slice(0, 3).join(', ');
+  return `rgba(${parts}, ${alpha})`;
+}
+
 /** Writes palette tokens onto an element (default: :root) so canvas and CSS share one accent. */
 export function applyPalette(id: PaletteId, target: HTMLElement = document.documentElement): void {
-  const p = PALETTES[id];
+  const p = resolvePalette(id);
   target.style.setProperty('--bg', p.bg);
   target.style.setProperty('--ink', p.ink);
   target.style.setProperty('--ink-dim', p.inkDim);
@@ -63,5 +77,5 @@ export function applyPalette(id: PaletteId, target: HTMLElement = document.docum
   target.style.setProperty('--accent-blue-rgb', p.accentRgb);
   target.style.setProperty('--hazard', p.hazard);
   target.style.setProperty('--hazard-rgb', p.hazardRgb);
-  target.dataset.palette = id;
+  target.dataset.palette = p.id;
 }

@@ -1,6 +1,8 @@
 import { mount, type MountHandle, type MountOptions } from './engine/core/mount';
 import type { LabelDensity } from './engine/config';
 import type { PaletteId } from './engine/palette';
+// Registers the built-in skins so `skin="matrix-rain"` resolves.
+import './engine/skins';
 
 /**
  * Drop-in custom element.
@@ -8,10 +10,11 @@ import type { PaletteId } from './engine/palette';
  * @example
  * <script type="module" src="https://unpkg.com/space-background-engine/dist/element.js"></script>
  * <bg-engine seed="orion-7" detail="low"></bg-engine>
+ * <bg-engine skin="matrix-rain" palette="amber" fonts></bg-engine>
  */
 class BgEngineElement extends HTMLElement {
   static get observedAttributes() {
-    return ['seed', 'density', 'detail', 'palette', 'speed'];
+    return ['seed', 'density', 'detail', 'palette', 'speed', 'skin', 'fonts', 'z-index'];
   }
 
   #handle: MountHandle | null = null;
@@ -19,7 +22,7 @@ class BgEngineElement extends HTMLElement {
   connectedCallback(): void {
     this.style.display = this.style.display || 'block';
     this.style.pointerEvents = 'none';
-    this.style.zIndex = this.style.zIndex || '0';
+    this.style.zIndex = this.style.zIndex || this.getAttribute('z-index') || '0';
     if (this.parentElement === document.body || this.parentElement === document.documentElement) {
       this.style.position = this.style.position || 'fixed';
       this.style.inset = this.style.inset || '0';
@@ -46,15 +49,22 @@ class BgEngineElement extends HTMLElement {
     this.#start();
   }
 
+  /** The live mount handle (canvas, root, destroy). Null before connection. */
+  get handle(): MountHandle | null {
+    return this.#handle;
+  }
+
   #start(): void {
     const densityAttr = this.getAttribute('density');
     const speedAttr = this.getAttribute('speed');
     const options: MountOptions = {
       seed: this.getAttribute('seed') ?? undefined,
+      skin: this.getAttribute('skin') ?? undefined,
       detail: (this.getAttribute('detail') as LabelDensity | null) ?? undefined,
       palette: (this.getAttribute('palette') as PaletteId | null) ?? undefined,
       density: densityAttr ? Number(densityAttr) : undefined,
       cameraSpeed: speedAttr ? Number(speedAttr) : undefined,
+      fonts: this.hasAttribute('fonts'),
     };
     this.#handle = mount(this, options);
   }

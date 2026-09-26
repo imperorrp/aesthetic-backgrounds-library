@@ -13,15 +13,17 @@
     "web-component"
   ],
   "sideEffects": [
+    "./dist/index.js",
     "./dist/element.js",
+    "./dist/react.js",
     "*.css"
   ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
-  "types": "./types/index.d.ts",
+  "types": "./types/lib.d.ts",
   "exports": {
     ".": {
-      "types": "./types/index.d.ts",
+      "types": "./types/lib.d.ts",
       "import": "./dist/index.js"
     },
     "./element": {
@@ -29,7 +31,7 @@
       "import": "./dist/element.js"
     },
     "./react": {
-      "types": "./types/react.d.ts",
+      "types": "./types/react-entry.d.ts",
       "import": "./dist/react.js"
     }
   },
@@ -41,11 +43,13 @@
   ],
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc -b",
     "build": "tsc -b && vite build",
-    "build:lib": "vite build --config vite.lib.config.ts",
+    "build:types": "tsc -p tsconfig.lib.json",
+    "build:lib": "vite build --config vite.lib.config.ts && pnpm build:types",
     "preview": "vite preview",
     "test": "vitest run",
-    "prepublishOnly": "pnpm test && pnpm build:lib"
+    "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build:lib"
   },
   "peerDependencies": {
     "react": "^18 || ^19",
@@ -59,11 +63,11 @@
       "optional": true
     }
   },
-  "dependencies": {},
   "devDependencies": {
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
+    "jsdom": "^30.1.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "typescript": "~5.8.3",

@@ -1,118 +1,131 @@
 import type { BackgroundSkin, SkinHost, Viewport } from '../../core/skin';
+import { rgba } from '../../palette';
 
 export type MatrixSkinOptions = {
+  /** Glyph cell size in CSS px. Default 16. */
   fontSize?: number;
+  /** Rows per frame multiplier at 60 fps. Default 1. */
   fallSpeed?: number;
+  /** Characters to rain. Default: katakana + digits + Latin capitals. */
   charset?: string;
+  /** Fraction of trail alpha removed per 60 fps frame. Higher = shorter trails. Default 0.06. */
+  fade?: number;
+  /** CSS font shorthand. Defaults to the engine display font stack at `fontSize`. */
+  font?: string;
 };
 
 const DEFAULT_CHARSET = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレゲゼデベペオォコソトノホモヨョロゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
+type Column = {
+  alive: boolean;
+  /** Current head row (integer). Negative = above the viewport. */
+  row: number;
+  /** Fractional progress toward the next row. */
+  acc: number;
+  speed: number;
+  /** Glyph drawn at `row` as the head; recolored as trail when the head advances. */
+  glyph: string;
+};
+
+/**
+ * Glyph rain. Draws only where columns move and fades the previous frame toward
+ * transparent, so it composites over the host page or other layers instead of
+ * painting an opaque plate. Head glyphs use palette ink, trails use the accent.
+ */
 export const matrixRainSkin: BackgroundSkin<MatrixSkinOptions> = {
   id: 'matrix-rain',
   mount(host: SkinHost<MatrixSkinOptions>) {
-    const { canvas, ctx, rng, config, options } = host;
+    const { canvas, ctx, rng, config, options, palette } = host;
     let width = canvas.clientWidth || window.innerWidth;
     let height = canvas.clientHeight || window.innerHeight;
 
     const fontSize = options?.fontSize ?? 16;
     const fallSpeed = options?.fallSpeed ?? 1.0;
     const charset = options?.charset ?? DEFAULT_CHARSET;
-    const densityMult = Math.max(0.1, config.density ?? 1);
+    const fade = options?.fade ?? 0.06;
+    const font = options?.font ?? `${fontSize}px "Orbit", "Syne Mono", ui-monospace, monospace`;
+    const densityMult = Math.max(0.1, Math.min(1, config.density ?? 1));
 
-    let columns = Math.floor(width / fontSize);
-    let drops: number[] = [];
-    let speeds: number[] = [];
+    const headColor = palette.ink;
+    const trailColor = rgba(palette.accentRgb, 1);
+
+    let columns: Column[] = [];
+    let rows = 0;
 
     const initColumns = () => {
-      columns = Math.floor(width / fontSize);
-      drops = [];
-      speeds = [];
-      for (let x = 0; x < columns; x++) {
-        // Random start position above screen
-        drops[x] = (rng() * -height) / fontSize;
-        // Density affects whether a column even spawns
-        if (rng() > densityMult) {
-          drops[x] = -9999; // effectively dead
-        }
-        speeds[x] = (rng() * 0.5 + 0.5) * fallSpeed;
+      rows = Math.ceil(height / fontSize);
+      const count = Math.floor(width / fontSize);
+      columns = [];
+      for (let i = 0; i < count; i++) {
+        columns.push({
+          alive: rng() <= densityMult,
+          row: -Math.floor(rng() * rows),
+          acc: 0,
+          speed: (rng() * 0.5 + 0.5) * fallSpeed,
+          glyph: '',
+        });
       }
     };
 
+    const randomGlyph = () => charset.charAt(Math.floor(rng() * charset.length));
+
     initColumns();
-
-    let accentRgbaCache = 'rgba(0, 255, 100, ';
-    let paletteCached = false;
-
-    // Fill completely black initially
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, width, height);
+    let lastTime = 0;
 
     return {
       resize(viewport: Viewport) {
         width = viewport.width;
         height = viewport.height;
         initColumns();
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, width, height);
+        ctx.clearRect(0, 0, width, height);
       },
 
       frame(timestamp: number) {
-        if (!paletteCached) {
-          const computed = getComputedStyle(document.body);
-          const accentStr = computed.getPropertyValue('--bg-accent').trim();
-          if (accentStr) {
-            const parts = accentStr.split(',').map(s => parseInt(s.trim(), 10));
-            if (parts.length === 3 && !parts.some(isNaN)) {
-              accentRgbaCache = `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, `;
-            }
-          }
-          paletteCached = true;
-        }
+        const dt = lastTime ? Math.min(3, (timestamp - lastTime) / 16.667) : 1;
+        lastTime = timestamp;
 
-        // Translucent black background to create trail
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        // Fade everything drawn so far toward transparent (trail effect without an opaque plate).
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, fade * dt)})`;
         ctx.fillRect(0, 0, width, height);
+        ctx.restore();
 
-        ctx.font = `${fontSize}px "Orbit", "Syne Mono", monospace`;
+        ctx.font = font;
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
 
-        for (let i = 0; i < drops.length; i++) {
-          if (drops[i] === -9999) continue; // Dead column due to density
+        for (let i = 0; i < columns.length; i++) {
+          const c = columns[i];
+          if (!c.alive) continue;
 
-          const text = charset.charAt(Math.floor(rng() * charset.length));
+          c.acc += c.speed * dt;
           const x = i * fontSize + fontSize / 2;
-          const y = drops[i] * fontSize;
 
-          // Draw the trail character (accent color)
-          ctx.fillStyle = `${accentRgbaCache}1)`;
-          ctx.fillText(text, x, y);
+          while (c.acc >= 1) {
+            c.acc -= 1;
 
-          // Draw a slightly lower "lead" character (white) to make it look like it's falling
-          // Actually, standard matrix sets the currently drawn character as lead, 
-          // and previous frames become trail naturally due to rgba(0,0,0,0.05).
-          // To make the lead white, we draw it white, then next frame the translucent 
-          // black covers it, and we don't redraw it. Wait, the translucent black will 
-          // quickly turn it gray. 
-          // Standard canvas trick:
-          ctx.fillStyle = '#ffffff';
-          ctx.fillText(text, x, y);
+            // The old head becomes trail: clear the cell and redraw the same glyph in accent.
+            if (c.glyph && c.row >= 0 && c.row < rows) {
+              ctx.clearRect(i * fontSize, c.row * fontSize, fontSize, fontSize);
+              ctx.fillStyle = trailColor;
+              ctx.fillText(c.glyph, x, c.row * fontSize);
+            }
 
-          // Standard canvas trick leaves the lead white. Next frame, the translucent rect covers it, 
-          // dimming it. But wait, if we drew it white, it stays white-ish. We want it to turn green.
-          // To properly do this: The current head is drawn white. We ALSO overwrite the *previous* head
-          // with green, so the translucent black doesn't have to shift white to green (which would just be gray).
-          if (drops[i] > 0) {
-            ctx.fillStyle = `${accentRgbaCache}1)`;
-            const prevText = charset.charAt(Math.floor(rng() * charset.length));
-            ctx.fillText(prevText, x, y - fontSize);
-          }
+            c.row += 1;
 
-          drops[i] += speeds[i];
+            if (c.row >= rows) {
+              // Fell off the bottom: wait a random while, then restart above the top.
+              c.glyph = '';
+              if (rng() < 0.03) c.row = -Math.floor(rng() * 12) - 1;
+              continue;
+            }
 
-          // Reset drop to top randomly
-          if (drops[i] * fontSize > height && rng() > 0.975) {
-            drops[i] = 0;
+            if (c.row >= 0) {
+              c.glyph = randomGlyph();
+              ctx.fillStyle = headColor;
+              ctx.fillText(c.glyph, x, c.row * fontSize);
+            }
           }
         }
       },

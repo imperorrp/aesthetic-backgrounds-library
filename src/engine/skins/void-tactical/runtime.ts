@@ -10,15 +10,26 @@ import { renderSystem } from './renderers';
 import { WORLD_SPEED_MULTIPLIER } from './renderers/utils';
 import { createRng } from '../../rng';
 import type { BackgroundSkin, SkinHost, Viewport } from '../../core/skin';
+import { createOverlayStack } from './overlays/stack';
+import type { OverlayFlags } from './overlays/flags';
+
+export type VoidTacticalOptions = {
+  /** Toggle the CSS atmosphere layers (gradient, mesh, grid, clouds, noise, mouse glow). */
+  layers?: OverlayFlags;
+};
 
 /**
  * First skin: the extracted Bubble Galaxies landing background.
  * Streaming camera, weighted structures, fleets, ambient HUD.
  * Other skins should not need to know these types.
  */
-export const voidTacticalSkin: BackgroundSkin = {
+export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
   id: 'void-tactical',
-  mount(host: SkinHost) {
+  layers(root, { options }) {
+    const stack = createOverlayStack(root, options?.layers, { position: 'absolute' });
+    return () => stack.destroy();
+  },
+  mount(host: SkinHost<VoidTacticalOptions>) {
     const { canvas, ctx, rng, config } = host;
     let width = canvas.clientWidth || window.innerWidth;
     let height = canvas.clientHeight || window.innerHeight;
