@@ -2,6 +2,16 @@
 
 A lightweight, zero-dependency engine for dropping premium, generative backgrounds into any web project.
 
+![void-tactical: a streaming sci-fi sector map with systems, structures, fleets, and HUD chatter](e2e/__screenshots__/chromium/void-tactical.png)
+
+| calm-mesh | aurora-night | terminal-rain | fireflies |
+| --- | --- | --- | --- |
+| ![](e2e/__screenshots__/chromium/calm-mesh.png) | ![](e2e/__screenshots__/chromium/aurora-night.png) | ![](e2e/__screenshots__/chromium/terminal-rain.png) | ![](e2e/__screenshots__/chromium/fireflies.png) |
+| deep-field | flow-lines | paper-grid | void-sector |
+| ![](e2e/__screenshots__/chromium/deep-field.png) | ![](e2e/__screenshots__/chromium/flow-lines.png) | ![](e2e/__screenshots__/chromium/paper-grid.png) | ![](e2e/__screenshots__/chromium/void-sector.png) |
+
+*Every image above is a test baseline: the same seed renders these pixels on every run.*
+
 Creating beautiful, animated canvas backgrounds that play nicely with the DOM is notoriously tedious. This engine abstracts away the boilerplate: DOM injection, container-aware sizing, devicePixelRatio scaling, a throttled frame loop with a real clock, reduced-motion and hidden-tab handling, seeded generation, palette tokens, pointer input, a frame-time quality governor, and clean teardown.
 
 You provide a **skin** (the visual aesthetic), and the engine handles the rest.
@@ -206,6 +216,19 @@ mount(document.body, {
   },
 });
 ```
+
+## Using it with an AI agent
+
+The repository ships a skill, `skills/background-designer/SKILL.md`, that turns a conversation into a background: an intake questionnaire, a decision procedure (preset, then scene, then layer, then skin), the conventions the gates enforce, a catalog of everything registered, and taste notes. Claude Code picks it up from `.claude/skills/`; for other tools, paste the skill file and its `references/` into the agent's context. Because every option is declared in a schema and every render is deterministic, an agent can propose a `mount()` call, you can paste it, and the result is exactly what it described.
+
+## Authoring
+
+```bash
+pnpm create-skin ember-drift --label "Ember drift" --tags "warm,calm"
+pnpm skin:check ember-drift --update
+```
+
+The scaffold writes a skin that already follows the conventions (seeded randomness, `dt`-based motion, palette colors, a schema, cleanup), registers it, and adds it to the browser gates. `skin:check` runs typecheck, unit determinism, screenshot, contrast behind a text column, and pixel-identical replay, and prints the path of the reference render so you iterate on the picture. `example-motes` in the repo is the scaffold's unedited output. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Custom Skins
 

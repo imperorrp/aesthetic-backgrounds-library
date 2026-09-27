@@ -8,8 +8,9 @@ import type { BackgroundSkin } from '../core/skin';
 import { voidTacticalSkin } from './void-tactical/runtime';
 import { driftingDustSkin } from './drifting-dust';
 import { matrixRainSkin } from './matrix-rain';
+import { localSkins } from './local';
 
-export const builtInSkins: readonly BackgroundSkin[] = [voidTacticalSkin, driftingDustSkin, matrixRainSkin];
+export const builtInSkins: readonly BackgroundSkin[] = [voidTacticalSkin, driftingDustSkin, matrixRainSkin, ...localSkins];
 builtInSkins.forEach((skin) => registerSkin(skin));
 
 export { voidTacticalSkin, driftingDustSkin, matrixRainSkin };

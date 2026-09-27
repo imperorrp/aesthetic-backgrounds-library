@@ -8,19 +8,12 @@ import { expect, test, type Page } from '@playwright/test';
  *   3. replay pixel-identically for the same seed (determinism, real pixels).
  */
 
-const SUBJECTS = [
-  'void-tactical',
-  'void-sector',
-  'drifting-dust',
-  'matrix-rain',
-  'calm-mesh',
-  'aurora-night',
-  'terminal-rain',
-  'deep-field',
-  'flow-lines',
-  'fireflies',
-  'paper-grid',
-];
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** Every registered skin and preset under test. `pnpm create-skin` appends new ids to e2e/subjects.json. */
+const SUBJECTS: string[] = JSON.parse(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), 'subjects.json'), 'utf8'));
 
 type Probe = {
   meanLuminance: number;

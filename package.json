@@ -1,6 +1,6 @@
 {
   "name": "space-background-engine",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "type": "module",
   "license": "MIT",
@@ -70,7 +70,9 @@
   "files": [
     "dist",
     "types",
+    "skills",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
@@ -83,6 +85,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
+    "create-skin": "node scripts/create-skin.mjs",
+    "skin:check": "node scripts/skin-check.mjs",
     "size": "node scripts/size-check.mjs",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build:lib && pnpm size"
   },

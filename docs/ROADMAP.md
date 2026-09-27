@@ -343,7 +343,9 @@ Still open: layer preview images; PNG export with DOM layers; `orbs`/`ribbons`/`
 - Design principles page; contrast probe in `skin:check`; legibility mask option.
 - Acceptance: default install behind a paragraph of 16 px white text passes the contrast probe; a screenshot of each preset passes a "would I ship this on a real landing page" review.
 
-### M4 — Open-source and authoring kit (1–2 weeks, after M2)
+### M4 — Open-source and authoring kit (1–2 weeks, after M2) — **done 2026-09-27**
+
+Shipped: `pnpm create-skin <id>` (template following the conventions, registers in `skins/local.ts`, adds to `e2e/subjects.json`; `example-motes` is its unedited output), `pnpm skin:check <id> [--update]` (typecheck, unit determinism, screenshot, contrast, replay, prints the reference PNG), `skills/background-designer/` (SKILL.md, questionnaire, conventions, catalog) mirrored for Claude Code under `.claude/skills/`, CONTRIBUTING.md, issue templates for preset requests and submissions, CHANGELOG.md with 0.2.0 notes, README hero and gallery drawn from the test baselines, version 0.2.0. Publishing to npm and the GitHub Pages showcase are the maintainer's call. Open decision remains the name (npm `space-background-engine` vs GitHub `aesthetic-backgrounds-library`).
 
 - One name everywhere; README rewritten around use cases with a hero GIF and gallery; CONTRIBUTING; skin authoring guide; CHANGELOG via changesets; GitHub Actions CI; issue templates for "preset request" and "skin submission".
 - `create-skin` scaffold, `skin:check`, `SKILL.md` + mirrors, `skin-manifest.json`, showcase site on GitHub Pages with per-preset permalinks.
