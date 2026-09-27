@@ -152,6 +152,54 @@
   margin-top: 1rem;
 }
 
+.demo-content {
+  position: relative;
+  z-index: 5;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 7rem 1.5rem 3rem;
+  font-family: "Electrolize", "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  pointer-events: none;
+}
+
+.demo-content h1 {
+  margin: 0 0 1rem;
+  font-size: 2.2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.demo-content p {
+  margin: 0 0 1rem;
+}
+
+.demo-readout {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0.2rem 0 0.9rem;
+  padding: 0.5rem 0.65rem;
+  border-left: 2px solid var(--accent);
+  background: rgb(var(--accent-rgb) / 0.06);
+  font-family: "Orbit", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.demo-readout strong {
+  font-size: 0.9rem;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+.demo-readout.is-warn {
+  border-left-color: var(--hazard);
+  background: rgb(var(--hazard-rgb) / 0.08);
+}
+
 .demo-hint {
   display: block;
   font-family: "Electrolize", "Segoe UI", sans-serif;

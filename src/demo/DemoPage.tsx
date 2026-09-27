@@ -9,8 +9,11 @@ import {
   getSkin,
   listLayers,
   presets,
+  probeContrast,
   randomSeedString,
+  resolvePalette,
   schemaDefaults,
+  type ContrastReport,
   type FieldSchema,
   type LabelDensity,
   type MotionPreference,
@@ -123,6 +126,39 @@ export default function DemoPage() {
   const [panelOpen, setPanelOpen] = useState(true);
   const [seedDraft, setSeedDraft] = useState(studio.seed);
   const [copied, setCopied] = useState(false);
+  const [showContent, setShowContent] = useState(true);
+  const [report, setReport] = useState<ContrastReport | null>(null);
+
+  // Live legibility readout: sample the canvas behind the sample column once a second.
+  useEffect(() => {
+    if (!showContent) {
+      setReport(null);
+      return;
+    }
+    const tick = () => {
+      const canvas = document.querySelector<HTMLCanvasElement>('.bg-engine-root canvas');
+      const column = document.getElementById('demo-content');
+      if (!canvas || !column || !canvas.width) return;
+      const r = column.getBoundingClientRect();
+      const dpr = canvas.width / Math.max(1, canvas.clientWidth);
+      try {
+        setReport(
+          probeContrast(canvas, { x: r.left * dpr, y: r.top * dpr, width: r.width * dpr, height: r.height * dpr }, resolvePalette(paletteOf(studio)).ink, {
+            stride: 4,
+          }),
+        );
+      } catch {
+        /* canvas not ready */
+      }
+    };
+    // First sample after the new mount has drawn a few frames, then once a second.
+    const first = window.setTimeout(tick, 500);
+    const id = window.setInterval(tick, 1000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(id);
+    };
+  }, [showContent, studio]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -199,7 +235,22 @@ export default function DemoPage() {
         density={studio.density}
         detail={studio.detail}
         adaptiveQuality
+        pauseWhenHidden={false}
       />
+
+      {showContent && (
+        <main id="demo-content" className="demo-content" style={{ color: resolvePalette(palette).ink }}>
+          <h1>Your headline sits here</h1>
+          <p>
+            This column stands in for real page content. The readout in the studio samples the background behind it and reports
+            how legible body text in the palette ink would be, so a scene is tuned against text, not an empty frame.
+          </p>
+          <p>
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute
+            irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+          </p>
+        </main>
+      )}
 
       <header className="demo-hud">
         <button type="button" className="demo-hud-toggle" onClick={() => setPanelOpen((o) => !o)} aria-expanded={panelOpen}>
@@ -281,6 +332,18 @@ export default function DemoPage() {
                     <option value="light">Light</option>
                   </select>
                 </label>
+              </div>
+            )}
+
+            <label className="demo-toggle-field">
+              <input type="checkbox" checked={showContent} onChange={(e) => setShowContent(e.target.checked)} />
+              <span className="demo-toggle-label">Sample content column</span>
+            </label>
+            {report && (
+              <div className={`demo-readout${report.meanContrast >= 4.5 && report.failingShare <= 0.12 ? ' is-ok' : ' is-warn'}`}>
+                <span>Legibility behind text</span>
+                <strong>{report.meanContrast.toFixed(1)}:1 mean</strong>
+                <span>{Math.round(report.failingShare * 100)}% of pixels below 4.5:1 · worst {report.worstContrast.toFixed(1)}:1</span>
               </div>
             )}
 
