@@ -332,7 +332,11 @@ Art pass on void-tactical, compared side by side with the original commit at the
 
 Real-pixel gate (2026-09-27): Playwright suite (`pnpm test:e2e`) over every skin and preset via `public/check.html` (manual clock, fixed seed, 240 frames, `pauseWhenHidden: false`): visual regression baselines in `e2e/__screenshots__`, contrast of palette ink behind a text column (mean ≥ 4.5:1, ≤ 12% failing pixels; all ten pass at defaults), and byte-identical PNGs across two browser contexts for one seed. Runs as a separate CI job with the report uploaded as an artifact. Found on the way: the device preset's viewport silently overrode the configured one, which is why the first determinism run "failed"; viewports are now pinned in the project.
 
-Still open: tune every preset behind a real text column using the probe live in the studio; decompose void-tactical into layers.
+Studio readout (2026-09-27): a sample 40rem text column in the palette ink with a live legibility readout (mean contrast, worst sample, failing share) sampled once a second.
+
+Void-tactical decomposition (2026-09-27): the simulation moved to `skins/void-tactical/world.ts` (`createVoidWorld`, `sharedVoidWorld`); the monolithic skin and five new layers (`void-atmosphere`, `void-stars`, `void-systems`, `void-fleets`, `void-hud`) run the same world, shared per mount through the resolved-config key so fleets keep steering toward drawn structures. The `void-sector` preset is the skin rebuilt from its layers. Rng consumption order was preserved: the skin's pre-refactor screenshot baseline still matches byte for byte. The HUD overlay budget (`overlaySpawnRate`/`maxOverlays`) left core config and lives in the skin; `detail` stays in config as a generic annotation budget.
+
+Still open: layer preview images; PNG export with DOM layers; `orbs`/`ribbons`/`halftone` layers.
 
 - Art pass on void-tactical: palette-derived structure colors, connection lines to ≤ 1 px and ≤ 0.25 alpha, fleet path projection clipped (no wrap lines), sprites at legible size or replaced with vector glyphs, label budget tied to `intensity`.
 - `calm-mesh` as the flagship "premium at a glance" preset, tuned in both themes.

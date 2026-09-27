@@ -1,4 +1,9 @@
-/** `space-background-engine/skins/void-tactical`: registers and exports the default sci-fi sector skin, and the same skin as a scene layer. */
+/**
+ * `space-background-engine/skins/void-tactical`: registers and exports the default
+ * sci-fi sector skin, its part layers (`void-atmosphere`, `void-stars`,
+ * `void-systems`, `void-fleets`, `void-hud`), the `void-sector` preset built from
+ * them, and the whole skin as a single scene layer.
+ */
 import { registerSkin } from '../../engine/core/registry';
 import { fromSkin, registerLayer } from '../../engine/core/layer';
 import { voidTacticalSkin } from '../../engine/skins/void-tactical/runtime';
@@ -15,5 +20,14 @@ export const voidTacticalLayer = registerLayer(
 );
 
 export { voidTacticalSkin };
+export {
+  voidLayers,
+  voidAtmosphereLayer,
+  voidStarsLayer,
+  voidSystemsLayer,
+  voidFleetsLayer,
+  voidHudLayer,
+  voidSectorPreset,
+} from '../../engine/skins/void-tactical/layers';
 export type { VoidTacticalOptions } from '../../engine/skins/void-tactical/runtime';
 export type { OverlayFlags, OverlayId } from '../../engine/skins/void-tactical/overlays/flags';

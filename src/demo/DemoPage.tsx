@@ -22,6 +22,7 @@ import {
   type Scene,
   type SceneLayer,
   type Schema,
+  voidSectorPreset,
 } from '../engine';
 import './DemoPage.css';
 
@@ -44,7 +45,9 @@ type Studio = {
 
 const BLENDS: GlobalCompositeOperation[] = ['source-over', 'lighter', 'screen', 'multiply', 'overlay', 'soft-light'];
 
-const presetIds = new Set(presets.map((p) => p.id));
+/** Curated presets plus the void-sector preset, which lives with the void-tactical skin. */
+const allPresets = [voidSectorPreset, ...presets];
+const presetIds = new Set(allPresets.map((p) => p.id));
 const isSceneSource = (source: string) => source === 'scene' || presetIds.has(source);
 
 /**
@@ -79,7 +82,7 @@ function studioFor(source: string, prev?: Partial<Studio>): Studio {
     if (typeof d.density === 'number') base.density = d.density;
     if (d.detail) base.detail = d.detail;
   };
-  const preset = presets.find((p) => p.id === source);
+  const preset = allPresets.find((p) => p.id === source);
   if (preset) {
     base.scene = JSON.parse(JSON.stringify(preset.scene)) as Scene;
     applyDefaults(preset.defaults);
@@ -272,7 +275,7 @@ export default function DemoPage() {
                 }}
               >
                 <optgroup label="Presets (scenes)">
-                  {presets.map((p) => (
+                  {allPresets.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.label}
                     </option>

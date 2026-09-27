@@ -10,6 +10,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const SUBJECTS = [
   'void-tactical',
+  'void-sector',
   'drifting-dust',
   'matrix-rain',
   'calm-mesh',

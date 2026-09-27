@@ -1,6 +1,7 @@
 /**
  * Built-in skins. Importing this module registers them by id so
- * `mount(el, { skin: 'matrix-rain' })` and `<bg-engine skin="matrix-rain">` work.
+ * `mount(el, { skin: 'matrix-rain' })` and `<bg-engine skin="matrix-rain">` work,
+ * along with void-tactical's part layers and the `void-sector` preset.
  */
 import { registerSkin } from '../core/registry';
 import type { BackgroundSkin } from '../core/skin';
@@ -15,3 +16,12 @@ export { voidTacticalSkin, driftingDustSkin, matrixRainSkin };
 export type { VoidTacticalOptions } from './void-tactical/runtime';
 export type { NetworkSkinOptions } from './drifting-dust';
 export type { MatrixSkinOptions } from './matrix-rain';
+export {
+  voidLayers,
+  voidAtmosphereLayer,
+  voidStarsLayer,
+  voidSystemsLayer,
+  voidFleetsLayer,
+  voidHudLayer,
+  voidSectorPreset,
+} from './void-tactical/layers';

@@ -187,6 +187,26 @@ The default skin is a streaming sci-fi sector map: star systems with orbiting pl
 
 The skin's own config defaults are `intensity: 0.45`, `density: 1.5`, `detail: 'high'`, `palette: 'void-cyan'`: a dense, fully annotated sector held back to 45% presence so page content leads. Pass any of those to `mount()` to override. Two instances with the same seed replay identically.
 
+The same simulation is also available as **layers** that share one world per mount: `void-atmosphere` (the CSS plate), `void-stars`, `void-systems`, `void-fleets`, and `void-hud`. The `void-sector` preset is the skin rebuilt from them, so in a scene you can drop the HUD, dim the fleets to half opacity, or slide `grain` and a `content-shade` between the systems and your text, while fleets still steer toward the structures the systems layer draws:
+
+```ts
+mount(document.body, {
+  skin: 'scene',
+  intensity: 0.45,
+  density: 1.5,
+  detail: 'high',
+  options: {
+    layers: [
+      { use: 'void-atmosphere' },
+      { use: 'void-stars' },
+      { use: 'void-systems', with: { spriteScale: 1.2 } },
+      { use: 'void-fleets', with: { paths: 'off' }, opacity: 0.6 },
+      { use: 'content-shade', with: { strength: 0.5 } },
+    ],
+  },
+});
+```
+
 ## Custom Skins
 
 The engine separates the **Host** (sizing, loop, clock, config, palette, inputs) from the **Skin** (world generation and drawing). A skin is a small object:

@@ -5,7 +5,19 @@
 
 export * from '../entries/core';
 
-export { builtInSkins, voidTacticalSkin, driftingDustSkin, matrixRainSkin } from './skins';
+export {
+  builtInSkins,
+  voidTacticalSkin,
+  driftingDustSkin,
+  matrixRainSkin,
+  voidLayers,
+  voidAtmosphereLayer,
+  voidStarsLayer,
+  voidSystemsLayer,
+  voidFleetsLayer,
+  voidHudLayer,
+  voidSectorPreset,
+} from './skins';
 export type { VoidTacticalOptions, NetworkSkinOptions, MatrixSkinOptions } from './skins';
 export { voidTacticalLayer } from '../entries/skins/void-tactical';
 export * from './layers';

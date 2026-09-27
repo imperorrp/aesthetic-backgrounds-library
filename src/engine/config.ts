@@ -40,20 +40,11 @@ export type ResolvedBackgroundConfig = {
   labelDensity: LabelDensity;
   cameraSpeed: number;
   targetFps: number;
-  overlaySpawnRate: number;
-  maxOverlays: number;
   palette: Palette;
   intensity: number;
   motion: MotionPreference;
   adaptiveQuality: boolean;
   pauseWhenHidden: boolean;
-};
-
-const LABEL_OVERLAYS: Record<LabelDensity, { rate: number; max: number }> = {
-  none: { rate: 0, max: 0 },
-  low: { rate: 0.012, max: 2 },
-  medium: { rate: 0.04, max: 4 },
-  high: { rate: 0.08, max: 8 },
 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -63,7 +54,6 @@ export function resolveBackgroundConfig(config: BackgroundConfig = {}): Resolved
     ? randomSeedString()
     : String(config.seed);
   const detail = config.detail ?? config.labelDensity ?? 'low';
-  const overlay = LABEL_OVERLAYS[detail];
   const density = clamp(config.density ?? 1, 0.25, 2);
 
   return {
@@ -74,8 +64,6 @@ export function resolveBackgroundConfig(config: BackgroundConfig = {}): Resolved
     labelDensity: detail,
     cameraSpeed: config.cameraSpeed ?? 0.25,
     targetFps: clamp(config.targetFps ?? 60, 1, 240),
-    overlaySpawnRate: overlay.rate,
-    maxOverlays: overlay.max,
     palette: resolvePalette(config.palette),
     intensity: clamp(config.intensity ?? 1, 0, 1),
     motion: config.motion ?? 'auto',

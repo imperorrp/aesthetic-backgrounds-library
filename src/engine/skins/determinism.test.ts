@@ -3,7 +3,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createBackground } from '../core/createBackground';
 import { createManualScheduler } from '../core/scheduler';
 import { installCanvasStub, recorderFor } from '../../test/canvas-stub';
-import { builtInSkins } from './index';
+import { builtInSkins, voidSectorPreset } from './index';
 import { presets } from '../presets';
 import type { BackgroundSkin } from '../core/skin';
 
@@ -41,7 +41,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-const subjects: readonly BackgroundSkin[] = [...builtInSkins, ...presets];
+const subjects: readonly BackgroundSkin[] = [...builtInSkins, voidSectorPreset, ...presets];
 
 describe.each(subjects.map((s) => [s.id, s] as const))('%s', (_id, skin) => {
   it('replays identically for the same seed', () => {
