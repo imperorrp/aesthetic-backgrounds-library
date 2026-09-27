@@ -1,7 +1,8 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { mount, type MountOptions } from './engine/core/mount';
-// Re-exported so the import is retained and the built-in skins register by id.
+// Re-exported so the imports are retained and the built-in skins, layers, and presets register by id.
 export { builtInSkins } from './engine/skins';
+export { presets } from './engine/presets';
 
 export type BackgroundProps = MountOptions & {
   className?: string;

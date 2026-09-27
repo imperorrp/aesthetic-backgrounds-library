@@ -59,7 +59,27 @@ import 'space-background-engine/skins/matrix-rain';
 mount('#hero', { skin: 'matrix-rain' });
 ```
 
-The bare package import (`space-background-engine`) is batteries included: the core plus every built-in skin.
+The bare package import (`space-background-engine`) is batteries included: the core, every built-in skin, the standard layer library, and the curated presets.
+
+**Presets** are the fastest path to a good result. Each is a tuned scene with its own palette and intensity defaults, registered like a skin:
+
+```ts
+import { mount } from 'space-background-engine/core';
+import 'space-background-engine/presets';
+
+mount(document.body, { skin: 'calm-mesh' });                       // light SaaS plate
+mount('#hero', { skin: 'aurora-night', palette: '#22d3ee' });     // override the palette
+```
+
+| Preset | Niche | Theme |
+| --- | --- | --- |
+| `calm-mesh` | SaaS landing, marketing | light |
+| `aurora-night` | SaaS, events | dark |
+| `terminal-rain` | developer portfolios | dark |
+| `deep-field` | space, sci-fi (no HUD) | dark |
+| `flow-lines` | data, science, analytics | dark |
+| `fireflies` | nature, wellness, quiet portfolios | dark |
+| `paper-grid` | editorial, brutalist | light |
 
 **React:**
 
@@ -108,6 +128,48 @@ export function App() {
 - **Scoped styling.** Palette tokens are written as `--bge-*` custom properties on the engine root only, never on your `:root`.
 - **DOM isolation and clean teardown.** Everything lives in a `.bg-engine-root` with `pointer-events: none`; `destroy()` removes the DOM, disconnects observers and listeners, cancels the loop, and is safe to call twice.
 - **Zero dependencies, small by default.** The host is about 8 KB gzipped; each small skin adds about 4 KB. Budgets are enforced in CI.
+
+## Scenes and Layers
+
+Under the presets sits a composable model. A **layer** is one effect with a declared option schema. A **scene** is JSON: an ordered stack of layer references, bottom to top, each with options, opacity, and a blend mode. The `scene` skin runs any scene, so a background can be authored, tuned in the playground, and pasted into `mount()` with no code:
+
+```ts
+import { mount } from 'space-background-engine/core';
+import 'space-background-engine/layers';
+
+mount(document.body, {
+  skin: 'scene',
+  palette: { from: '#ff7a1a' },
+  intensity: 0.7,
+  options: {
+    layers: [
+      { use: 'gradient-base', with: { tint: 0.3 } },
+      { use: 'starfield', with: { density: 0.8, bands: 3 } },
+      { use: 'aurora', with: { bands: 2 }, blend: 'lighter', opacity: 0.8 },
+      { use: 'vignette' },
+      { use: 'grain', with: { opacity: 0.08 } },
+    ],
+  },
+});
+```
+
+Standard layers: `gradient-base`, `mesh-gradient`, `aurora`, `starfield`, `particles-drift`, `plexus`, `flow-field`, `glyph-rain`, `grid`, `light-follow`, `vignette`, `grain`, `scanlines`. Any whole skin can also be used as a layer (`fromSkin`), and `void-tactical` registers itself that way. Every layer reads colors from the palette or from tokens like `accent` and `inkDim`, scales itself by `intensity` and `quality`, and draws deterministically from the seeded streams.
+
+Options are validated against each layer's schema: numbers are clamped, unknown enum values fall back to defaults, and nothing throws on a typo in a JSON preset. The same schema drives the playground controls and is what an agent fills in when it builds a scene for you.
+
+To publish your own preset, wrap a scene:
+
+```ts
+import { registerPreset } from 'space-background-engine/core';
+
+registerPreset({
+  id: 'ember-field',
+  label: 'Ember field',
+  tags: ['dark', 'warm'],
+  config: { palette: { from: '#f97316' }, intensity: 0.8 },
+  scene: { layers: [{ use: 'gradient-base' }, { use: 'particles-drift', with: { glow: 0.9 } }] },
+});
+```
 
 ## Custom Skins
 
@@ -184,5 +246,7 @@ pnpm typecheck    # tsc across app and tooling configs
 pnpm build:lib    # Library bundle + generated type declarations
 pnpm size         # Gzip budget per entry closure (run after build:lib)
 ```
+
+The playground at `/` is a scene studio: pick a preset or skin, edit the layer stack with controls generated from each schema, derive a palette from a brand color, and copy the resulting `mount()` call. The URL hash holds the whole state, so a link reproduces the exact background.
 
 Smoke pages served by the dev server: `/quick.html` (`mount(document.body)`), `/element.html` (`<bg-engine>`), `/skins.html` (container mounts with skin ids and palettes).

@@ -17,6 +17,8 @@
     "src/entries/skins/void-tactical.ts",
     "src/entries/skins/drifting-dust.ts",
     "src/entries/skins/matrix-rain.ts",
+    "src/entries/layers.ts",
+    "src/entries/presets.ts",
     "src/vite-env.d.ts"
   ]
 }

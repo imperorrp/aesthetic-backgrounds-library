@@ -7,6 +7,12 @@ export type { MountOptions, MountHandle } from '../engine/core/mount';
 export { createBackground, MAX_DPR, MAX_DT, MOBILE_BREAKPOINT } from '../engine/core/createBackground';
 export type { CreateBackgroundOptions } from '../engine/core/createBackground';
 export { registerSkin, getSkin, listSkins, resolveSkin, DEFAULT_SKIN_ID } from '../engine/core/registry';
+export { registerLayer, getLayer, listLayers, resolveLayer, fromSkin } from '../engine/core/layer';
+export type { Layer, LayerHost, LayerInstance } from '../engine/core/layer';
+export { sceneSkin, createPreset, registerPreset, SCENE_SKIN_ID } from '../engine/core/scene';
+export type { Scene, SceneLayer, PresetDefinition, PresetSkin } from '../engine/core/scene';
+export { resolveOptions, schemaDefaults, resolveColor, COLOR_TOKENS } from '../engine/core/schema';
+export type { Schema, FieldSchema, OptionsOf, ResolvedColor } from '../engine/core/schema';
 export { createRafScheduler, createManualScheduler } from '../engine/core/scheduler';
 export type { Scheduler, ManualScheduler } from '../engine/core/scheduler';
 export { injectEngineFonts, ENGINE_FONTS_URL } from '../engine/core/fonts';
@@ -33,7 +39,7 @@ export {
   DEFAULT_PALETTE_ID,
 } from '../engine/palette';
 export type { PaletteId, Palette, PaletteSpec, PaletteFrom, PaletteTheme } from '../engine/palette';
-export { resolveBackgroundConfig, DETAIL_OPTIONS } from '../engine/config';
+export { resolveBackgroundConfig, withConfigDefaults, DETAIL_OPTIONS } from '../engine/config';
 export type {
   BackgroundConfig,
   ResolvedBackgroundConfig,

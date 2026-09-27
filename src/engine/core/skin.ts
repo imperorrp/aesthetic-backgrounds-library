@@ -1,7 +1,8 @@
 import type { Rng } from '../rng';
 import type { Noise2D } from '../noise';
-import type { MotionMode, ResolvedBackgroundConfig } from '../config';
+import type { BackgroundConfig, MotionMode, ResolvedBackgroundConfig } from '../config';
 import type { Palette } from '../palette';
+import type { Schema } from './schema';
 
 export type Camera = { x: number; y: number };
 export type Viewport = { width: number; height: number };
@@ -80,6 +81,14 @@ export type SkinLayerContext<T = any> = {
  */
 export type BackgroundSkin<T = any> = {
   id: string;
+  label?: string;
+  description?: string;
+  /** Mood/niche tags for galleries and agents. */
+  tags?: string[];
+  /** Declares `options` so playgrounds, attributes, and agents can drive them. */
+  schema?: Schema;
+  /** Config applied beneath the caller's config when this skin is mounted (palette, intensity, motion...). */
+  defaults?: Partial<BackgroundConfig>;
   mount(host: SkinHost<T>): SkinInstance;
   /**
    * Optional GPU-friendly DOM layers (CSS gradients, SVG textures, grain) that

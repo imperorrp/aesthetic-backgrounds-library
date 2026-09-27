@@ -4,6 +4,7 @@ import { createBackground } from '../core/createBackground';
 import { createManualScheduler } from '../core/scheduler';
 import { installCanvasStub, recorderFor } from '../../test/canvas-stub';
 import { builtInSkins } from './index';
+import { presets } from '../presets';
 import type { BackgroundSkin } from '../core/skin';
 
 /**
@@ -40,7 +41,9 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe.each(builtInSkins.map((s) => [s.id, s] as const))('%s', (_id, skin) => {
+const subjects: readonly BackgroundSkin[] = [...builtInSkins, ...presets];
+
+describe.each(subjects.map((s) => [s.id, s] as const))('%s', (_id, skin) => {
   it('replays identically for the same seed', () => {
     const a = run(skin, 'orion-7');
     const b = run(skin, 'orion-7');

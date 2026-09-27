@@ -1,5 +1,5 @@
 import { applyPalette } from '../palette';
-import { resolveBackgroundConfig, type BackgroundConfig } from '../config';
+import { resolveBackgroundConfig, withConfigDefaults, type BackgroundConfig } from '../config';
 import { createBackground } from './createBackground';
 import { injectEngineFonts } from './fonts';
 import { resolveSkin } from './registry';
@@ -50,12 +50,13 @@ export function mount<T = any>(
     ...config
   } = options;
 
+  const skin = resolveSkin<T>(skinInput);
+
   // Resolve once so a random seed is shared by the DOM layers and the canvas.
-  const resolved = resolveBackgroundConfig(config);
+  // The skin's defaults sit beneath whatever the caller actually set.
+  const resolved = resolveBackgroundConfig(withConfigDefaults(skin.defaults, config));
   const palette = resolved.palette;
   if (fonts) injectEngineFonts();
-
-  const skin = resolveSkin<T>(skinInput);
 
   const isPage = el === document.body || el === document.documentElement;
   if (!isPage && window.getComputedStyle(el).position === 'static') {

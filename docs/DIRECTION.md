@@ -49,6 +49,11 @@ graph TD
 - Provides the skin with a deterministic PRNG (`rng`), canvas context (`ctx`), resolved palette tokens (`palette`), and the parsed configuration (budget, seed).
 - Resolves skins by object or by registered string id (`registerSkin`), so JSON configs and the `<bg-engine>` element can pick skins.
 
+**Layers and Scenes (`layers/*`, `presets/*`)**
+- A `Layer` is one effect with a declared option `schema`, an optional DOM part, and a canvas part that draws on the shared scene canvas or on a private surface (for fades and masks).
+- A `Scene` is JSON: an ordered stack of `{ use, with, opacity, blend }`. The `scene` skin runs it; `registerPreset` wraps a scene as a named skin with its own palette/intensity defaults.
+- Layers read colors from the palette (or tokens such as `accent`), scale by `intensity` and `quality`, and draw only from seeded streams, so scenes replay deterministically.
+
 **The Skin (`skins/*`)**
 - Implements the simple `BackgroundSkin` interface.
 - Owns its internal state, entities, and drawing logic.
@@ -126,5 +131,6 @@ A fuller authoring kit (scaffold, check command, questionnaire-driven skill) is 
 5. **Ecosystem & Matrix Rain**: Build a classic text-rendering skin (`matrix-rain`) to prove font/grid capabilities. *(Done)*
 6. **Repair the drop-in path (ROADMAP M0)**: Container-aware sizing, injected layer stack for `mount()` and `<bg-engine>`, skin registry with string ids, palette values on the host, generated type declarations, honest README. *(Done 2026-09-26)*
 7. **Host contract v2 (ROADMAP M1)**: Injectable clock and `dt`-based motion, reduced-motion policy, visibility pause, scoped palette variables, pointer/noise inputs, core decoupled from the default skin, per-skin subpath exports, determinism tests, size budgets in CI. *(Done 2026-09-26)*
-8. **Layers, primitives, presets (ROADMAP M2–M3)**: Composable layer model, a standard layer library, and the aesthetic bar (contrast ceiling, palette coherence, flagship presets).
+8. **Layers, primitives, presets (ROADMAP M2)**: Composable `Layer`/`Scene` model, option schemas, a standard library of 13 layers, 7 presets across niches (two light-theme), and a scene studio playground. *(First slice done 2026-09-26; void-tactical still runs as one adapter layer.)*
+8b. **The aesthetic bar (ROADMAP M3)**: contrast ceiling, palette coherence, art pass on void-tactical, flagship preset tuning.
 9. **Publishing and the authoring kit (ROADMAP M4)**: Refine the documentation, ship the scaffold and skill, and publish to encourage the community to build and share skins.

@@ -80,6 +80,14 @@ export function resolveBackgroundConfig(config: BackgroundConfig = {}): Resolved
   };
 }
 
+/** Layer `defaults` (e.g. a skin's preferred palette) beneath caller config; undefined caller keys do not override. */
+export function withConfigDefaults(defaults: Partial<BackgroundConfig> | undefined, config: BackgroundConfig = {}): BackgroundConfig {
+  if (!defaults) return config;
+  const defined: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(config)) if (v !== undefined) defined[k] = v;
+  return { ...defaults, ...defined } as BackgroundConfig;
+}
+
 export const DETAIL_OPTIONS: { value: LabelDensity; label: string }[] = [
   { value: 'none', label: 'None' },
   { value: 'low', label: 'Low' },

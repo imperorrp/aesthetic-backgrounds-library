@@ -1,6 +1,11 @@
 /**
  * Test helper: jsdom has no 2D canvas. This installs a recording stub context so
  * DOM tests can run skins and compare draw-call streams for determinism.
+ *
+ * Every method call and property assignment is folded into a rolling hash.
+ * Gradients record their geometry and color stops. When a canvas is drawn into
+ * another (`drawImage`), the source canvas's current hash is folded in, so
+ * private layer surfaces contribute to the composite hash.
  */
 import { hashSeed } from '../engine/rng';
 
@@ -20,7 +25,11 @@ const serialize = (args: unknown[]): string =>
       if (typeof a === 'string') return a;
       if (Array.isArray(a)) return a.join(',');
       if (a && typeof a === 'object') {
-        if (a instanceof HTMLCanvasElement) return `canvas(${a.width}x${a.height})`;
+        if (a instanceof HTMLCanvasElement) {
+          const rec = recorders.get(a);
+          return `canvas(${a.width}x${a.height}#${rec ? rec.hash.toString(16) : '-'})`;
+        }
+        if ('__gradient' in (a as Record<string, unknown>)) return (a as { __gradient: string }).__gradient;
         return '[obj]';
       }
       return String(a);
@@ -34,14 +43,27 @@ function makeContext(canvas: HTMLCanvasElement) {
     rec.hash = Math.imul(rec.hash ^ hashSeed(line), 16777619) >>> 0;
     rec.calls++;
   };
+  const gradient = (kind: string, args: unknown[]) => {
+    const stops: string[] = [];
+    const g = {
+      __gradient: '',
+      addColorStop(offset: number, color: string) {
+        stops.push(`${offset.toFixed(3)}:${color}`);
+        g.__gradient = `${kind}(${serialize(args)})[${stops.join('|')}]`;
+      },
+    };
+    g.__gradient = `${kind}(${serialize(args)})[]`;
+    return g;
+  };
   const props: Record<string, unknown> = {};
   return new Proxy(props, {
     get(target, key: string) {
       if (key === 'canvas') return canvas;
       if (key === 'measureText') return (text: string) => ({ width: String(text).length * 6 });
-      if (key === 'createLinearGradient' || key === 'createRadialGradient' || key === 'createPattern') {
-        return () => ({ addColorStop() {} });
+      if (key === 'createLinearGradient' || key === 'createRadialGradient') {
+        return (...args: unknown[]) => gradient(key, args);
       }
+      if (key === 'createPattern') return () => ({ __gradient: 'pattern' });
       if (key === 'getImageData') {
         return (_x: number, _y: number, w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h });
       }
@@ -50,7 +72,7 @@ function makeContext(canvas: HTMLCanvasElement) {
       return (...args: unknown[]) => record(`${key}(${serialize(args)})`);
     },
     set(target, key: string, value) {
-      record(`${key}=${String(value)}`);
+      record(`${key}=${value && typeof value === 'object' && '__gradient' in value ? (value as { __gradient: string }).__gradient : String(value)}`);
       target[key] = value;
       return true;
     },

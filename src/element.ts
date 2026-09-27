@@ -1,7 +1,8 @@
 import { mount, type MountHandle, type MountOptions } from './engine/core/mount';
 import type { LabelDensity, MotionPreference } from './engine/config';
-// Importing the module registers the built-in skins so `skin="matrix-rain"` resolves.
+// Importing these registers the built-in skins, layers, and presets so `skin="calm-mesh"` resolves.
 import { builtInSkins } from './engine/skins';
+import { presets } from './engine/presets';
 
 /**
  * Drop-in custom element.
@@ -18,6 +19,8 @@ class BgEngineElement extends HTMLElement {
 
   /** Skins bundled with the element build; any of their ids works in the `skin` attribute. */
   static readonly skins = builtInSkins;
+  /** Presets bundled with the element build (scenes registered as skins). */
+  static readonly presets = presets;
 
   #handle: MountHandle | null = null;
 

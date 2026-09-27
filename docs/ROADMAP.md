@@ -312,7 +312,11 @@ Shipped: `FrameInfo` + injectable `Scheduler` (`createManualScheduler` for tests
 - Core no longer imports any skin; subpath exports per skin; size budget CI.
 - Acceptance: host lifecycle tests, determinism test, bundle budget all green in CI.
 
-### M2 — Layers, primitives, presets (2–4 weeks)
+### M2 — Layers, primitives, presets (2–4 weeks) — **first slice done 2026-09-26**
+
+Shipped: `Layer` (shared or private surface, optional DOM part, schema) and `Scene` JSON with opacity/blend per layer; `scene` skin and `createPreset`/`registerPreset`; `fromSkin` adapter (void-tactical registers as a layer); option schemas with validation, defaults, and palette color tokens; 13 standard layers (`gradient-base`, `mesh-gradient`, `aurora`, `starfield`, `particles-drift`, `plexus`, `flow-field`, `glyph-rain`, `grid`, `light-follow`, `vignette`, `grain`, `scanlines`); 7 presets across SaaS, terminal, space, data, nature, editorial with two light-theme presets; skin `defaults` so a preset carries its palette/intensity; `/layers` and `/presets` subpath exports; playground rewritten as a scene studio (schema-generated controls, layer stack editor, brand-color palette derivation, permalink in the URL hash, `mount()` snippet, PNG of the canvas). Determinism tests cover every preset. 91 tests.
+
+Still open in M2: decompose void-tactical's canvas into separate layers (stars, systems, fleets, HUD) rather than one adapter layer; move `detail`/overlay budgets out of core config into that skin; per-layer preview images for a gallery; PNG export that includes DOM layers (needs an SVG/foreignObject snapshot or drawing grain on canvas); a couple more layers (`orbs`, `ribbons`, `halftone`).
 
 - `Layer`/`Scene` model; void-tactical decomposed into layers; monolithic skins still supported.
 - First dozen layers and the primitives library listed above, each with schema + preview.

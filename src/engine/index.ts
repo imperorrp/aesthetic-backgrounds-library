@@ -7,6 +7,9 @@ export * from '../entries/core';
 
 export { builtInSkins, voidTacticalSkin, driftingDustSkin, matrixRainSkin } from './skins';
 export type { VoidTacticalOptions, NetworkSkinOptions, MatrixSkinOptions } from './skins';
+export { voidTacticalLayer } from '../entries/skins/void-tactical';
+export * from './layers';
+export * from './presets';
 export { default as BackgroundCanvas } from './BackgroundCanvas';
 export type { BackgroundCanvasProps } from './BackgroundCanvas';
 export { default as CursorTrail } from './CursorTrail';

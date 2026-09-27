@@ -1,4 +1,4 @@
-import { resolveBackgroundConfig, type BackgroundConfig, type MotionMode } from '../config';
+import { resolveBackgroundConfig, withConfigDefaults, type BackgroundConfig, type MotionMode } from '../config';
 import { createRng, forkRng } from '../rng';
 import { createNoise2D } from '../noise';
 import { resolveSkin } from './registry';
@@ -39,11 +39,11 @@ export function createBackground<T = any>(
   const ctx = canvas.getContext('2d', { alpha: true });
   if (!ctx) throw new Error('2D canvas context unavailable');
 
-  const resolved = resolveBackgroundConfig(options.config);
+  const skin = resolveSkin<T>(options.skin);
+  const resolved = resolveBackgroundConfig(withConfigDefaults(skin.defaults, options.config));
   const palette = resolved.palette;
   const seed = resolved.seed;
   const rng = createRng(seed);
-  const skin = resolveSkin<T>(options.skin);
   const scheduler = options.scheduler ?? createRafScheduler();
   const perf = typeof performance !== 'undefined' ? performance : { now: () => Date.now() };
 

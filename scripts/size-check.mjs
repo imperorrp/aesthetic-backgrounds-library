@@ -14,16 +14,19 @@ const DIST = resolve('dist');
 
 /** gzip KB budgets per entry closure. Raise deliberately, with a note in the commit. */
 const BUDGETS_KB = {
-  // host only: must never pull a skin
-  'core.js': 9,
+  // host + scene compositor + schema: must never pull a skin or a layer
+  'core.js': 12,
   'skins/drifting-dust.js': 11,
   'skins/matrix-rain.js': 11,
-  // the legacy monolith; shrinks as M2 decomposes it into layers
+  // the legacy monolith; shrinks as it is decomposed into layers
   'skins/void-tactical.js': 30,
-  // batteries included: core + all skins (+ element / react adapters)
-  'index.js': 36,
-  'element.js': 37,
-  'react.js': 37,
+  // standard layer library and the presets built from it (no skins)
+  'layers.js': 20,
+  'presets.js': 22,
+  // batteries included: core + all skins + layers + presets (+ element / react adapters)
+  'index.js': 50,
+  'element.js': 51,
+  'react.js': 51,
 };
 
 function walk(dir, out = []) {

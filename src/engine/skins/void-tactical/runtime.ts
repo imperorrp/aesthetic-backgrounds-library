@@ -10,12 +10,39 @@ import { renderSystem } from './renderers';
 import { WORLD_SPEED_MULTIPLIER, type RenderFrame } from './renderers/utils';
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import { createOverlayStack } from './overlays/stack';
-import type { OverlayFlags } from './overlays/flags';
+import { DEFAULT_OVERLAYS, type OverlayFlags, type OverlayId } from './overlays/flags';
+import type { Schema } from '../../core/schema';
 
-export type VoidTacticalOptions = {
+/** Flat flags (matching the schema) and/or a nested `layers` object; flat keys win. */
+export type VoidTacticalOptions = Partial<Record<OverlayId, boolean>> & {
   /** Toggle the CSS atmosphere layers (gradient, mesh, grid, clouds, noise, mouse glow). */
   layers?: OverlayFlags;
 };
+
+const OVERLAY_LABELS: Record<OverlayId, string> = {
+  gradient: 'Space gradient',
+  mesh: 'Mesh constellations',
+  asciiGrid: 'Tactical grid',
+  ascii1: 'ASCII map 1',
+  ascii2: 'ASCII map 2',
+  clouds: 'Dust clouds',
+  noise: 'Noise grain',
+  starfield: 'CSS starfield',
+  mouseGlow: 'Mouse glow',
+};
+
+const schema: Schema = Object.fromEntries(
+  (Object.keys(DEFAULT_OVERLAYS) as OverlayId[]).map((id) => [id, { type: 'boolean', default: DEFAULT_OVERLAYS[id], label: OVERLAY_LABELS[id] }]),
+);
+
+function overlayFlags(options?: VoidTacticalOptions): OverlayFlags {
+  const flags: OverlayFlags = { ...options?.layers };
+  for (const id of Object.keys(DEFAULT_OVERLAYS) as OverlayId[]) {
+    const v = options?.[id];
+    if (typeof v === 'boolean') flags[id] = v;
+  }
+  return flags;
+}
 
 /**
  * First skin: the extracted Bubble Galaxies landing background.
@@ -27,8 +54,12 @@ export type VoidTacticalOptions = {
  */
 export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
   id: 'void-tactical',
+  label: 'Void tactical',
+  description: 'Streaming sci-fi sector map: systems, structures, fleets, and an ambient HUD.',
+  tags: ['space', 'sci-fi', 'dark', 'busy'],
+  schema,
   layers(root, { options }) {
-    const stack = createOverlayStack(root, options?.layers, { position: 'absolute' });
+    const stack = createOverlayStack(root, overlayFlags(options), { position: 'absolute' });
     return () => stack.destroy();
   },
   mount(host: SkinHost<VoidTacticalOptions>) {

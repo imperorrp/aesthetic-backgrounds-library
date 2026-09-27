@@ -17,7 +17,11 @@
     "./dist/element.js",
     "./dist/react.js",
     "./dist/skins/*.js",
+    "./dist/layers.js",
+    "./dist/presets.js",
     "./src/engine/skins/index.ts",
+    "./src/engine/layers/index.ts",
+    "./src/engine/presets/index.ts",
     "./src/entries/skins/*.ts",
     "./src/element.ts",
     "*.css"
@@ -45,6 +49,14 @@
     "./skins/matrix-rain": {
       "types": "./types/entries/skins/matrix-rain.d.ts",
       "import": "./dist/skins/matrix-rain.js"
+    },
+    "./layers": {
+      "types": "./types/entries/layers.d.ts",
+      "import": "./dist/layers.js"
+    },
+    "./presets": {
+      "types": "./types/entries/presets.d.ts",
+      "import": "./dist/presets.js"
     },
     "./element": {
       "types": "./types/element.d.ts",
