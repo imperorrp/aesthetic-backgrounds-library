@@ -28,6 +28,8 @@ export type BackgroundConfig = {
   motion?: MotionPreference;
   /** Lower `host.quality` when frames run long, raise it back when they recover. Default true. */
   adaptiveQuality?: boolean;
+  /** Stop the loop while the tab is hidden or the canvas is offscreen. Default true; disable for offscreen rendering or test harnesses. */
+  pauseWhenHidden?: boolean;
 };
 
 export type ResolvedBackgroundConfig = {
@@ -44,6 +46,7 @@ export type ResolvedBackgroundConfig = {
   intensity: number;
   motion: MotionPreference;
   adaptiveQuality: boolean;
+  pauseWhenHidden: boolean;
 };
 
 const LABEL_OVERLAYS: Record<LabelDensity, { rate: number; max: number }> = {
@@ -77,6 +80,7 @@ export function resolveBackgroundConfig(config: BackgroundConfig = {}): Resolved
     intensity: clamp(config.intensity ?? 1, 0, 1),
     motion: config.motion ?? 'auto',
     adaptiveQuality: config.adaptiveQuality ?? true,
+    pauseWhenHidden: config.pauseWhenHidden ?? true,
   };
 }
 

@@ -258,10 +258,13 @@ See the [Direction & Architecture Guide](docs/DIRECTION.md) for the contract and
 pnpm install
 pnpm dev          # Interactive playground (localhost:5174)
 pnpm test         # Unit, DOM, and determinism tests (vitest, jsdom)
+pnpm test:e2e     # Real-browser gates (Playwright): screenshots, contrast, pixel-identical replay
 pnpm typecheck    # tsc across app and tooling configs
 pnpm build:lib    # Library bundle + generated type declarations
 pnpm size         # Gzip budget per entry closure (run after build:lib)
 ```
+
+**Browser gates.** `pnpm test:e2e` renders every built-in skin and preset through `/check.html`, a harness that mounts with a manual clock at a fixed seed and steps a fixed number of frames, so each render is reproducible. For each subject it asserts three things: the render matches its stored screenshot in `e2e/__screenshots__` (visual regression, per platform), the palette ink keeps at least WCAG AA contrast over the canvas behind a 40rem text column with no more than a small share of failing pixels, and two independent browser contexts produce byte-identical PNGs for the same seed. After an intentional visual change, refresh baselines with `pnpm test:e2e:update` and commit them. The first run on a new platform writes its own baselines.
 
 The playground at `/` is a scene studio: pick a preset or skin, edit the layer stack with controls generated from each schema, derive a palette from a brand color, and copy the resulting `mount()` call. The URL hash holds the whole state, so a link reproduces the exact background.
 

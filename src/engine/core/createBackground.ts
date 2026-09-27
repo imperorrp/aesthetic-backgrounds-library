@@ -188,7 +188,8 @@ export function createBackground<T = any>(
   };
 
   let userPaused = false;
-  let hidden = typeof document !== 'undefined' && document.hidden;
+  const pauseWhenHidden = resolved.pauseWhenHidden;
+  let hidden = pauseWhenHidden && typeof document !== 'undefined' && document.hidden;
   let offscreen = false;
 
   const shouldRun = () => !destroyed && !userPaused && !hidden && !offscreen && state.motion !== 'off';
@@ -212,7 +213,7 @@ export function createBackground<T = any>(
 
   // ---- environment listeners -------------------------------------------------------------
   const onVisibility = () => {
-    hidden = document.hidden;
+    hidden = pauseWhenHidden && document.hidden;
     sync();
   };
   const onMotionChange = () => {
@@ -252,7 +253,7 @@ export function createBackground<T = any>(
     resizeObserver.observe(canvas);
   }
   let intersection: IntersectionObserver | undefined;
-  if (typeof IntersectionObserver !== 'undefined') {
+  if (pauseWhenHidden && typeof IntersectionObserver !== 'undefined') {
     intersection = new IntersectionObserver(
       ([entry]) => {
         offscreen = !entry.isIntersecting;

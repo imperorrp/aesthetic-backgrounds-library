@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bg-engine check harness</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #030308; }
+      body { font-family: ui-sans-serif, system-ui, sans-serif; }
+      main {
+        position: relative;
+        z-index: 1;
+        max-width: 40rem;
+        margin: 0 auto;
+        padding: 6rem 1.5rem;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      main h1 { font-size: 2rem; margin: 0 0 1rem; font-weight: 600; }
+      main p { margin: 0 0 1rem; }
+      #column { position: relative; }
+      body[data-hide-text="1"] main { visibility: hidden; }
+    </style>
+  </head>
+  <body>
+    <main id="column">
+      <h1>Sample page content</h1>
+      <p>This column stands in for real page text. The contrast probe samples the background behind it, so a scene has to stay legible here at its default settings, not just look good on an empty frame.</p>
+      <p>Seeded rendering plus a manual clock make every frame of this page reproducible, which is what lets screenshots act as a regression gate.</p>
+      <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.</p>
+    </main>
+    <script type="module">
+      import { mount, createManualScheduler, probeContrast, resolvePalette, getSkin } from '/src/lib.ts';
+
+      const q = new URLSearchParams(location.search);
+      const skinId = q.get('skin') ?? 'void-tactical';
+      const seed = q.get('seed') ?? 'orion-7';
+      const frames = Number(q.get('frames') ?? 240);
+      const manual = q.get('manual') !== '0';
+      const palette = q.get('palette') ?? undefined;
+      const intensity = q.has('intensity') ? Number(q.get('intensity')) : undefined;
+      if (q.get('text') === '0') document.body.dataset.hideText = '1';
+
+      const scheduler = manual ? createManualScheduler() : undefined;
+      const skin = getSkin(skinId);
+      if (!skin) throw new Error(`unknown skin ${skinId}`);
+
+      const handle = mount(document.body, {
+        skin: skinId,
+        seed,
+        palette,
+        intensity,
+        scheduler,
+        adaptiveQuality: false,
+        pauseWhenHidden: false,
+        motion: 'full',
+      });
+      // The skin's resolved palette drives the page text color, like a real integration would.
+      const resolved = resolvePalette(palette ?? skin.defaults?.palette);
+      document.body.style.background = resolved.bg;
+      document.getElementById('column').style.color = resolved.ink;
+
+      if (scheduler) scheduler.step(frames);
+
+      const canvas = handle.canvas;
+      window.__bge = {
+        skin: skinId,
+        seed,
+        frames,
+        palette: resolved,
+        step: (n) => scheduler?.step(n),
+        dataUrl: () => canvas.toDataURL('image/png'),
+        /** Contrast of the palette ink over the canvas behind the text column. */
+        probe: (opts = {}) => {
+          const r = document.getElementById('column').getBoundingClientRect();
+          const dpr = canvas.width / canvas.clientWidth;
+          return probeContrast(
+            canvas,
+            { x: r.left * dpr, y: r.top * dpr, width: r.width * dpr, height: r.height * dpr },
+            resolved.ink,
+            { stride: 3, threshold: 4.5, ...opts },
+          );
+        },
+        ready: true,
+      };
+      document.body.dataset.ready = '1';
+    </script>
+  </body>
+</html>
