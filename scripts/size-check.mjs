@@ -18,15 +18,15 @@ const BUDGETS_KB = {
   'core.js': 12,
   'skins/drifting-dust.js': 11,
   'skins/matrix-rain.js': 11,
-  // the legacy monolith; shrinks as it is decomposed into layers
-  'skins/void-tactical.js': 30,
+  // the sector map skin plus its five part layers and the void-sector preset
+  'skins/void-tactical.js': 33,
   // standard layer library and the presets built from it (no skins)
   'layers.js': 20,
   'presets.js': 22,
   // batteries included: core + all skins + layers + presets (+ element / react adapters)
-  'index.js': 50,
-  'element.js': 51,
-  'react.js': 51,
+  'index.js': 53,
+  'element.js': 54,
+  'react.js': 54,
 };
 
 function walk(dir, out = []) {
