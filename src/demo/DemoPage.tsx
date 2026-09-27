@@ -63,7 +63,7 @@ function studioFor(source: string, prev?: Partial<Studio>): Studio {
     density: prev?.density ?? 1,
     detail: prev?.detail ?? 'low',
   };
-  const applyDefaults = (d: { palette?: PaletteSpec; intensity?: number } | undefined) => {
+  const applyDefaults = (d: { palette?: PaletteSpec; intensity?: number; density?: number; detail?: LabelDensity } | undefined) => {
     if (!d) return;
     if (typeof d.palette === 'string') {
       base.paletteMode = d.palette as PaletteId;
@@ -73,6 +73,8 @@ function studioFor(source: string, prev?: Partial<Studio>): Studio {
       base.theme = d.palette.theme ?? 'dark';
     }
     if (typeof d.intensity === 'number') base.intensity = d.intensity;
+    if (typeof d.density === 'number') base.density = d.density;
+    if (d.detail) base.detail = d.detail;
   };
   const preset = presets.find((p) => p.id === source);
   if (preset) {
@@ -301,7 +303,7 @@ export default function DemoPage() {
               <>
                 <label className="demo-field">
                   <span>Density {studio.density.toFixed(2)}</span>
-                  <input type="range" min={0.4} max={1.6} step={0.1} value={studio.density} onChange={(e) => update({ density: Number(e.target.value) })} />
+                  <input type="range" min={0.25} max={2} step={0.05} value={studio.density} onChange={(e) => update({ density: Number(e.target.value) })} />
                 </label>
                 {studio.source === 'void-tactical' && (
                   <label className="demo-field">

@@ -20,13 +20,14 @@ export type VoidTacticalOptions = Partial<Record<OverlayId, boolean>> &
     layers?: OverlayFlags;
   };
 
+/** Defaults are the calibrated look: near-original color variety, heavier lines, compact sprites, quieter HUD, long trails. */
 const STYLE_SCHEMA: Schema = {
-  hueVariety: { type: 'number', min: 0, max: 1, default: 0.4, label: 'Hue variety', description: '0 pulls every entity into the palette family; 1 keeps the original rainbow' },
-  lineWeight: { type: 'number', min: 0.5, max: 2, default: 1, label: 'Line weight' },
-  spriteScale: { type: 'number', min: 0.7, max: 2.5, default: 1.5, label: 'Sprite scale', description: 'Size of the ASCII structure art' },
-  hud: { type: 'number', min: 0, max: 1, default: 0.75, label: 'HUD opacity', description: 'Grid, sector links, labels, telemetry, and overlay text' },
+  hueVariety: { type: 'number', min: 0, max: 1, default: 0.94, label: 'Hue variety', description: '0 pulls every entity into the palette family; 1 keeps the original rainbow' },
+  lineWeight: { type: 'number', min: 0.5, max: 2, default: 1.7, label: 'Line weight' },
+  spriteScale: { type: 'number', min: 0.7, max: 2.5, default: 0.95, label: 'Sprite scale', description: 'Size of the ASCII structure art' },
+  hud: { type: 'number', min: 0, max: 1, default: 0.52, label: 'HUD opacity', description: 'Grid, sector links, labels, telemetry, and overlay text' },
   paths: { type: 'enum', values: ['dots', 'dashed', 'off'], default: 'dots', label: 'Fleet paths', description: 'Predicted-path rendering' },
-  trails: { type: 'number', min: 0, max: 1, default: 0.5, label: 'Fleet trails' },
+  trails: { type: 'number', min: 0, max: 1, default: 0.92, label: 'Fleet trails' },
 };
 
 const OVERLAY_LABELS: Record<OverlayId, string> = {
@@ -71,7 +72,8 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
   description: 'Streaming sci-fi sector map: systems, structures, fleets, and an ambient HUD.',
   tags: ['space', 'sci-fi', 'dark', 'busy'],
   schema,
-  defaults: { palette: 'void-cyan', intensity: 1 },
+  /** Calibrated defaults: dense, detailed, and held back to 45% presence so page content leads. */
+  defaults: { palette: 'void-cyan', intensity: 0.45, density: 1.5, detail: 'high' },
   layers(root, { options }) {
     const stack = createOverlayStack(root, overlayFlags(options), { position: 'absolute' });
     return () => stack.destroy();

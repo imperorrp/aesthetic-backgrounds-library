@@ -177,15 +177,15 @@ The default skin is a streaming sci-fi sector map: star systems with orbiting pl
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `hueVariety` | `0.4` | `0` pulls every entity into the palette family, `1` keeps the original rainbow. |
-| `lineWeight` | `1` | Multiplier on all strokes. |
-| `spriteScale` | `1.5` | Size of the ASCII structure art. |
-| `hud` | `0.75` | Opacity of grid, sector links, labels, telemetry, and overlay text. |
+| `hueVariety` | `0.94` | `0` pulls every entity into the palette family, `1` keeps the original rainbow. |
+| `lineWeight` | `1.7` | Multiplier on all strokes. |
+| `spriteScale` | `0.95` | Size of the ASCII structure art. |
+| `hud` | `0.52` | Opacity of grid, sector links, labels, telemetry, and overlay text. |
 | `paths` | `'dots'` | Fleet predicted paths: `dots`, `dashed`, or `off`. |
-| `trails` | `0.5` | Fleet history trail opacity. |
-| `gradient`, `mesh`, `asciiGrid`, `clouds`, `noise`, `mouseGlow`, ... | see schema | Toggle each CSS atmosphere layer. |
+| `trails` | `0.92` | Fleet history trail opacity. |
+| `gradient`, `mesh`, `asciiGrid`, `ascii1`, `ascii2`, `clouds`, `noise`, `mouseGlow`, `starfield` | all on except `starfield` | Toggle each CSS atmosphere layer. |
 
-`detail` (`none` to `high`) sets the label budget and `intensity` scales motion and population. Two instances with the same seed replay identically.
+The skin's own config defaults are `intensity: 0.45`, `density: 1.5`, `detail: 'high'`, `palette: 'void-cyan'`: a dense, fully annotated sector held back to 45% presence so page content leads. Pass any of those to `mount()` to override. Two instances with the same seed replay identically.
 
 ## Custom Skins
 
