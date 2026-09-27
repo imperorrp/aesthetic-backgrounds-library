@@ -153,7 +153,7 @@ mount(document.body, {
 });
 ```
 
-Standard layers: `gradient-base`, `mesh-gradient`, `aurora`, `starfield`, `particles-drift`, `plexus`, `flow-field`, `glyph-rain`, `grid`, `light-follow`, `vignette`, `grain`, `scanlines`. Any whole skin can also be used as a layer (`fromSkin`), and `void-tactical` registers itself that way. Every layer reads colors from the palette or from tokens like `accent` and `inkDim`, scales itself by `intensity` and `quality`, and draws deterministically from the seeded streams.
+Standard layers: `gradient-base`, `mesh-gradient`, `aurora`, `starfield`, `particles-drift`, `plexus`, `flow-field`, `glyph-rain`, `grid`, `light-follow`, `vignette`, `content-shade` (a feathered shade behind your text column so any scene passes a contrast check), `grain`, `scanlines`. Any whole skin can also be used as a layer (`fromSkin`), and `void-tactical` registers itself that way. Every layer reads colors from the palette or from tokens like `accent` and `inkDim`, scales itself by `intensity` and `quality`, and draws deterministically from the seeded streams.
 
 Options are validated against each layer's schema: numbers are clamped, unknown enum values fall back to defaults, and nothing throws on a typo in a JSON preset. The same schema drives the playground controls and is what an agent fills in when it builds a scene for you.
 
@@ -170,6 +170,22 @@ registerPreset({
   scene: { layers: [{ use: 'gradient-base' }, { use: 'particles-drift', with: { glow: 0.9 } }] },
 });
 ```
+
+## The void-tactical skin
+
+The default skin is a streaming sci-fi sector map: star systems with orbiting planets and hex radars, a network of data lanes between systems, ASCII-art structures from stations to Dyson spheres, fleets with AI states and predicted paths, anomalies, and an ambient HUD of sector chatter. Every authored color is pulled into the active palette family, so it works with `palette: '#ff7a1a'` as well as the built-ins. It is calibratable through `options`:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `hueVariety` | `0.4` | `0` pulls every entity into the palette family, `1` keeps the original rainbow. |
+| `lineWeight` | `1` | Multiplier on all strokes. |
+| `spriteScale` | `1.5` | Size of the ASCII structure art. |
+| `hud` | `0.75` | Opacity of grid, sector links, labels, telemetry, and overlay text. |
+| `paths` | `'dots'` | Fleet predicted paths: `dots`, `dashed`, or `off`. |
+| `trails` | `0.5` | Fleet history trail opacity. |
+| `gradient`, `mesh`, `asciiGrid`, `clouds`, `noise`, `mouseGlow`, ... | see schema | Toggle each CSS atmosphere layer. |
+
+`detail` (`none` to `high`) sets the label budget and `intensity` scales motion and population. Two instances with the same seed replay identically.
 
 ## Custom Skins
 

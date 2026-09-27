@@ -18,11 +18,12 @@ export const presetDefinitions: readonly PresetDefinition[] = [
     config: { palette: { from: '#4f6df5', theme: 'light' }, intensity: 0.8 },
     scene: {
       layers: [
-        { use: 'gradient-base', with: { tint: 0.25, drift: 0.2 } },
-        { use: 'mesh-gradient', with: { blobs: 4, spread: 50, size: 0.8, speed: 0.25, saturation: 0.6 } },
+        { use: 'gradient-base', with: { tint: 0.3, drift: 0.2, spread: 60 } },
+        { use: 'mesh-gradient', with: { blobs: 5, spread: 70, size: 0.85, speed: 0.22, saturation: 0.8 } },
+        { use: 'mesh-gradient', with: { blobs: 3, spread: 30, size: 0.45, speed: 0.35, saturation: 1 }, opacity: 0.55, blend: 'multiply' },
         { use: 'light-follow', with: { strength: 0.22, radius: 460, color: 'accent' } },
-        { use: 'vignette', with: { strength: 0.22, size: 1.1 } },
-        { use: 'grain', with: { opacity: 0.07, blend: 'multiply' } },
+        { use: 'vignette', with: { strength: 0.18, size: 1.15 } },
+        { use: 'grain', with: { opacity: 0.08, blend: 'multiply' } },
       ],
     },
   },

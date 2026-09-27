@@ -14,9 +14,27 @@
  */
 
 import type { SystemState, StarSystem, SimSettings } from '../types';
-import { FONT, WORLD_SPEED_MULTIPLIER, type CanvasContext, type RenderFrame } from './utils';
+import { FONT, WORLD_SPEED_MULTIPLIER, hexRgba, type CanvasContext, type RenderFrame } from './utils';
 import { emitOverlay } from './ui';
 import { rgba } from '../../../palette';
+
+/** Break a polyline where consecutive points jump more than half the viewport (a wrap), so no line crosses the screen. */
+const strokeBroken = (ctx: CanvasContext, pts: { x: number; y: number }[], viewport: { width: number; height: number }) => {
+  ctx.beginPath();
+  let pen = false;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const prev = pts[i - 1];
+    const jump = prev && (Math.abs(p.x - prev.x) > viewport.width / 2 || Math.abs(p.y - prev.y) > viewport.height / 2);
+    if (!pen || jump) {
+      ctx.moveTo(p.x, p.y);
+      pen = true;
+    } else {
+      ctx.lineTo(p.x, p.y);
+    }
+  }
+  ctx.stroke();
+};
 import { shouldShowAnomalyScanline, shouldShowAnomalyText, shouldShowFleetLabel } from '../labels';
 
 export const renderNodes = (
@@ -387,42 +405,26 @@ export const renderFleets = (
         if (baseX >= -50 && baseX <= viewport.width + 50 &&
             baseY >= -50 && baseY <= viewport.height + 50) {
 
-          // Render Trails as dotted lines (past movement) - more prominent
-          if (fleet.history.length > 1) {
-            ctx.strokeStyle = fleet.color;
-            ctx.globalAlpha = 0.5; // Increased from 0.3
-            ctx.setLineDash([2, 4]); // Dotted line pattern
-            ctx.lineWidth = 1.5; // Increased from 1
-            ctx.beginPath();
+          const fleetColor = frame.color(fleet.color);
+          const lw = frame.style.lineWeight;
 
-            // Start from the oldest point
-            const firstPoint = fleet.history[0];
-            const startX = firstPoint.x - camera.x * parallaxFactorFleets + offsetX;
-            const startY = firstPoint.y - camera.y * parallaxFactorFleets + offsetY;
-            ctx.moveTo(startX, startY);
-
-            // Draw line through all history points
-            for (let i = 1; i < fleet.history.length; i++) {
-              const point = fleet.history[i];
-              const pointX = point.x - camera.x * parallaxFactorFleets + offsetX;
-              const pointY = point.y - camera.y * parallaxFactorFleets + offsetY;
-              ctx.lineTo(pointX, pointY);
-            }
-
-            ctx.stroke();
-            ctx.setLineDash([]); // Reset to solid line
+          // History trail: dotted, fading, never drawn across a wrap.
+          if (fleet.history.length > 1 && frame.style.trails > 0.02) {
+            ctx.strokeStyle = fleetColor;
+            ctx.globalAlpha = 0.45 * frame.style.trails;
+            ctx.setLineDash([2, 4]);
+            ctx.lineWidth = lw;
+            const pts = fleet.history.map((p) => ({
+              x: p.x - camera.x * parallaxFactorFleets + offsetX,
+              y: p.y - camera.y * parallaxFactorFleets + offsetY,
+            }));
+            strokeBroken(ctx, pts, viewport);
+            ctx.setLineDash([]);
             ctx.globalAlpha = 1.0;
           }
 
-          // Render Future Path as dotted line - more prominent
-          ctx.strokeStyle = fleet.color;
-          ctx.globalAlpha = 0.6; // Increased from 0.2 for better visibility
-          ctx.setLineDash([4, 8]); // Slightly longer dashes
-          ctx.lineWidth = 2; // Increased from 1 for thickness
-          ctx.beginPath();
-
-          // Start from current position
-          ctx.moveTo(baseX, baseY);
+          // Predicted path: collected as points, drawn per style below.
+          const proj: { x: number; y: number }[] = [{ x: baseX, y: baseY }];
 
           // Project future path - extended further
           // OPTIMIZATION 1: Drastically reduce simulation steps
@@ -561,23 +563,41 @@ export const renderFleets = (
             if (futureY > system.height) futureY -= system.height;
 
             // Convert to screen coordinates
-            const screenX = futureX - camera.x * parallaxFactorFleets + offsetX;
-            const screenY = futureY - camera.y * parallaxFactorFleets + offsetY;
-
-            ctx.lineTo(screenX, screenY);
+            proj.push({
+              x: futureX - camera.x * parallaxFactorFleets + offsetX,
+              y: futureY - camera.y * parallaxFactorFleets + offsetY,
+            });
           }
 
-          ctx.stroke();
-          ctx.setLineDash([]); // Reset to solid line
-          ctx.globalAlpha = 1.0;
+          if (frame.style.paths === 'dashed') {
+            ctx.strokeStyle = fleetColor;
+            ctx.globalAlpha = 0.3;
+            ctx.setLineDash([4, 8]);
+            ctx.lineWidth = lw;
+            strokeBroken(ctx, proj, viewport);
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1.0;
+          } else if (frame.style.paths === 'dots') {
+            // Waypoint dots that fade with distance; wraps simply leave a gap.
+            for (let i = 1; i < proj.length; i++) {
+              const p = proj[i];
+              const q = proj[i - 1];
+              if (Math.abs(p.x - q.x) > viewport.width / 2 || Math.abs(p.y - q.y) > viewport.height / 2) break;
+              const k = 1 - i / proj.length;
+              ctx.fillStyle = hexRgba(fleetColor, 0.5 * k + 0.05);
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, (0.6 + 0.9 * k) * lw, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
 
           // Render Ship (smooth movement, no snapping)
-          ctx.fillStyle = fleet.color;
+          ctx.fillStyle = fleetColor;
           ctx.fillText(fleet.glyph, baseX, baseY);
 
           if (shouldShowFleetLabel(system.settings?.labelDensity ?? 'low', fleet.showLabel)) {
             ctx.font = '10px "Orbit", monospace';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.fillStyle = rgba(frame.palette.inkRgb, 0.8 * frame.style.hud);
             const label = fleet.type ? `${fleet.type.toUpperCase()} ${fleet.id}` : fleet.id;
             // Offset label to avoid overlap with glyph; also offset slightly by fleet index modulo to reduce collisions
             const idxOffset = (fleet.id ? parseInt(fleet.id.replace(/[^0-9]/g, ''), 10) % 4 : 0);
@@ -600,10 +620,11 @@ export const renderAnomalies = (
   frame: RenderFrame,
 ) => {
   const parallaxFactorAnomalies = 0.8;
+  const hazard = frame.palette.hazard;
   anomalies.forEach(anomaly => {
-    const alpha = 0.5 + Math.sin(frame.time * 2) * 0.3;
+    const alpha = (0.5 + Math.sin(frame.time * 2) * 0.3) * (0.5 + 0.5 * frame.style.hud);
     // Text alpha pulses independently for dramatic effect
-    const textAlpha = 0.7 + Math.sin(frame.time * 3 + 1.5) * 0.25;
+    const textAlpha = (0.7 + Math.sin(frame.time * 3 + 1.5) * 0.25) * frame.style.hud;
 
     for (let offsetX = -2*viewport.width; offsetX <= 2*viewport.width; offsetX += viewport.width) {
       for (let offsetY = -2*viewport.height; offsetY <= 2*viewport.height; offsetY += viewport.height) {
@@ -613,14 +634,14 @@ export const renderAnomalies = (
         if (baseX >= -50 && baseX <= viewport.width + 50 &&
             baseY >= -50 && baseY <= viewport.height + 50) {
 
-          // Render anomaly icon
-          ctx.fillStyle = `rgba(255, 100, 100, ${alpha})`;
+          // Render anomaly icon in the palette's hazard color
+          ctx.fillStyle = hexRgba(hazard, alpha);
           ctx.fillText('[ ! ]', baseX, baseY);
 
           const density = settings?.labelDensity ?? 'low';
           if (shouldShowAnomalyText(density)) {
             ctx.font = '10px "Orbit", monospace';
-            ctx.fillStyle = `rgba(255, 100, 100, ${textAlpha})`;
+            ctx.fillStyle = hexRgba(hazard, textAlpha);
             const textOffset = 15;
             const textToDraw = anomaly.text || 'UNKNOWN ANOMALY';
             ctx.fillText(textToDraw, baseX - 40, baseY + textOffset);
@@ -628,7 +649,7 @@ export const renderAnomalies = (
           }
 
           if (shouldShowAnomalyScanline(density)) {
-            ctx.fillStyle = `rgba(255, 100, 100, ${alpha * 0.1})`;
+            ctx.fillStyle = hexRgba(hazard, alpha * 0.1);
             ctx.fillRect(baseX + 6, 0, 1, viewport.height);
           }
         }

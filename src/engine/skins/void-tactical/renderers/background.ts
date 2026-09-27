@@ -96,7 +96,8 @@ export const renderGrids = (
   frame: RenderFrame,
 ) => {
   // 1. RENDER SECTOR GRID (Background Layer)
-  ctx.fillStyle = accentRgba(frame.palette, 0.1);
+  if (frame.style.hud <= 0.02) return;
+  ctx.fillStyle = accentRgba(frame.palette, 0.1 * frame.style.hud);
   const parallaxFactorGrid = 0.1;
   const gridOffsetX = (camera.x * parallaxFactorGrid * WORLD_SPEED_MULTIPLIER) % (CHAR_SIZE * 6);
   const gridOffsetY = (camera.y * parallaxFactorGrid * WORLD_SPEED_MULTIPLIER) % (CHAR_SIZE * 6);
@@ -109,7 +110,7 @@ export const renderGrids = (
 
   // 1.5 RENDER HEX GRID (Optional "Strategy" Fluff)
   // Simplified as dots for now to keep performance high
-  ctx.fillStyle = accentRgba(frame.palette, 0.05);
+  ctx.fillStyle = accentRgba(frame.palette, 0.05 * frame.style.hud);
   for (let x = -gridOffsetX; x < viewport.width; x += CHAR_SIZE * 12) {
     for (let y = -gridOffsetY; y < viewport.height; y += CHAR_SIZE * 12) {
       if ((x + y) % 2 === 0) ctx.fillText('·', x + CHAR_SIZE * 3, y + CHAR_SIZE * 3);

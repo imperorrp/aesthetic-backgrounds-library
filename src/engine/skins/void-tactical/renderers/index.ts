@@ -75,5 +75,5 @@ export { renderStars, renderConstellations, renderGrids } from './background';
 export { renderCelestialBodies, renderStarSystem } from './celestial';
 export { renderNodes, renderFleets, renderAnomalies } from './entities';
 export { renderTacticalOverlays, renderTelemetry, renderSystemConnections, renderSectorConnections } from './ui';
-export { getAsciiSprite, snap, CHAR_SIZE, FONT, ASCII_FONT_SIZE, ASCII_LINE_HEIGHT } from './utils';
-export type { RenderFrame } from './utils';
+export { getAsciiSprite, getGlowSprite, snap, CHAR_SIZE, FONT, SPRITE_BASE_HEIGHT } from './utils';
+export type { RenderFrame, VoidStyle } from './utils';

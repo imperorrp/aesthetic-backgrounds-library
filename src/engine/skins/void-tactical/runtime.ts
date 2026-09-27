@@ -7,16 +7,26 @@ import {
   generateSingleAnomaly,
 } from './generators';
 import { renderSystem } from './renderers';
-import { WORLD_SPEED_MULTIPLIER, type RenderFrame } from './renderers/utils';
+import { createColorMapper, WORLD_SPEED_MULTIPLIER, type RenderFrame, type VoidStyle } from './renderers/utils';
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import { createOverlayStack } from './overlays/stack';
 import { DEFAULT_OVERLAYS, type OverlayFlags, type OverlayId } from './overlays/flags';
-import type { Schema } from '../../core/schema';
+import { resolveOptions, type Schema } from '../../core/schema';
 
-/** Flat flags (matching the schema) and/or a nested `layers` object; flat keys win. */
-export type VoidTacticalOptions = Partial<Record<OverlayId, boolean>> & {
-  /** Toggle the CSS atmosphere layers (gradient, mesh, grid, clouds, noise, mouse glow). */
-  layers?: OverlayFlags;
+/** Flat flags (matching the schema), calibration knobs, and/or a nested `layers` object; flat keys win. */
+export type VoidTacticalOptions = Partial<Record<OverlayId, boolean>> &
+  Partial<VoidStyle> & {
+    /** Toggle the CSS atmosphere layers (gradient, mesh, grid, clouds, noise, mouse glow). */
+    layers?: OverlayFlags;
+  };
+
+const STYLE_SCHEMA: Schema = {
+  hueVariety: { type: 'number', min: 0, max: 1, default: 0.4, label: 'Hue variety', description: '0 pulls every entity into the palette family; 1 keeps the original rainbow' },
+  lineWeight: { type: 'number', min: 0.5, max: 2, default: 1, label: 'Line weight' },
+  spriteScale: { type: 'number', min: 0.7, max: 2.5, default: 1.5, label: 'Sprite scale', description: 'Size of the ASCII structure art' },
+  hud: { type: 'number', min: 0, max: 1, default: 0.75, label: 'HUD opacity', description: 'Grid, sector links, labels, telemetry, and overlay text' },
+  paths: { type: 'enum', values: ['dots', 'dashed', 'off'], default: 'dots', label: 'Fleet paths', description: 'Predicted-path rendering' },
+  trails: { type: 'number', min: 0, max: 1, default: 0.5, label: 'Fleet trails' },
 };
 
 const OVERLAY_LABELS: Record<OverlayId, string> = {
@@ -31,9 +41,12 @@ const OVERLAY_LABELS: Record<OverlayId, string> = {
   mouseGlow: 'Mouse glow',
 };
 
-const schema: Schema = Object.fromEntries(
-  (Object.keys(DEFAULT_OVERLAYS) as OverlayId[]).map((id) => [id, { type: 'boolean', default: DEFAULT_OVERLAYS[id], label: OVERLAY_LABELS[id] }]),
-);
+const schema: Schema = {
+  ...STYLE_SCHEMA,
+  ...Object.fromEntries(
+    (Object.keys(DEFAULT_OVERLAYS) as OverlayId[]).map((id) => [id, { type: 'boolean', default: DEFAULT_OVERLAYS[id], label: OVERLAY_LABELS[id] }]),
+  ),
+};
 
 function overlayFlags(options?: VoidTacticalOptions): OverlayFlags {
   const flags: OverlayFlags = { ...options?.layers };
@@ -58,6 +71,7 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
   description: 'Streaming sci-fi sector map: systems, structures, fleets, and an ambient HUD.',
   tags: ['space', 'sci-fi', 'dark', 'busy'],
   schema,
+  defaults: { palette: 'void-cyan', intensity: 1 },
   layers(root, { options }) {
     const stack = createOverlayStack(root, overlayFlags(options), { position: 'absolute' });
     return () => stack.destroy();
@@ -67,6 +81,8 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
     let width = host.viewport.width;
     let height = host.viewport.height;
     const frameRng = host.fork('frame');
+    const style = resolveOptions(STYLE_SCHEMA, host.options) as unknown as VoidStyle;
+    const colorOf = createColorMapper(palette, style.hueVariety);
 
     const simSettings = {
       labelDensity: config.detail,
@@ -89,9 +105,10 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
       const isTablet = width >= 768 && width < 1024;
       const area = width * height;
       const densityFactor = isMobile ? 4000 : 7000;
-      // Intensity thins the population; quality governor thins it further when frames run long.
-      const d = config.density * (0.5 + 0.5 * host.intensity) * (0.6 + 0.4 * host.quality);
-      layout.starCount = Math.max(40, Math.min(400, Math.floor((area / densityFactor) * d)));
+      // Intensity thins the population. The quality governor never touches entity
+      // budgets (they define the skin); it only trims the star count, and gently.
+      const d = config.density * (0.5 + 0.5 * host.intensity);
+      layout.starCount = Math.max(40, Math.min(400, Math.floor((area / densityFactor) * d * Math.max(0.6, host.quality))));
       if (isMobile) {
         layout.systemDist = 240;
         layout.structDist = 180;
@@ -286,7 +303,15 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
           }
         }
 
-        const frame: RenderFrame = { time: info.t, dt: info.dt, rng: frameRng, palette };
+        const frame: RenderFrame = {
+          time: info.t,
+          dt: info.dt,
+          rng: frameRng,
+          palette,
+          style,
+          intensity: host.intensity,
+          color: colorOf,
+        };
         ctx.clearRect(0, 0, width, height);
         renderSystem(ctx, world, camera, { width, height }, frame);
       },

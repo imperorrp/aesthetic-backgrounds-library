@@ -26,33 +26,51 @@ export const renderSystemConnections = (
     y: sys.y - camera.y * parallax
   })).filter(p => p.x > -100 && p.x < viewport.width + 100);
 
-  if (points.length < 2) return;
+  if (points.length < 2 || frame.style.hud <= 0.02) return;
 
-  // Pulse animation
-  const alpha = 0.3 + Math.sin(frame.time * 3) * 0.2; // range approx 0.1 to 0.5
-  ctx.strokeStyle = accentRgba(frame.palette, alpha);
-  ctx.lineWidth = 2;
-  ctx.setLineDash([]);
-  ctx.beginPath();
+  const hud = frame.style.hud;
+  const lw = frame.style.lineWeight;
+  const links: [number, number][] = [];
   for (let i = 0; i < points.length; i++) {
     for (let j = i + 1; j < points.length; j++) {
       const dx = points[i].x - points[j].x;
       const dy = points[i].y - points[j].y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 800) {
-        ctx.moveTo(points[i].x, points[i].y);
-        ctx.lineTo(points[j].x, points[j].y);
-      }
+      if (dx * dx + dy * dy < 800 * 800) links.push([i, j]);
     }
+  }
+  if (!links.length) return;
+
+  // Faint continuous lane...
+  ctx.strokeStyle = accentRgba(frame.palette, 0.12 * hud);
+  ctx.lineWidth = lw;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  for (const [i, j] of links) {
+    ctx.moveTo(points[i].x, points[i].y);
+    ctx.lineTo(points[j].x, points[j].y);
   }
   ctx.stroke();
 
-  // draw nodes
-  ctx.fillStyle = accentRgba(frame.palette, Math.min(1, alpha * 1.5));
+  // ...with packets flowing along it: the network reads as alive, not as a wireframe.
+  ctx.strokeStyle = accentRgba(frame.palette, 0.32 * hud);
+  ctx.lineWidth = lw;
+  ctx.setLineDash([6, 22]);
+  ctx.lineDashOffset = -frame.time * 28;
+  ctx.beginPath();
+  for (const [i, j] of links) {
+    ctx.moveTo(points[i].x, points[i].y);
+    ctx.lineTo(points[j].x, points[j].y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Node ticks at each system: a small ring rather than a dot.
+  ctx.strokeStyle = accentRgba(frame.palette, 0.4 * hud);
+  ctx.lineWidth = lw;
   points.forEach(p => {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(p.x, p.y, 3 * lw, 0, Math.PI * 2);
+    ctx.stroke();
   });
 };
 
@@ -85,11 +103,11 @@ export const renderSectorConnections = (
     }
   }
 
-  if (points.length < 2) return;
+  if (points.length < 2 || frame.style.hud <= 0.02) return;
 
   // Static alpha for sector lines (not pulsing)
-  ctx.strokeStyle = accentRgba(frame.palette, 0.25);
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = accentRgba(frame.palette, 0.14 * frame.style.hud);
+  ctx.lineWidth = frame.style.lineWeight * 0.8;
   ctx.setLineDash([]);
   ctx.beginPath();
 
@@ -111,13 +129,16 @@ export const renderSectorConnections = (
   }
   ctx.stroke();
 
-  // draw nodes
-  ctx.fillStyle = accentRgba(frame.palette, 0.4);
+  // sector nodes as small crosshairs
+  ctx.strokeStyle = accentRgba(frame.palette, 0.3 * frame.style.hud);
+  ctx.beginPath();
   points.forEach(p => {
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); // Slightly larger
-    ctx.fill();
+    ctx.moveTo(p.x - 5, p.y);
+    ctx.lineTo(p.x + 5, p.y);
+    ctx.moveTo(p.x, p.y - 5);
+    ctx.lineTo(p.x, p.y + 5);
   });
+  ctx.stroke();
 };
 
 // --- NARRATIVE DATA ---
@@ -405,7 +426,7 @@ export const renderTacticalOverlays = (
 
       let textCategory = TACTICAL_TEXTS.SYSTEM; // Default
       let parallax = 0.25; // Default parallax
-      let color = accentRgba(frame.palette, 0.9);
+      let color = frame.palette.accent;
 
       // Context-aware text selection & styling
       if (target.type === 'FLEET') textCategory = TACTICAL_TEXTS.FLEET;
@@ -423,8 +444,8 @@ export const renderTacticalOverlays = (
              else textCategory = TACTICAL_TEXTS.STRUCTURE;
          }
 
-         // Use structure color
-         color = target.color;
+         // Use structure color, mapped into the palette family
+         color = frame.color(target.color);
       }
       else if (target.type === 'PLANET') textCategory = rng() > 0.5 ? TACTICAL_TEXTS.SCIENCE : TACTICAL_TEXTS.STRATEGY;
       else if (target.type === 'DEEP_SPACE') textCategory = rng() > 0.5 ? TACTICAL_TEXTS.NARRATIVE : TACTICAL_TEXTS.SCIENCE;
@@ -469,10 +490,11 @@ export const renderTacticalOverlays = (
       const opacity = Math.min(1, lifePct) * Math.min(1, (overlay.duration - overlay.lifetime) / 500); // Fade in and out
 
       ctx.save();
-      ctx.font = '10px "Orbit", monospace';
+      ctx.font = '10px "Orbit", "Syne Mono", ui-monospace, monospace';
       ctx.fillStyle = overlay.color;
-      ctx.globalAlpha = Math.max(0, opacity);
-
+      ctx.globalAlpha = Math.max(0, opacity) * (0.5 + 0.5 * frame.style.hud);
+      // Small leader tick so the text reads as an annotation, not stray copy.
+      ctx.fillRect(screenX - 6, screenY + 4, 3, 1);
       ctx.fillText(overlay.text, screenX, screenY);
       ctx.restore();
     });
@@ -496,7 +518,7 @@ export const renderTelemetry = (
         item.y = frame.rng() * 800;  // Assuming viewport height
     }
 
-    const opacity = Math.min(1, (item.maxAge - item.age) / 50);
+    const opacity = Math.min(1, (item.maxAge - item.age) / 50) * frame.style.hud;
     ctx.fillStyle = accentRgba(frame.palette, opacity);
     ctx.fillText(item.text, item.x, item.y);
   });

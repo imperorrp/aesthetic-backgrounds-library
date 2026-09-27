@@ -12,6 +12,8 @@ export type { Layer, LayerHost, LayerInstance } from '../engine/core/layer';
 export { sceneSkin, createPreset, registerPreset, SCENE_SKIN_ID } from '../engine/core/scene';
 export type { Scene, SceneLayer, PresetDefinition, PresetSkin } from '../engine/core/scene';
 export { resolveOptions, schemaDefaults, resolveColor, COLOR_TOKENS } from '../engine/core/schema';
+export { probeContrast } from '../engine/core/probe';
+export type { ContrastReport, ProbeRect } from '../engine/core/probe';
 export type { Schema, FieldSchema, OptionsOf, ResolvedColor } from '../engine/core/schema';
 export { createRafScheduler, createManualScheduler } from '../engine/core/scheduler';
 export type { Scheduler, ManualScheduler } from '../engine/core/scheduler';

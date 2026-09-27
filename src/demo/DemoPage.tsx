@@ -44,24 +44,27 @@ const BLENDS: GlobalCompositeOperation[] = ['source-over', 'lighter', 'screen', 
 const presetIds = new Set(presets.map((p) => p.id));
 const isSceneSource = (source: string) => source === 'scene' || presetIds.has(source);
 
+/**
+ * Studio state for a source. Seed, motion, density, and detail carry over from the
+ * previous state; palette and intensity come from the source's own defaults so a
+ * light preset never bleeds into a dark skin.
+ */
 function studioFor(source: string, prev?: Partial<Studio>): Studio {
   const base: Studio = {
     source,
     scene: null,
     skinOptions: {},
     seed: prev?.seed ?? randomSeedString(),
-    paletteMode: prev?.paletteMode ?? 'void-cyan',
-    customHex: prev?.customHex ?? '#4f6df5',
-    theme: prev?.theme ?? 'dark',
-    intensity: prev?.intensity ?? 1,
+    paletteMode: 'void-cyan',
+    customHex: '#4f6df5',
+    theme: 'dark',
+    intensity: 1,
     motion: prev?.motion ?? 'auto',
     density: prev?.density ?? 1,
     detail: prev?.detail ?? 'low',
   };
-  const preset = presets.find((p) => p.id === source);
-  if (preset) {
-    base.scene = JSON.parse(JSON.stringify(preset.scene)) as Scene;
-    const d = preset.defaults ?? {};
+  const applyDefaults = (d: { palette?: PaletteSpec; intensity?: number } | undefined) => {
+    if (!d) return;
     if (typeof d.palette === 'string') {
       base.paletteMode = d.palette as PaletteId;
     } else if (d.palette && typeof d.palette === 'object' && 'from' in d.palette) {
@@ -70,6 +73,11 @@ function studioFor(source: string, prev?: Partial<Studio>): Studio {
       base.theme = d.palette.theme ?? 'dark';
     }
     if (typeof d.intensity === 'number') base.intensity = d.intensity;
+  };
+  const preset = presets.find((p) => p.id === source);
+  if (preset) {
+    base.scene = JSON.parse(JSON.stringify(preset.scene)) as Scene;
+    applyDefaults(preset.defaults);
     return base;
   }
   if (source === 'scene') {
@@ -78,6 +86,7 @@ function studioFor(source: string, prev?: Partial<Studio>): Studio {
   }
   const skin = getSkin(source);
   base.skinOptions = skin?.schema ? schemaDefaults(skin.schema) : {};
+  applyDefaults(skin?.defaults);
   return base;
 }
 

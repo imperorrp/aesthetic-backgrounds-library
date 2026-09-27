@@ -18,6 +18,7 @@ import { gridLayer } from './grid';
 import { auroraLayer } from './aurora';
 import { lightFollowLayer } from './light-follow';
 import { glyphRainLayer } from './glyph-rain';
+import { contentShadeLayer } from './content-shade';
 
 export const standardLayers: readonly Layer[] = [
   gradientBaseLayer,
@@ -31,6 +32,7 @@ export const standardLayers: readonly Layer[] = [
   gridLayer,
   lightFollowLayer,
   vignetteLayer,
+  contentShadeLayer,
   grainLayer,
   scanlinesLayer,
 ];
@@ -51,6 +53,7 @@ export {
   gridLayer,
   lightFollowLayer,
   vignetteLayer,
+  contentShadeLayer,
   grainLayer,
   scanlinesLayer,
 };

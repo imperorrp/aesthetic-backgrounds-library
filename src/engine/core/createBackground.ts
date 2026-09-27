@@ -89,10 +89,9 @@ export function createBackground<T = any>(
     },
   };
 
-  const instance = skin.mount(host);
-
   // ---- sizing ----------------------------------------------------------------------------
   let destroyed = false;
+  let instance: ReturnType<BackgroundSkin<T>['mount']> | null = null;
 
   const measure = (): Viewport => {
     let w = canvas.clientWidth;
@@ -108,8 +107,8 @@ export function createBackground<T = any>(
     };
   };
 
-  const applySize = () => {
-    if (destroyed) return;
+  /** Size the backing store and update `viewport`. Returns true when the CSS size changed. */
+  const syncSize = (): boolean => {
     const next = measure();
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
     const backingW = Math.max(1, Math.round(next.width * dpr));
@@ -121,17 +120,31 @@ export function createBackground<T = any>(
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     viewport.dpr = dpr;
-    if (next.width === viewport.width && next.height === viewport.height) return;
+    if (next.width === viewport.width && next.height === viewport.height) return false;
     viewport.width = next.width;
     viewport.height = next.height;
     viewport.isMobile = next.width < MOBILE_BREAKPOINT;
-    instance.resize(next);
+    return true;
+  };
+
+  const applySize = () => {
+    if (destroyed || !instance) return;
+    if (!syncSize()) return;
+    instance.resize({ width: viewport.width, height: viewport.height });
     if (state.motion === 'off') renderOnce();
   };
 
+  // The skin sees the real size at mount time; world generation depends on it.
+  syncSize();
+  instance = skin.mount(host);
+  // Guarantee: resize() runs once before the first frame.
+  instance.resize({ width: viewport.width, height: viewport.height });
+
   // ---- frame loop ------------------------------------------------------------------------
   const interval = 1000 / resolved.targetFps;
-  const budgetMs = interval * 0.6;
+  // Frame-time budget for the governor: leave headroom for the page, but do not
+  // start trimming until a frame is clearly over its share.
+  const budgetMs = interval * 0.75;
   let running = false;
   let handle = 0;
   let startTime = -1;
@@ -141,8 +154,8 @@ export function createBackground<T = any>(
 
   const governor = (costMs: number) => {
     costEma = costEma === 0 ? costMs : costEma * 0.9 + costMs * 0.1;
-    if (costEma > budgetMs && state.quality > 0.3) {
-      state.quality = Math.max(0.3, +(state.quality - 0.05).toFixed(2));
+    if (costEma > budgetMs && state.quality > 0.4) {
+      state.quality = Math.max(0.4, +(state.quality - 0.04).toFixed(2));
       costEma = budgetMs * 0.8; // hysteresis: wait for new samples before stepping again
     } else if (costEma < budgetMs * 0.35 && state.quality < 1) {
       state.quality = Math.min(1, +(state.quality + 0.01).toFixed(2));
@@ -162,7 +175,7 @@ export function createBackground<T = any>(
     pointer.vy *= decay;
 
     const began = perf.now();
-    instance.frame(info);
+    instance!.frame(info);
     if (resolved.adaptiveQuality) governor(perf.now() - began);
   };
 
@@ -257,7 +270,7 @@ export function createBackground<T = any>(
   document.addEventListener('visibilitychange', onVisibility);
   reducedQuery?.addEventListener?.('change', onMotionChange);
 
-  applySize(); // first size change also renders the single frame when motion is off
+  if (state.motion === 'off') renderOnce();
   sync();
 
   return {
@@ -285,7 +298,7 @@ export function createBackground<T = any>(
       window.removeEventListener('pointercancel', onPointerUp);
       document.removeEventListener('visibilitychange', onVisibility);
       reducedQuery?.removeEventListener?.('change', onMotionChange);
-      instance.destroy();
+      instance?.destroy();
     },
   };
 }

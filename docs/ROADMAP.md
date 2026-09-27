@@ -324,7 +324,13 @@ Still open in M2: decompose void-tactical's canvas into separate layers (stars, 
 - Six presets across at least four niches, including one light-mode preset.
 - Acceptance: a new preset can be authored in the playground and pasted into `mount()` as JSON with no code.
 
-### M3 — The aesthetic bar (parallel, ongoing)
+### M3 — The aesthetic bar (parallel, ongoing) — **art pass done 2026-09-26**
+
+Fixed first: a host bug from M1 mounted skins before the first size pass, so void-tactical generated its world into a 1x1 viewport and looked empty; the host now sizes before `mount()` and guarantees one `resize()` before the first frame. The studio also carried a light preset palette into dark skins; skins now declare `defaults` and the studio resets to them.
+
+Art pass on void-tactical, compared side by side with the original commit at the same seed: all authored colors flow through a memoized OKLCH mapper toward the palette family (`hueVariety` knob); ASCII sprites render crisp at their display size with soft cached halos and tactical bracket corners instead of flat discs; system links are a faint lane with flowing packet dashes and ring nodes; hex radars gained a radar sweep; fleet predicted paths are fading waypoint dots (or dashed) that break at wraps, so no line ever crosses the viewport; trails break at wraps too; anomalies use the palette hazard color; HUD elements (grid, sector links, labels, telemetry, overlays) scale with one `hud` knob; `lineWeight`, `spriteScale`, `paths`, `trails` knobs; the CSS plate is palette-relative via `color-mix`. The quality governor no longer touches entity budgets (only stars, gently) and its budget is 75% of the frame, so a slow machine never guts the scene. New `content-shade` layer (feathered legibility mask) and a `probeContrast()` utility with tests. Calm-mesh gained a second multiply mesh pass for depth. 94 tests.
+
+Still open: contrast probe wired into a `skin:check` script with real pixels (needs Playwright); tune every preset behind a real text column; decompose void-tactical into layers.
 
 - Art pass on void-tactical: palette-derived structure colors, connection lines to ≤ 1 px and ≤ 0.25 alpha, fleet path projection clipped (no wrap lines), sprites at legible size or replaced with vector glyphs, label budget tied to `intensity`.
 - `calm-mesh` as the flagship "premium at a glance" preset, tuned in both themes.
