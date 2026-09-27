@@ -351,13 +351,69 @@ Shipped: `pnpm create-skin <id>` (template following the conventions, registers 
 - `create-skin` scaffold, `skin:check`, `SKILL.md` + mirrors, `skin-manifest.json`, showcase site on GitHub Pages with per-preset permalinks.
 - Publish 0.2.0.
 
-### M5 — Stretch
+---
 
-- WebGL/shader layer kind (fluid, blur-heavy meshes, refraction) behind the same `Layer` contract.
-- Audio-reactive input source (Web Audio) as a host input like `pointer`.
-- Scroll-driven parameter binding; theme sync with `prefers-color-scheme` and host theme toggles.
-- Vue/Svelte wrappers, or a documented decision that `mount()` is the wrapper.
-- Community gallery with submitted presets and manifests.
+## Proposed next milestones (M5–M9, not yet approved)
+
+Written 2026-09-27 after M0–M4 closed. Ordered by what unlocks the most; each has an acceptance line so it can be closed rather than drift. Nothing here is started.
+
+### M5 — Showcase and studio depth
+
+The product is judged by the studio and the gallery before anyone reads the API.
+
+- Showcase site on GitHub Pages: gallery from the e2e baselines, per-preset pages with permalinks, "remix in studio" button, embeddable share cards.
+- Studio: layer thumbnails (rendered from a manual-clock mini mount), undo/redo, keyboard nudging of sliders, A/B toggle between two scene states, "randomize within taste" (perturb options inside schema ranges by a seed).
+- Export: PNG/WebP that includes DOM layers (canvas equivalents for `grain` and `scanlines` behind an `exportMode`), MP4/WebM loop via `MediaRecorder` at a fixed clock, JSON preset file download/upload.
+- Content awareness: measure the page's main content boxes automatically and propose `content-shade` geometry; readout per box.
+- Acceptance: a stranger can go from the gallery to a pasted `mount()` call in under two minutes, and export a 10 s loop of any preset.
+
+### M6 — Rendering tiers
+
+Canvas 2D is the floor; some looks need the GPU.
+
+- `Layer.kind: 'webgl'`: a shader layer contract (fragment shader + uniforms from schema, palette, time, pointer) compositing onto the scene through a private surface. First shaders: volumetric nebula, fluid ink, refraction/glass over the stack, bloom pass.
+- OffscreenCanvas + worker rendering for heavy scenes, with the main thread only compositing; falls back silently.
+- Adaptive resolution: the governor may lower backing DPR before thinning content; per-layer LOD hints in schema (`quality` tiers).
+- Frame scheduler: heavy layers may run at half rate and interpolate; budget shared across multiple mounts on one page.
+- Acceptance: void-sector holds 60 fps at 1440p on an integrated GPU laptop with the governor at 1.0; a shader layer is authored with the same schema tooling as a canvas layer.
+
+### M7 — Inputs and reactivity
+
+Backgrounds that respond feel alive; the host already owns pointer and intensity.
+
+- Scroll binding: scene keyframes by scroll progress (intensity, palette, layer opacity, camera) with easing; per-section scenes that crossfade as sections enter.
+- Theme sync: follow `prefers-color-scheme` and a host `data-theme` attribute, swapping palette with a crossfade rather than a remount.
+- Audio input (Web Audio analyser) as `host.audio` with bands and beat; layers opt in.
+- Device motion parallax on mobile (gyroscope), respecting motion policy.
+- App state binding: `handle.set({ intensity, palette })` without remount, and a tiny store adapter for React/Vue/Svelte.
+- Acceptance: a long landing page with three sections runs three scenes with crossfades and no remount jank; a theme toggle swaps palettes in place.
+
+### M8 — Ecosystem and distribution
+
+Make it easy to publish, find, and trust other people's work.
+
+- Preset registry: `skin-manifest.json` per preset/skin (id, tags, moods, niches, preview, defaults, cost tier, light/dark), a community index built by CI from submissions, gallery reads it.
+- Framework wrappers: Vue, Svelte, Astro island, Next.js client component, all thin over `mount()`; a Tailwind plugin that exposes `--bge-*` tokens as utilities.
+- CDN "full" and "core" builds with import maps documented; versioned preset permalinks.
+- Design-tool bridge: export the palette to Figma tokens; import brand tokens from a `tokens.json`.
+- Publish cadence with changesets; semver policy for schema changes (adding fields is minor, changing defaults is minor with baseline refresh, removing is major).
+- Acceptance: a third party publishes a preset package that appears in the gallery via manifest alone, with no code change in this repo.
+
+### M9 — Aesthetic depth
+
+Taste as system, not as one-off tuning.
+
+- Palette harmonies: duotone, analogous, triadic, split-complement derived from one brand color; per-layer role tokens (`plate`, `mid`, `highlight`, `alert`) instead of raw `accent` everywhere.
+- Global lighting: a shared light direction and warmth that base plates, glows, and sprites read from, so layers agree on where light comes from.
+- Composition grammar: anchor points and negative space rules the presets follow (rule of thirds for focal systems, quiet zones behind content), encoded as preset metadata the studio can visualize.
+- Scene transitions: crossfade, wipe, and morph (option interpolation) between scenes at a fixed clock; deterministic.
+- "Moments": rare, seeded events with a long return period (a comet, a supernova flare, a fleet convoy) so a background rewards long looks without ever being busy.
+- Content-aware auto-shade on by default at `intensity` above a threshold behind measured text boxes.
+- Acceptance: every preset passes a stricter gate (mean contrast at or above 7:1 behind text) and a blind side-by-side against its 0.2.0 baseline is preferred by the maintainer.
+
+### Beyond
+
+Void-tactical's own evolution (factions, lanes, events, sensor model) has its own ideas document: [VOID_TACTICAL_IDEAS.md](VOID_TACTICAL_IDEAS.md). It is a candidate M10 once M9's lighting and moments land, since it builds on both.
 
 ---
 
@@ -371,7 +427,7 @@ Shipped: `pnpm create-skin <id>` (template following the conventions, registers 
 
 ## Open decisions
 
-1. **Name.** One of: `space-background-engine` (current npm), `aesthetic-backgrounds-library` (current GitHub), or something short and neutral. Element tag should match. Decide before 0.2.
+1. **Name.** One of: `space-background-engine` (current npm), `aesthetic-backgrounds-library` (current GitHub), or something short and neutral. Element tag should match. Candidates as of 2026-09-27 (npm availability not yet verified): **Wallflower** (a background that is quietly beautiful and stays out of the way), **Scrim** (the lit translucent backdrop in theatre), **Cyclorama** (the painted sky behind a stage), **Skybox** (the game term for the environment behind everything), **Farfield**, **Nightglass**, **Slowlight**, **Afterglow**, **Firmament**, **Undertow**, **Penumbra**. Element tag would follow the name (`<wallflower-bg>`, `<scrim-bg>`).
 2. **Fonts.** Ship no web fonts and use system stacks (privacy, zero requests), or opt-in Google Fonts injection. Recommendation: system stacks by default; a `fonts` option for skins that need a display face.
 3. **Light mode as first-class.** Most premium landing pages are light. Recommendation: yes, via palette derivation in M1, with `calm-mesh` as the first light preset.
 4. **WebGL now or later.** Later. Canvas 2D covers every niche above at acceptable frame budgets once culling and batching are consistent; WebGL is a `Layer.kind`, not a rewrite.
