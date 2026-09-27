@@ -65,7 +65,8 @@ export function createBackground<T = any>(
     if (resolved.motion !== 'auto') return resolved.motion;
     return reducedQuery?.matches ? 'reduced' : 'full';
   };
-  const state = { motion: computeMotion(), quality: 1 };
+  // dprScale is the governor's first lever: render at fewer pixels before thinning content.
+  const state = { motion: computeMotion(), quality: 1, dprScale: 1 };
 
   const host: SkinHost<T> = {
     canvas,
@@ -110,7 +111,7 @@ export function createBackground<T = any>(
   /** Size the backing store and update `viewport`. Returns true when the CSS size changed. */
   const syncSize = (): boolean => {
     const next = measure();
-    const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    const dpr = Math.max(0.5, Math.min(window.devicePixelRatio || 1, MAX_DPR) * state.dprScale);
     const backingW = Math.max(1, Math.round(next.width * dpr));
     const backingH = Math.max(1, Math.round(next.height * dpr));
     if (canvas.width !== backingW || canvas.height !== backingH) {
@@ -152,13 +153,26 @@ export function createBackground<T = any>(
   let frameIndex = 0;
   let costEma = 0;
 
+  /**
+   * Two levers, in order: resolution (backing-store scale 1 → 0.75 → 0.5), then content
+   * (`quality` down to 0.4). Recovery walks back in reverse, slowly.
+   */
   const governor = (costMs: number) => {
     costEma = costEma === 0 ? costMs : costEma * 0.9 + costMs * 0.1;
-    if (costEma > budgetMs && state.quality > 0.4) {
-      state.quality = Math.max(0.4, +(state.quality - 0.04).toFixed(2));
+    if (costEma > budgetMs) {
+      if (state.dprScale > 0.5 && viewport.dpr > 0.75) {
+        state.dprScale = Math.max(0.5, +(state.dprScale - 0.25).toFixed(2));
+        syncSize();
+      } else if (state.quality > 0.4) {
+        state.quality = Math.max(0.4, +(state.quality - 0.04).toFixed(2));
+      }
       costEma = budgetMs * 0.8; // hysteresis: wait for new samples before stepping again
-    } else if (costEma < budgetMs * 0.35 && state.quality < 1) {
-      state.quality = Math.min(1, +(state.quality + 0.01).toFixed(2));
+    } else if (costEma < budgetMs * 0.35) {
+      if (state.quality < 1) state.quality = Math.min(1, +(state.quality + 0.01).toFixed(2));
+      else if (state.dprScale < 1 && frameIndex % 120 === 0) {
+        state.dprScale = Math.min(1, +(state.dprScale + 0.25).toFixed(2));
+        syncSize();
+      }
     }
   };
 

@@ -357,7 +357,13 @@ Shipped: `pnpm create-skin <id>` (template following the conventions, registers 
 
 Written 2026-09-27 after M0–M4 closed. Ordered by what unlocks the most; each has an acceptance line so it can be closed rather than drift. Nothing here is started.
 
-### M5 — Showcase and studio depth
+### M5 — Showcase and studio depth — **done 2026-09-27**
+
+Shipped: preset gallery in the studio (cards built from the e2e baselines via `pnpm sync-gallery` into `public/gallery`, so a card shows the exact pixels the tests protect); undo/redo with Ctrl/Cmd+Z and Shift variant; "Randomize" that perturbs every option inside its schema range from a seed, leaving the stack and palette alone; "Fit shade" that measures the page's content boxes and inserts or refits a `content-shade` layer; exports for PNG, WebP, an 8 s WebM loop recorded on a fixed clock, and preset JSON with matching load; `snapshotScene()` plus per-layer `snapshot()` so exported stills include DOM layers; GitHub Pages workflow building the studio with `pnpm build:site`.
+
+Two bugs found on the way. React re-invokes state updaters (twice under StrictMode), so mutating the history stacks inside one corrupted undo/redo; history is now mutated outside the updater. And `grain`/`scanlines` rendered at z-index 3 and 4 beneath a canvas at 10 that `gradient-base` fills opaquely, so those textures had been invisible in every standard preset since M2; layers now declare `domPlacement` and the finishing textures sit above the canvas. Void-tactical was unaffected because its canvas is transparent.
+
+### M5 — original plan
 
 The product is judged by the studio and the gallery before anyone reads the API.
 
@@ -367,7 +373,15 @@ The product is judged by the studio and the gallery before anyone reads the API.
 - Content awareness: measure the page's main content boxes automatically and propose `content-shade` geometry; readout per box.
 - Acceptance: a stranger can go from the gallery to a pasted `mount()` call in under two minutes, and export a 10 s loop of any preset.
 
-### M6 — Rendering tiers
+### M6 — Rendering tiers — **first slice done 2026-09-27**
+
+Shipped: `Layer.gl` with `createShaderLayer()`, a fragment-shader contract on a private WebGL2 surface composited like any other layer. Uniforms come from the frame, host, palette, and every numeric, boolean, and color schema field, so shaders are configured by the same schema tooling and stay deterministic (verified: identical PNGs for one seed, different for another). A GLSL prelude ships hash, value noise, and fbm. Two shader layers (`nebula`, `ink-flow`) and two presets (`nebula-drift`, `ink-wash`). Missing WebGL2 logs once and skips the layer rather than failing the mount. `Layer.rate` allows half-rate updates for heavy layers, re-compositing the last image between renders. The quality governor gained a first lever: backing-store scale steps 1 → 0.75 → 0.5 before any content thinning, and recovers in reverse.
+
+Measured: a full-screen fbm shader costs about 134 ms per render under SwiftShader (no GPU), which is why the e2e harness now steps frames in chunks with yields, and GPU subjects settle in 90 frames rather than 240. On a real GPU these are ordinary fullscreen passes.
+
+Still open in M6: OffscreenCanvas and worker rendering; per-layer LOD tiers in schema; a frame budget shared across multiple mounts on one page; refraction and bloom passes.
+
+### M6 — original plan
 
 Canvas 2D is the floor; some looks need the GPU.
 
@@ -427,7 +441,7 @@ Void-tactical's own evolution (factions, lanes, events, sensor model) has its ow
 
 ## Open decisions
 
-1. **Name.** One of: `space-background-engine` (current npm), `aesthetic-backgrounds-library` (current GitHub), or something short and neutral. Element tag should match. Candidates as of 2026-09-27 (npm availability not yet verified): **Wallflower** (a background that is quietly beautiful and stays out of the way), **Scrim** (the lit translucent backdrop in theatre), **Cyclorama** (the painted sky behind a stage), **Skybox** (the game term for the environment behind everything), **Farfield**, **Nightglass**, **Slowlight**, **Afterglow**, **Firmament**, **Undertow**, **Penumbra**. Element tag would follow the name (`<wallflower-bg>`, `<scrim-bg>`).
+1. **Name.** Decided 2026-09-27: keep `space-background-engine` on npm with the "Aesthetic Background Engine" title and the `<bg-engine>` tag. Candidates considered and set aside: Wallflower, Scrim, Cyclorama, Skybox, Farfield, Nightglass.
 2. **Fonts.** Ship no web fonts and use system stacks (privacy, zero requests), or opt-in Google Fonts injection. Recommendation: system stacks by default; a `fonts` option for skins that need a display face.
 3. **Light mode as first-class.** Most premium landing pages are light. Recommendation: yes, via palette derivation in M1, with `calm-mesh` as the first light preset.
 4. **WebGL now or later.** Later. Canvas 2D covers every niche above at acceptable frame budgets once culling and batching are consistent; WebGL is a `Layer.kind`, not a rewrite.

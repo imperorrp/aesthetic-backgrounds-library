@@ -89,6 +89,8 @@ mount('#hero', { skin: 'aurora-night', palette: '#22d3ee' });     // override th
 | `deep-field` | space, sci-fi (no HUD) | dark |
 | `flow-lines` | data, science, analytics | dark |
 | `fireflies` | nature, wellness, quiet portfolios | dark |
+| `nebula-drift` | space, music, events | dark |
+| `ink-wash` | editorial, studios, portfolios | light |
 | `paper-grid` | editorial, brutalist | light |
 
 **React:**
@@ -166,6 +168,26 @@ mount(document.body, {
 Standard layers: `gradient-base`, `mesh-gradient`, `aurora`, `starfield`, `particles-drift`, `plexus`, `flow-field`, `glyph-rain`, `grid`, `light-follow`, `vignette`, `content-shade` (a feathered shade behind your text column so any scene passes a contrast check), `grain`, `scanlines`. Any whole skin can also be used as a layer (`fromSkin`), and `void-tactical` registers itself that way. Every layer reads colors from the palette or from tokens like `accent` and `inkDim`, scales itself by `intensity` and `quality`, and draws deterministically from the seeded streams.
 
 Options are validated against each layer's schema: numbers are clamped, unknown enum values fall back to defaults, and nothing throws on a typo in a JSON preset. The same schema drives the playground controls and is what an agent fills in when it builds a scene for you.
+
+### Shader layers
+
+Layers can render on the GPU. `createShaderLayer` takes a GLSL ES 3.00 fragment shader and gives it a private WebGL2 surface composited like any other layer. Uniforms arrive from the frame (`u_time`, `u_dt`), the host (`u_resolution`, `u_pointer`, `u_intensity`, `u_quality`, `u_seed`), the palette (`u_bg`, `u_accent`, `u_ink`, `u_hazard`), and every numeric, boolean, and color field in your schema as `u_<name>`. A prelude provides `hash21`, `vnoise`, and `fbm`.
+
+```ts
+import { createShaderLayer } from 'space-background-engine/shader';
+import { registerLayer } from 'space-background-engine/core';
+
+registerLayer(createShaderLayer({
+  id: 'haze', label: 'Haze', schema: { scale: { type: 'number', min: 1, max: 6, default: 3 } },
+  fragment: `void main() {
+    float n = fbm(v_uv * u_scale + u_time * 0.05, 4);
+    float a = smoothstep(0.0, 0.8, n) * 0.4 * u_intensity;
+    fragColor = vec4(u_accent * a, a);
+  }`,
+}));
+```
+
+Because every input is a uniform, shader layers stay deterministic: the same seed renders identical pixels. Built-in shader layers are `nebula` and `ink-flow`. Where WebGL2 is unavailable the layer logs once and is skipped, and the rest of the scene renders normally. Heavy layers can set `rate: 0.5` to render every other frame.
 
 To publish your own preset, wrap a scene:
 
@@ -309,6 +331,6 @@ pnpm size         # Gzip budget per entry closure (run after build:lib)
 
 **Browser gates.** `pnpm test:e2e` renders every built-in skin and preset through `/check.html`, a harness that mounts with a manual clock at a fixed seed and steps a fixed number of frames, so each render is reproducible. For each subject it asserts three things: the render matches its stored screenshot in `e2e/__screenshots__` (visual regression, per platform), the palette ink keeps at least WCAG AA contrast over the canvas behind a 40rem text column with no more than a small share of failing pixels, and two independent browser contexts produce byte-identical PNGs for the same seed. After an intentional visual change, refresh baselines with `pnpm test:e2e:update` and commit them. The first run on a new platform writes its own baselines.
 
-The playground at `/` is a scene studio: pick a preset or skin, edit the layer stack with controls generated from each schema, derive a palette from a brand color, and copy the resulting `mount()` call. The URL hash holds the whole state, so a link reproduces the exact background.
+The playground at `/` is a scene studio: browse the preset gallery, edit the layer stack with controls generated from each schema, derive a palette from a brand color, undo and redo with Ctrl/Cmd+Z, hit **Randomize** to perturb every option inside its schema range, and **Fit shade** to place a legibility mask over the page's content column. Export a `mount()` call, a preset JSON, a PNG or WebP (DOM layers included), or an 8 second WebM loop rendered on a fixed clock. The URL hash holds the whole state, so a link reproduces the exact background. Run `pnpm sync-gallery` once to populate the gallery thumbnails from the test baselines.
 
 Smoke pages served by the dev server: `/quick.html` (`mount(document.body)`), `/element.html` (`<bg-engine>`), `/skins.html` (container mounts with skin ids and palettes).

@@ -24,10 +24,18 @@ type Probe = {
   samples: number;
 };
 
+/**
+ * Shader layers rasterize on the CPU wherever there is no GPU (CI, and Playwright's
+ * Chromium locally), so these settle in fewer frames. Determinism is asserted per
+ * subject at whatever count it uses, so this only trades run time, not strictness.
+ */
+const GPU_SUBJECTS = new Set(['nebula-drift', 'ink-wash']);
+const framesFor = (skin: string) => (GPU_SUBJECTS.has(skin) ? '90' : '240');
+
 async function openCheck(page: Page, skin: string, extra: Record<string, string> = {}) {
-  const params = new URLSearchParams({ skin, seed: 'orion-7', frames: '240', ...extra });
+  const params = new URLSearchParams({ skin, seed: 'orion-7', frames: framesFor(skin), ...extra });
   await page.goto(`/check.html?${params.toString()}`);
-  await page.waitForSelector('body[data-ready="1"]', { timeout: 30_000 });
+  await page.waitForSelector('body[data-ready="1"]', { timeout: 90_000 });
 }
 
 for (const skin of SUBJECTS) {

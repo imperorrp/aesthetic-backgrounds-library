@@ -50,6 +50,10 @@
       "types": "./types/entries/skins/matrix-rain.d.ts",
       "import": "./dist/skins/matrix-rain.js"
     },
+    "./shader": {
+      "types": "./types/entries/shader.d.ts",
+      "import": "./dist/shader.js"
+    },
     "./layers": {
       "types": "./types/entries/layers.d.ts",
       "import": "./dist/layers.js"
@@ -87,6 +91,8 @@
     "test:e2e:update": "playwright test --update-snapshots",
     "create-skin": "node scripts/create-skin.mjs",
     "skin:check": "node scripts/skin-check.mjs",
+    "sync-gallery": "node scripts/sync-gallery.mjs",
+    "build:site": "pnpm sync-gallery && vite build --base=./",
     "size": "node scripts/size-check.mjs",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build:lib && pnpm size"
   },

@@ -14,19 +14,22 @@ const DIST = resolve('dist');
 
 /** gzip KB budgets per entry closure. Raise deliberately, with a note in the commit. */
 const BUDGETS_KB = {
-  // host + scene compositor + schema: must never pull a skin or a layer
-  'core.js': 12,
+  // host + scene compositor + schema: must never pull a skin, a layer, or the GLSL prelude.
+  // 13 covers the compositor's WebGL surface handling and snapshotScene (M5/M6).
+  'core.js': 13,
+  // shader authoring (GLSL prelude + program setup), opt-in
+  'shader.js': 15,
   'skins/drifting-dust.js': 11,
   'skins/matrix-rain.js': 11,
   // the sector map skin plus its five part layers and the void-sector preset
   'skins/void-tactical.js': 33,
-  // standard layer library and the presets built from it (no skins)
+  // standard layer library (now including two shader layers) and the presets built from it
   'layers.js': 20,
   'presets.js': 22,
   // batteries included: core + all skins + layers + presets (+ element / react adapters)
-  'index.js': 53,
-  'element.js': 54,
-  'react.js': 54,
+  'index.js': 58,
+  'element.js': 58,
+  'react.js': 58,
 };
 
 function walk(dir, out = []) {

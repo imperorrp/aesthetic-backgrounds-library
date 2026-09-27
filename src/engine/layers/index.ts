@@ -19,10 +19,14 @@ import { auroraLayer } from './aurora';
 import { lightFollowLayer } from './light-follow';
 import { glyphRainLayer } from './glyph-rain';
 import { contentShadeLayer } from './content-shade';
+import { nebulaLayer } from './nebula';
+import { inkFlowLayer } from './ink-flow';
 
 export const standardLayers: readonly Layer[] = [
   gradientBaseLayer,
   meshGradientLayer,
+  nebulaLayer,
+  inkFlowLayer,
   auroraLayer,
   starfieldLayer,
   particlesDriftLayer,
@@ -44,6 +48,8 @@ registerSkin(sceneSkin);
 export {
   gradientBaseLayer,
   meshGradientLayer,
+  nebulaLayer,
+  inkFlowLayer,
   auroraLayer,
   starfieldLayer,
   particlesDriftLayer,

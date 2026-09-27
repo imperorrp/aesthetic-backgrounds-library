@@ -31,11 +31,31 @@ export type Layer<T = any> = {
    * required for layers that fade their previous frame or use destination masks.
    */
   surface?: 'shared' | 'own';
-  /** DOM elements placed behind the canvas inside the engine root. Return a cleanup. */
+  /** DOM elements placed inside the engine root. Return a cleanup. */
   dom?(root: HTMLElement, context: SkinLayerContext<T>): () => void;
+  /**
+   * Where the DOM part sits relative to the canvas. `below` (default) for plates and
+   * textures the canvas draws over; `above` for finishing passes such as grain and
+   * scanlines, which must overlay the canvas to be visible at all.
+   */
+  domPlacement?: 'below' | 'above';
   /** Canvas drawing. Optional for pure DOM layers. */
   canvas?(host: LayerHost<T>): LayerInstance;
+  /**
+   * Draw a still equivalent of the DOM part onto a 2D context, for exports that need
+   * DOM layers (grain, scanlines, CSS plates) baked into an image.
+   */
+  snapshot?(ctx: CanvasRenderingContext2D, viewport: Viewport, context: SkinLayerContext<T>): void;
+  /** WebGL drawing on a private WebGL2 surface. See `createShaderLayer`. */
+  gl?(host: GLLayerHost<T>): LayerInstance;
+  /**
+   * Update cadence for private-surface layers: 1 (default) every frame, 0.5 every other
+   * frame (the last image is re-composited in between). Cheap way to halve a heavy layer's cost.
+   */
+  rate?: 1 | 0.5;
 };
+
+export type GLLayerHost<T = any> = LayerHost<T> & { gl: WebGL2RenderingContext; glCanvas: HTMLCanvasElement };
 
 const layers = new Map<string, Layer>();
 

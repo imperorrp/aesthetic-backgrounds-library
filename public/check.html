@@ -60,7 +60,16 @@
       document.body.style.background = resolved.bg;
       document.getElementById('column').style.color = resolved.ink;
 
-      if (scheduler) scheduler.step(frames);
+      // Step in chunks with a yield between them. A single synchronous run of a few
+      // hundred frames can exceed the browser's unresponsive-page threshold when the
+      // renderer is software (CI has no GPU), which kills the tab mid-test.
+      if (scheduler) {
+        const chunk = 15;
+        for (let done = 0; done < frames; done += chunk) {
+          scheduler.step(Math.min(chunk, frames - done));
+          await new Promise((r) => setTimeout(r, 0));
+        }
+      }
 
       const canvas = handle.canvas;
       window.__bge = {

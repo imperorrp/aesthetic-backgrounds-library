@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **Shader layers.** `createShaderLayer` (from `space-background-engine/shader`) runs a GLSL ES 3.00 fragment shader on a private WebGL2 surface, composited like any other layer. Uniforms come from the frame, host, palette, and schema, so shaders stay deterministic and are configured by the same tooling. New `nebula` and `ink-flow` layers and the `nebula-drift` and `ink-wash` presets. Missing WebGL2 skips the layer instead of failing the mount.
+- **Adaptive resolution.** The quality governor now lowers the backing-store scale (1 → 0.75 → 0.5) before thinning content, and recovers in reverse. `Layer.rate: 0.5` renders a heavy layer every other frame.
+- **Studio.** Preset gallery, undo/redo, seeded "Randomize within schema ranges", "Fit shade" from measured content boxes, and exports for PNG, WebP, WebM loop, and preset JSON with load.
+- **Exports include DOM layers.** Layers can implement `snapshot()`; `snapshotScene()` bakes them around the live canvas in DOM order.
+- **Fix:** `grain` and `scanlines` rendered beneath an opaque canvas and were invisible in every standard preset. DOM layers now declare `domPlacement`, and finishing textures sit above the canvas.
+- **Fix:** studio undo/redo corrupted its stacks because history was mutated inside a React state updater, which React re-invokes.
+- GitHub Pages workflow publishes the studio; `pnpm sync-gallery` copies test baselines into the gallery.
+
 ## 0.2.0 — 2026-09-27
 
 First release built on the layer and scene model.

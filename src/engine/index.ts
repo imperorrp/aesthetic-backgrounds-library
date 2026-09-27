@@ -4,6 +4,7 @@
  */
 
 export * from '../entries/core';
+export * from '../entries/shader';
 
 export {
   builtInSkins,

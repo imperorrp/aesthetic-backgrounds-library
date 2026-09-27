@@ -6,6 +6,9 @@ types
 # Playwright output (snapshots under e2e/__screenshots__ are committed)
 test-results
 playwright-report
+
+# Copied from the e2e baselines by `pnpm sync-gallery`
+public/gallery
 .DS_Store
 *.local
 .env

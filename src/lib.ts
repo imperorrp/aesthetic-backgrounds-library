@@ -5,6 +5,7 @@
  * `space-background-engine/skins/*`, `/layers`, or `/presets` you use.
  */
 export * from './entries/core';
+export * from './entries/shader';
 export {
   builtInSkins,
   voidTacticalSkin,

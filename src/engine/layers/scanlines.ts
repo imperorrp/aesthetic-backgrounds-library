@@ -13,6 +13,8 @@ export const scanlinesLayer: Layer = {
   description: 'Repeating horizontal lines for a terminal or CRT feel.',
   tags: ['finish', 'retro', 'terminal'],
   schema,
+  // A finishing texture: it must sit over the canvas, which is otherwise opaque.
+  domPlacement: 'above',
   dom(root, { options }) {
     const o = options as { spacing: number; opacity: number; color: string };
     const line = o.color === 'light' ? '255,255,255' : '0,0,0';
@@ -24,9 +26,17 @@ export const scanlinesLayer: Layer = {
       'pointer-events:none',
       `opacity:${o.opacity}`,
       `background-image:repeating-linear-gradient(to bottom, rgba(${line},1) 0px, rgba(${line},1) 1px, transparent 1px, transparent ${o.spacing}px)`,
-      'z-index:4',
+      'z-index:22',
     ].join(';');
     root.appendChild(el);
     return () => el.remove();
+  },
+  snapshot(ctx, viewport, { options }) {
+    const o = options as { spacing: number; opacity: number; color: string };
+    ctx.save();
+    ctx.globalAlpha *= o.opacity;
+    ctx.fillStyle = o.color === 'light' ? '#ffffff' : '#000000';
+    for (let y = 0; y < viewport.height; y += o.spacing) ctx.fillRect(0, y, viewport.width, 1);
+    ctx.restore();
   },
 };

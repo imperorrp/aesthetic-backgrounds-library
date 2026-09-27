@@ -17,6 +17,7 @@ export default defineConfig({
         'skins/void-tactical': 'src/entries/skins/void-tactical.ts',
         'skins/drifting-dust': 'src/entries/skins/drifting-dust.ts',
         'skins/matrix-rain': 'src/entries/skins/matrix-rain.ts',
+        shader: 'src/entries/shader.ts',
         layers: 'src/entries/layers.ts',
         presets: 'src/entries/presets.ts',
       },

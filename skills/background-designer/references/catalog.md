@@ -13,6 +13,8 @@ Everything registered by `import 'space-background-engine'`. Ids are what `skin`
 | `flow-lines` | data, science, analytics | dark | gradient-base, grid (dots), flow-field, vignette |
 | `fireflies` | nature, wellness, warm | dark | gradient-base, particles-drift ×2, vignette, grain |
 | `paper-grid` | editorial, brutalist | light | gradient-base, grid (lines), particles-drift, grain |
+| `nebula-drift` | space, music, events | dark | gradient-base, nebula (GPU), starfield, vignette, grain |
+| `ink-wash` | editorial, studios, portfolios | light | gradient-base, ink-flow (GPU), grain |
 | `void-sector` | space, sci-fi, dense | dark | void-atmosphere, void-stars, void-systems, void-fleets, void-hud |
 
 Preset config defaults (palette, intensity, density, detail) apply beneath whatever you pass.
@@ -32,6 +34,10 @@ Base plates
 - `mesh-gradient`: soft overlapping color fields from the accent hue. `blobs`, `spread`, `size`, `speed`, `saturation`.
 - `void-atmosphere` (DOM): the sector map's CSS plate. Boolean toggles per CSS layer.
 
+GPU (WebGL2; skipped with a console warning where unavailable)
+- `nebula`: domain-warped noise clouds in two palette hues with dust lanes. `density`, `scale`, `speed`, `warp`, `dust`, `color`, `color2`.
+- `ink-flow`: marbled ink filaments. `scale`, `speed`, `sharpness`, `strength`, `color`. Reads as dark ink on light palettes.
+
 Motion
 - `aurora`: luminous ribbons on noise. `bands`, `height`, `speed`, `spread`, `ripple`, `position`. Blend `lighter` on dark.
 - `starfield`: parallax stars in depth bands. `density`, `bands`, `twinkle`, `drift`, `size`, `tint`.
@@ -46,8 +52,10 @@ Structure and finish
 - `light-follow`: pointer glow that fades when idle. `radius`, `strength`, `lag`, `color`.
 - `vignette`: edge falloff toward a color. `strength`, `size`, `color`.
 - `content-shade`: feathered shade behind the text area. `x`, `y`, `width`, `height`, `strength`, `feather`, `color`.
-- `grain` (DOM): SVG turbulence grain. `opacity`, `scale`, `blend`.
-- `scanlines` (DOM): CRT lines. `spacing`, `opacity`, `color`.
+- `grain` (DOM, above the canvas): SVG turbulence grain. `opacity`, `scale`, `blend`.
+- `scanlines` (DOM, above the canvas): CRT lines. `spacing`, `opacity`, `color`.
+
+DOM layers declare `domPlacement`: plates sit below the canvas, finishing textures above it. Both kinds can provide a `snapshot()` so exported images match the page.
 
 Color fields accept a palette token (`accent`, `ink`, `inkDim`, `bg`, `hazard`) or a hex.
 

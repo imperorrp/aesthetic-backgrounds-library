@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Background } from '../react-entry';
 import {
   COLOR_TOKENS,
   DETAIL_OPTIONS,
   PALETTE_OPTIONS,
   builtInSkins,
+  createRng,
   getLayer,
   getSkin,
   listLayers,
@@ -24,6 +25,16 @@ import {
   type Schema,
   voidSectorPreset,
 } from '../engine';
+import {
+  History,
+  contentShadeFor,
+  download,
+  exportImage,
+  exportVideo,
+  jitterOptions,
+  jitterScene,
+  type ExportOptions,
+} from './studio-tools';
 import './DemoPage.css';
 
 type PaletteMode = PaletteId | 'custom';
@@ -131,6 +142,9 @@ export default function DemoPage() {
   const [copied, setCopied] = useState(false);
   const [showContent, setShowContent] = useState(true);
   const [report, setReport] = useState<ContrastReport | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const historyRef = useRef(new History<Studio>());
+  const history = historyRef.current;
 
   // Live legibility readout: sample the canvas behind the sample column once a second.
   useEffect(() => {
@@ -169,9 +183,50 @@ export default function DemoPage() {
     window.history.replaceState(null, '', url.toString());
   }, [studio]);
 
-  const update = (patch: Partial<Studio>) => setStudio((s) => ({ ...s, ...patch }));
-  const setScene = (fn: (scene: Scene) => Scene) =>
-    setStudio((s) => (s.scene ? { ...s, scene: fn(s.scene) } : s));
+  // History is mutated here, never inside a state updater: React re-invokes updaters
+  // (StrictMode runs them twice in development), which would corrupt the stacks.
+  const studioRef = useRef(studio);
+  studioRef.current = studio;
+
+  const commit = (next: (s: Studio) => Studio) => {
+    const current = studioRef.current;
+    const out = next(current);
+    if (out === current) return;
+    history.push(current);
+    studioRef.current = out;
+    setStudio(out);
+  };
+  const update = (patch: Partial<Studio>) => commit((s) => ({ ...s, ...patch }));
+  const setScene = (fn: (scene: Scene) => Scene) => commit((s) => (s.scene ? { ...s, scene: fn(s.scene) } : s));
+
+  const undo = () => {
+    const out = history.undo(studioRef.current);
+    if (!out) return;
+    studioRef.current = out;
+    setStudio(out);
+    setSeedDraft(out.seed);
+  };
+  const redo = () => {
+    const out = history.redo(studioRef.current);
+    if (!out) return;
+    studioRef.current = out;
+    setStudio(out);
+    setSeedDraft(out.seed);
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLElement && /input|textarea|select/i.test(e.target.tagName);
+      if (typing || !(e.ctrlKey || e.metaKey)) return;
+      if (e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const sceneMode = isSceneSource(studio.source);
   const skin = sceneMode ? null : getSkin(studio.source);
@@ -206,17 +261,102 @@ export default function DemoPage() {
     }
   };
 
-  const exportPng = () => {
+  const exportArgs = (): ExportOptions => ({
+    skin: sceneMode ? 'scene' : studio.source,
+    scene: sceneMode ? studio.scene : null,
+    seed: studio.seed,
+    palette,
+    intensity: studio.intensity,
+    density: sceneMode ? undefined : studio.density,
+    detail: sceneMode ? undefined : studio.detail,
+    options: sceneMode ? undefined : studio.skinOptions,
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const saveImage = async (type: 'image/png' | 'image/webp') => {
+    setBusy(type === 'image/png' ? 'PNG…' : 'WebP…');
+    try {
+      const blob = await exportImage(exportArgs(), 240, type);
+      download(blob, `${studio.source}-${studio.seed}.${type === 'image/png' ? 'png' : 'webp'}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const saveVideo = async () => {
+    setBusy('Recording 0%');
+    try {
+      const blob = await exportVideo(exportArgs(), {
+        seconds: 8,
+        fps: 30,
+        onProgress: (p) => setBusy(`Recording ${Math.round(p * 100)}%`),
+      });
+      download(blob, `${studio.source}-${studio.seed}.webm`);
+    } catch (err) {
+      setBusy(null);
+      alert(err instanceof Error ? err.message : 'Recording failed');
+      return;
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const saveJson = () => {
+    download(new Blob([JSON.stringify(exportConfig, null, 2)], { type: 'application/json' }), `${studio.source}-${studio.seed}.json`);
+  };
+
+  const loadJson = async (file: File) => {
+    try {
+      const cfg = JSON.parse(await file.text()) as Record<string, unknown>;
+      const src = typeof cfg.skin === 'string' ? cfg.skin : 'scene';
+      const next = studioFor(presetIds.has(src) || getSkin(src) ? src : 'scene', studio);
+      if (cfg.options && typeof cfg.options === 'object' && 'layers' in (cfg.options as object)) next.scene = cfg.options as Scene;
+      else if (cfg.options) next.skinOptions = cfg.options as Record<string, unknown>;
+      if (typeof cfg.seed === 'string') next.seed = cfg.seed;
+      if (typeof cfg.intensity === 'number') next.intensity = cfg.intensity;
+      if (typeof cfg.palette === 'string') next.paletteMode = cfg.palette as PaletteMode;
+      else if (cfg.palette && typeof cfg.palette === 'object' && 'from' in (cfg.palette as object)) {
+        const p = cfg.palette as { from: string; theme?: 'dark' | 'light' };
+        next.paletteMode = 'custom';
+        next.customHex = p.from;
+        next.theme = p.theme ?? 'dark';
+      }
+      commit(() => next);
+      setSeedDraft(next.seed);
+    } catch {
+      alert('That file is not a background preset.');
+    }
+  };
+
+  /** Perturb every option inside its schema range; the stack and palette stay. */
+  const randomize = () => {
+    const key = randomSeedString();
+    commit((s) => {
+      if (s.scene) return { ...s, scene: jitterScene(s.scene, key, 0.3) };
+      const sk = getSkin(s.source);
+      if (!sk?.schema) return s;
+      const rng = createRng(key);
+      return { ...s, skinOptions: jitterOptions(sk.schema, { ...schemaDefaults(sk.schema), ...s.skinOptions }, rng, 0.3) };
+    });
+  };
+
+  /** Add or refit a content-shade layer to the measured content column. */
+  const fitShade = () => {
     const canvas = document.querySelector<HTMLCanvasElement>('.bg-engine-root canvas');
-    if (!canvas) return;
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${studio.source}-${studio.seed}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    }, 'image/png');
+    if (!canvas || !studio.scene) return;
+    const ref = contentShadeFor(canvas, 0.45);
+    if (!ref) return;
+    setScene((scene) => {
+      const i = scene.layers.findIndex((l) => l.use === 'content-shade');
+      if (i >= 0) return { layers: scene.layers.map((l, j) => (j === i ? { ...l, with: ref.with } : l)) };
+      const at = Math.max(0, scene.layers.findIndex((l) => l.use === 'grain' || l.use === 'scanlines'));
+      const layers = [...scene.layers];
+      layers.splice(at > 0 ? at : layers.length, 0, ref);
+      return { layers };
+    });
   };
 
   const applySeed = (next: string) => {
@@ -255,14 +395,38 @@ export default function DemoPage() {
         </main>
       )}
 
+      {galleryOpen && (
+        <Gallery
+          onPick={(id) => {
+            const next = studioFor(id, studio);
+            commit(() => next);
+            setSeedDraft(next.seed);
+            setGalleryOpen(false);
+          }}
+          onClose={() => setGalleryOpen(false)}
+        />
+      )}
+
       <header className="demo-hud">
-        <button type="button" className="demo-hud-toggle" onClick={() => setPanelOpen((o) => !o)} aria-expanded={panelOpen}>
-          {panelOpen ? 'Hide studio' : 'Show studio'}
-        </button>
+        <span className="demo-hud-row">
+          <button type="button" className="demo-hud-toggle" onClick={() => setGalleryOpen(true)}>
+            Gallery
+          </button>
+          <button type="button" className="demo-hud-toggle" onClick={() => setPanelOpen((o) => !o)} aria-expanded={panelOpen}>
+            {panelOpen ? 'Hide studio' : 'Show studio'}
+          </button>
+        </span>
 
         {panelOpen && (
           <div className="demo-panel">
             <p className="demo-kicker">Background engine · {studio.source}</p>
+
+            <div className="demo-text-row demo-toolbar">
+              <button type="button" onClick={undo} disabled={!history.canUndo} title="Ctrl/Cmd+Z">Undo</button>
+              <button type="button" onClick={redo} disabled={!history.canRedo} title="Ctrl/Cmd+Shift+Z">Redo</button>
+              <button type="button" onClick={randomize} title="Perturb every option inside its schema range">Randomize</button>
+              {sceneMode && <button type="button" onClick={fitShade} title="Fit a content-shade layer to the page's content column">Fit shade</button>}
+            </div>
 
             <label className="demo-field">
               <span>Source</span>
@@ -403,18 +567,77 @@ export default function DemoPage() {
               <textarea readOnly value={snippet} rows={8} spellCheck={false} aria-label="mount() snippet" />
               <div className="demo-text-row">
                 <button type="button" onClick={copySnippet}>{copied ? 'Copied' : 'Copy snippet'}</button>
-                <button type="button" onClick={exportPng} title="Canvas layers only; DOM layers such as grain are not included">PNG</button>
                 <button
                   type="button"
                   onClick={() => navigator.clipboard?.writeText(window.location.href).catch(() => undefined)}
                 >
                   Copy link
                 </button>
+                <button type="button" onClick={saveJson} title="Download this configuration as JSON">JSON</button>
+                <label className="demo-file-button" title="Load a preset JSON">
+                  Load
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) loadJson(f);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
               </div>
+              <div className="demo-text-row">
+                <button type="button" onClick={() => saveImage('image/png')} disabled={!!busy} title="Still image including DOM layers such as grain">
+                  PNG
+                </button>
+                <button type="button" onClick={() => saveImage('image/webp')} disabled={!!busy}>WebP</button>
+                <button type="button" onClick={saveVideo} disabled={!!busy} title="8 second loop at 30 fps, rendered on a fixed clock">
+                  WebM loop
+                </button>
+              </div>
+              {busy && <p className="demo-hint demo-busy">{busy}</p>}
             </div>
           </div>
         )}
       </header>
+    </div>
+  );
+}
+
+/**
+ * Preset gallery. Images are the e2e screenshot baselines copied to public/gallery
+ * by `pnpm sync-gallery`, so a card shows the exact pixels the tests protect.
+ */
+function Gallery({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
+  const [available, setAvailable] = useState<string[] | null>(null);
+  useEffect(() => {
+    fetch('/gallery/index.json')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: string[]) => setAvailable(list))
+      .catch(() => setAvailable([]));
+  }, []);
+  const entries = allPresets.map((p) => ({ id: p.id, label: p.label ?? p.id, description: p.description, tags: p.tags ?? [] }));
+  return (
+    <div className="demo-gallery" role="dialog" aria-label="Preset gallery">
+      <div className="demo-gallery-head">
+        <p className="demo-kicker">Presets</p>
+        <button type="button" onClick={onClose}>Close</button>
+      </div>
+      <div className="demo-gallery-grid">
+        {entries.map((e) => (
+          <button type="button" key={e.id} className="demo-card" onClick={() => onPick(e.id)}>
+            {available?.includes(e.id) ? (
+              <img src={`/gallery/${e.id}.png`} alt="" loading="lazy" />
+            ) : (
+              <span className="demo-card-placeholder">no preview yet</span>
+            )}
+            <strong>{e.label}</strong>
+            <em>{e.description}</em>
+            <span className="demo-card-tags">{e.tags.join(' · ')}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

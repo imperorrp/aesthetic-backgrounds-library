@@ -106,6 +106,36 @@ export const presetDefinitions: readonly PresetDefinition[] = [
     },
   },
   {
+    id: 'nebula-drift',
+    label: 'Nebula drift',
+    description: 'GPU nebula in two palette hues under a sparse starfield. Space, music, and event pages.',
+    tags: ['space', 'dark', 'calm', 'gpu'],
+    config: { palette: { from: '#8b5cf6' }, intensity: 0.75 },
+    scene: {
+      layers: [
+        { use: 'gradient-base', with: { tint: 0.15, drift: 0.1 } },
+        { use: 'nebula', with: { density: 0.6, scale: 1.5, speed: 0.25, warp: 0.65, dust: 0.5 } },
+        { use: 'starfield', with: { density: 0.5, bands: 2, twinkle: 0.5, drift: 0.1, size: 0.8, tint: 0.2 } },
+        { use: 'vignette', with: { strength: 0.5 } },
+        { use: 'grain', with: { opacity: 0.07 } },
+      ],
+    },
+  },
+  {
+    id: 'ink-wash',
+    label: 'Ink wash',
+    description: 'Marbled ink filaments on a light plate. Editorial, studios, and portfolios.',
+    tags: ['editorial', 'light', 'calm', 'gpu'],
+    config: { palette: { from: '#0f172a', theme: 'light' }, intensity: 0.7 },
+    scene: {
+      layers: [
+        { use: 'gradient-base', with: { tint: 0.1, drift: 0.1 } },
+        { use: 'ink-flow', with: { scale: 2.2, speed: 0.18, sharpness: 0.65, strength: 0.45 } },
+        { use: 'grain', with: { opacity: 0.1, blend: 'multiply' } },
+      ],
+    },
+  },
+  {
     id: 'paper-grid',
     label: 'Paper grid',
     description: 'Light editorial plate: fine ruled grid, a few drifting motes, heavy grain.',

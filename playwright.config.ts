@@ -7,8 +7,10 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: ['**/debug-*'],
-  timeout: 60_000,
+  testIgnore: ['**/debug-*', '**/zz*'],
+  // Shader layers fall back to software rasterization without a GPU (CI), so a
+  // settle-and-screenshot cycle can take a while.
+  timeout: 180_000,
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],

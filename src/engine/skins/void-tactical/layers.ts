@@ -32,6 +32,31 @@ export const voidAtmosphereLayer: Layer = {
     const stack = createOverlayStack(root, overlayFlags(options as Record<string, boolean>), { position: 'absolute' });
     return () => stack.destroy();
   },
+  /** Export equivalent of the gradient plate and grid; the SVG wallpaper layers are omitted. */
+  snapshot(ctx, viewport, { palette, options }) {
+    const flags = overlayFlags(options as Record<string, boolean>);
+    const { width, height } = viewport;
+    if (flags.gradient !== false) {
+      const g = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.hypot(width, height) / 2);
+      g.addColorStop(0, palette.bg);
+      g.addColorStop(0.55, `rgb(${palette.accentRgb.split(' ').join(', ')}, 0.07)`);
+      g.addColorStop(1, `rgb(${palette.accentRgb.split(' ').join(', ')}, 0.12)`);
+      ctx.fillStyle = palette.bg;
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, width, height);
+    }
+    if (flags.asciiGrid !== false) {
+      ctx.save();
+      ctx.strokeStyle = `rgba(${palette.accentRgb.split(' ').join(', ')}, 0.06)`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = 0; x < width; x += 60) { ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, height); }
+      for (let y = 0; y < height; y += 60) { ctx.moveTo(0, y + 0.5); ctx.lineTo(width, y + 0.5); }
+      ctx.stroke();
+      ctx.restore();
+    }
+  },
 };
 
 export const voidStarsLayer: Layer = {
