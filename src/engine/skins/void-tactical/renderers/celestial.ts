@@ -6,16 +6,17 @@
  */
 
 import type { SimSettings, SystemState, StarSystem, Structure } from '../types';
-import { accentRgba, FONT, getAsciiSprite, WORLD_SPEED_MULTIPLIER, type CanvasContext } from './utils';
+import { accentRgba, FONT, getAsciiSprite, WORLD_SPEED_MULTIPLIER, type CanvasContext, type RenderFrame } from './utils';
 import { shouldGlitchLabels, shouldShowPlanetLabel, shouldShowStructureLabel, shouldShowSystemLabel } from '../labels';
+import type { Rng } from '../../../rng';
 
 // Helper: glitch text effect for occasional distortion on structure labels
-const glitchText = (text: string) => {
-  if (Math.random() > 0.02) return text; // 98% normal
+const glitchText = (text: string, rng: Rng) => {
+  if (rng() > 0.02) return text; // 98% normal
   const chars = text.split('');
-  const idx = Math.floor(Math.random() * chars.length);
+  const idx = Math.floor(rng() * chars.length);
   const glyphs = "Ã€Ã Ã‚ÃƒÃ„Ã…Ã†Ã‡ÃˆÃ‰ÃŠÃ‹ÃŒÃ ÃŽÃ Ã +-/|<>[]"; // stylistic glyphs
-  chars[idx] = glyphs[Math.floor(Math.random() * glyphs.length)];
+  chars[idx] = glyphs[Math.floor(rng() * glyphs.length)];
   return chars.join('');
 };
 
@@ -23,14 +24,16 @@ export const renderCelestialBodies = (
   ctx: CanvasContext,
   bodies: SystemState['celestialBodies'],
   camera: { x: number, y: number },
-  viewport: { width: number, height: number }
+  viewport: { width: number, height: number },
+  frame: RenderFrame,
 ) => {
-  const parallaxFactorBodies = 0.2; 
+  const parallaxFactorBodies = 0.2;
+  const frames = frame.dt * 60;
 
   bodies.forEach(body => {
     // Update orbiting bodies logic (Keep existing logic)
     if (body.orbitRadius && body.orbitSpeed && body.orbitCenterX !== undefined && body.orbitCenterY !== undefined) {
-      body.orbitAngle = (body.orbitAngle || 0) + body.orbitSpeed;
+      body.orbitAngle = (body.orbitAngle || 0) + body.orbitSpeed * frames;
       body.x = body.orbitCenterX + Math.cos(body.orbitAngle) * body.orbitRadius;
       body.y = body.orbitCenterY + Math.sin(body.orbitAngle) * body.orbitRadius;
     }
@@ -79,7 +82,8 @@ export const renderStructures = (
   structures: Structure[],
   camera: { x: number, y: number },
   viewport: { width: number, height: number },
-  settings?: SimSettings,
+  settings: SimSettings | undefined,
+  frame: RenderFrame,
 ) => {
   const parallax = 0.25 * WORLD_SPEED_MULTIPLIER;
 
@@ -87,17 +91,17 @@ export const renderStructures = (
     // Calculate position relative to camera
     const relX = s.x - camera.x * parallax;
     const relY = s.y - camera.y * parallax;
-    
+
     // No wrapping for structures - they are fixed in the world and scroll by
     // Cull if off-screen (with buffer)
     if (relX < -200 || relX > viewport.width + 200 || relY < -200 || relY > viewport.height + 200) return;
-    
+
     const gx = relX;
     const gy = relY;
-    
+
     // Draw once
     const img = getAsciiSprite(s.kind, s.color || '#fff');
-    
+
     // Draw subtle halo for all structures
     ctx.save();
     ctx.shadowColor = s.color || '#fff';
@@ -108,7 +112,7 @@ export const renderStructures = (
     ctx.arc(gx, gy, img.width * 0.8, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    
+
     // Draw centered
     ctx.drawImage(img, gx - img.width/2, gy - img.height/2);
 
@@ -119,7 +123,7 @@ export const renderStructures = (
       ctx.fillStyle = s.color || '#ffffff';
       ctx.textAlign = 'center';
       const label = s.kind.replace(/_/g, ' ').toUpperCase();
-      const drawn = shouldGlitchLabels(density) ? glitchText(label) : label;
+      const drawn = shouldGlitchLabels(density) ? glitchText(label, frame.rng) : label;
       ctx.fillText(drawn, gx, gy + img.height/2 + 12);
       ctx.restore();
     }
@@ -137,7 +141,14 @@ export const renderStructures = (
   });
 };
 
-export const renderStarSystem = (ctx: CanvasContext, sys: StarSystem, camera: {x:number,y:number}, viewport: {width:number,height:number}, settings?: SimSettings) => {
+export const renderStarSystem = (
+  ctx: CanvasContext,
+  sys: StarSystem,
+  camera: {x:number,y:number},
+  viewport: {width:number,height:number},
+  settings: SimSettings | undefined,
+  frame: RenderFrame,
+) => {
   const parallax = 0.25 * WORLD_SPEED_MULTIPLIER;
   const sx = sys.x - camera.x * parallax;
   const sy = sys.y - camera.y * parallax;
@@ -148,11 +159,10 @@ export const renderStarSystem = (ctx: CanvasContext, sys: StarSystem, camera: {x
   // Hexagon radar (slowly rotating) — behind the star, tactical visual
   {
     const hexRadius = sys.starRadius * 4 + 20; // Radius relative to star
-    const time = Date.now() * 0.001;
     ctx.save();
     ctx.translate(sx, sy);
-    ctx.rotate(time * 0.2);
-    ctx.strokeStyle = accentRgba(0.18);
+    ctx.rotate(frame.time * 0.2);
+    ctx.strokeStyle = accentRgba(frame.palette, 0.18);
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let i = 0; i < 6; i++) {
@@ -198,7 +208,7 @@ export const renderStarSystem = (ctx: CanvasContext, sys: StarSystem, camera: {x
   ctx.strokeStyle = 'rgba(130,200,220,0.15)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  
+
   sys.planets.forEach((p) => {
     if (p.orbitRadius) {
       // Just trace the path here
@@ -206,15 +216,16 @@ export const renderStarSystem = (ctx: CanvasContext, sys: StarSystem, camera: {x
       ctx.arc(sx, sy, p.orbitRadius, 0, Math.PI*2);
     }
   });
-  
+
   // Single draw call for all orbits in the system
   ctx.stroke();
 
   // Draw planets and labels
+  const timeMs = frame.time * 1000;
   sys.planets.forEach((p) => {
     if (p.orbitRadius) {
       // compute planet position
-      const phase = (p.orbitPhase || 0) + (p.orbitSpeed || 0) * performance.now();
+      const phase = (p.orbitPhase || 0) + (p.orbitSpeed || 0) * timeMs;
       const px = sx + Math.cos(phase) * p.orbitRadius;
       const py = sy + Math.sin(phase) * p.orbitRadius;
 

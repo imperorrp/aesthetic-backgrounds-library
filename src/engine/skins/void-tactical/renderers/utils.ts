@@ -7,21 +7,24 @@
 
 import { ASCII_ART } from './art';
 import type { StructureType } from './art';
+import type { Rng } from '../../../rng';
+import { rgba, type Palette } from '../../../palette';
 
 export type CanvasContext = CanvasRenderingContext2D;
 
-export function accentRgb(): string {
-  try {
-    if (typeof window === 'undefined') return '6 182 212';
-    const v = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim();
-    return v || '6 182 212';
-  } catch {
-    return '6 182 212';
-  }
-}
+/**
+ * Per-frame context threaded through every renderer so nothing reads the wall clock,
+ * `Math.random`, or CSS variables. `time`/`dt` are seconds since mount.
+ */
+export type RenderFrame = {
+  time: number;
+  dt: number;
+  rng: Rng;
+  palette: Palette;
+};
 
-export function accentRgba(alpha = 1): string {
-  return `rgba(${accentRgb().replace(/\s+/g, ', ')}, ${alpha})`;
+export function accentRgba(palette: Palette, alpha = 1): string {
+  return rgba(palette.accentRgb, alpha);
 }
 
 export const CHAR_SIZE = 14;
@@ -33,9 +36,7 @@ export const ASCII_TARGET_DISPLAY_HEIGHT = CHAR_SIZE * 2; // target pixel height
 // Helper to snap to grid
 export const snap = (val: number) => Math.floor(val / CHAR_SIZE) * CHAR_SIZE;
 
-// Standard glyph cache (not used yet, keep for future)
-
-// New ASCII Sprite Cache
+// ASCII Sprite Cache (module-level: sprites are pure functions of kind + color)
 const asciiCache = new Map<string, HTMLCanvasElement>();
 
 /**
@@ -47,12 +48,12 @@ export function getAsciiSprite(kind: string, color: string) {
   const keyBase = `${kind}-${color}`;
 
   const art = ASCII_ART[kind as StructureType] || ["?"];
-  
+
   // 1. Measure dimensions
   const c = document.createElement('canvas');
   const cx = c.getContext('2d')!;
   cx.font = `${ASCII_FONT_SIZE}px "Orbit", monospace`;
-  
+
   // Find widest line
   let maxWidth = 0;
   art.forEach(line => {
@@ -70,13 +71,13 @@ export function getAsciiSprite(kind: string, color: string) {
   ctx.font = `${ASCII_FONT_SIZE}px "Orbit", monospace`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'center';
-  
+
   // Optional: Subtle background glow behind the ASCII to make it pop against stars
   ctx.shadowColor = color;
   ctx.shadowBlur = 4;
-  
+
   ctx.fillStyle = color;
-  
+
   const centerX = c.width / 2;
   art.forEach((line, i) => {
     ctx.fillText(line, centerX, 2 + (i * ASCII_LINE_HEIGHT));

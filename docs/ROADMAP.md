@@ -300,7 +300,9 @@ Audit items 1–7 above are fixed: canvas fills its container via inline styles 
 - README claims match behavior (ResizeObserver, determinism scope, "instant" updates). DIRECTION.md roadmap statuses corrected.
 - Acceptance: `public/quick.html` and `public/element.html` are visually identical to the demo at the same seed.
 
-### M1 — Host contract v2 (1–2 weeks)
+### M1 — Host contract v2 (1–2 weeks) — **done 2026-09-26**
+
+Shipped: `FrameInfo` + injectable `Scheduler` (`createManualScheduler` for tests); `dt`-based motion in all skins; `ResizeObserver`; hidden-tab and offscreen pause; `motion` policy (`auto`/`full`/`reduced`/`off`); `intensity`; frame-time `quality` governor; `host.palette` values plus scoped `--bge-*` variables and `--bge-hue-shift`; `palette: { from }` OKLCH derivation with light/dark themes; `host.pointer`, `host.noise`, `host.fork`; void-tactical purged of `Math.random`/`Date.now`/`setTimeout` (docking uses sim time); core no longer imports any skin; `core` and `skins/*` subpath exports; determinism test per built-in skin (identical draw-call hashes over 240 frames, no `Math.random`/`Date.now` calls); host lifecycle tests; `scripts/size-check.mjs` entry-closure budgets; GitHub Actions CI. 55 tests. Not done: `detail`/overlay budgets still live in core config (moves with the M2 layer split).
 
 - `FrameInfo` with injectable clock; `dt`-based motion in all skins; `targetFps` no longer changes speed.
 - `ResizeObserver`, visibility/offscreen pause, reduced-motion policy, frame-time governor, `intensity`.

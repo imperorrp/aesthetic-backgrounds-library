@@ -11,13 +11,20 @@ export default defineConfig({
     lib: {
       entry: {
         index: 'src/lib.ts',
+        core: 'src/entries/core.ts',
         element: 'src/element.ts',
         react: 'src/react-entry.tsx',
+        'skins/void-tactical': 'src/entries/skins/void-tactical.ts',
+        'skins/drifting-dust': 'src/entries/skins/drifting-dust.ts',
+        'skins/matrix-rain': 'src/entries/skins/matrix-rain.ts',
       },
       formats: ['es'],
     },
     rollupOptions: {
       external: ['react', 'react-dom', 'react/jsx-runtime'],
+      output: {
+        chunkFileNames: 'chunks/[name]-[hash].js',
+      },
     },
   },
 });

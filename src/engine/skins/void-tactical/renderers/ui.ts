@@ -3,11 +3,13 @@
  *
  * @description Rendering functions for user interface overlays (tactical displays, telemetry).
  * Includes enhanced sector network visualization with increased opacity for better visibility.
+ *
+ * Determinism: all randomness comes from `frame.rng`, all time from `frame.time`/`frame.dt`.
  * @module
  */
 
 import type { SimSettings, SystemState, TacticalElement, StarSystem } from '../types';
-import { accentRgba, WORLD_SPEED_MULTIPLIER, type CanvasContext } from './utils';
+import { accentRgba, WORLD_SPEED_MULTIPLIER, type CanvasContext, type RenderFrame } from './utils';
 import { shouldShowTelemetry } from '../labels';
 
 // --- System Network Visualization ---
@@ -15,7 +17,8 @@ export const renderSystemConnections = (
   ctx: CanvasContext,
   systems: StarSystem[],
   camera: { x: number, y: number },
-  viewport: { width: number, height: number }
+  viewport: { width: number, height: number },
+  frame: RenderFrame,
 ) => {
   const parallax = 0.25 * WORLD_SPEED_MULTIPLIER;
   const points = systems.map(sys => ({
@@ -26,8 +29,8 @@ export const renderSystemConnections = (
   if (points.length < 2) return;
 
   // Pulse animation
-  const alpha = 0.3 + Math.sin(Date.now() * 0.003) * 0.2; // range approx 0.1 to 0.5
-  ctx.strokeStyle = accentRgba(alpha);
+  const alpha = 0.3 + Math.sin(frame.time * 3) * 0.2; // range approx 0.1 to 0.5
+  ctx.strokeStyle = accentRgba(frame.palette, alpha);
   ctx.lineWidth = 2;
   ctx.setLineDash([]);
   ctx.beginPath();
@@ -45,7 +48,7 @@ export const renderSystemConnections = (
   ctx.stroke();
 
   // draw nodes
-  ctx.fillStyle = accentRgba(Math.min(1, alpha * 1.5));
+  ctx.fillStyle = accentRgba(frame.palette, Math.min(1, alpha * 1.5));
   points.forEach(p => {
     ctx.beginPath();
     ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
@@ -57,7 +60,8 @@ export const renderSystemConnections = (
 export const renderSectorConnections = (
   ctx: CanvasContext,
   camera: { x: number, y: number },
-  viewport: { width: number, height: number }
+  viewport: { width: number, height: number },
+  frame: RenderFrame,
 ) => {
   const sectorSize = 2000; // Distance between sector centers
   const parallax = 0.15 * WORLD_SPEED_MULTIPLIER; // Slower than systems
@@ -84,7 +88,7 @@ export const renderSectorConnections = (
   if (points.length < 2) return;
 
   // Static alpha for sector lines (not pulsing)
-  ctx.strokeStyle = accentRgba(0.25);
+  ctx.strokeStyle = accentRgba(frame.palette, 0.25);
   ctx.lineWidth = 1;
   ctx.setLineDash([]);
   ctx.beginPath();
@@ -108,7 +112,7 @@ export const renderSectorConnections = (
   ctx.stroke();
 
   // draw nodes
-  ctx.fillStyle = accentRgba(0.4);
+  ctx.fillStyle = accentRgba(frame.palette, 0.4);
   points.forEach(p => {
     ctx.beginPath();
     ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); // Slightly larger
@@ -120,12 +124,12 @@ export const renderSectorConnections = (
 const TACTICAL_TEXTS = {
   // Grand Strategy / Empire Management
   STRATEGY: [
-    "MINERAL QUOTA: EXCEEDED", "TAX REVENUE: CALCULATING", "SECTOR STABILITY: 99.4%", 
-    "MOBILIZATION ORDER: PENDING", "TRADE ROUTE: SECURED", "HEGEMONY INDEX: RISING", 
+    "MINERAL QUOTA: EXCEEDED", "TAX REVENUE: CALCULATING", "SECTOR STABILITY: 99.4%",
+    "MOBILIZATION ORDER: PENDING", "TRADE ROUTE: SECURED", "HEGEMONY INDEX: RISING",
     "POPULATION METRICS: OPTIMAL", "COLONY SHIP: IN TRANSIT", "DYSON OUTPUT: +400%",
     "BORDER TENSION: MODERATE", "DIPLOMATIC CHANNEL: OPEN", "RESOURCE SIPHON: ACTIVE"
   ],
-  
+
   // Hard Sci-Fi / Scientific Analysis
   SCIENCE: [
     "ORBITAL DECAY: NEGLIGIBLE", "RADIATION SPIKE detected", "GRAVITY WELL: DEEP",
@@ -133,7 +137,7 @@ const TACTICAL_TEXTS = {
     "DARK MATTER DENSITY: HIGH", "SPECTROGRAPHIC ANALYSIS: AU/FE", "TECTONIC SHIFT DETECTED",
     "ATMOSPHERIC COMPOSITION: N2/O2", "BIOSPHERE: PRE-INDUSTRIAL", "LOCAL TIME DILATION: 0.04%"
   ],
-  
+
   // RPG / Narrative / Mystery
   NARRATIVE: [
     "DISTRESS SIGNAL DETECTED", "ANCIENT RUINS SCAN: POSITIVE", "CREW MORALE: WAVERING",
@@ -141,14 +145,14 @@ const TACTICAL_TEXTS = {
     "VOID WHISPER INTERCEPTED", "DERELICT HULL FOUND", "PSIONIC ECHO: HIGH",
     "PRECURSOR DATA: DECRYPTING", "THEY ARE WATCHING", "TEMPORAL ANOMALY REGISTERED"
   ],
-  
+
   // Ship / Fleet Specific
   FLEET: [
     "WEAPONS: COLD", "SHIELDS: HARMONIC", "FTL DRIVE: SPOOLING", "DOCKING CLAMPS: ENGAGED",
     "REFUELING IN PROGRESS", "CARGO: SPICE/ALLOYS", "PATROL ROUTE: GAMMA-9",
     "INTERCEPT VECTOR CALCULATED", "STEALTH SYSTEMS: ACTIVE", "HULL INTEGRITY: 100%"
   ],
-  
+
   // System / UI Fluff
   SYSTEM: [
     "UPLINK ESTABLISHED", "ENCRYPTION: QUANTUM-256", "DATA STREAM: STABLE",
@@ -287,29 +291,31 @@ export const getStructureGlyph = (kind: string): string => {
     case 'matrioshka_brain': return '◈'; // Diamond with dot
     case 'stellar_lifter': return '☀'; // Sun
     case 'penrose_sphere': return '⬡'; // Hexagon
-    
+
     case 'black_hole': return '●'; // Black circle
     case 'neutron_star': return '✦'; // Starburst
     case 'magnetar': return '☯'; // Yin Yang
     case 'void_rift': return '◇'; // Diamond
     case 'quasar': return '✴'; // Eight pointed star
-    
+
     case 'precursor_relic': return '▲'; // Triangle
     case 'monolith': return '▬'; // Rectangle
     case 'ancient_gate': return '⛩'; // Gate
     case 'psionic_beacon': return '♠'; // Spade
     case 'derelict_hulk': return '⚓'; // Anchor
-    
+
     case 'station': return '⌂'; // House
     case 'mining_outpost': return '⚒'; // Hammer
     case 'shipyard': return '⚙'; // Gear
     case 'defense_grid': return '⛨'; // Shield
     case 'comm_buoy': return '📡'; // Antenna
     case 'jumpgate': return '⥮'; // Portal
-    
+
     default: return '✦'; // Generic star
   }
 };
+
+let overlaySequence = 0;
 
 // Utility to spawn overlays from anywhere
 export const emitOverlay = (system: SystemState, element: Partial<TacticalElement>) => {
@@ -317,8 +323,9 @@ export const emitOverlay = (system: SystemState, element: Partial<TacticalElemen
   if (maxOverlays <= 0) return;
   if ((system.overlays?.length ?? 0) >= maxOverlays) return;
 
+  const duration = element.duration ?? (element.priority === 'high' ? 8000 : (element.priority === 'medium' ? 4500 : 2500));
   const el: TacticalElement = {
-    id: element.id ?? `overlay-${Math.random().toString(36).slice(2,8)}`,
+    id: element.id ?? `overlay-${++overlaySequence}`,
     text: element.text || '',
     x: element.x ?? 100,
     y: element.y ?? 100,
@@ -327,10 +334,10 @@ export const emitOverlay = (system: SystemState, element: Partial<TacticalElemen
     color: element.color ?? 'rgba(200,200,200,0.9)',
     glow: !!element.glow,
     followId: element.followId,
-    duration: element.duration ?? (element.priority === 'high' ? 8000 : (element.priority === 'medium' ? 4500 : 2500)),
-    lifetime: element.duration ?? (element.priority === 'high' ? 8000 : (element.priority === 'medium' ? 4500 : 2500)),
+    duration,
+    lifetime: duration,
     anchor: element.anchor ?? 'screen',
-    createdAt: Date.now()
+    createdAt: element.createdAt ?? 0
   };
 
   system.overlays = system.overlays || [];
@@ -341,19 +348,23 @@ export const renderTacticalOverlays = (
   ctx: CanvasContext,
   system: SystemState,
   camera: { x: number, y: number },
-  viewport: { width: number, height: number }
+  viewport: { width: number, height: number },
+  frame: RenderFrame,
 ) => {
-  // Update lifetimes
+  const rng = frame.rng;
+  const nowMs = frame.time * 1000;
+
+  // Update lifetimes by real elapsed time
   if (system.overlays) {
     system.overlays = system.overlays.filter(o => o.lifetime > 0);
-    system.overlays.forEach(o => o.lifetime -= 16);
+    const elapsed = frame.dt * 1000;
+    system.overlays.forEach(o => o.lifetime -= elapsed);
   }
 
-  const overlayRate = system.settings?.overlaySpawnRate ?? 0;
+  // Spawn rate is expressed per 60 fps frame; scale by elapsed frames.
+  const overlayRate = (system.settings?.overlaySpawnRate ?? 0) * frame.dt * 60;
   const maxOverlays = system.settings?.maxOverlays ?? 0;
-  if ((system.overlays?.length ?? 0) < maxOverlays && overlayRate > 0 && Math.random() < overlayRate) {
-    const now = Date.now();
-    
+  if ((system.overlays?.length ?? 0) < maxOverlays && overlayRate > 0 && rng() < overlayRate) {
     // 1. Gather valid anchors (Things currently on screen-ish)
     interface Anchor {
       x: number;
@@ -362,7 +373,7 @@ export const renderTacticalOverlays = (
       subType: string;
       color: string;
     }
-    
+
     const anchors: Anchor[] = [
       // Fleets
       ...system.fleets.map(f => ({ x: f.x, y: f.y, type: 'FLEET', subType: '', color: f.color })),
@@ -371,30 +382,30 @@ export const renderTacticalOverlays = (
       // Structures (Global/Independent)
       ...(system.structures || []).map(str => ({ x: str.x, y: str.y, type: 'STRUCTURE', subType: str.kind, color: str.color || '#fff' })),
       // Planets
-      ...system.systems.flatMap(s => s.planets.map(p => ({ 
-        x: s.x + (p.orbitRadius||0) * Math.cos((p.orbitPhase||0) + now*0.001*(p.orbitSpeed||0)), 
-        y: s.y + (p.orbitRadius||0) * Math.sin((p.orbitPhase||0) + now*0.001*(p.orbitSpeed||0)), 
-        type: 'PLANET', 
+      ...system.systems.flatMap(s => s.planets.map(p => ({
+        x: s.x + (p.orbitRadius||0) * Math.cos((p.orbitPhase||0) + nowMs*(p.orbitSpeed||0)),
+        y: s.y + (p.orbitRadius||0) * Math.sin((p.orbitPhase||0) + nowMs*(p.orbitSpeed||0)),
+        type: 'PLANET',
         subType: '',
-        color: p.color 
+        color: p.color
       }))),
       // Deep Space (More random locations spread across background)
-      ...Array.from({length: 10}, () => ({ x: camera.x + Math.random() * viewport.width * 2 - viewport.width, y: camera.y + Math.random() * viewport.height * 2 - viewport.height, type: 'DEEP_SPACE', subType: '', color: '#aaa' }))
+      ...Array.from({length: 10}, () => ({ x: camera.x + rng() * viewport.width * 2 - viewport.width, y: camera.y + rng() * viewport.height * 2 - viewport.height, type: 'DEEP_SPACE', subType: '', color: '#aaa' }))
     ];
 
     if (anchors.length > 0) {
       // Bias towards structures if they exist
-      let target = anchors[Math.floor(Math.random() * anchors.length)];
+      let target = anchors[Math.floor(rng() * anchors.length)];
       const structureAnchors = anchors.filter(a => a.type === 'STRUCTURE');
-      
+
       // Priority: Structures > Others
-      if (structureAnchors.length > 0 && Math.random() < 0.6) { // Increased structure frequency
-        target = structureAnchors[Math.floor(Math.random() * structureAnchors.length)];
+      if (structureAnchors.length > 0 && rng() < 0.6) { // Increased structure frequency
+        target = structureAnchors[Math.floor(rng() * structureAnchors.length)];
       }
 
       let textCategory = TACTICAL_TEXTS.SYSTEM; // Default
       let parallax = 0.25; // Default parallax
-      let color = accentRgba(0.9);
+      let color = accentRgba(frame.palette, 0.9);
 
       // Context-aware text selection & styling
       if (target.type === 'FLEET') textCategory = TACTICAL_TEXTS.FLEET;
@@ -411,32 +422,32 @@ export const renderTacticalOverlays = (
              // Standard structures get Structure text
              else textCategory = TACTICAL_TEXTS.STRUCTURE;
          }
-         
+
          // Use structure color
          color = target.color;
       }
-      else if (target.type === 'PLANET') textCategory = Math.random() > 0.5 ? TACTICAL_TEXTS.SCIENCE : TACTICAL_TEXTS.STRATEGY;
-      else if (target.type === 'DEEP_SPACE') textCategory = Math.random() > 0.5 ? TACTICAL_TEXTS.NARRATIVE : TACTICAL_TEXTS.SCIENCE;
+      else if (target.type === 'PLANET') textCategory = rng() > 0.5 ? TACTICAL_TEXTS.SCIENCE : TACTICAL_TEXTS.STRATEGY;
+      else if (target.type === 'DEEP_SPACE') textCategory = rng() > 0.5 ? TACTICAL_TEXTS.NARRATIVE : TACTICAL_TEXTS.SCIENCE;
 
-      const text = textCategory[Math.floor(Math.random() * textCategory.length)];
+      const text = textCategory[Math.floor(rng() * textCategory.length)];
 
       // Increase offset range to avoid clutter (was 40/25, now 150/80)
-      const offsetX = (Math.random() - 0.5) * 200; // Increased from 150
-      const offsetY = (Math.random() - 0.5) * 200;
+      const offsetX = (rng() - 0.5) * 200; // Increased from 150
+      const offsetY = (rng() - 0.5) * 200;
 
       system.overlays.push({
-        id: `overlay-${now}`,
+        id: `overlay-${++overlaySequence}`,
         text: text,
         x: target.x + offsetX,
         y: target.y + offsetY,
         type: 'info',
         priority: 'low',
         color: color,
-        lifetime: 3000 + Math.random() * 2000,
+        lifetime: 3000 + rng() * 2000,
         duration: 4000,
         anchor: 'world',
         parallax: parallax,
-        createdAt: now
+        createdAt: nowMs
       });
     }
   }
@@ -447,7 +458,7 @@ export const renderTacticalOverlays = (
       if (overlay.anchor !== 'world') return;
 
       // Use specific parallax if defined, otherwise default to star system parallax
-      const parallax = overlay.parallax ?? 0.25; 
+      const parallax = overlay.parallax ?? 0.25;
       const screenX = overlay.x - camera.x * parallax * WORLD_SPEED_MULTIPLIER;
       const screenY = overlay.y - camera.y * parallax * WORLD_SPEED_MULTIPLIER;
 
@@ -459,10 +470,9 @@ export const renderTacticalOverlays = (
 
       ctx.save();
       ctx.font = '10px "Orbit", monospace';
-      ctx.fillStyle = overlay.color.replace(/[\d.]+\)$/g, `${opacity})`); // Inject opacity into color string if possible, or just use globalAlpha
-      // Fallback if regex fails or color isn't rgba
-      ctx.globalAlpha = opacity;
-      
+      ctx.fillStyle = overlay.color;
+      ctx.globalAlpha = Math.max(0, opacity);
+
       ctx.fillText(overlay.text, screenX, screenY);
       ctx.restore();
     });
@@ -470,30 +480,24 @@ export const renderTacticalOverlays = (
 
 };
 
-// overlay render helper removed; the core overlay rendering for screen & world anchored is
-// performed inline in renderTacticalOverlays. This reduces indirection and avoids unused helpers.
-
-// The renderWorldAnchoredOverlays helper was removed to reduce unused code and to keep
-// overlay rendering centralized in renderTacticalOverlays and the specific renderer functions.
-
 export const renderTelemetry = (
   ctx: CanvasContext,
   telemetry: SystemState['telemetry'],
-  settings?: SimSettings,
+  settings: SimSettings | undefined,
+  frame: RenderFrame,
 ) => {
   if (!shouldShowTelemetry(settings?.labelDensity ?? 'low')) return;
+  const frames = frame.dt * 60;
   telemetry.forEach(item => {
-    item.age++;
+    item.age += frames;
     if (item.age > item.maxAge) {
         item.age = 0;
-        item.x = Math.random() * 1400; // Assuming viewport width
-        item.y = Math.random() * 800;  // Assuming viewport height
+        item.x = frame.rng() * 1400; // Assuming viewport width
+        item.y = frame.rng() * 800;  // Assuming viewport height
     }
 
     const opacity = Math.min(1, (item.maxAge - item.age) / 50);
-    ctx.fillStyle = accentRgba(opacity);
+    ctx.fillStyle = accentRgba(frame.palette, opacity);
     ctx.fillText(item.text, item.x, item.y);
   });
 };
-
-// Note: renderSystemConnections is exported at declaration, no further export is needed.

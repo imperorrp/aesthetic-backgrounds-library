@@ -70,6 +70,8 @@ export default function DemoPage() {
   const [density, setDensity] = useState(1);
   const [palette, setPalette] = useState<PaletteId>('void-cyan');
   const [skinId, setSkinId] = useState<'void-tactical' | 'drifting-dust' | 'matrix-rain'>('void-tactical');
+  const [intensity, setIntensity] = useState(1);
+  const [motion, setMotion] = useState<'auto' | 'full' | 'reduced' | 'off'>('auto');
 
   const activeSkin = skinId === 'drifting-dust' ? driftingDustSkin : skinId === 'matrix-rain' ? matrixRainSkin : voidTacticalSkin;
 
@@ -92,8 +94,8 @@ export default function DemoPage() {
   );
 
   const simConfig = useMemo<BackgroundConfig>(
-    () => ({ seed, density, detail, palette }),
-    [seed, density, detail, palette],
+    () => ({ seed, density, detail, palette, intensity, motion }),
+    [seed, density, detail, palette, intensity, motion],
   );
 
   const applySeed = (next: string) => {
@@ -198,6 +200,28 @@ export default function DemoPage() {
                 value={density}
                 onChange={(e) => setDensity(Number(e.target.value))}
               />
+            </label>
+
+            <label className="demo-field">
+              <span>Intensity {intensity.toFixed(2)}</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={intensity}
+                onChange={(e) => setIntensity(Number(e.target.value))}
+              />
+            </label>
+
+            <label className="demo-field">
+              <span>Motion</span>
+              <select value={motion} onChange={(e) => setMotion(e.target.value as any)}>
+                <option value="auto">Auto (system preference)</option>
+                <option value="full">Full</option>
+                <option value="reduced">Reduced</option>
+                <option value="off">Off (static frame)</option>
+              </select>
             </label>
 
             {skinId === 'void-tactical' && (

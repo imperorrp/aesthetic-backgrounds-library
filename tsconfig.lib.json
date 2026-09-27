@@ -9,5 +9,14 @@
     "rootDir": "src",
     "outDir": "types"
   },
-  "include": ["src/lib.ts", "src/element.ts", "src/react-entry.tsx", "src/vite-env.d.ts"]
+  "include": [
+    "src/lib.ts",
+    "src/element.ts",
+    "src/react-entry.tsx",
+    "src/entries/core.ts",
+    "src/entries/skins/void-tactical.ts",
+    "src/entries/skins/drifting-dust.ts",
+    "src/entries/skins/matrix-rain.ts",
+    "src/vite-env.d.ts"
+  ]
 }

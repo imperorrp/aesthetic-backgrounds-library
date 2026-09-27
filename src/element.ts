@@ -1,8 +1,7 @@
 import { mount, type MountHandle, type MountOptions } from './engine/core/mount';
-import type { LabelDensity } from './engine/config';
-import type { PaletteId } from './engine/palette';
-// Registers the built-in skins so `skin="matrix-rain"` resolves.
-import './engine/skins';
+import type { LabelDensity, MotionPreference } from './engine/config';
+// Importing the module registers the built-in skins so `skin="matrix-rain"` resolves.
+import { builtInSkins } from './engine/skins';
 
 /**
  * Drop-in custom element.
@@ -10,12 +9,15 @@ import './engine/skins';
  * @example
  * <script type="module" src="https://unpkg.com/space-background-engine/dist/element.js"></script>
  * <bg-engine seed="orion-7" detail="low"></bg-engine>
- * <bg-engine skin="matrix-rain" palette="amber" fonts></bg-engine>
+ * <bg-engine skin="matrix-rain" palette="#ff7a1a" intensity="0.6" motion="auto" fonts></bg-engine>
  */
 class BgEngineElement extends HTMLElement {
   static get observedAttributes() {
-    return ['seed', 'density', 'detail', 'palette', 'speed', 'skin', 'fonts', 'z-index'];
+    return ['seed', 'density', 'detail', 'palette', 'speed', 'skin', 'fonts', 'z-index', 'intensity', 'motion', 'fps'];
   }
+
+  /** Skins bundled with the element build; any of their ids works in the `skin` attribute. */
+  static readonly skins = builtInSkins;
 
   #handle: MountHandle | null = null;
 
@@ -49,21 +51,30 @@ class BgEngineElement extends HTMLElement {
     this.#start();
   }
 
-  /** The live mount handle (canvas, root, destroy). Null before connection. */
+  /** The live mount handle (canvas, root, pause/resume, destroy). Null before connection. */
   get handle(): MountHandle | null {
     return this.#handle;
   }
 
+  #number(name: string): number | undefined {
+    const raw = this.getAttribute(name);
+    if (raw === null || raw === '') return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
+  }
+
   #start(): void {
-    const densityAttr = this.getAttribute('density');
-    const speedAttr = this.getAttribute('speed');
     const options: MountOptions = {
       seed: this.getAttribute('seed') ?? undefined,
       skin: this.getAttribute('skin') ?? undefined,
       detail: (this.getAttribute('detail') as LabelDensity | null) ?? undefined,
-      palette: (this.getAttribute('palette') as PaletteId | null) ?? undefined,
-      density: densityAttr ? Number(densityAttr) : undefined,
-      cameraSpeed: speedAttr ? Number(speedAttr) : undefined,
+      // Built-in id or a hex brand color; resolvePalette handles both.
+      palette: this.getAttribute('palette') ?? undefined,
+      density: this.#number('density'),
+      cameraSpeed: this.#number('speed'),
+      intensity: this.#number('intensity'),
+      targetFps: this.#number('fps'),
+      motion: (this.getAttribute('motion') as MotionPreference | null) ?? undefined,
       fonts: this.hasAttribute('fonts'),
     };
     this.#handle = mount(this, options);

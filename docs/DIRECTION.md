@@ -61,11 +61,12 @@ graph TD
 
 To truly understand the engine's generalizability, it is built on a few core mechanisms:
 
-1. **Deterministic PRNG**: The engine replaces `Math.random()` with a Mulberry32 seeded generator. If two users pass `seed="orion"`, they generate the exact same constellation, network, or particle *layout*, regardless of their browser. Frame-by-frame animation of the default skin is not yet deterministic (it still reads wall-clock time); an injectable clock is planned in the roadmap's M1.
+1. **Deterministic replay**: The engine replaces `Math.random()` with a Mulberry32 seeded generator and hands skins a clock instead of the wall clock. If two users pass `seed="orion"`, they see the exact same constellation, network, or particle field *and the same animation*, regardless of browser or frame rate.
 2. **DOM Isolation**: The engine creates an absolute/fixed positioned `<div class="bg-engine-root">` with `pointer-events: none`. The background renders behind your content without interfering with clicks, scrolls, or layout.
 3. **Hardware Acceleration**: Heavy ambient effects (SVG turbulence, radial gradients, CSS grids) are offloaded to DOM layers. A skin injects them through its optional `layers(root, context)` hook and `mount()` places them underneath the canvas, relying on GPU-composited CSS rather than the Canvas 2D context.
 4. **Generic Configuration**: The engine defines global budgets (`density`, `detail`, `cameraSpeed`); every skin can define its own schema via the `<T>` generic (e.g., `options: { maxNodes: 100 }`), flowing down from the React wrapper, the Vanilla mount function, or the element. `detail` and the overlay budgets are still HUD-flavored leftovers from the default skin and are slated to move into it.
-5. **Palette as values**: Skins receive resolved palette tokens on `host.palette` rather than reading CSS variables. The host also writes the tokens as CSS variables for CSS layers; today those land on `:root` under generic names, which the roadmap replaces with engine-scoped variables.
+5. **Palette as values**: Skins receive resolved palette tokens on `host.palette` rather than reading CSS variables. The host writes the same tokens as `--bge-*` custom properties on the engine root (never on `:root`) for CSS layers, plus a `--bge-hue-shift` so cyan-authored SVG layers re-tint to any palette, including ones derived from a brand color with `palette: { from: '#hex' }`.
+6. **Budgets, not opinions, in the core**: `intensity` (user knob), `motion` (reduced-motion policy), and `quality` (frame-time governor) are live numbers on the host. Skins scale density, contrast, and speed by them; the core never decides what a skin looks like.
 
 ---
 
@@ -77,19 +78,30 @@ The `BackgroundSkin` interface is intentionally minimal:
 export type SkinHost<T = Record<string, unknown>> = {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
-  rng: Rng;
+  rng: Rng;                       // seeded
+  fork(label: string): Rng;       // independent seeded sub-streams
+  noise: Noise2D;                 // seeded simplex + fbm
   config: ResolvedBackgroundConfig;
-  palette: Palette;
+  palette: Palette;               // values, not CSS lookups
   options?: T;
+  readonly viewport: { width; height; dpr; isMobile; isTouch };  // live
+  readonly pointer: { x; y; nx; ny; vx; vy; active; down; idle }; // live
+  readonly motion: 'full' | 'reduced' | 'off';                    // live
+  readonly intensity: number;                                     // live, 0..1
+  readonly quality: number;                                       // live, 0..1 governor output
 };
+
+export type FrameInfo = { t: number; dt: number; frame: number; timestamp: number }; // seconds
 
 export type BackgroundSkin<T = Record<string, unknown>> = {
   id: string;
-  mount(host: SkinHost<T>): SkinInstance;
+  mount(host: SkinHost<T>): { resize(v): void; frame(info: FrameInfo): void; destroy(): void };
   /** Optional DOM layers behind the canvas. Return a cleanup. */
   layers?(root: HTMLElement, context: { config; palette; options?: T }): () => void;
 };
 ```
+
+The host owns the clock (`Scheduler`, injectable; `createManualScheduler()` for tests), sizing, motion policy, hidden/offscreen pausing, pointer tracking, and the quality governor. Skins must not touch `Math.random`, `Date.now`, `performance.now`, or timers; the determinism test suite enforces this for every built-in skin.
 
 This simplicity makes the engine incredibly powerful when combined with **Generative AI**. Because the contract is so strict and isolated, LLMs are excellent at writing new skins from scratch in a single shot.
 
@@ -113,6 +125,6 @@ A fuller authoring kit (scaffold, check command, questionnaire-driven skill) is 
 4. **Validation Skins**: Write secondary skins (`drifting-dust`, a particle network) with custom generic options schemas to prove the interface. *(Done)*
 5. **Ecosystem & Matrix Rain**: Build a classic text-rendering skin (`matrix-rain`) to prove font/grid capabilities. *(Done)*
 6. **Repair the drop-in path (ROADMAP M0)**: Container-aware sizing, injected layer stack for `mount()` and `<bg-engine>`, skin registry with string ids, palette values on the host, generated type declarations, honest README. *(Done 2026-09-26)*
-7. **Host contract v2 (ROADMAP M1)**: Injectable clock and `dt`-based motion, reduced-motion policy, visibility pause, scoped palette variables, pointer/noise inputs, core decoupled from the default skin, per-skin subpath exports.
+7. **Host contract v2 (ROADMAP M1)**: Injectable clock and `dt`-based motion, reduced-motion policy, visibility pause, scoped palette variables, pointer/noise inputs, core decoupled from the default skin, per-skin subpath exports, determinism tests, size budgets in CI. *(Done 2026-09-26)*
 8. **Layers, primitives, presets (ROADMAP M2–M3)**: Composable layer model, a standard layer library, and the aesthetic bar (contrast ceiling, palette coherence, flagship presets).
 9. **Publishing and the authoring kit (ROADMAP M4)**: Refine the documentation, ship the scaffold and skill, and publish to encourage the community to build and share skins.

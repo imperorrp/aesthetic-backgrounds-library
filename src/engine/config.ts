@@ -1,7 +1,11 @@
 import { hashSeed, randomSeedString } from './rng';
-import type { PaletteId } from './palette';
+import { resolvePalette, type Palette, type PaletteSpec } from './palette';
 
 export type LabelDensity = 'none' | 'low' | 'medium' | 'high';
+
+/** `auto` follows `prefers-reduced-motion`; the others force a mode. */
+export type MotionPreference = 'auto' | 'full' | 'reduced' | 'off';
+export type MotionMode = 'full' | 'reduced' | 'off';
 
 export type BackgroundConfig = {
   /** Same seed → same generated field. */
@@ -12,11 +16,18 @@ export type BackgroundConfig = {
   detail?: LabelDensity;
   /** @deprecated Use `detail`. */
   labelDensity?: LabelDensity;
-  /** Per-frame camera pan in world units. Default 0.25. */
+  /** Drift speed in world units per frame at 60 fps. Default 0.25. */
   cameraSpeed?: number;
-  /** Animation cap. Default 60. */
+  /** Animation cap. Default 60. Changing it does not change animation speed. */
   targetFps?: number;
-  palette?: PaletteId;
+  /** Built-in id, token object, `{ from: '#brand' }`, or a bare hex color. */
+  palette?: PaletteSpec;
+  /** One knob for how much the background asserts itself: scales motion, density, and contrast in skins. 0..1, default 1. */
+  intensity?: number;
+  /** Motion policy. Default `auto` (honors `prefers-reduced-motion`). */
+  motion?: MotionPreference;
+  /** Lower `host.quality` when frames run long, raise it back when they recover. Default true. */
+  adaptiveQuality?: boolean;
 };
 
 export type ResolvedBackgroundConfig = {
@@ -29,7 +40,10 @@ export type ResolvedBackgroundConfig = {
   targetFps: number;
   overlaySpawnRate: number;
   maxOverlays: number;
-  palette?: PaletteId;
+  palette: Palette;
+  intensity: number;
+  motion: MotionPreference;
+  adaptiveQuality: boolean;
 };
 
 const LABEL_OVERLAYS: Record<LabelDensity, { rate: number; max: number }> = {
@@ -39,13 +53,15 @@ const LABEL_OVERLAYS: Record<LabelDensity, { rate: number; max: number }> = {
   high: { rate: 0.08, max: 8 },
 };
 
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
 export function resolveBackgroundConfig(config: BackgroundConfig = {}): ResolvedBackgroundConfig {
   const seed = config.seed === undefined || config.seed === ''
     ? randomSeedString()
     : String(config.seed);
   const detail = config.detail ?? config.labelDensity ?? 'low';
   const overlay = LABEL_OVERLAYS[detail];
-  const density = Math.max(0.25, Math.min(2, config.density ?? 1));
+  const density = clamp(config.density ?? 1, 0.25, 2);
 
   return {
     seed,
@@ -54,10 +70,13 @@ export function resolveBackgroundConfig(config: BackgroundConfig = {}): Resolved
     detail,
     labelDensity: detail,
     cameraSpeed: config.cameraSpeed ?? 0.25,
-    targetFps: config.targetFps ?? 60,
+    targetFps: clamp(config.targetFps ?? 60, 1, 240),
     overlaySpawnRate: overlay.rate,
     maxOverlays: overlay.max,
-    palette: config.palette,
+    palette: resolvePalette(config.palette),
+    intensity: clamp(config.intensity ?? 1, 0, 1),
+    motion: config.motion ?? 'auto',
+    adaptiveQuality: config.adaptiveQuality ?? true,
   };
 }
 

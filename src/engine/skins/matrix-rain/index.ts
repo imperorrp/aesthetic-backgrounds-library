@@ -1,4 +1,4 @@
-import type { BackgroundSkin, SkinHost, Viewport } from '../../core/skin';
+import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import { rgba } from '../../palette';
 
 export type MatrixSkinOptions = {
@@ -35,9 +35,9 @@ type Column = {
 export const matrixRainSkin: BackgroundSkin<MatrixSkinOptions> = {
   id: 'matrix-rain',
   mount(host: SkinHost<MatrixSkinOptions>) {
-    const { canvas, ctx, rng, config, options, palette } = host;
-    let width = canvas.clientWidth || window.innerWidth;
-    let height = canvas.clientHeight || window.innerHeight;
+    const { ctx, rng, config, options, palette } = host;
+    let width = host.viewport.width;
+    let height = host.viewport.height;
 
     const fontSize = options?.fontSize ?? 16;
     const fallSpeed = options?.fallSpeed ?? 1.0;
@@ -70,7 +70,6 @@ export const matrixRainSkin: BackgroundSkin<MatrixSkinOptions> = {
     const randomGlyph = () => charset.charAt(Math.floor(rng() * charset.length));
 
     initColumns();
-    let lastTime = 0;
 
     return {
       resize(viewport: Viewport) {
@@ -80,14 +79,16 @@ export const matrixRainSkin: BackgroundSkin<MatrixSkinOptions> = {
         ctx.clearRect(0, 0, width, height);
       },
 
-      frame(timestamp: number) {
-        const dt = lastTime ? Math.min(3, (timestamp - lastTime) / 16.667) : 1;
-        lastTime = timestamp;
+      frame({ dt }: FrameInfo) {
+        const frames = dt * 60;
+        // Intensity slows the rain and thins it: every column above the intensity share sits out.
+        const intensity = host.intensity;
+        const activeShare = 0.35 + 0.65 * intensity;
 
         // Fade everything drawn so far toward transparent (trail effect without an opaque plate).
         ctx.save();
         ctx.globalCompositeOperation = 'destination-out';
-        ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, fade * dt)})`;
+        ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, fade * frames)})`;
         ctx.fillRect(0, 0, width, height);
         ctx.restore();
 
@@ -98,8 +99,9 @@ export const matrixRainSkin: BackgroundSkin<MatrixSkinOptions> = {
         for (let i = 0; i < columns.length; i++) {
           const c = columns[i];
           if (!c.alive) continue;
+          if ((i % 20) / 20 > activeShare) continue;
 
-          c.acc += c.speed * dt;
+          c.acc += c.speed * frames * (0.4 + 0.6 * intensity);
           const x = i * fontSize + fontSize / 2;
 
           while (c.acc >= 1) {

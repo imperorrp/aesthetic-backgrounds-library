@@ -3,49 +3,33 @@
  *
  * @description Rendering functions for interactive entities (fleets, nodes, anomalies).
  * @module
- * 
+ *
  * @performance
  * - Reduced simulation steps for fleet path projection (15 steps).
  * - Optimized nearest system checks (modulo 5 frames).
  * - Uses modulo arithmetic for coordinate wrapping.
  * - Batched rendering for trails and connections.
+ *
+ * Determinism: all randomness comes from `frame.rng`, all time from `frame.time`/`frame.dt`.
  */
 
-import type { SystemState, StarSystem } from '../types';
-// Helpers to resolve CSS vars for canvas rendering
-const getAccentHex = () => {
-  try {
-    if (typeof window === 'undefined') return '#06b6d4';
-    const v = getComputedStyle(document.documentElement).getPropertyValue('--accent');
-    return (v || '#06b6d4').trim();
-  } catch (e) {
-    return '#06b6d4';
-  }
-};
-const getAccentBlueRgba = (a = 1) => {
-  try {
-    if (typeof window === 'undefined') return `rgba(6,182,212,${a})`;
-    const rgb = getComputedStyle(document.documentElement).getPropertyValue('--accent-blue-rgb');
-    return `rgba(${(rgb || '6 182 212').trim()}, ${a})`;
-  } catch (e) {
-    return `rgba(6,182,212,${a})`;
-  }
-};
-import { FONT, WORLD_SPEED_MULTIPLIER, type CanvasContext } from './utils';
+import type { SystemState, StarSystem, SimSettings } from '../types';
+import { FONT, WORLD_SPEED_MULTIPLIER, type CanvasContext, type RenderFrame } from './utils';
 import { emitOverlay } from './ui';
-import type { SimSettings } from '../types';
+import { rgba } from '../../../palette';
 import { shouldShowAnomalyScanline, shouldShowAnomalyText, shouldShowFleetLabel } from '../labels';
 
 export const renderNodes = (
   ctx: CanvasContext,
   nodes: SystemState['nodes'],
   camera: { x: number, y: number },
-  viewport: { width: number, height: number }
+  viewport: { width: number, height: number },
+  frame: RenderFrame,
 ) => {
   const parallaxFactorNodes = 0.3;
 
   // Draw connections first
-  ctx.strokeStyle = 'rgba(6, 182, 212, 0.1)';
+  ctx.strokeStyle = rgba(frame.palette.accentRgb, 0.1);
   ctx.lineWidth = 1;
   ctx.beginPath();
   nodes.forEach(node => {
@@ -81,12 +65,12 @@ export const renderNodes = (
         if (baseX >= -50 && baseX <= viewport.width + 50 &&
             baseY >= -50 && baseY <= viewport.height + 50) {
 
-          ctx.fillStyle = getAccentHex();
+          ctx.fillStyle = frame.palette.accent;
           ctx.font = FONT;
           ctx.fillText(node.glyph, baseX, baseY);
 
           // Label
-          ctx.fillStyle = getAccentBlueRgba(0.5);
+          ctx.fillStyle = rgba(frame.palette.accentRgb, 0.5);
           ctx.font = '10px "Orbit", monospace';
           ctx.fillText(node.name, baseX + 14, baseY);
         }
@@ -101,12 +85,16 @@ export const renderFleets = (
   systems: SystemState['systems'],
   camera: { x: number, y: number },
   viewport: { width: number, height: number },
-  system: SystemState
+  system: SystemState,
+  frame: RenderFrame,
 ) => {
   const parallaxFactorFleets = 0.7;
+  const time = frame.time; // seconds since mount
+  const rng = frame.rng;
+  const frames = frame.dt * 60; // motion constants below are "per frame at 60 fps"
+
   fleets.forEach(fleet => {
     // Fleet AI State Machine
-    const time = Date.now() * 0.001; // Convert to seconds
 
     // Find potential targets: planets and structures (not just star systems)
     interface TargetInfo {
@@ -130,7 +118,7 @@ export const renderFleets = (
         // Prioritize closer targets, but also consider type preferences
         const isBetterTarget = !bestTarget ||
           distance < bestTarget.distance ||
-          (distance < bestTarget.distance * 1.5 && Math.random() < 0.3); // Some randomness
+          (distance < bestTarget.distance * 1.5 && rng() < 0.3); // Some randomness
 
         if (isBetterTarget && distance < 300) { // Only consider reasonably close targets
           bestTarget = {
@@ -167,7 +155,7 @@ export const renderFleets = (
       // Only 5% chance per frame to start approaching a target (much less frequent)
       if (bestTarget !== null) {
         const targetInfo: TargetInfo = bestTarget; // Capture the non-null value with explicit type
-        if (Math.random() < 0.05 && targetInfo.distance < 200) {
+        if (rng() < 0.05 && targetInfo.distance < 200) {
           fleet.state = 'approaching';
           const target = targetInfo as TargetInfo;
           if (target.type === 'planet' && target.planet) {
@@ -206,7 +194,7 @@ export const renderFleets = (
         fleet.targetType = undefined;
       } else if (currentDistance < (fleet.targetType === 'structure' ? 25 : 35)) {
         // Close enough - either orbit or dock based on target type
-        if (fleet.targetType === 'structure' || Math.random() < 0.7) {
+        if (fleet.targetType === 'structure' || rng() < 0.7) {
           fleet.state = 'docking'; // Most ships dock at stations/planets
 
           // Emit overlay for docking
@@ -234,9 +222,9 @@ export const renderFleets = (
       if (!fleet.approachTarget || currentDistance > 100) {
         // Too far, go back to approaching
         fleet.state = 'approaching';
-      } else if (Math.random() < 0.002) { // Very rare chance to decide to dock
+      } else if (rng() < 0.002) { // Very rare chance to decide to dock
         fleet.state = 'docking';
-      } else if (Math.random() < 0.01) { // Small chance to just leave
+      } else if (rng() < 0.01) { // Small chance to just leave
         fleet.state = 'launching';
         const angle = Math.atan2(fleet.y - (fleet.approachTarget.y), fleet.x - (fleet.approachTarget.x));
         fleet.vx = Math.cos(angle) * 1.5;
@@ -262,29 +250,31 @@ export const renderFleets = (
       if (!fleet.approachTarget || currentDistance > 80) {
         // Too far, go back to orbiting
         fleet.state = 'orbiting';
+        fleet.dockedUntil = undefined;
       } else if (fleet.approachTarget && currentDistance < 8) {
-        // Successfully docked! Stay docked for a while, then launch
-        setTimeout(() => {
-          if (fleet.state === 'docking') {
-            fleet.state = 'launching';
-            const angle = Math.atan2(fleet.y - fleet.approachTarget!.y, fleet.x - fleet.approachTarget!.x);
-            fleet.vx = Math.cos(angle) * 2;
-            fleet.vy = Math.sin(angle) * 2;
+        // Successfully docked. Stay docked 3-8 s of sim time, then depart.
+        if (fleet.dockedUntil === undefined) {
+          fleet.dockedUntil = time + 3 + rng() * 5;
+        } else if (time >= fleet.dockedUntil) {
+          fleet.dockedUntil = undefined;
+          fleet.state = 'launching';
+          const angle = Math.atan2(fleet.y - fleet.approachTarget.y, fleet.x - fleet.approachTarget.x);
+          fleet.vx = Math.cos(angle) * 2;
+          fleet.vy = Math.sin(angle) * 2;
 
-            // Emit overlay for launching from dock
-            emitOverlay(system, {
-              text: `DEPARTING`,
-              x: fleet.x,
-              y: fleet.y - 20,
-              type: 'fleet',
-              priority: 'medium',
-              color: fleet.color,
-              followId: fleet.id,
-              anchor: 'world',
-              duration: 3000
-            });
-          }
-        }, 3000 + Math.random() * 5000); // Stay docked 3-8 seconds
+          // Emit overlay for launching from dock
+          emitOverlay(system, {
+            text: `DEPARTING`,
+            x: fleet.x,
+            y: fleet.y - 20,
+            type: 'fleet',
+            priority: 'medium',
+            color: fleet.color,
+            followId: fleet.id,
+            anchor: 'world',
+            duration: 3000
+          });
+        }
       }
     } else if (fleet.state === 'launching') {
       const currentDistance = fleet.approachTarget ?
@@ -371,9 +361,9 @@ export const renderFleets = (
       moveY += Math.cos(time * 3.2 + fleet.curvePhase) * 0.2;
     }
 
-    // Apply movement
-    fleet.x += moveX;
-    fleet.y += moveY;
+    // Apply movement, scaled by real elapsed time
+    fleet.x += moveX * frames;
+    fleet.y += moveY * frames;
 
     // Wrap around
     if (fleet.x < 0) fleet.x += system.width;
@@ -382,7 +372,7 @@ export const renderFleets = (
     if (fleet.y > system.height) fleet.y -= system.height;
 
     // History for trails - longer trails for better visibility
-    if (Math.random() > 0.3) { // More frequent updates
+    if (rng() > 0.3) { // More frequent updates
       fleet.history.push({ x: fleet.x, y: fleet.y });
       if (fleet.history.length > 20) fleet.history.shift(); // Increased from 10 to 20
     }
@@ -445,7 +435,7 @@ export const renderFleets = (
           let futureApproachTarget = fleet.approachTarget;
           let futureVx = fleet.vx;
           let futureVy = fleet.vy;
-          const currentTime = Date.now() * 0.001;
+          const currentTime = time;
 
           for (let i = 1; i <= futureSteps; i++) {
             const projectedTime = currentTime + i * timeStep;
@@ -453,7 +443,7 @@ export const renderFleets = (
             // Simulate AI state transitions for projection
             let nearestSystemForProjection: StarSystem | null = null;
             let nearestDistanceForProjection = Infinity;
-            
+
             // OPTIMIZATION 2: Only check for nearest systems at the start or end
             // Checking every single step is too expensive.
             if (i % 5 === 0) {
@@ -606,13 +596,14 @@ export const renderAnomalies = (
   anomalies: SystemState['anomalies'],
   camera: { x: number, y: number },
   viewport: { width: number, height: number },
-  settings?: SimSettings,
+  settings: SimSettings | undefined,
+  frame: RenderFrame,
 ) => {
   const parallaxFactorAnomalies = 0.8;
   anomalies.forEach(anomaly => {
-    const alpha = 0.5 + Math.sin(Date.now() * 0.002) * 0.3;
+    const alpha = 0.5 + Math.sin(frame.time * 2) * 0.3;
     // Text alpha pulses independently for dramatic effect
-    const textAlpha = 0.7 + Math.sin(Date.now() * 0.003 + 1.5) * 0.25;
+    const textAlpha = 0.7 + Math.sin(frame.time * 3 + 1.5) * 0.25;
 
     for (let offsetX = -2*viewport.width; offsetX <= 2*viewport.width; offsetX += viewport.width) {
       for (let offsetY = -2*viewport.height; offsetY <= 2*viewport.height; offsetY += viewport.height) {

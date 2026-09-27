@@ -3,24 +3,26 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { mount } from './mount';
 import { createBackground } from './createBackground';
 import { registerSkin, resolveSkin, listSkins } from './registry';
-import type { BackgroundSkin, SkinHost, SkinLayerContext } from './skin';
+import type { BackgroundSkin, FrameInfo, SkinHost, SkinLayerContext } from './skin';
 import { builtInSkins } from '../skins';
+import { installCanvasStub } from '../../test/canvas-stub';
 
 /**
  * jsdom has no layout or canvas. These tests cover the DOM contract of mount():
- * structure, styles, skin resolution, layer hooks, sizing fallbacks, and cleanup.
+ * structure, styles, skin resolution, layer hooks, sizing fallbacks, palette scoping, and cleanup.
  */
 
 type Recorded = {
   hosts: SkinHost[];
   layerContexts: SkinLayerContext[];
   resizes: { width: number; height: number }[];
+  frames: FrameInfo[];
   destroyed: number;
   layersDestroyed: number;
 };
 
 function makeStubSkin(id = 'stub'): { skin: BackgroundSkin; rec: Recorded } {
-  const rec: Recorded = { hosts: [], layerContexts: [], resizes: [], destroyed: 0, layersDestroyed: 0 };
+  const rec: Recorded = { hosts: [], layerContexts: [], resizes: [], frames: [], destroyed: 0, layersDestroyed: 0 };
   const skin: BackgroundSkin = {
     id,
     layers(root, context) {
@@ -39,7 +41,9 @@ function makeStubSkin(id = 'stub'): { skin: BackgroundSkin; rec: Recorded } {
         resize(v) {
           rec.resizes.push({ ...v });
         },
-        frame() {},
+        frame(info) {
+          rec.frames.push(info);
+        },
         destroy() {
           rec.destroyed++;
         },
@@ -50,20 +54,7 @@ function makeStubSkin(id = 'stub'): { skin: BackgroundSkin; rec: Recorded } {
 }
 
 beforeAll(() => {
-  // Minimal 2D context: property sets land on the object, method calls are no-ops.
-  const fakeCtx = new Proxy({} as Record<string, unknown>, {
-    get(target, key) {
-      if (key in target) return target[key as string];
-      return () => undefined;
-    },
-    set(target, key, value) {
-      target[key as string] = value;
-      return true;
-    },
-  });
-  HTMLCanvasElement.prototype.getContext = (() => fakeCtx) as unknown as typeof HTMLCanvasElement.prototype.getContext;
-  window.requestAnimationFrame = ((cb: FrameRequestCallback) => setTimeout(() => cb(performance.now()), 16) as unknown as number) as typeof window.requestAnimationFrame;
-  window.cancelAnimationFrame = ((id: number) => clearTimeout(id)) as typeof window.cancelAnimationFrame;
+  installCanvasStub();
 });
 
 afterEach(() => {
@@ -75,19 +66,19 @@ describe('skin registry', () => {
   it('registers the built-in skins by id', () => {
     for (const skin of builtInSkins) {
       expect(listSkins()).toContain(skin.id);
-      expect(resolveSkin(skin.id, builtInSkins[0])).toBe(skin);
+      expect(resolveSkin(skin.id)).toBe(skin);
     }
   });
 
-  it('passes skin objects through and falls back when nothing is given', () => {
+  it('passes skin objects through and falls back to the default id when nothing is given', () => {
     const { skin } = makeStubSkin('pass-through');
-    expect(resolveSkin(skin, builtInSkins[0])).toBe(skin);
-    expect(resolveSkin(undefined, skin)).toBe(skin);
-    expect(resolveSkin('', skin)).toBe(skin);
+    expect(resolveSkin(skin)).toBe(skin);
+    expect(resolveSkin(undefined).id).toBe('void-tactical');
+    expect(resolveSkin('').id).toBe('void-tactical');
   });
 
   it('names the known skins when an id is unknown', () => {
-    expect(() => resolveSkin('nope', builtInSkins[0])).toThrow(/Unknown skin "nope".*void-tactical/);
+    expect(() => resolveSkin('nope')).toThrow(/Unknown skin "nope".*void-tactical/);
   });
 });
 
@@ -147,12 +138,25 @@ describe('mount()', () => {
     handle.destroy();
   });
 
-  it('gives the skin host resolved palette values', () => {
+  it('scopes palette variables to the engine root instead of the document', () => {
+    delete document.documentElement.dataset.bgePalette;
     const { skin, rec } = makeStubSkin();
     const handle = mount(document.body, { skin, palette: 'amber' });
     expect(rec.hosts[0].palette.id).toBe('amber');
     expect(rec.hosts[0].palette.accentRgb).toBe('212 160 23');
-    expect(document.documentElement.dataset.palette).toBe('amber');
+    expect(handle.root.dataset.bgePalette).toBe('amber');
+    expect(handle.root.style.getPropertyValue('--bge-accent-rgb')).toBe('212 160 23');
+    expect(handle.root.style.getPropertyValue('--bge-hue-shift')).toMatch(/deg$/);
+    expect(document.documentElement.dataset.bgePalette).toBeUndefined();
+    handle.destroy();
+  });
+
+  it('derives a palette from a bare brand color', () => {
+    const { skin, rec } = makeStubSkin();
+    const handle = mount(document.body, { skin, palette: '#ff7a1a' });
+    expect(rec.hosts[0].palette.id).toBe('custom');
+    expect(rec.hosts[0].palette.accentRgb).toMatch(/^\d+ \d+ \d+$/);
+    expect(handle.root.dataset.bgeTheme).toBe('dark');
     handle.destroy();
   });
 
@@ -162,6 +166,7 @@ describe('mount()', () => {
     // jsdom reports 0 for clientWidth/Height, so the host must fall back to innerWidth/innerHeight.
     expect(rec.resizes[0]).toEqual({ width: window.innerWidth, height: window.innerHeight });
     expect(handle.canvas.width).toBe(Math.round(window.innerWidth * Math.min(window.devicePixelRatio || 1, 1.5)));
+    expect(rec.hosts[0].viewport.width).toBe(window.innerWidth);
     handle.destroy();
   });
 
@@ -207,6 +212,7 @@ describe('mount()', () => {
     expect(rec.destroyed).toBe(1);
     expect(rec.layersDestroyed).toBe(1);
     expect(removeSpy).toHaveBeenCalledWith('resize', expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith('pointermove', expect.any(Function));
     removeSpy.mockRestore();
   });
 });

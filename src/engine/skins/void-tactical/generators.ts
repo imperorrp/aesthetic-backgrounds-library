@@ -13,9 +13,8 @@
  */
 
 import type { SystemState, Fleet, SystemNode, Telemetry, Anomaly, Star, Constellation, CelestialBody, StarSystem, Planet, Structure, SimSettings } from './types';
-import type { Rng } from '../../rng';
-
-const defaultRng: Rng = Math.random;
+import { createRng, type Rng } from '../../rng';
+import type { Palette } from '../../palette';
 
 const DEFAULT_SETTINGS: SimSettings = {
   labelDensity: 'low',
@@ -23,16 +22,8 @@ const DEFAULT_SETTINGS: SimSettings = {
   maxOverlays: 2,
 };
 
-// Helper to resolve CSS accent color at runtime (falls back to hex)
-const accentColor = () => {
-  try {
-    if (typeof window === 'undefined' || !window.getComputedStyle) return '#06b6d4';
-    const v = getComputedStyle(document.documentElement).getPropertyValue('--accent');
-    return (v || '#06b6d4').trim();
-  } catch (e) {
-    return '#06b6d4';
-  }
-};
+// Accent comes from the resolved palette; the fallback is the default palette's accent.
+const accentColor = (palette?: Palette) => palette?.accent ?? '#06b6d4';
 
 // Definitions for procedural generation
 const STRUCTURE_TABLE = [
@@ -63,7 +54,7 @@ const STRUCTURE_TABLE = [
 
 export { STRUCTURE_TABLE };
 
-const generateSystems = (count: number, width: number, height: number, rng: Rng): StarSystem[] => {
+const generateSystems = (count: number, width: number, height: number, rng: Rng, palette?: Palette): StarSystem[] => {
   const systems: StarSystem[] = [];
   for (let i = 0; i < count; i++) {
     const sx = rng() * width;
@@ -79,7 +70,7 @@ const generateSystems = (count: number, width: number, height: number, rng: Rng)
         orbitRadius: orbitR,
         orbitSpeed: (0.0005 + rng() * 0.001) * (rng() < 0.5 ? 1 : -1), // Much slower: 0.0005-0.0015
         orbitPhase: rng() * Math.PI * 2,
-        color: ['#34a853', accentColor(), '#ffb703','#ff4500'][Math.floor(rng()*4)]
+        color: ['#34a853', accentColor(palette), '#ffb703','#ff4500'][Math.floor(rng()*4)]
       });
     }
 
@@ -126,7 +117,7 @@ const generateSystems = (count: number, width: number, height: number, rng: Rng)
   return systems;
 };
 
-export const generateSingleSystem = (x: number, y: number, rng: Rng = defaultRng): StarSystem => {
+export const generateSingleSystem = (x: number, y: number, rng: Rng, palette?: Palette): StarSystem => {
   const planetCount = 1 + Math.floor(rng() * 5);
   const planets: Planet[] = [];
   for (let p = 0; p < planetCount; p++) {
@@ -138,7 +129,7 @@ export const generateSingleSystem = (x: number, y: number, rng: Rng = defaultRng
       orbitRadius: orbitR,
       orbitSpeed: (0.0005 + rng() * 0.001) * (rng() < 0.5 ? 1 : -1),
       orbitPhase: rng() * Math.PI * 2,
-      color: ['#34a853', accentColor(), '#ffb703','#ff4500'][Math.floor(rng()*4)]
+      color: ['#34a853', accentColor(palette), '#ffb703','#ff4500'][Math.floor(rng()*4)]
     });
   }
 
@@ -154,7 +145,7 @@ export const generateSingleSystem = (x: number, y: number, rng: Rng = defaultRng
 };
 
 // Generate a single structure at given world coordinates
-export const generateSingleStructure = (x: number, y: number, excludeKinds: Structure['kind'][] = [], rng: Rng = defaultRng) => {
+export const generateSingleStructure = (x: number, y: number, excludeKinds: Structure['kind'][], rng: Rng) => {
   // Choose from the structure table with a chance weight — if some kinds are in excludeKinds
   // we lower their effective weight to make them less likely to appear.
   const weighted = STRUCTURE_TABLE.map(def => ({
@@ -184,15 +175,17 @@ export const generateSingleStructure = (x: number, y: number, excludeKinds: Stru
 
 export type GenerateSystemOptions = {
   starCount?: number;
+  /** Seeded generator. Defaults to a fixed seed so output is reproducible even when omitted. */
   rng?: Rng;
   /** When false (default), only stars/constellations are filled — the streaming canvas seeds the rest. */
   populate?: boolean;
   settings?: SimSettings;
+  palette?: Palette;
 };
 
 export const generateSystem = (width: number, height: number, options: GenerateSystemOptions | number = {}): SystemState => {
   const opts: GenerateSystemOptions = typeof options === 'number' ? { starCount: options } : options;
-  const rng = opts.rng ?? defaultRng;
+  const rng = opts.rng ?? createRng('void-tactical');
   const starCount = opts.starCount ?? 150;
   const populate = opts.populate ?? false;
   const settings = opts.settings ?? DEFAULT_SETTINGS;
@@ -200,11 +193,11 @@ export const generateSystem = (width: number, height: number, options: GenerateS
   const stars = generateStars(width, height, starCount, rng);
   const constellations = generateConstellations(stars, Math.ceil(starCount / 30), rng);
   const celestialBodies = generateCelestialBodies(width, height, 0, rng);
-  const fleets = populate ? generateFleets(width, height, 6, rng) : [];
+  const fleets = populate ? generateFleets(width, height, 6, rng, opts.palette) : [];
   const nodes = populate ? generateNodes(width, height, 5, rng) : [];
   const telemetry = populate ? generateTelemetry(width, height, 4, rng) : [];
   const anomalies = populate ? generateAnomalies(width, height, 5, rng) : [];
-  const systems = populate ? generateSystems(20, width, height, rng) : [];
+  const systems = populate ? generateSystems(20, width, height, rng, opts.palette) : [];
 
   return {
     stars,
@@ -329,19 +322,19 @@ const generateCelestialBodies = (width: number, height: number, count: number, r
   return bodies;
 };
 
-const generateFleets = (width: number, height: number, count: number, rng: Rng): Fleet[] => {
+const generateFleets = (width: number, height: number, count: number, rng: Rng, palette?: Palette): Fleet[] => {
   const fleets: Fleet[] = [];
   const types: Fleet['type'][] = ['fighter', 'cruiser', 'freighter', 'scout'];
-  
+
   for (let i = 0; i < count; i++) {
     const type = types[Math.floor(rng() * types.length)];
     const x = rng() * width;
     const y = rng() * height;
-    
+
     // Boids-like movement parameters - faster speeds
     const vx = (rng() - 0.5) * 4; // Increased from 2 to 4
     const vy = (rng() - 0.5) * 4; // Increased from 2 to 4
-    
+
     // Add curvature parameters for CHAOTIC paths - extreme curves
     const curvature = 0.1 + rng() * 0.4; // Increased to 0.1-0.5 range for extreme chaos
     const curveDirection = rng() > 0.5 ? 1 : -1; // Clockwise or counter-clockwise
@@ -349,9 +342,9 @@ const generateFleets = (width: number, height: number, count: number, rng: Rng):
     const spiralFactor = 0.02 + rng() * 0.08; // Increased spiral factor range
 
     let glyph = '►';
-    let color = accentColor(); // Cyan default
+    let color = accentColor(palette); // Accent default
 
-    if (type === 'fighter') { glyph = '►'; color = accentColor(); }
+    if (type === 'fighter') { glyph = '►'; color = accentColor(palette); }
     if (type === 'cruiser') { glyph = '█'; color = '#3b82f6'; }
     if (type === 'freighter') { glyph = '■'; color = '#10b981'; }
     if (type === 'scout') { glyph = '▸'; color = '#f59e0b'; }
@@ -380,14 +373,14 @@ const generateFleets = (width: number, height: number, count: number, rng: Rng):
   return fleets;
 };
 
-export const generateSingleFleet = (x: number, y: number, rng: Rng = defaultRng): Fleet => {
+export const generateSingleFleet = (x: number, y: number, rng: Rng, palette?: Palette): Fleet => {
   const types: Fleet['type'][] = ['fighter', 'cruiser', 'freighter', 'scout'];
   const type = types[Math.floor(rng() * types.length)];
-  
+
   // Boids-like movement parameters - faster speeds
   const vx = (rng() - 0.5) * 4;
   const vy = (rng() - 0.5) * 4;
-  
+
   // Add curvature parameters for CHAOTIC paths - extreme curves
   const curvature = 0.1 + rng() * 0.4;
   const curveDirection = rng() > 0.5 ? 1 : -1;
@@ -395,9 +388,9 @@ export const generateSingleFleet = (x: number, y: number, rng: Rng = defaultRng)
   const spiralFactor = 0.02 + rng() * 0.08;
 
   let glyph = '►';
-  let color = accentColor();
+  let color = accentColor(palette);
 
-  if (type === 'fighter') { glyph = '►'; color = accentColor(); }
+  if (type === 'fighter') { glyph = '►'; color = accentColor(palette); }
   if (type === 'cruiser') { glyph = '█'; color = '#3b82f6'; }
   if (type === 'freighter') { glyph = '■'; color = '#10b981'; }
   if (type === 'scout') { glyph = '▸'; color = '#f59e0b'; }
@@ -490,7 +483,7 @@ const ANOMALY_TEXTS = [
   "PARALLEL UNIVERSE BLEED", "COSMIC STRING DETECTED", "SINGULARITY FORMING"
 ];
 
-export const generateSingleAnomaly = (x: number, y: number, rng: Rng = defaultRng): Anomaly => {
+export const generateSingleAnomaly = (x: number, y: number, rng: Rng): Anomaly => {
   return {
     id: `ANM-${Math.floor(rng() * 10000)}`,
     x,

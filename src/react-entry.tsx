@@ -1,7 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { mount, type MountOptions } from './engine/core/mount';
-// Registers the built-in skins so `skin="matrix-rain"` resolves.
-import './engine/skins';
+// Re-exported so the import is retained and the built-in skins register by id.
+export { builtInSkins } from './engine/skins';
 
 export type BackgroundProps = MountOptions & {
   className?: string;
@@ -23,6 +23,9 @@ export function Background({ className, style, ...options }: BackgroundProps) {
     targetFps: options.targetFps,
     zIndex: options.zIndex,
     fonts: options.fonts,
+    intensity: options.intensity,
+    motion: options.motion,
+    adaptiveQuality: options.adaptiveQuality,
     skin: typeof options.skin === 'string' ? options.skin : options.skin?.id,
     options: options.options,
   });

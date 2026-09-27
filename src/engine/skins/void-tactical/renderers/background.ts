@@ -6,7 +6,7 @@
  */
 
 import type { SystemState } from '../types';
-import { accentRgba, CHAR_SIZE, WORLD_SPEED_MULTIPLIER } from './utils';
+import { accentRgba, CHAR_SIZE, WORLD_SPEED_MULTIPLIER, type RenderFrame } from './utils';
 
 import type { CanvasContext } from './utils';
 
@@ -14,7 +14,8 @@ export const renderStars = (
   ctx: CanvasContext,
   stars: SystemState['stars'],
   camera: { x: number, y: number },
-  viewport: { width: number, height: number }
+  viewport: { width: number, height: number },
+  frame: RenderFrame,
 ) => {
   const parallaxFactorStars = 0.5; // Horizontal parallax multiplier for stars
 
@@ -30,8 +31,8 @@ export const renderStars = (
     const wrappedX = ((relX % viewport.width) + viewport.width) % viewport.width;
     const wrappedY = ((relY % viewport.height) + viewport.height) % viewport.height;
 
-    // Twinkle effect (smooth per-star brightness modulation)
-    const twinkle = 0.5 + Math.sin(Date.now() * 0.001 * star.twinkle) * 0.5;
+    // Twinkle effect (smooth per-star brightness modulation, phase offset by position)
+    const twinkle = 0.5 + Math.sin(frame.time * star.twinkle + star.x * 0.01) * 0.5;
     ctx.save();
     ctx.fillStyle = star.color;
     ctx.globalAlpha = Math.max(0, Math.min(1, twinkle * star.brightness));
@@ -91,10 +92,11 @@ export const renderConstellations = (
 export const renderGrids = (
   ctx: CanvasContext,
   camera: { x: number, y: number },
-  viewport: { width: number, height: number }
+  viewport: { width: number, height: number },
+  frame: RenderFrame,
 ) => {
   // 1. RENDER SECTOR GRID (Background Layer)
-  ctx.fillStyle = accentRgba(0.1);
+  ctx.fillStyle = accentRgba(frame.palette, 0.1);
   const parallaxFactorGrid = 0.1;
   const gridOffsetX = (camera.x * parallaxFactorGrid * WORLD_SPEED_MULTIPLIER) % (CHAR_SIZE * 6);
   const gridOffsetY = (camera.y * parallaxFactorGrid * WORLD_SPEED_MULTIPLIER) % (CHAR_SIZE * 6);
@@ -107,7 +109,7 @@ export const renderGrids = (
 
   // 1.5 RENDER HEX GRID (Optional "Strategy" Fluff)
   // Simplified as dots for now to keep performance high
-  ctx.fillStyle = accentRgba(0.05);
+  ctx.fillStyle = accentRgba(frame.palette, 0.05);
   for (let x = -gridOffsetX; x < viewport.width; x += CHAR_SIZE * 12) {
     for (let y = -gridOffsetY; y < viewport.height; y += CHAR_SIZE * 12) {
       if ((x + y) % 2 === 0) ctx.fillText('·', x + CHAR_SIZE * 3, y + CHAR_SIZE * 3);

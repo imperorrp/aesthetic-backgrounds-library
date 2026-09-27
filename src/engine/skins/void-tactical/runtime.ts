@@ -7,9 +7,8 @@ import {
   generateSingleAnomaly,
 } from './generators';
 import { renderSystem } from './renderers';
-import { WORLD_SPEED_MULTIPLIER } from './renderers/utils';
-import { createRng } from '../../rng';
-import type { BackgroundSkin, SkinHost, Viewport } from '../../core/skin';
+import { WORLD_SPEED_MULTIPLIER, type RenderFrame } from './renderers/utils';
+import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import { createOverlayStack } from './overlays/stack';
 import type { OverlayFlags } from './overlays/flags';
 
@@ -22,6 +21,9 @@ export type VoidTacticalOptions = {
  * First skin: the extracted Bubble Galaxies landing background.
  * Streaming camera, weighted structures, fleets, ambient HUD.
  * Other skins should not need to know these types.
+ *
+ * Deterministic: world generation draws from `host.rng`, per-frame randomness from a
+ * forked stream, and all timing from `FrameInfo`, so one seed replays identically.
  */
 export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
   id: 'void-tactical',
@@ -30,9 +32,10 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
     return () => stack.destroy();
   },
   mount(host: SkinHost<VoidTacticalOptions>) {
-    const { canvas, ctx, rng, config } = host;
-    let width = canvas.clientWidth || window.innerWidth;
-    let height = canvas.clientHeight || window.innerHeight;
+    const { ctx, rng, config, palette } = host;
+    let width = host.viewport.width;
+    let height = host.viewport.height;
+    const frameRng = host.fork('frame');
 
     const simSettings = {
       labelDensity: config.detail,
@@ -55,7 +58,8 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
       const isTablet = width >= 768 && width < 1024;
       const area = width * height;
       const densityFactor = isMobile ? 4000 : 7000;
-      const d = config.density;
+      // Intensity thins the population; quality governor thins it further when frames run long.
+      const d = config.density * (0.5 + 0.5 * host.intensity) * (0.6 + 0.4 * host.quality);
       layout.starCount = Math.max(40, Math.min(400, Math.floor((area / densityFactor) * d)));
       if (isMobile) {
         layout.systemDist = 240;
@@ -88,16 +92,19 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
       rng,
       populate: false,
       settings: simSettings,
+      palette,
     });
     const world: SystemState = { ...base, systems: [], structures: [], settings: simSettings };
     const camera = { x: 0, y: 0 };
     const systemParallax = 0.25 * WORLD_SPEED_MULTIPLIER;
 
+    // Spawn scheduling in sim milliseconds (FrameInfo.t * 1000)
     const scheduleDelay = (baseMs: number, variance: number) => baseMs + rng() * variance;
-    let lastSystemSpawn = Date.now();
-    let lastStructureSpawn = Date.now();
-    let lastFleetSpawn = Date.now();
-    let lastAnomalySpawn = Date.now();
+    let nowMs = 0;
+    let lastSystemSpawn = 0;
+    let lastStructureSpawn = 0;
+    let lastFleetSpawn = 0;
+    let lastAnomalySpawn = 0;
     let systemSpawnDelay = scheduleDelay(1000, 600);
     let structureSpawnDelay = scheduleDelay(700, 450);
     let fleetSpawnDelay = scheduleDelay(1500, 1000);
@@ -113,11 +120,11 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
           return Math.hypot(dx, dy) < layout.systemDist;
         });
         if (!crowded) {
-          world.systems.push(generateSingleSystem(spawnX, spawnY, rng));
+          world.systems.push(generateSingleSystem(spawnX, spawnY, rng, palette));
           return;
         }
       }
-      world.systems.push(generateSingleSystem(camera.x + rng() * width, rng() * height, rng));
+      world.systems.push(generateSingleSystem(camera.x + rng() * width, rng() * height, rng, palette));
     };
 
     const placeStructure = () => {
@@ -145,6 +152,7 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
         camera.x * 0.7 + (rng() - 0.5) * width * 2,
         camera.y * 0.7 + (rng() - 0.5) * height * 2,
         rng,
+        palette,
       ));
     };
 
@@ -153,14 +161,13 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
       world.anomalies.push(generateSingleAnomaly(camera.x * parallax + rng() * width, rng() * height, rng));
     };
 
-    const seed = width < 768 ? 2 : 3;
-    for (let i = 0; i < seed; i++) placeSystem();
+    const seedCount = width < 768 ? 2 : 3;
+    for (let i = 0; i < seedCount; i++) placeSystem();
     for (let i = 0; i < layout.maxStructs; i++) placeStructure();
     for (let i = 0; i < layout.maxFleets; i++) placeFleet();
     for (let i = 0; i < layout.maxAnomalies; i++) placeAnomaly();
 
-    const reduceMotion = () =>
-      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let lastQuality = host.quality;
 
     return {
       resize(viewport: Viewport) {
@@ -171,17 +178,25 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
         world.height = height;
         const stars = generateSystem(width, height, {
           starCount: layout.starCount,
-          rng: createRng(`${config.seed}:stars:${width}x${height}`),
+          rng: host.fork(`stars:${width}x${height}`),
           populate: false,
           settings: simSettings,
+          palette,
         });
         world.stars = stars.stars;
         world.constellations = stars.constellations;
       },
-      frame() {
-        if (!reduceMotion()) camera.x += config.cameraSpeed;
+      frame(info: FrameInfo) {
+        const frames = info.dt * 60;
+        nowMs = info.t * 1000;
+
+        if (Math.abs(host.quality - lastQuality) >= 0.1) {
+          lastQuality = host.quality;
+          updateLayout();
+        }
+
+        if (host.motion !== 'off') camera.x += config.cameraSpeed * host.intensity * frames;
         camera.y = 0;
-        const now = Date.now();
 
         world.systems = world.systems.filter((s) => s.x - camera.x * systemParallax > -300);
         world.structures = world.structures.filter((s) => s.x - camera.x * systemParallax > -300);
@@ -195,18 +210,18 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
         const anomParallax = 0.8 * WORLD_SPEED_MULTIPLIER;
         world.anomalies = world.anomalies.filter((a) => a.x - camera.x * anomParallax > -400);
 
-        if (world.systems.length < layout.maxSystems && now - lastSystemSpawn > systemSpawnDelay) {
+        if (world.systems.length < layout.maxSystems && nowMs - lastSystemSpawn > systemSpawnDelay) {
           const spawnX = camera.x * systemParallax + width + 180 + rng() * 520;
           let spawnY = rng() * height;
           for (let n = 0; n < 10 && world.systems.some((s) => Math.hypot(s.x - spawnX, s.y - spawnY) < layout.systemDist); n++) {
             spawnY = rng() * height;
           }
-          world.systems.push(generateSingleSystem(spawnX, spawnY, rng));
-          lastSystemSpawn = now;
+          world.systems.push(generateSingleSystem(spawnX, spawnY, rng, palette));
+          lastSystemSpawn = nowMs;
           systemSpawnDelay = scheduleDelay(1000, 600);
         }
 
-        if (world.structures.length < layout.maxStructs && now - lastStructureSpawn > structureSpawnDelay) {
+        if (world.structures.length < layout.maxStructs && nowMs - lastStructureSpawn > structureSpawnDelay) {
           for (let attempt = 0; attempt < 12; attempt++) {
             const x = camera.x * systemParallax + width + 100 + rng() * 420;
             const y = rng() * height;
@@ -216,32 +231,33 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
             world.structures.push(next);
             recentKinds.push(next.kind);
             if (recentKinds.length > 8) recentKinds.shift();
-            lastStructureSpawn = now;
+            lastStructureSpawn = nowMs;
             structureSpawnDelay = scheduleDelay(700, 450);
             break;
           }
         }
 
-        if (world.fleets.length < layout.maxFleets && now - lastFleetSpawn > fleetSpawnDelay) {
+        if (world.fleets.length < layout.maxFleets && nowMs - lastFleetSpawn > fleetSpawnDelay) {
           placeFleet();
-          lastFleetSpawn = now;
+          lastFleetSpawn = nowMs;
           fleetSpawnDelay = scheduleDelay(1500, 1000);
         }
 
-        if (world.anomalies.length < layout.maxAnomalies && now - lastAnomalySpawn > anomalySpawnDelay) {
+        if (world.anomalies.length < layout.maxAnomalies && nowMs - lastAnomalySpawn > anomalySpawnDelay) {
           for (let attempt = 0; attempt < 8; attempt++) {
             const x = camera.x * anomParallax + width + 100 + rng() * 400;
             const y = rng() * height;
             if (world.anomalies.some((a) => Math.hypot(a.x - x, a.y - y) < 150)) continue;
             world.anomalies.push(generateSingleAnomaly(x, y, rng));
-            lastAnomalySpawn = now;
+            lastAnomalySpawn = nowMs;
             anomalySpawnDelay = scheduleDelay(2000, 1500);
             break;
           }
         }
 
+        const frame: RenderFrame = { time: info.t, dt: info.dt, rng: frameRng, palette };
         ctx.clearRect(0, 0, width, height);
-        renderSystem(ctx, world, camera, { width, height });
+        renderSystem(ctx, world, camera, { width, height }, frame);
       },
       destroy() {},
     };

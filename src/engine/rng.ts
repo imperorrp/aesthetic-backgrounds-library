@@ -35,6 +35,14 @@ export function createRng(seed: string | number): Rng {
   return mulberry32(hashSeed(seed));
 }
 
+/**
+ * Independent stream derived from a seed and a label, so one subsystem
+ * (e.g. star twinkle) can consume randomness without perturbing another (e.g. spawns).
+ */
+export function forkRng(seed: string | number, label: string): Rng {
+  return createRng(`${seed}::${label}`);
+}
+
 export function randomSeedString(): string {
   const adjectives = ['quiet', 'amber', 'void', 'kepler', 'orion', 'silent', 'hollow', 'far'];
   const nouns = ['cartographer', 'rift', 'harbor', 'meridian', 'relay', 'march', 'well', 'garden'];

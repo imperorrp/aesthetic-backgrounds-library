@@ -1,13 +1,13 @@
-import { applyPalette, resolvePalette } from '../palette';
+import { applyPalette } from '../palette';
 import { resolveBackgroundConfig, type BackgroundConfig } from '../config';
-import { voidTacticalSkin } from '../skins/void-tactical/runtime';
 import { createBackground } from './createBackground';
 import { injectEngineFonts } from './fonts';
 import { resolveSkin } from './registry';
+import type { Scheduler } from './scheduler';
 import type { BackgroundHandle, BackgroundSkin } from './skin';
 
 export type MountOptions<T = any> = BackgroundConfig & {
-  /** Skin object or registered id (e.g. `'matrix-rain'`). Defaults to void-tactical. */
+  /** Skin object or registered id (e.g. `'matrix-rain'`). Defaults to the registered `void-tactical`. */
   skin?: BackgroundSkin<T> | string;
   /** Skin-specific options, validated by the skin. */
   options?: T;
@@ -15,6 +15,8 @@ export type MountOptions<T = any> = BackgroundConfig & {
   zIndex?: number;
   /** Load the engine's display fonts (Orbit, Syne Mono) from Google Fonts. Default false: no network requests. */
   fonts?: boolean;
+  /** Frame scheduler + clock override (tests, offscreen rendering). */
+  scheduler?: Scheduler;
 };
 
 export type MountHandle = BackgroundHandle & {
@@ -25,13 +27,14 @@ const ROOT_STYLE = 'inset:0;pointer-events:none;overflow:hidden;';
 const CANVAS_STYLE = 'position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;z-index:10;';
 
 /**
- * One-call site background. Creates a `.bg-engine-root` inside the target, asks the
- * skin for its DOM layers (gradients, grain), then runs the canvas loop on top.
- * Everything is `pointer-events: none` so the host page stays clickable.
+ * One-call site background. Creates a `.bg-engine-root` inside the target, writes the
+ * palette as scoped `--bge-*` variables on it, asks the skin for its DOM layers
+ * (gradients, grain), then runs the canvas loop on top. Everything is
+ * `pointer-events: none` so the host page stays clickable.
  *
  * @example
  * mount(document.body, { seed: 'orion-7', detail: 'low' })
- * mount('#hero', { skin: 'matrix-rain', options: { fontSize: 14 } })
+ * mount('#hero', { skin: 'matrix-rain', palette: '#ff7a1a', intensity: 0.6 })
  */
 export function mount<T = any>(
   target: string | HTMLElement = document.body,
@@ -43,16 +46,16 @@ export function mount<T = any>(
     options: skinOptions,
     zIndex = 0,
     fonts = false,
+    scheduler,
     ...config
   } = options;
 
   // Resolve once so a random seed is shared by the DOM layers and the canvas.
   const resolved = resolveBackgroundConfig(config);
-  const palette = resolvePalette(resolved.palette);
-  applyPalette(palette.id);
+  const palette = resolved.palette;
   if (fonts) injectEngineFonts();
 
-  const skin = resolveSkin(skinInput, voidTacticalSkin as BackgroundSkin<T>);
+  const skin = resolveSkin<T>(skinInput);
 
   const isPage = el === document.body || el === document.documentElement;
   if (!isPage && window.getComputedStyle(el).position === 'static') {
@@ -65,6 +68,7 @@ export function mount<T = any>(
   root.style.cssText = ROOT_STYLE;
   root.style.position = isPage ? 'fixed' : 'absolute';
   root.style.zIndex = String(zIndex);
+  applyPalette(palette, root);
   el.appendChild(root);
 
   const layerCleanup = skin.layers?.(root, { config: resolved, palette, options: skinOptions });
@@ -79,12 +83,16 @@ export function mount<T = any>(
     skin,
     config: resolved,
     options: skinOptions,
+    scheduler,
   });
 
   let destroyed = false;
   return {
     canvas: loop.canvas,
     root,
+    pause: () => loop.pause(),
+    resume: () => loop.resume(),
+    renderOnce: () => loop.renderOnce(),
     destroy() {
       if (destroyed) return;
       destroyed = true;

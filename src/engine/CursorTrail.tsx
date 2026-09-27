@@ -43,7 +43,7 @@ const CursorTrail = () => {
         left: 0;
         width: ${6 - i * 0.5}px;
         height: ${6 - i * 0.5}px;
-        background: color-mix(in srgb, var(--accent) ${Math.round((0.8 - i * 0.1) * 100)}%, transparent);
+        background: color-mix(in srgb, var(--bge-accent, #06b6d4) ${Math.round((0.8 - i * 0.1) * 100)}%, transparent);
         border-radius: 50%;
         pointer-events: none;
         z-index: 9999;

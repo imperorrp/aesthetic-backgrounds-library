@@ -1,12 +1,13 @@
+/* Playground chrome. The engine writes --bge-* tokens (see applyPalette); the page
+   maps its own short names onto them so the HUD follows the active palette. */
 :root {
-  --bg: #030308;
-  --ink: #e8f4f8;
-  --ink-dim: #9bb4c0;
-  --accent: #06b6d4;
-  --accent-rgb: 6 182 212;
-  --accent-blue-rgb: 6 182 212;
-  --hazard: #f87171;
-  --hazard-rgb: 248 113 113;
+  --bg: var(--bge-bg, #030308);
+  --ink: var(--bge-ink, #e8f4f8);
+  --ink-dim: var(--bge-ink-dim, #9bb4c0);
+  --accent: var(--bge-accent, #06b6d4);
+  --accent-rgb: var(--bge-accent-rgb, 6 182 212);
+  --hazard: var(--bge-hazard, #f87171);
+  --hazard-rgb: var(--bge-hazard-rgb, 248 113 113);
   color-scheme: dark;
 }
 

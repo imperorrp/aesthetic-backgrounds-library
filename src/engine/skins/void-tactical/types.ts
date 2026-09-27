@@ -47,6 +47,7 @@ export interface Fleet {
   targetId?: string; // ID of target system/structure
   approachTarget?: Point; // Target position for approaching
   targetType?: 'planet' | 'structure'; // Type of target being approached
+  dockedUntil?: number; // Sim time (s) at which a docked fleet departs
 }
 
 export interface Planet {

@@ -23,10 +23,12 @@ const BackgroundCanvas = <T = any>({ config, skin = voidTacticalSkin as any, opt
       cameraSpeed: config?.cameraSpeed,
       targetFps: config?.targetFps,
       palette: config?.palette,
+      intensity: config?.intensity,
+      motion: config?.motion,
       skin: skin?.id,
       options,
     }),
-    [config?.seed, config?.density, config?.detail, config?.labelDensity, config?.cameraSpeed, config?.targetFps, config?.palette, skin?.id, options],
+    [config?.seed, config?.density, config?.detail, config?.labelDensity, config?.cameraSpeed, config?.targetFps, config?.palette, config?.intensity, config?.motion, skin?.id, options],
   );
 
   useEffect(() => {
