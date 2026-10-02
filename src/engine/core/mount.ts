@@ -1,4 +1,4 @@
-import { applyPalette } from '../palette';
+import { applyPalette, clearPalette } from '../palette';
 import { resolveBackgroundConfig, withConfigDefaults, type BackgroundConfig } from '../config';
 import { createBackground } from './createBackground';
 import { injectEngineFonts } from './fonts';
@@ -17,6 +17,12 @@ export type MountOptions<T = any> = BackgroundConfig & {
   fonts?: boolean;
   /** Frame scheduler + clock override (tests, offscreen rendering). */
   scheduler?: Scheduler;
+  /**
+   * Also write the `--bge-*` palette tokens on the page (`true` = `<html>`, or pass an
+   * element) so page chrome, Tailwind utilities, or CSS can use the background's colors.
+   * Removed again on destroy. Default false: tokens stay scoped to the engine root.
+   */
+  exposeTokens?: boolean | HTMLElement;
 };
 
 export type MountHandle = BackgroundHandle & {
@@ -47,6 +53,7 @@ export function mount<T = any>(
     zIndex = 0,
     fonts = false,
     scheduler,
+    exposeTokens = false,
     ...config
   } = options;
 
@@ -71,6 +78,8 @@ export function mount<T = any>(
   root.style.zIndex = String(zIndex);
   applyPalette(palette, root);
   el.appendChild(root);
+  const tokenTarget = exposeTokens === true ? document.documentElement : exposeTokens || null;
+  if (tokenTarget) applyPalette(palette, tokenTarget);
 
   const layerCleanup = skin.layers?.(root, { config: resolved, palette, options: skinOptions });
 
@@ -99,6 +108,7 @@ export function mount<T = any>(
       destroyed = true;
       loop.destroy();
       layerCleanup?.();
+      if (tokenTarget) clearPalette(tokenTarget, palette);
       root.remove();
     },
   };

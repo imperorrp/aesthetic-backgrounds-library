@@ -108,7 +108,65 @@ export function App() {
 }
 ```
 
-`Background` wraps `mount()`. Any prop change tears the background down and mounts it again with the new settings.
+`Background` wraps `mount()`. Any prop change tears the background down and mounts it again with the new settings. The built React entry is marked `'use client'`, so it works as-is in the Next.js App Router.
+
+**Vue, Svelte, Astro, no build step.** Each adapter is a thin layer over `mount()` with no framework dependency of its own:
+
+```ts
+// Vue 3: a directive
+import { BackgroundPlugin } from 'space-background-engine/vue';
+app.use(BackgroundPlugin);           // <section v-background="{ skin: 'calm-mesh' }" />
+
+// Svelte: an action
+import { background } from 'space-background-engine/svelte';   // <div use:background={{ skin: 'deep-field' }} />
+```
+
+Astro and plain HTML use the `<bg-engine>` element. Without a bundler, an import map pins a version from a CDN; see [examples/importmap.html](examples/importmap.html).
+
+## Copy a background into your project
+
+The CLI reads the registry and writes one editable file, so the scene lives in your repo where you and your agent can change it, while the engine stays a dependency:
+
+```bash
+npx space-background-engine list --kind preset
+npx space-background-engine info aurora-night
+npx space-background-engine add aurora-night --palette '#ff7a1a' --intensity 0.6
+npx space-background-engine add calm-mesh --tokens ./design/tokens.json
+```
+
+`add` writes `src/backgrounds/<id>.ts` with the manifest inlined and a `mountBackground()` function. `--tokens` derives the palette from a brand token file.
+
+## Community presets
+
+A preset is data: a scene plus config defaults. Anyone can publish one as JSON without shipping code, because every layer validates its options against a schema before anything mounts.
+
+```ts
+import { mount } from 'space-background-engine';
+import { loadPresetManifest } from 'space-background-engine/manifest';
+
+const preset = await loadPresetManifest('https://example.com/ember-nocturne.json');
+mount(document.body, { skin: preset });
+```
+
+`validatePresetManifest()` reports every problem with a path (`scene.layers[1].with.style: "hexagons" is not one of dots, lines, cross`). Point `"$schema"` at `registry/preset.schema.json` and editors autocomplete layer ids and every option with its range. To list a preset in the gallery, add its JSON to [registry/community](registry/community) in a pull request; CI validates it and it appears in the studio with no code change. In the studio, `?preset=<url>` loads and selects any manifest.
+
+## Palette tokens on your page
+
+Pass `exposeTokens: true` and the background's palette is written as `--bge-*` variables on `<html>`, so your own UI can follow it. With Tailwind:
+
+```css
+/* Tailwind v4 */
+@import "tailwindcss";
+@import "space-background-engine/tailwind.css";   /* bg-bge-bg, text-bge-ink, border-bge-accent, ... */
+```
+
+```js
+// Tailwind v3
+import bge from 'space-background-engine/tailwind-preset';
+export default { presets: [bge] };                  // supports opacity: bg-bge-accent/20
+```
+
+To share the palette with design tools, `paletteToTokens()` (from `space-background-engine/tokens`) exports W3C DTCG tokens that Figma Variables importers and Tokens Studio read, and `paletteFromTokens()` derives a palette from an existing token file. Both are buttons in the studio.
 
 ## Configuration Knobs
 
@@ -117,7 +175,8 @@ export function App() {
 | `seed` | random | PRNG seed. The same seed replays the same world, frame for frame. |
 | `skin` | `'void-tactical'` | A skin object or the id of a registered skin (`'void-tactical'`, `'drifting-dust'`, `'matrix-rain'`). |
 | `options` | `{}` | Skin-specific options. See each skin's exported options type. |
-| `palette` | `'void-cyan'` | A built-in id (`void-cyan`, `amber`, `violet`), a full token object, a bare hex color, or `{ from: '#hex', theme: 'dark' \| 'light' }` to derive a palette in OKLCH. |
+| `palette` | `'void-cyan'` | A built-in id (`void-cyan`, `amber`, `violet`), a full token object, a bare hex color, or `{ from: '#hex', theme: 'dark' \| 'light', harmony }` to derive a palette in OKLCH. `harmony` (`analogous`, `complementary`, `split`, `triadic`, `mono`) sets the two secondary hues `accent2` and `accent3`. |
+| `exposeTokens` | `false` | Also write the palette as `--bge-*` variables on `<html>` (or a given element) for your own UI. |
 | `intensity` | `1` | One knob for how much the background asserts itself. Skins scale motion, density, and contrast by it. `0` to `1`. |
 | `motion` | `'auto'` | `auto` honors `prefers-reduced-motion`; `full`, `reduced`, or `off` force a mode. `off` renders a single frame. |
 | `density` | `1` | Population multiplier for generated entities (clamped 0.25–2). |

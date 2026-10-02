@@ -58,7 +58,11 @@ mount(document.body, { skin: 'aurora-night', palette: '#22d3ee', intensity: 0.6,
 <bg-engine skin="calm-mesh" palette="#4f6df5" intensity="0.7"></bg-engine>
 ```
 
-For a composed scene, pass `skin: 'scene'` with `options.layers` (see catalog). For React use `Background` from `space-background-engine/react` with the same props. Import `space-background-engine/core` plus the specific `/skins/*`, `/layers`, or `/presets` entry when bundle size matters.
+For a composed scene, pass `skin: 'scene'` with `options.layers` (see catalog). For React use `Background` from `space-background-engine/react` with the same props; Vue has `v-background` (`/vue`), Svelte has `use:background` (`/svelte`). Import `space-background-engine/core` plus the specific `/skins/*`, `/layers`, or `/presets` entry when bundle size matters.
+
+Prefer putting the background in the repo: `npx space-background-engine add <id> --palette '#hex'` writes one editable file with the scene inlined, and `--tokens path/to/tokens.json` derives the palette from the project's design tokens when they exist. If the page should follow the background's colors, pass `exposeTokens: true` and use the `--bge-*` variables (or the Tailwind preset).
+
+To hand the result to someone else as data, export a preset manifest (studio **JSON**, or `manifestOf()`); validate it with `npx space-background-engine validate <file>`.
 
 Always state: which preset or layers, why the palette and intensity, and that the same seed replays identically.
 

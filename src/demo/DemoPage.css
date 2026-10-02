@@ -200,6 +200,32 @@
   background: rgb(var(--hazard-rgb) / 0.08);
 }
 
+.demo-swatches {
+  display: flex;
+  gap: 3px;
+  margin: 0.15rem 0 0.5rem;
+}
+
+.demo-swatches span {
+  flex: 1;
+  height: 0.9rem;
+  border: 1px solid rgb(var(--accent-rgb) / 0.25);
+}
+
+.demo-tokens {
+  margin-bottom: 0.8rem;
+}
+
+.demo-badge {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.3rem;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  color: var(--bg);
+  background: var(--accent);
+  vertical-align: middle;
+}
+
 .demo-hud-row {
   display: flex;
   gap: 0.4rem;

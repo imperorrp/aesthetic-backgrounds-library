@@ -1,6 +1,6 @@
 {
   "name": "space-background-engine",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": false,
   "type": "module",
   "license": "MIT",
@@ -10,12 +10,17 @@
     "canvas",
     "procedural",
     "generative",
-    "web-component"
+    "web-component",
+    "webgl",
+    "shader",
+    "design-tokens"
   ],
   "sideEffects": [
     "./dist/index.js",
     "./dist/element.js",
     "./dist/react.js",
+    "./dist/vue.js",
+    "./dist/svelte.js",
     "./dist/skins/*.js",
     "./dist/layers.js",
     "./dist/presets.js",
@@ -24,11 +29,15 @@
     "./src/engine/presets/index.ts",
     "./src/entries/skins/*.ts",
     "./src/element.ts",
+    "./src/adapters/*.ts",
     "*.css"
   ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./types/lib.d.ts",
+  "bin": {
+    "bg-engine": "bin/bg-engine.mjs"
+  },
   "exports": {
     ".": {
       "types": "./types/lib.d.ts",
@@ -54,6 +63,14 @@
       "types": "./types/entries/shader.d.ts",
       "import": "./dist/shader.js"
     },
+    "./manifest": {
+      "types": "./types/entries/manifest.d.ts",
+      "import": "./dist/manifest.js"
+    },
+    "./tokens": {
+      "types": "./types/entries/tokens.d.ts",
+      "import": "./dist/tokens.js"
+    },
     "./layers": {
       "types": "./types/entries/layers.d.ts",
       "import": "./dist/layers.js"
@@ -69,11 +86,26 @@
     "./react": {
       "types": "./types/react-entry.d.ts",
       "import": "./dist/react.js"
-    }
+    },
+    "./vue": {
+      "types": "./types/adapters/vue.d.ts",
+      "import": "./dist/vue.js"
+    },
+    "./svelte": {
+      "types": "./types/adapters/svelte.d.ts",
+      "import": "./dist/svelte.js"
+    },
+    "./tailwind.css": "./tailwind/tokens.css",
+    "./tailwind-preset": "./tailwind/preset.js",
+    "./registry": "./registry/index.json",
+    "./registry/preset.schema.json": "./registry/preset.schema.json"
   },
   "files": [
     "dist",
     "types",
+    "bin",
+    "registry",
+    "tailwind",
     "skills",
     "README.md",
     "CHANGELOG.md",
@@ -91,10 +123,13 @@
     "test:e2e:update": "playwright test --update-snapshots",
     "create-skin": "node scripts/create-skin.mjs",
     "skin:check": "node scripts/skin-check.mjs",
+    "registry": "node scripts/build-registry.mjs",
+    "registry:check": "node scripts/build-registry.mjs --check",
+    "schema-diff": "node scripts/schema-diff.mjs",
     "sync-gallery": "node scripts/sync-gallery.mjs",
     "build:site": "pnpm sync-gallery && vite build --base=./",
     "size": "node scripts/size-check.mjs",
-    "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build:lib && pnpm size"
+    "prepublishOnly": "pnpm typecheck && pnpm test && pnpm registry:check && pnpm build:lib && pnpm size && pnpm schema-diff --check"
   },
   "peerDependencies": {
     "react": "^18 || ^19",

@@ -402,7 +402,13 @@ Backgrounds that respond feel alive; the host already owns pointer and intensity
 - App state binding: `handle.set({ intensity, palette })` without remount, and a tiny store adapter for React/Vue/Svelte.
 - Acceptance: a long landing page with three sections runs three scenes with crossfades and no remount jank; a theme toggle swaps palettes in place.
 
-### M8 — Ecosystem and distribution
+### M8 — Ecosystem and distribution — **done 2026-10-02**
+
+Shipped: preset manifests as data with validation by path against live layer schemas, and runtime loading by URL; `registry/index.json` and a generated `registry/preset.schema.json` built from the real registry through Vite's SSR loader; community presets in `registry/community/*.json` appearing in the studio and CLI with no code change (acceptance met with `ember-nocturne`, published as JSON only); `bg-engine` CLI (`list`, `info`, `add`, `validate`) that copies a background into the user's repo as one editable file; zero-dependency Vue directive and Svelte action; `'use client'` on the React build; `exposeTokens` plus Tailwind v4 theme and v3 preset; DTCG token export and import; palette harmonies (`accent2`, `accent3`); import-map CDN example; `schema-diff` semver classifier wired into `prepublishOnly` and CI; versioned studio permalinks. Manifest and token tooling ship as their own entries so `core` stays at 12.9 KB.
+
+Not done: changesets (the schema-diff plus CHANGELOG process covers the need without another dependency); Astro and Next get documentation rather than wrappers, since the element and the React entry already work there.
+
+### M8 — original plan
 
 Make it easy to publish, find, and trust other people's work.
 

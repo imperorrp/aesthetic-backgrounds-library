@@ -8,12 +8,20 @@ import {
   createRng,
   getLayer,
   getSkin,
+  HARMONIES,
   listLayers,
+  loadPresetManifest,
+  paletteFromTokens,
+  paletteToTokens,
   presets,
   probeContrast,
   randomSeedString,
+  registerPresetManifest,
   resolvePalette,
   schemaDefaults,
+  validatePresetManifest,
+  type Harmony,
+  type PresetSkin,
   type ContrastReport,
   type FieldSchema,
   type LabelDensity,
@@ -39,6 +47,9 @@ import './DemoPage.css';
 
 type PaletteMode = PaletteId | 'custom';
 
+/** Bump when the hash format changes; older links still decode with defaults filled in. */
+const STATE_VERSION = 2;
+
 type Studio = {
   /** Preset id, skin id, or `scene` for a blank custom scene. */
   source: string;
@@ -48,6 +59,7 @@ type Studio = {
   paletteMode: PaletteMode;
   customHex: string;
   theme: 'dark' | 'light';
+  harmony: Harmony;
   intensity: number;
   motion: MotionPreference;
   density: number;
@@ -56,8 +68,23 @@ type Studio = {
 
 const BLENDS: GlobalCompositeOperation[] = ['source-over', 'lighter', 'screen', 'multiply', 'overlay', 'soft-light'];
 
-/** Curated presets plus the void-sector preset, which lives with the void-tactical skin. */
-const allPresets = [voidSectorPreset, ...presets];
+/**
+ * Community presets are plain JSON in registry/community. Dropping a valid file
+ * there makes it appear here with no code change; invalid files are reported and
+ * skipped (CI rejects them before they land).
+ */
+const communityFiles = import.meta.glob('../../registry/community/*.json', { eager: true, import: 'default' }) as Record<string, unknown>;
+const communityPresets: PresetSkin[] = Object.entries(communityFiles).flatMap(([path, json]) => {
+  const result = validatePresetManifest(json);
+  if (!result.ok) {
+    console.warn(`[studio] skipped ${path}:\n  ${result.errors.join('\n  ')}`);
+    return [];
+  }
+  return [registerPresetManifest(json)];
+});
+
+/** Curated presets, the void-sector preset that lives with its skin, then community presets. */
+const allPresets: PresetSkin[] = [voidSectorPreset, ...presets, ...communityPresets];
 const presetIds = new Set(allPresets.map((p) => p.id));
 const isSceneSource = (source: string) => source === 'scene' || presetIds.has(source);
 
@@ -75,6 +102,7 @@ function studioFor(source: string, prev?: Partial<Studio>): Studio {
     paletteMode: 'void-cyan',
     customHex: '#4f6df5',
     theme: 'dark',
+    harmony: 'analogous',
     intensity: 1,
     motion: prev?.motion ?? 'auto',
     density: prev?.density ?? 1,
@@ -88,6 +116,7 @@ function studioFor(source: string, prev?: Partial<Studio>): Studio {
       base.paletteMode = 'custom';
       base.customHex = d.palette.from;
       base.theme = d.palette.theme ?? 'dark';
+      base.harmony = d.palette.harmony ?? 'analogous';
     }
     if (typeof d.intensity === 'number') base.intensity = d.intensity;
     if (typeof d.density === 'number') base.density = d.density;
@@ -110,7 +139,7 @@ function studioFor(source: string, prev?: Partial<Studio>): Studio {
 }
 
 function encodeState(s: Studio): string {
-  const json = JSON.stringify(s);
+  const json = JSON.stringify({ v: STATE_VERSION, ...s });
   return btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
@@ -120,8 +149,9 @@ function decodeState(hash: string): Studio | null {
   try {
     const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
     const json = decodeURIComponent(escape(atob(b64)));
-    const parsed = JSON.parse(json) as Studio;
+    const { v: _version, ...parsed } = JSON.parse(json) as Studio & { v?: number };
     if (!parsed || typeof parsed.source !== 'string') return null;
+    // Links from older versions lack newer fields; the source's defaults fill them.
     return { ...studioFor(parsed.source), ...parsed };
   } catch {
     return null;
@@ -129,7 +159,7 @@ function decodeState(hash: string): Studio | null {
 }
 
 function paletteOf(s: Studio): PaletteSpec {
-  return s.paletteMode === 'custom' ? { from: s.customHex, theme: s.theme } : s.paletteMode;
+  return s.paletteMode === 'custom' ? { from: s.customHex, theme: s.theme, harmony: s.harmony } : s.paletteMode;
 }
 
 export default function DemoPage() {
@@ -301,6 +331,44 @@ export default function DemoPage() {
       return;
     } finally {
       setBusy(null);
+    }
+  };
+
+  // `?preset=<url>` loads a third-party manifest, registers it, and selects it.
+  const [remoteNote, setRemoteNote] = useState<string | null>(null);
+  useEffect(() => {
+    const url = new URLSearchParams(window.location.search).get('preset');
+    if (!url) return;
+    loadPresetManifest(url)
+      .then((skin) => {
+        if (!presetIds.has(skin.id)) {
+          allPresets.push(skin);
+          presetIds.add(skin.id);
+        }
+        const next = studioFor(skin.id, studioRef.current);
+        commit(() => next);
+        setSeedDraft(next.seed);
+        setRemoteNote(`Loaded "${skin.label}" from ${new URL(url, window.location.href).host}`);
+      })
+      .catch((err) => setRemoteNote(err instanceof Error ? err.message : 'Could not load that preset'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** DTCG tokens for Figma Variables, Tokens Studio, or Style Dictionary. */
+  const saveTokens = () => {
+    const tokens = paletteToTokens(resolvePalette(palette));
+    download(new Blob([JSON.stringify(tokens, null, 2)], { type: 'application/json' }), `palette-${studio.paletteMode === 'custom' ? studio.customHex.slice(1) : studio.paletteMode}.tokens.json`);
+  };
+
+  /** Read a brand token file and derive the palette from it. */
+  const loadTokens = async (file: File) => {
+    try {
+      const spec = paletteFromTokens(JSON.parse(await file.text()));
+      if (typeof spec === 'object' && 'from' in spec) {
+        update({ paletteMode: 'custom', customHex: spec.from, theme: spec.theme ?? 'dark' });
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'That file has no usable brand color.');
     }
   };
 
@@ -499,8 +567,33 @@ export default function DemoPage() {
                     <option value="light">Light</option>
                   </select>
                 </label>
+                <label className="demo-field">
+                  <span>Harmony</span>
+                  <select value={studio.harmony} onChange={(e) => update({ harmony: e.target.value as Harmony })}>
+                    {HARMONIES.map((h) => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
             )}
+            <PaletteSwatches spec={palette} />
+            <div className="demo-text-row demo-tokens">
+              <label className="demo-file-button" title="Derive the palette from a brand token file (DTCG, Style Dictionary, Tokens Studio)">
+                Import tokens
+                <input
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) loadTokens(f);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+              <button type="button" onClick={saveTokens} title="Export this palette as design tokens (W3C DTCG format)">Export tokens</button>
+            </div>
+            {remoteNote && <p className="demo-hint">{remoteNote}</p>}
 
             <label className="demo-toggle-field">
               <input type="checkbox" checked={showContent} onChange={(e) => setShowContent(e.target.checked)} />
@@ -617,7 +710,7 @@ function Gallery({ onPick, onClose }: { onPick: (id: string) => void; onClose: (
       .then((list: string[]) => setAvailable(list))
       .catch(() => setAvailable([]));
   }, []);
-  const entries = allPresets.map((p) => ({ id: p.id, label: p.label ?? p.id, description: p.description, tags: p.tags ?? [] }));
+  const entries = allPresets.map((p) => ({ id: p.id, label: p.label ?? p.id, description: p.description, tags: (p.tags ?? []).filter((t) => t !== 'community'), community: (p.tags ?? []).includes('community') }));
   return (
     <div className="demo-gallery" role="dialog" aria-label="Preset gallery">
       <div className="demo-gallery-head">
@@ -632,12 +725,35 @@ function Gallery({ onPick, onClose }: { onPick: (id: string) => void; onClose: (
             ) : (
               <span className="demo-card-placeholder">no preview yet</span>
             )}
-            <strong>{e.label}</strong>
+            <strong>
+              {e.label}
+              {e.community && <span className="demo-badge">community</span>}
+            </strong>
             <em>{e.description}</em>
             <span className="demo-card-tags">{e.tags.join(' · ')}</span>
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** The resolved palette at a glance: plate, ink, accent, harmony hues, hazard. */
+function PaletteSwatches({ spec }: { spec: PaletteSpec }) {
+  const p = resolvePalette(spec);
+  const swatches: [string, string][] = [
+    ['bg', p.bg],
+    ['ink', p.ink],
+    ['accent', p.accent],
+    ['accent2', p.accent2],
+    ['accent3', p.accent3],
+    ['hazard', p.hazard],
+  ];
+  return (
+    <div className="demo-swatches" aria-label="Resolved palette">
+      {swatches.map(([name, hex]) => (
+        <span key={name} title={`${name} ${hex}`} style={{ background: hex }} />
+      ))}
     </div>
   );
 }

@@ -32,15 +32,18 @@ export type {
 } from '../engine/core/skin';
 export {
   applyPalette,
+  clearPalette,
   resolvePalette,
   derivePalette,
+  harmonyHues,
   paletteVars,
   rgba,
   PALETTES,
   PALETTE_OPTIONS,
   DEFAULT_PALETTE_ID,
+  HARMONIES,
 } from '../engine/palette';
-export type { PaletteId, Palette, PaletteSpec, PaletteFrom, PaletteTheme } from '../engine/palette';
+export type { PaletteId, Palette, PaletteSpec, PaletteFrom, PaletteTheme, Harmony } from '../engine/palette';
 export { resolveBackgroundConfig, withConfigDefaults, DETAIL_OPTIONS } from '../engine/config';
 export type {
   BackgroundConfig,

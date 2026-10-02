@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>space-background-engine via import map (no build step)</title>
+    <!--
+      Pin a version so a page never changes under you. Chunks resolve relative to
+      each entry, so mapping the entries is enough. Swap jsDelivr for unpkg or esm.sh
+      if you prefer.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "space-background-engine": "https://cdn.jsdelivr.net/npm/space-background-engine@0.2/dist/index.js",
+          "space-background-engine/core": "https://cdn.jsdelivr.net/npm/space-background-engine@0.2/dist/core.js",
+          "space-background-engine/presets": "https://cdn.jsdelivr.net/npm/space-background-engine@0.2/dist/presets.js",
+          "space-background-engine/layers": "https://cdn.jsdelivr.net/npm/space-background-engine@0.2/dist/layers.js",
+          "space-background-engine/shader": "https://cdn.jsdelivr.net/npm/space-background-engine@0.2/dist/shader.js",
+          "space-background-engine/skins/void-tactical": "https://cdn.jsdelivr.net/npm/space-background-engine@0.2/dist/skins/void-tactical.js"
+        }
+      }
+    </script>
+    <style>
+      html, body { margin: 0; min-height: 100%; font-family: system-ui, sans-serif; }
+      main { position: relative; z-index: 1; max-width: 36rem; margin: 0 auto; padding: 6rem 1.5rem; color: var(--bge-ink, #e8f4f8); }
+      a { color: var(--bge-accent, #22d3ee); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>No bundler</h1>
+      <p>
+        This page imports only <code>core</code> and <code>presets</code> (about 30 KB gzipped), mounts a preset,
+        and exposes its palette tokens on <code>&lt;html&gt;</code> so the text and link colors follow the background.
+      </p>
+      <p><a href="https://github.com/imperorrp/aesthetic-backgrounds-library">Source</a></p>
+    </main>
+    <script type="module">
+      import { mount } from 'space-background-engine/core';
+      import 'space-background-engine/presets';
+
+      mount(document.body, { skin: 'aurora-night', palette: '#22d3ee', intensity: 0.7, exposeTokens: true });
+    </script>
+  </body>
+</html>

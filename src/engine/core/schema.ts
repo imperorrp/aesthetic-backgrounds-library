@@ -78,6 +78,8 @@ const TOKENS: Record<string, (p: Palette) => ResolvedColor> = {
   inkDim: (p) => ({ hex: p.inkDim, rgb: toTriplet(parseHex(p.inkDim)!) }),
   bg: (p) => ({ hex: p.bg, rgb: toTriplet(parseHex(p.bg)!) }),
   hazard: (p) => ({ hex: p.hazard, rgb: p.hazardRgb }),
+  accent2: (p) => ({ hex: p.accent2, rgb: p.accent2Rgb }),
+  accent3: (p) => ({ hex: p.accent3, rgb: p.accent3Rgb }),
 };
 
 /** Resolve a `color` field value (palette token or hex) against the active palette. */

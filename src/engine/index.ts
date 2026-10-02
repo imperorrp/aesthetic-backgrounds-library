@@ -5,6 +5,8 @@
 
 export * from '../entries/core';
 export * from '../entries/shader';
+export * from '../entries/manifest';
+export * from '../entries/tokens';
 
 export {
   builtInSkins,

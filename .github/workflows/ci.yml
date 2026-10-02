@@ -20,8 +20,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      # Community manifests must validate and the generated index must be current.
+      - run: pnpm registry:check
       - run: pnpm build:lib
       - run: pnpm size
+      - run: pnpm schema-diff
 
   browser:
     runs-on: ubuntu-latest

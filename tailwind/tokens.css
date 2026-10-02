@@ -1,0 +1,20 @@
+/*
+ * Tailwind CSS v4: background palette tokens as theme colors.
+ *
+ *   @import "tailwindcss";
+ *   @import "space-background-engine/tailwind.css";
+ *
+ * Then mount with `exposeTokens: true` so the variables exist on <html>, and use
+ * `bg-bge-bg`, `text-bge-ink`, `text-bge-ink-dim`, `border-bge-accent`,
+ * `ring-bge-accent/40`, `from-bge-accent to-bge-accent2`, and so on. Page chrome
+ * then follows whatever palette the background resolves, including derived ones.
+ */
+@theme inline {
+  --color-bge-bg: var(--bge-bg);
+  --color-bge-ink: var(--bge-ink);
+  --color-bge-ink-dim: var(--bge-ink-dim);
+  --color-bge-accent: var(--bge-accent);
+  --color-bge-accent2: var(--bge-accent2);
+  --color-bge-accent3: var(--bge-accent3);
+  --color-bge-hazard: var(--bge-hazard);
+}

@@ -19,6 +19,8 @@ Everything registered by `import 'space-background-engine'`. Ids are what `skin`
 
 Preset config defaults (palette, intensity, density, detail) apply beneath whatever you pass.
 
+Community presets live in `registry/community/*.json` and in `registry/index.json` (`source: "community"`). The authoritative, always-current list is `npx space-background-engine list --json`, which also reports each entry's themes and cost tier (`low` canvas-only, `medium` private surfaces, `gpu` WebGL2). Prefer `low` and `medium` for pages that must run well on phones.
+
 ## Skins (whole backgrounds)
 
 | Id | Look | Key options |

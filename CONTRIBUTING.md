@@ -31,6 +31,27 @@ The scaffold registers the skin in `src/engine/skins/local.ts` and adds it to `e
 
 Add a `PresetDefinition` to `src/engine/presets/index.ts` with `config` defaults (palette, intensity) and a `scene`. Add the id to `e2e/subjects.json`, then `pnpm skin:check <id> --update`. Tune it in the studio with **Sample content column** on; aim for mean contrast of at least 7:1 behind body text.
 
+## Submitting a community preset (no code)
+
+1. Compose it in the studio (`pnpm dev`), then **Export → JSON**, or write it by hand with `"$schema": "../preset.schema.json"` for autocomplete.
+2. Save it as `registry/community/<id>.json` with an `author` field. The id must be unique and kebab-case.
+3. Run `npx space-background-engine validate registry/community/<id>.json`, then `pnpm registry` to refresh `registry/index.json`.
+4. Open a pull request. CI runs `pnpm registry:check`, which rejects invalid manifests and stale indexes.
+
+The preset appears in the studio gallery and in `bg-engine list` once merged. No TypeScript changes are needed.
+
+## Releases and semver
+
+`pnpm schema-diff` compares `registry/index.json` against the last tag and classifies each change:
+
+| Change | Level |
+| --- | --- |
+| Remove a skin, preset, layer, or option; change an option's type; remove enum values; narrow a numeric range | breaking |
+| Add a skin, preset, layer, or option; add enum values; widen a range; change a default or a preset's scene | feature |
+| Labels, descriptions, tags | patch |
+
+While the version is `0.x`, a breaking change needs a minor bump and a feature a patch bump; from `1.0` the usual major/minor applies. `prepublishOnly` runs `schema-diff --check`, which fails a release whose version bump is too small. A changed default or scene also means a visual change: refresh baselines with `pnpm test:e2e:update` and say so in the CHANGELOG.
+
 ## Rules the gates enforce
 
 - No `Math.random`, `Date.now`, `performance.now`, or timers inside skins and layers.

@@ -18,6 +18,10 @@
     "src/entries/skins/drifting-dust.ts",
     "src/entries/skins/matrix-rain.ts",
     "src/entries/shader.ts",
+    "src/entries/manifest.ts",
+    "src/entries/tokens.ts",
+    "src/adapters/vue.ts",
+    "src/adapters/svelte.ts",
     "src/entries/layers.ts",
     "src/entries/presets.ts",
     "src/vite-env.d.ts"

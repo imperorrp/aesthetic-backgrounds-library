@@ -19,6 +19,9 @@ const BUDGETS_KB = {
   'core.js': 13,
   // shader authoring (GLSL prelude + program setup), opt-in
   'shader.js': 15,
+  // manifest validation/loading and the design-token bridge, opt-in (M8)
+  'manifest.js': 16,
+  'tokens.js': 14,
   'skins/drifting-dust.js': 11,
   'skins/matrix-rain.js': 11,
   // the sector map skin plus its five part layers and the void-sector preset
@@ -26,10 +29,14 @@ const BUDGETS_KB = {
   // standard layer library (now including two shader layers) and the presets built from it
   'layers.js': 20,
   'presets.js': 22,
-  // batteries included: core + all skins + layers + presets (+ element / react adapters)
-  'index.js': 58,
+  // batteries included: core + all skins + layers + presets + shader/manifest/token tooling.
+  // 62 since M8 added the manifest and token entries to the batteries bundle.
+  'index.js': 62,
+  // framework adapters: core + all built-in skins, layers, and presets (no tooling)
   'element.js': 58,
   'react.js': 58,
+  'vue.js': 58,
+  'svelte.js': 58,
 };
 
 function walk(dir, out = []) {
