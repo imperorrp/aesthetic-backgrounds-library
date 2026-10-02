@@ -3,7 +3,8 @@ import { createRng, forkRng } from '../rng';
 import { createNoise2D } from '../noise';
 import { resolveSkin } from './registry';
 import { createRafScheduler, type Scheduler } from './scheduler';
-import type { BackgroundHandle, BackgroundSkin, FrameInfo, HostViewport, PointerState, SkinHost, Viewport } from './skin';
+import { autoShadeStrength, createShadePainter, lightState, measureContent, quietnessAt, quietRectsPx } from './legibility';
+import type { BackgroundHandle, BackgroundSkin, FrameInfo, HostViewport, PointerState, PxRect, SkinHost, Viewport } from './skin';
 
 export type CreateBackgroundOptions<T = any> = {
   config?: BackgroundConfig;
@@ -68,6 +69,28 @@ export function createBackground<T = any>(
   // dprScale is the governor's first lever: render at fewer pixels before thinning content.
   const state = { motion: computeMotion(), quality: 1, dprScale: 1 };
 
+  // ---- composition: light, page content, quiet zones ----------------------------------
+  const light = lightState(resolved.light.angle, resolved.light.warmth);
+  let contentRects: PxRect[] = [];
+  let quietRects: PxRect[] = [];
+  let zones: PxRect[] = [];
+  const rebuildZones = () => {
+    quietRects = quietRectsPx(resolved.quiet, viewport.width, viewport.height);
+    zones = [...contentRects, ...quietRects];
+  };
+  const engineRoot = () => canvas.closest('.bg-engine-root') ?? canvas.parentElement;
+  const remeasure = () => {
+    contentRects = measureContent(canvas, resolved.legibility, engineRoot());
+    rebuildZones();
+  };
+  const effectiveIntensity = () => (state.motion === 'reduced' ? Math.min(resolved.intensity, 0.5) : resolved.intensity);
+  const paintShade = createShadePainter();
+  const bgRgb = (() => {
+    const hex = palette.bg.replace('#', '');
+    const n = parseInt(hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex, 16);
+    return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
+  })();
+
   const host: SkinHost<T> = {
     canvas,
     ctx,
@@ -83,11 +106,13 @@ export function createBackground<T = any>(
       return state.motion;
     },
     get intensity() {
-      return state.motion === 'reduced' ? Math.min(resolved.intensity, 0.5) : resolved.intensity;
+      return effectiveIntensity();
     },
     get quality() {
       return state.quality;
     },
+    light,
+    quiet: (x, y) => (zones.length ? quietnessAt(zones, x, y) : 0),
   };
 
   // ---- sizing ----------------------------------------------------------------------------
@@ -131,12 +156,15 @@ export function createBackground<T = any>(
   const applySize = () => {
     if (destroyed || !instance) return;
     if (!syncSize()) return;
+    remeasure();
     instance.resize({ width: viewport.width, height: viewport.height });
     if (state.motion === 'off') renderOnce();
   };
 
-  // The skin sees the real size at mount time; world generation depends on it.
+  // The skin sees the real size (and the page's content boxes) at mount time;
+  // world generation and spawn placement depend on both.
   syncSize();
+  remeasure();
   instance = skin.mount(host);
   // Guarantee: resize() runs once before the first frame.
   instance.resize({ width: viewport.width, height: viewport.height });
@@ -188,10 +216,19 @@ export function createBackground<T = any>(
     pointer.vx *= decay;
     pointer.vy *= decay;
 
+    // Content moves (scroll, layout, toggles). Re-measure about once a second, counted
+    // in frames so a manual clock stays deterministic.
+    if (info.frame > 0 && info.frame % 60 === 0) remeasure();
+
     const began = perf.now();
     instance!.frame(info);
+    const shade = contentRects.length ? autoShadeStrength(resolved.legibility, effectiveIntensity()) : 0;
+    if (shade > 0) paintShade(ctx, contentRects, viewport.width, viewport.height, viewport.dpr, shade, bgRgb);
     if (resolved.adaptiveQuality) governor(perf.now() - began);
+    for (const listener of frameListeners) listener(info);
   };
+
+  const frameListeners = new Set<(info: FrameInfo) => void>();
 
   const loop = (timestamp: number) => {
     if (!running || destroyed) return;
@@ -254,6 +291,19 @@ export function createBackground<T = any>(
     pointer.active = true;
     pointer.idle = 0;
   };
+  // A fixed background under scrolling content sees the content move; re-measure on
+  // scroll, coalesced to one measurement per frame.
+  let scrollPending = false;
+  const onScroll = () => {
+    if (scrollPending || resolved.legibility.mode === 'off') return;
+    scrollPending = true;
+    const run = () => {
+      scrollPending = false;
+      if (!destroyed) remeasure();
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
+    else run();
+  };
   const onPointerDown = () => {
     pointer.down = true;
   };
@@ -278,6 +328,7 @@ export function createBackground<T = any>(
     intersection.observe(canvas);
   }
   window.addEventListener('resize', applySize);
+  window.addEventListener('scroll', onScroll, { passive: true, capture: true });
   window.addEventListener('pointermove', onPointerMove, { passive: true });
   window.addEventListener('pointerdown', onPointerDown, { passive: true });
   window.addEventListener('pointerup', onPointerUp, { passive: true });
@@ -299,14 +350,28 @@ export function createBackground<T = any>(
       sync();
     },
     renderOnce,
+    onFrame(listener) {
+      frameListeners.add(listener);
+      return () => frameListeners.delete(listener);
+    },
+    composition() {
+      return {
+        light: { ...light },
+        content: contentRects.map((r) => ({ ...r })),
+        quiet: quietRects.map((r) => ({ ...r })),
+        shade: contentRects.length ? autoShadeStrength(resolved.legibility, effectiveIntensity()) : 0,
+      };
+    },
     destroy() {
       if (destroyed) return;
       destroyed = true;
       running = false;
+      frameListeners.clear();
       scheduler.cancel(handle);
       resizeObserver?.disconnect();
       intersection?.disconnect();
       window.removeEventListener('resize', applySize);
+      window.removeEventListener('scroll', onScroll, { capture: true });
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerup', onPointerUp);

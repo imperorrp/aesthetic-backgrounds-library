@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0 — 2026-10-02
+
+Aesthetic depth (ROADMAP M9).
+
+- **One key light per scene.** `config.light` (`{ angle, warmth }`) resolves to `host.light`: angle, unit direction, key position in the frame, and warmth. When the angle is omitted the seed puts the light in an upper corner, never top center. `gradient-base` puts its key glow at the light with a fill opposite (new `secondary` and `followLight` options), `vignette` opens toward it (`lightBias`), and the `nebula` shader lights the cloud faces that point at it. Shader layers receive `u_lightDir`, `u_lightPos`, `u_warmth`, `u_accent2`, and `u_accent3`. Presets set warmth to fit their mood. A caller's `light` merges over preset defaults per field.
+- **Quiet zones and automatic legibility.** With `legibility: 'auto'` (default), the host measures `main, article, [data-bg-content]` on mount, resize, scroll, and every 60 frames, plus any `config.quiet` rects. `host.quiet(x, y)` reports nearness with a soft falloff. `starfield`, `particles-drift`, `plexus`, `flow-field`, and `glyph-rain` recede there through a new `quiet` option. Above `intensity` 0.55 a feathered shade is painted behind the boxes, growing to 0.45 at full intensity. Use `'off'` or `{ selector, strength }` to override.
+- **Moments.** New `moments` layer: rare seeded meteors, comets, and star flares with long random gaps, placed away from text and aimed by the light. Reduced motion keeps only flares. Added to `aurora-night`, `deep-field`, and `nebula-drift`.
+- **Transitions.** `transition(handle, next, { kind, duration })` reveals a new scene in place with `crossfade`, `wipe` from the lit side, or `iris` from the incoming key light. It is driven by the incoming clock, so it is deterministic. It is instant with motion off and becomes a crossfade under reduced motion. React's `<Background>` takes `transition` and `onReady`, and changes its scene without a remount flash.
+- **Handle.** `onFrame(listener)` and `composition()` (light, content rects, quiet rects, shade strength).
+- **Stricter gate.** Every preset holds a mean contrast of 7:1 behind the text column in the browser gates, with at most 5% of samples under 4.5:1. The lowest preset measures 10.2:1.
+- **Blind compare.** `pnpm compare` stages each baseline next to its 0.2.0 render, and `/compare.html` runs a shuffled A/B with a flip view and a reveal at the end.
+- **Studio.** Light angle (or seeded) and warmth, legibility mode, transition kind, and a **Show composition** overlay with thirds, the light ray and key, content boxes, and quiet zones.
+- `<bg-engine>` gains `light-angle`, `warmth`, and `legibility` attributes. Manifests validate `config.light` and `config.legibility`, and the preset JSON schema documents `light`, `legibility`, and `quiet`.
+- **Fix:** shader layers survive WebGL context loss: they pause, then rebuild their program on `webglcontextrestored`.
+- **Fix:** `probeContrast` no longer reads NaN for a zero-sized or detached element.
+- Screenshot baselines refreshed. Void-tactical renders identically to 0.3.0: its canvas is byte-identical between the two versions. Its committed baseline had gone stale because an earlier change moved its background stars by less than the screenshot tolerance. The new baseline records the current, unchanged render.
+- Size budgets raised on purpose: `core` 13 → 16 KB, `index` 62 → 67 KB, adapters 58 → 59 KB gzipped.
+
 ## 0.3.0 — 2026-10-02
 
 Ecosystem and distribution (ROADMAP M8).

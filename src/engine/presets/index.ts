@@ -32,12 +32,13 @@ export const presetDefinitions: readonly PresetDefinition[] = [
     label: 'Aurora night',
     description: 'Luminous ribbons over a sparse starfield. Dark SaaS or event pages.',
     tags: ['saas', 'dark', 'calm', 'nature'],
-    config: { palette: { from: '#22d3ee' }, intensity: 0.85 },
+    config: { palette: { from: '#22d3ee' }, intensity: 0.85, light: { warmth: -0.35 } },
     scene: {
       layers: [
         { use: 'gradient-base', with: { tint: 0.3, spread: 60 } },
         { use: 'starfield', with: { density: 0.6, bands: 2, twinkle: 0.5, drift: 0.15, size: 0.8, tint: 0.2 } },
         { use: 'aurora', with: { bands: 3, height: 0.42, speed: 0.22, spread: 40, ripple: 0.5, position: 0.4 }, blend: 'lighter' },
+        { use: 'moments', with: { kinds: 'meteors', rate: 0.8, size: 0.9 } },
         { use: 'vignette', with: { strength: 0.5 } },
         { use: 'grain', with: { opacity: 0.08 } },
       ],
@@ -63,12 +64,13 @@ export const presetDefinitions: readonly PresetDefinition[] = [
     label: 'Deep field',
     description: 'Dense parallax stars with drifting dust. Sci-fi and space without the HUD.',
     tags: ['space', 'sci-fi', 'dark', 'calm'],
-    config: { palette: 'void-cyan', intensity: 0.9 },
+    config: { palette: 'void-cyan', intensity: 0.9, light: { warmth: -0.15 } },
     scene: {
       layers: [
         { use: 'gradient-base', with: { tint: 0.4, spread: 70, drift: 0.25 } },
         { use: 'starfield', with: { density: 1.4, bands: 3, twinkle: 0.7, drift: 0.5, size: 1, tint: 0.3 } },
         { use: 'particles-drift', with: { count: 40, size: 1.4, speed: 0.2, glow: 0.7, pulse: 0.4, turbulence: 0.4 }, opacity: 0.7 },
+        { use: 'moments', with: { kinds: 'mixed', rate: 1.2 } },
         { use: 'vignette', with: { strength: 0.5 } },
         { use: 'grain', with: { opacity: 0.07 } },
       ],
@@ -94,7 +96,7 @@ export const presetDefinitions: readonly PresetDefinition[] = [
     label: 'Fireflies',
     description: 'Warm pulsing lights over slow dust. Wellness, nature, and quiet portfolios.',
     tags: ['nature', 'calm', 'dark', 'warm'],
-    config: { palette: { from: '#f5c451' }, intensity: 0.8 },
+    config: { palette: { from: '#f5c451' }, intensity: 0.8, light: { warmth: 0.55 } },
     scene: {
       layers: [
         { use: 'gradient-base', with: { tint: 0.3, spread: 25, drift: 0.15 } },
@@ -116,6 +118,7 @@ export const presetDefinitions: readonly PresetDefinition[] = [
         { use: 'gradient-base', with: { tint: 0.15, drift: 0.1 } },
         { use: 'nebula', with: { density: 0.6, scale: 1.5, speed: 0.25, warp: 0.65, dust: 0.5 } },
         { use: 'starfield', with: { density: 0.5, bands: 2, twinkle: 0.5, drift: 0.1, size: 0.8, tint: 0.2 } },
+        { use: 'moments', with: { kinds: 'comets', rate: 0.7, size: 1.1 } },
         { use: 'vignette', with: { strength: 0.5 } },
         { use: 'grain', with: { opacity: 0.07 } },
       ],
@@ -140,7 +143,7 @@ export const presetDefinitions: readonly PresetDefinition[] = [
     label: 'Paper grid',
     description: 'Light editorial plate: fine ruled grid, a few drifting motes, heavy grain.',
     tags: ['editorial', 'light', 'calm', 'brutalist'],
-    config: { palette: { from: '#334155', theme: 'light' }, intensity: 0.7 },
+    config: { palette: { from: '#334155', theme: 'light' }, intensity: 0.7, light: { warmth: 0.25 } },
     scene: {
       layers: [
         { use: 'gradient-base', with: { tint: 0.15, drift: 0.1 } },

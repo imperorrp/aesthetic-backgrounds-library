@@ -1,5 +1,5 @@
 import type { Layer } from '../core/layer';
-import { color, frames60, rgbaOf, TAU, wrap } from './util';
+import { color, frames60, QUIET_FIELD, quietFactor, rgbaOf, TAU, wrap } from './util';
 
 const schema = {
   count: { type: 'number', min: 10, max: 300, step: 1, default: 120, label: 'Nodes' },
@@ -8,6 +8,7 @@ const schema = {
   pointerRadius: { type: 'number', min: 0, max: 600, default: 160, label: 'Pointer radius (px)', description: '0 disables pointer links' },
   lineAlpha: { type: 'number', min: 0, max: 1, default: 0.35, label: 'Line opacity' },
   color: { type: 'color', default: 'accent', label: 'Color' },
+  quiet: QUIET_FIELD,
 } as const;
 
 type Node = { x: number; y: number; vx: number; vy: number; r: number; par: number };
@@ -21,7 +22,8 @@ export const plexusLayer: Layer = {
   schema,
   canvas(host) {
     const { ctx, rng, pointer } = host;
-    const o = host.options as { count: number; radius: number; speed: number; pointerRadius: number; lineAlpha: number; color: string };
+    const o = host.options as { count: number; radius: number; speed: number; pointerRadius: number; lineAlpha: number; color: string; quiet: number };
+    let qf = new Float32Array(Math.round(o.count));
     const c = color(host, o.color);
     const nodes: Node[] = Array.from({ length: Math.round(o.count) }, () => ({
       x: rng(),
@@ -48,6 +50,8 @@ export const plexusLayer: Layer = {
         }
         const rad = o.radius;
         const radSq = rad * rad;
+        if (qf.length < count) qf = new Float32Array(count);
+        for (let i = 0; i < count; i++) qf[i] = quietFactor(host, pos[i].x, pos[i].y, o.quiet);
         ctx.lineWidth = 1;
         for (let i = 0; i < count; i++) {
           const a = pos[i];
@@ -58,7 +62,9 @@ export const plexusLayer: Layer = {
             if (Math.abs(dx) > rad || Math.abs(dy) > rad) continue;
             const d2 = dx * dx + dy * dy;
             if (d2 >= radSq) continue;
-            ctx.strokeStyle = rgbaOf(c, (1 - Math.sqrt(d2) / rad) * o.lineAlpha);
+            const alpha = (1 - Math.sqrt(d2) / rad) * o.lineAlpha * Math.min(qf[i], qf[j]);
+            if (alpha < 0.005) continue;
+            ctx.strokeStyle = rgbaOf(c, alpha);
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
@@ -82,8 +88,9 @@ export const plexusLayer: Layer = {
             }
           }
         }
-        ctx.fillStyle = rgbaOf(c, 0.8);
         for (let i = 0; i < count; i++) {
+          if (qf[i] < 0.02) continue;
+          ctx.fillStyle = rgbaOf(c, 0.8 * qf[i]);
           ctx.beginPath();
           ctx.arc(pos[i].x, pos[i].y, nodes[i].r, 0, TAU);
           ctx.fill();

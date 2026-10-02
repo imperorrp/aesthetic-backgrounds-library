@@ -72,6 +72,7 @@ To truly understand the engine's generalizability, it is built on a few core mec
 4. **Generic Configuration**: The engine defines global budgets (`density`, `detail`, `cameraSpeed`); every skin can define its own schema via the `<T>` generic (e.g., `options: { maxNodes: 100 }`), flowing down from the React wrapper, the Vanilla mount function, or the element. `detail` and the overlay budgets are still HUD-flavored leftovers from the default skin and are slated to move into it.
 5. **Palette as values**: Skins receive resolved palette tokens on `host.palette` rather than reading CSS variables. The host writes the same tokens as `--bge-*` custom properties on the engine root (never on `:root`) for CSS layers, plus a `--bge-hue-shift` so cyan-authored SVG layers re-tint to any palette, including ones derived from a brand color with `palette: { from: '#hex' }`.
 6. **Budgets, not opinions, in the core**: `intensity` (user knob), `motion` (reduced-motion policy), and `quality` (frame-time governor) are live numbers on the host. Skins scale density, contrast, and speed by them; the core never decides what a skin looks like.
+7. **Shared composition**: The host owns the things layers must agree on to read as one image: one key light (`host.light`, seeded to an upper corner, with warmth) and the page's quiet zones (`host.quiet`, measured from content boxes). Layers decide how to respond. A glow sits at the key, a comet's tail points away from it, and particles thin out near text. The host's only direct contribution is a feathered shade at high intensity.
 
 ---
 
@@ -94,6 +95,8 @@ export type SkinHost<T = Record<string, unknown>> = {
   readonly motion: 'full' | 'reduced' | 'off';                    // live
   readonly intensity: number;                                     // live, 0..1
   readonly quality: number;                                       // live, 0..1 governor output
+  readonly light: { angle; dx; dy; x; y; warmth };                // one key light for the scene
+  quiet(x: number, y: number): number;                            // 0..1 nearness to page content
 };
 
 export type FrameInfo = { t: number; dt: number; frame: number; timestamp: number }; // seconds
@@ -118,7 +121,7 @@ This simplicity makes the engine incredibly powerful when combined with **Genera
 > 
 > Use the provided `rng()` (which returns a number between 0 and 1) instead of `Math.random()` to ensure deterministic generation. Read colors from `host.palette` (`accent`, `accentRgb`, `ink`, `bg`) instead of hardcoding them. Treat the difference between successive `frame(timestamp)` values as elapsed time rather than assuming 60 fps. Only return the TypeScript code for the skin."
 
-A fuller authoring kit (scaffold, check command, questionnaire-driven skill) is planned; see [ROADMAP.md](ROADMAP.md).
+The authoring kit goes further than a one-shot prompt. `pnpm create-skin` scaffolds a skin that already follows the contract, and `pnpm skin:check` runs every gate on it. The `background-designer` skill gives an agent a questionnaire, a catalog, and taste notes. See [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -132,5 +135,10 @@ A fuller authoring kit (scaffold, check command, questionnaire-driven skill) is 
 6. **Repair the drop-in path (ROADMAP M0)**: Container-aware sizing, injected layer stack for `mount()` and `<bg-engine>`, skin registry with string ids, palette values on the host, generated type declarations, honest README. *(Done 2026-09-26)*
 7. **Host contract v2 (ROADMAP M1)**: Injectable clock and `dt`-based motion, reduced-motion policy, visibility pause, scoped palette variables, pointer/noise inputs, core decoupled from the default skin, per-skin subpath exports, determinism tests, size budgets in CI. *(Done 2026-09-26)*
 8. **Layers, primitives, presets (ROADMAP M2)**: Composable `Layer`/`Scene` model, option schemas, a standard library of 14 layers, 7 presets across niches (two light-theme), and a scene studio playground. Void-tactical decomposed into five layers over a shared world, with the `void-sector` preset rebuilt from them. *(Done 2026-09-27.)*
-8b. **The aesthetic bar (ROADMAP M3)**: palette coherence, art pass on void-tactical with calibration knobs, legibility mask layer and contrast probe, flagship preset tuning. *(Art pass done 2026-09-26; real-pixel contrast gate pending.)*
-9. **Publishing and the authoring kit (ROADMAP M4)**: Refine the documentation, ship the scaffold and skill, and publish to encourage the community to build and share skins.
+8b. **The aesthetic bar (ROADMAP M3)**: palette coherence, art pass on void-tactical with calibration knobs, legibility mask layer and contrast probe, flagship preset tuning. *(Done 2026-09-27, with real-browser gates.)*
+9. **Publishing and the authoring kit (ROADMAP M4)**: scaffold, check command, the `background-designer` skill, contributor docs. *(Done 2026-09-27, 0.2.0.)*
+10. **Studio depth and shader layers (ROADMAP M5, M6)**: gallery, undo/redo, exports, WebGL2 shader layers, adaptive resolution. *(Done 2026-09-27.)*
+11. **Ecosystem (ROADMAP M8)**: presets as JSON manifests, registry and CLI, Vue and Svelte adapters, design tokens, palette harmonies. *(Done 2026-10-02, 0.3.0.)*
+12. **Aesthetic depth (ROADMAP M9)**: scene light, quiet zones and automatic legibility, moments, deterministic transitions, a 7:1 contrast gate, blind compare tooling. *(Done 2026-10-02, 0.4.0.)*
+
+M7 (scroll binding, theme sync, audio input) is skipped for now.

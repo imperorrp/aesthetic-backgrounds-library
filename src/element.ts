@@ -14,7 +14,7 @@ import { presets } from './engine/presets';
  */
 class BgEngineElement extends HTMLElement {
   static get observedAttributes() {
-    return ['seed', 'density', 'detail', 'palette', 'speed', 'skin', 'fonts', 'z-index', 'intensity', 'motion', 'fps'];
+    return ['seed', 'density', 'detail', 'palette', 'speed', 'skin', 'fonts', 'z-index', 'intensity', 'motion', 'fps', 'light-angle', 'warmth', 'legibility'];
   }
 
   /** Skins bundled with the element build; any of their ids works in the `skin` attribute. */
@@ -79,6 +79,8 @@ class BgEngineElement extends HTMLElement {
       targetFps: this.#number('fps'),
       motion: (this.getAttribute('motion') as MotionPreference | null) ?? undefined,
       fonts: this.hasAttribute('fonts'),
+      light: { angle: this.#number('light-angle'), warmth: this.#number('warmth') },
+      legibility: this.getAttribute('legibility') === 'off' ? 'off' : 'auto',
     };
     this.#handle = mount(this, options);
   }

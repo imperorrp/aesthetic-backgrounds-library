@@ -103,6 +103,83 @@
           "type": "number",
           "minimum": 0.25,
           "maximum": 2
+        },
+        "light": {
+          "type": "object",
+          "description": "Scene key light. Omit angle for a seeded upper-corner light.",
+          "properties": {
+            "angle": {
+              "type": "number",
+              "description": "Degrees; 0 is right, 270 is straight up"
+            },
+            "warmth": {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1,
+              "description": "Cool (-1) to warm (1) tint of lit areas"
+            }
+          },
+          "additionalProperties": false
+        },
+        "legibility": {
+          "oneOf": [
+            {
+              "enum": [
+                "auto",
+                "off"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "selector": {
+                  "type": "string",
+                  "description": "Content selector to measure"
+                },
+                "strength": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "quiet": {
+          "type": "array",
+          "description": "Extra quiet zones as fractions of the viewport",
+          "items": {
+            "type": "object",
+            "required": [
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "width": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "height": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
         }
       }
     },
@@ -133,6 +210,7 @@
                   "ink-flow",
                   "light-follow",
                   "mesh-gradient",
+                  "moments",
                   "nebula",
                   "particles-drift",
                   "plexus",
@@ -391,6 +469,13 @@
                             "hazard",
                             "#ff7a1a"
                           ]
+                        },
+                        "quiet": {
+                          "description": "How much this layer fades where page text and quiet zones are",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.65
                         }
                       }
                     }
@@ -480,6 +565,13 @@
                             "hazard",
                             "#ff7a1a"
                           ]
+                        },
+                        "quiet": {
+                          "description": "How much this layer fades where page text and quiet zones are",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.65
                         }
                       }
                     }
@@ -518,11 +610,24 @@
                           "default": 0.3
                         },
                         "spread": {
-                          "description": "Degrees between the two tint lights",
+                          "description": "Degrees between the two tint lights when the secondary is `spread`",
                           "type": "number",
                           "minimum": 0,
                           "maximum": 120,
                           "default": 40
+                        },
+                        "secondary": {
+                          "description": "`harmony` uses the palette's second hue; `spread` shifts the accent by `spread` degrees",
+                          "enum": [
+                            "harmony",
+                            "spread"
+                          ],
+                          "default": "harmony"
+                        },
+                        "followLight": {
+                          "description": "Place the key glow where the scene light comes from and the fill opposite it",
+                          "type": "boolean",
+                          "default": true
                         },
                         "opaque": {
                           "description": "Fill with the palette background first",
@@ -836,6 +941,73 @@
                 "if": {
                   "properties": {
                     "use": {
+                      "const": "moments"
+                    }
+                  },
+                  "required": [
+                    "use"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "with": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "rate": {
+                          "description": "Average; the gaps are random so it never feels scheduled",
+                          "type": "number",
+                          "minimum": 0.1,
+                          "maximum": 6,
+                          "default": 1.2
+                        },
+                        "kinds": {
+                          "description": "Kinds",
+                          "enum": [
+                            "mixed",
+                            "meteors",
+                            "comets",
+                            "flares"
+                          ],
+                          "default": "mixed"
+                        },
+                        "size": {
+                          "description": "Size",
+                          "type": "number",
+                          "minimum": 0.5,
+                          "maximum": 2,
+                          "default": 1
+                        },
+                        "color": {
+                          "description": "Color",
+                          "type": "string",
+                          "default": "ink",
+                          "examples": [
+                            "accent",
+                            "accent2",
+                            "ink",
+                            "inkDim",
+                            "bg",
+                            "hazard",
+                            "#ff7a1a"
+                          ]
+                        },
+                        "quiet": {
+                          "description": "Events are placed away from page text; this also fades any that drift behind it",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.9
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "use": {
                       "const": "nebula"
                     }
                   },
@@ -989,6 +1161,13 @@
                             "hazard",
                             "#ff7a1a"
                           ]
+                        },
+                        "quiet": {
+                          "description": "How much this layer fades where page text and quiet zones are",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.65
                         }
                       }
                     }
@@ -1060,6 +1239,13 @@
                             "hazard",
                             "#ff7a1a"
                           ]
+                        },
+                        "quiet": {
+                          "description": "How much this layer fades where page text and quiet zones are",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.65
                         }
                       }
                     }
@@ -1168,6 +1354,13 @@
                           "minimum": 0,
                           "maximum": 1,
                           "default": 0.3
+                        },
+                        "quiet": {
+                          "description": "How much this layer fades where page text and quiet zones are",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.65
                         }
                       }
                     }
@@ -1204,6 +1397,13 @@
                           "minimum": 0.4,
                           "maximum": 1.6,
                           "default": 1
+                        },
+                        "lightBias": {
+                          "description": "Shift the clear center toward the scene light so the lit side stays open",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.5
                         },
                         "color": {
                           "description": "Edge color",

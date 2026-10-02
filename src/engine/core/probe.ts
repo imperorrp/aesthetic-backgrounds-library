@@ -30,10 +30,12 @@ export function probeContrast(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('probeContrast: 2D context unavailable');
   const text = typeof textColor === 'string' ? parseHex(textColor) ?? { r: 255, g: 255, b: 255 } : textColor;
-  const sx = Math.max(0, Math.floor(rect.x));
-  const sy = Math.max(0, Math.floor(rect.y));
-  const sw = Math.max(1, Math.min(canvas.width - sx, Math.floor(rect.width)));
-  const sh = Math.max(1, Math.min(canvas.height - sy, Math.floor(rect.height)));
+  // A zero-sized or detached element yields NaN or Infinity; fall back to the whole canvas.
+  const finite = (v: number, fallback: number) => (Number.isFinite(v) ? v : fallback);
+  const sx = Math.min(canvas.width - 1, Math.max(0, Math.floor(finite(rect.x, 0))));
+  const sy = Math.min(canvas.height - 1, Math.max(0, Math.floor(finite(rect.y, 0))));
+  const sw = Math.max(1, Math.min(canvas.width - sx, Math.floor(finite(rect.width, canvas.width))));
+  const sh = Math.max(1, Math.min(canvas.height - sy, Math.floor(finite(rect.height, canvas.height))));
   const data = ctx.getImageData(sx, sy, sw, sh).data;
 
   let sum = 0;

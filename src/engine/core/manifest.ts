@@ -175,6 +175,19 @@ export function validatePresetManifest(input: unknown): ValidationResult {
   if (m.config?.intensity !== undefined && (typeof m.config.intensity !== 'number' || m.config.intensity < 0 || m.config.intensity > 1)) {
     errors.push('config.intensity: a number from 0 to 1');
   }
+  const light = m.config?.light;
+  if (light !== undefined) {
+    const num = (v: unknown) => v === undefined || (typeof v === 'number' && Number.isFinite(v));
+    if (!light || typeof light !== 'object' || !num(light.angle) || !num(light.warmth)) {
+      errors.push('config.light: { angle?: degrees, warmth?: -1..1 }');
+    } else if (light.warmth !== undefined && Math.abs(light.warmth) > 1) {
+      warnings.push('config.light.warmth: clamped to -1..1');
+    }
+  }
+  const leg = m.config?.legibility;
+  if (leg !== undefined && leg !== 'auto' && leg !== 'off' && (!leg || typeof leg !== 'object')) {
+    errors.push("config.legibility: 'auto', 'off', or { selector?, strength? }");
+  }
   const layers = m.scene?.layers;
   if (!Array.isArray(layers) || layers.length === 0) {
     errors.push('scene.layers: at least one layer');

@@ -419,7 +419,33 @@ Make it easy to publish, find, and trust other people's work.
 - Publish cadence with changesets; semver policy for schema changes (adding fields is minor, changing defaults is minor with baseline refresh, removing is major).
 - Acceptance: a third party publishes a preset package that appears in the gallery via manifest alone, with no code change in this repo.
 
-### M9 — Aesthetic depth
+### M9 — Aesthetic depth — **done 2026-10-02 (pending the maintainer's blind compare)**
+
+Shipped:
+- **Light.** One key light per scene in `host.light`: seeded to an upper corner, with warmth. Base plates, vignettes, the nebula shader, moments, and every shader layer read it, through uniforms in the shader case.
+- **Quiet zones.** `host.quiet(x, y)` is built from measured content boxes (`legibility: 'auto'`) and from `config.quiet`. Five motion layers recede there.
+- **Auto-shade.** Automatic feathered shade above intensity 0.55.
+- **Moments.** The `moments` layer, added to three presets.
+- **Transitions.** Deterministic `transition()` with crossfade, wipe from the lit side, and iris from the key light, plus React support.
+- **Handle.** `handle.composition()` and `onFrame()`.
+- **Studio.** Light, warmth, and legibility controls, transition kind, and a composition overlay.
+- **Robustness.** WebGL context-loss recovery.
+- **Gates.** The stricter contrast gate (mean 7:1 behind the column, at most 5% of samples below AA) passes for every preset; the lowest is calm-mesh at 10.2:1. Blind compare tooling (`pnpm compare`, `/compare.html`).
+- **Harmonies.** Palette harmonies landed earlier, in M8.
+
+Acceptance status:
+- The contrast half is met.
+- The blind side-by-side against 0.2.0 is staged but needs the maintainer to run it. Run `pnpm compare`, then open `/compare.html`.
+
+Not done:
+- **Role tokens.** Per-layer role tokens (`plate`, `mid`, `highlight`, `alert`); layers still pick palette tokens directly.
+- **Morph transitions.** Option interpolation between two scenes.
+- **Composition metadata.** Anchor points and thirds as preset metadata. Thirds show in the studio overlay, but presets do not declare focal points yet.
+
+Found on the way:
+- **Loose screenshot tolerance.** The screenshot gate (0.5% of pixels, 0.2 YIQ per pixel) let void-tactical's background stars move in an earlier release without failing. The subtle relighting in this milestone also passed under it. The renders are deterministic, so the real fix is per-platform baselines and then a tighter tolerance. That is noted as follow-up work, because CI has not yet run the browser gates against Linux.
+
+### M9 — original plan
 
 Taste as system, not as one-off tuning.
 

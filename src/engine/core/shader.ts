@@ -69,6 +69,11 @@ void main() {
 }
 `;
 
+const STANDARD_UNIFORMS = [
+  'time', 'dt', 'frame', 'resolution', 'pointer', 'intensity', 'quality', 'seed',
+  'bg', 'accent', 'accent2', 'accent3', 'ink', 'hazard', 'light', 'lightDir', 'lightPos', 'warmth',
+] as const;
+
 const rgb01 = (hex: string): [number, number, number] => {
   const c = parseHex(hex) ?? { r: 128, g: 128, b: 128 };
   return [c.r / 255, c.g / 255, c.b / 255];
@@ -96,7 +101,14 @@ uniform vec3 u_bg;
 uniform vec3 u_accent;
 uniform vec3 u_ink;
 uniform vec3 u_hazard;
+uniform vec3 u_accent2;
+uniform vec3 u_accent3;
+// 1 on light palettes, 0 on dark.
 uniform float u_light;
+// Scene light: direction from center (uv space, y up), key position (uv), warmth -1..1.
+uniform vec2 u_lightDir;
+uniform vec2 u_lightPos;
+uniform float u_warmth;
 ${schemaUniforms}
 ${GLSL_PRELUDE}
 ${def.fragment}
@@ -111,55 +123,74 @@ ${def.fragment}
     rate: def.rate,
     gl(host: GLLayerHost): LayerInstance {
       const { gl, palette } = host;
-      const compile = (type: number, src: string) => {
-        const sh = gl.createShader(type);
-        if (!sh) throw new Error('createShader failed');
-        gl.shaderSource(sh, src);
-        gl.compileShader(sh);
-        if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-          const log = gl.getShaderInfoLog(sh);
-          gl.deleteShader(sh);
-          throw new Error(`[bg-engine] shader "${def.id}" failed to compile:\n${log}`);
-        }
-        return sh;
-      };
-      const program = gl.createProgram();
-      if (!program) throw new Error('createProgram failed');
-      gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX));
-      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
-      gl.linkProgram(program);
-      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        throw new Error(`[bg-engine] shader "${def.id}" failed to link:\n${gl.getProgramInfoLog(program)}`);
-      }
-      const vao = gl.createVertexArray();
-      const loc = (name: string) => gl.getUniformLocation(program, name);
-      const u = {
-        time: loc('u_time'),
-        dt: loc('u_dt'),
-        frame: loc('u_frame'),
-        resolution: loc('u_resolution'),
-        pointer: loc('u_pointer'),
-        intensity: loc('u_intensity'),
-        quality: loc('u_quality'),
-        seed: loc('u_seed'),
-        bg: loc('u_bg'),
-        accent: loc('u_accent'),
-        ink: loc('u_ink'),
-        hazard: loc('u_hazard'),
-        light: loc('u_light'),
-      };
       const options = host.options as Record<string, unknown>;
-      const optionLocs = Object.entries(def.schema)
-        .filter(([, f]) => f.type !== 'enum' && f.type !== 'string')
-        .map(([key, f]) => ({ key, type: f.type, loc: loc(`u_${key}`) }));
+      type Program = {
+        program: WebGLProgram;
+        vao: WebGLVertexArrayObject | null;
+        u: Record<string, WebGLUniformLocation | null>;
+        opts: { key: string; type: string; loc: WebGLUniformLocation | null }[];
+      };
 
-      gl.disable(gl.DEPTH_TEST);
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      gl.clearColor(0, 0, 0, 0);
+      const build = (): Program => {
+        const compile = (type: number, src: string) => {
+          const sh = gl.createShader(type);
+          if (!sh) throw new Error('createShader failed');
+          gl.shaderSource(sh, src);
+          gl.compileShader(sh);
+          if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+            const log = gl.getShaderInfoLog(sh);
+            gl.deleteShader(sh);
+            throw new Error(`[bg-engine] shader "${def.id}" failed to compile:\n${log}`);
+          }
+          return sh;
+        };
+        const program = gl.createProgram();
+        if (!program) throw new Error('createProgram failed');
+        gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX));
+        gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          throw new Error(`[bg-engine] shader "${def.id}" failed to link:\n${gl.getProgramInfoLog(program)}`);
+        }
+        const loc = (name: string) => gl.getUniformLocation(program, name);
+        const u = Object.fromEntries(STANDARD_UNIFORMS.map((n) => [n, loc(`u_${n}`)]));
+        const opts = Object.entries(def.schema)
+          .filter(([, f]) => f.type !== 'enum' && f.type !== 'string')
+          .map(([key, f]) => ({ key, type: f.type, loc: loc(`u_${key}`) }));
+        gl.disable(gl.DEPTH_TEST);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.clearColor(0, 0, 0, 0);
+        return { program, vao: gl.createVertexArray(), u, opts };
+      };
+
+      let prog: Program | null = build();
+
+      // Browsers drop WebGL contexts (GPU resets, too many contexts, backgrounded
+      // mobile tabs). Ask for the context back, rebuild on restore, and draw
+      // nothing in between rather than throwing.
+      const onLost = (e: Event) => {
+        e.preventDefault();
+        prog = null;
+      };
+      const onRestored = () => {
+        try {
+          prog = build();
+        } catch {
+          prog = null;
+        }
+      };
+      host.glCanvas.addEventListener('webglcontextlost', onLost);
+      host.glCanvas.addEventListener('webglcontextrestored', onRestored);
+
+      const light = host.light;
+      const lightDir = [light.dx, -light.dy];
+      const lightPos = [light.x, 1 - light.y];
 
       return {
         frame(info) {
+          if (!prog || gl.isContextLost()) return;
+          const { program, vao, u, opts } = prog;
           const { width, height } = host.glCanvas;
           gl.viewport(0, 0, width, height);
           gl.clear(gl.COLOR_BUFFER_BIT);
@@ -176,10 +207,15 @@ ${def.fragment}
           gl.uniform1f(u.seed, (host.config.seedHash % 10000) / 10000);
           gl.uniform3fv(u.bg, rgb01(palette.bg));
           gl.uniform3fv(u.accent, rgb01(palette.accent));
+          gl.uniform3fv(u.accent2, rgb01(palette.accent2));
+          gl.uniform3fv(u.accent3, rgb01(palette.accent3));
           gl.uniform3fv(u.ink, rgb01(palette.ink));
           gl.uniform3fv(u.hazard, rgb01(palette.hazard));
           gl.uniform1f(u.light, palette.theme === 'light' ? 1 : 0);
-          for (const o of optionLocs) {
+          gl.uniform2fv(u.lightDir, lightDir);
+          gl.uniform2fv(u.lightPos, lightPos);
+          gl.uniform1f(u.warmth, light.warmth);
+          for (const o of opts) {
             if (!o.loc) continue;
             const v = options[o.key];
             if (o.type === 'color') gl.uniform3fv(o.loc, rgb01(resolveColor(String(v), palette).hex));
@@ -189,8 +225,13 @@ ${def.fragment}
           gl.drawArrays(gl.TRIANGLES, 0, 3);
         },
         destroy() {
-          gl.deleteProgram(program);
-          gl.deleteVertexArray(vao);
+          host.glCanvas.removeEventListener('webglcontextlost', onLost);
+          host.glCanvas.removeEventListener('webglcontextrestored', onRestored);
+          if (prog && !gl.isContextLost()) {
+            gl.deleteProgram(prog.program);
+            gl.deleteVertexArray(prog.vao);
+          }
+          prog = null;
         },
       };
     },

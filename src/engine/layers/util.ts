@@ -52,6 +52,38 @@ export function glowSprite(rgb: string, radius: number, falloff = 1): HTMLCanvas
   return c;
 }
 
+/**
+ * Tint a color toward warm (amber) or cool (sky) light in OKLCH, by `warmth` in
+ * -1..1. Keeps lightness so a warm light does not get brighter, only warmer.
+ */
+export function warmTint(hex: string, warmth: number): string {
+  if (!warmth) return hex;
+  const src = hexToOklch(hex);
+  if (!src) return hex;
+  const target = warmth > 0 ? { c: 0.13, h: 62 } : { c: 0.1, h: 230 };
+  const k = Math.min(1, Math.abs(warmth)) * 0.55;
+  let dh = target.h - src.h;
+  if (dh > 180) dh -= 360;
+  if (dh < -180) dh += 360;
+  return oklchToHex({ l: src.l, c: src.c + (target.c - src.c) * k, h: (src.h + dh * k + 360) % 360 });
+}
+
+/**
+ * Schema field every content-aware layer shares: how strongly it recedes behind
+ * page text and quiet zones. 0 ignores content; 1 nearly vanishes there.
+ */
+export const QUIET_FIELD = {
+  type: 'number',
+  min: 0,
+  max: 1,
+  default: 0.65,
+  label: 'Recede behind content',
+  description: 'How much this layer fades where page text and quiet zones are',
+} as const;
+
+/** Alpha multiplier at a point: 1 in open space, `1 - k` at the heart of a quiet zone. */
+export const quietFactor = (host: LayerHost, x: number, y: number, k: number) => (k > 0 ? 1 - k * host.quiet(x, y) : 1);
+
 /** Wrap a coordinate into [0, size). */
 export const wrap = (v: number, size: number) => ((v % size) + size) % size;
 

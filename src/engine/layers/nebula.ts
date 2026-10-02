@@ -35,9 +35,16 @@ void main() {
   float mixHue = smoothstep(-0.2, 0.6, fbm(p * 0.7 + q, 3));
 
   vec3 col = mix(u_color, u_color2, mixHue);
+  // Scene light: clouds facing the key light are lit, the far side falls into shadow.
+  float lit = clamp(1.0 - distance(uv, u_lightPos) * 0.9, 0.0, 1.0);
+  float facing = 0.55 + 0.75 * lit;
+  vec3 warm = vec3(1.0, 0.72, 0.45);
+  vec3 cool = vec3(0.55, 0.78, 1.0);
+  col *= mix(vec3(1.0), u_warmth > 0.0 ? warm : cool, abs(u_warmth) * 0.45 * lit);
   // Light palettes: deepen instead of glow so the clouds read on white.
-  vec3 tint = u_light > 0.5 ? mix(col, u_bg, 0.35) : mix(col, u_ink, 0.15);
-  float a = cloud * (1.0 - 0.7 * dust) * (0.35 + 0.65 * u_intensity);
+  vec3 tint = u_light > 0.5 ? mix(col, u_bg, 0.35) : mix(col, u_ink, 0.15 * lit);
+  float a = cloud * (1.0 - 0.7 * dust) * (0.35 + 0.65 * u_intensity) * facing;
+  a = clamp(a, 0.0, 1.0);
   // Premultiplied output.
   fragColor = vec4(tint * a, a);
 }

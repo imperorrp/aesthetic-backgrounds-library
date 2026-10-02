@@ -48,7 +48,7 @@ describe('validatePresetManifest', () => {
     const r = validatePresetManifest({
       id: 'Bad Id',
       label: '',
-      config: { intensity: 3 },
+      config: { intensity: 3, light: { angle: 'up' } as never, legibility: 'loud' as never },
       scene: {
         layers: [
           { use: 'nope' },
@@ -62,6 +62,8 @@ describe('validatePresetManifest', () => {
     expect(text).toMatch(/^id:/m);
     expect(text).toMatch(/^label:/m);
     expect(text).toMatch(/config\.intensity/);
+    expect(text).toMatch(/config\.light/);
+    expect(text).toMatch(/config\.legibility/);
     expect(text).toMatch(/scene\.layers\[0\]\.use: unknown layer "nope"/);
     expect(text).toMatch(/scene\.layers\[1\]\.with\.style: "hexagons" is not one of dots, lines, cross/);
     expect(text).toMatch(/scene\.layers\[2\]\.opacity/);

@@ -1,5 +1,5 @@
 import type { Layer } from '../core/layer';
-import { color, frames60, glowSprite, rgbaOf, TAU, wrap } from './util';
+import { color, frames60, glowSprite, QUIET_FIELD, quietFactor, rgbaOf, TAU, wrap } from './util';
 
 const schema = {
   count: { type: 'number', min: 5, max: 400, step: 1, default: 80, label: 'Count' },
@@ -9,6 +9,7 @@ const schema = {
   pulse: { type: 'number', min: 0, max: 1, default: 0.35, label: 'Pulse', description: 'Brightness breathing' },
   turbulence: { type: 'number', min: 0, max: 1, default: 0.5, label: 'Turbulence', description: 'How much the noise field bends paths' },
   color: { type: 'color', default: 'accent', label: 'Color' },
+  quiet: QUIET_FIELD,
 } as const;
 
 type P = { x: number; y: number; s: number; ph: number; sp: number };
@@ -22,7 +23,7 @@ export const particlesDriftLayer: Layer = {
   schema,
   canvas(host) {
     const { ctx, rng, noise } = host;
-    const o = host.options as { count: number; size: number; speed: number; glow: number; pulse: number; turbulence: number; color: string };
+    const o = host.options as { count: number; size: number; speed: number; glow: number; pulse: number; turbulence: number; color: string; quiet: number };
     const c = color(host, o.color);
     const ps: P[] = Array.from({ length: Math.round(o.count) }, () => ({
       x: rng(),
@@ -48,7 +49,8 @@ export const particlesDriftLayer: Layer = {
           const r = o.size * p.s;
           const x = p.x * width;
           const y = p.y * height;
-          const a = (0.55 + 0.45 * host.intensity) * pulse;
+          const a = (0.55 + 0.45 * host.intensity) * pulse * quietFactor(host, x, y, o.quiet);
+          if (a < 0.01) continue;
           if (sprite) {
             const gr = r * (3 + o.glow * 5);
             ctx.globalAlpha = a * o.glow * 0.6;

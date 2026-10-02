@@ -30,6 +30,34 @@ export type PointerState = {
   idle: number;
 };
 
+/**
+ * The scene light, resolved once per mount. `dx`/`dy` is the unit vector from the
+ * canvas center toward the light; `x`/`y` is where the key light sits (0..1).
+ */
+export type LightState = {
+  angle: number;
+  dx: number;
+  dy: number;
+  x: number;
+  y: number;
+  /** -1 cool .. 1 warm. */
+  warmth: number;
+};
+
+/** An axis-aligned rectangle in canvas CSS pixels. */
+export type PxRect = { x: number; y: number; width: number; height: number };
+
+/** What the host knows about layout around the canvas, for inspection and studio overlays. */
+export type CompositionState = {
+  light: LightState;
+  /** Visible page content over the canvas (from `legibility`). */
+  content: PxRect[];
+  /** Explicit quiet zones from config. */
+  quiet: PxRect[];
+  /** Current automatic shade strength behind content (0 when none). */
+  shade: number;
+};
+
 /** Timing for one frame. `t` and `dt` are seconds; `dt` is clamped so tab switches do not explode motion. */
 export type FrameInfo = {
   t: number;
@@ -62,6 +90,14 @@ export type SkinHost<T = any> = {
   readonly intensity: number;
   /** Live: 0..1 quality governor output; lower it means frames were running long. */
   readonly quality: number;
+  /** The scene light. Layers that draw glows, plates, or shading should read it. */
+  readonly light: LightState;
+  /**
+   * How much a point (canvas CSS px) should recede: 1 inside page content or an
+   * explicit quiet zone, falling to 0 a short distance outside. Multiply alpha or
+   * density by `1 - k * quiet(x, y)` to leave negative space behind text.
+   */
+  quiet(x: number, y: number): number;
 };
 
 /** What a skin receives when `mount()` asks it for DOM layers behind the canvas. */
@@ -111,5 +147,9 @@ export type BackgroundHandle = {
   resume(): void;
   /** Render exactly one frame now, e.g. while paused or with `motion: 'off'`. */
   renderOnce(): void;
+  /** Called after every rendered frame with its timing. Returns an unsubscribe function. */
+  onFrame(listener: (info: FrameInfo) => void): () => void;
+  /** Light, measured content boxes, quiet zones, and shade strength right now. */
+  composition(): CompositionState;
   destroy(): void;
 };

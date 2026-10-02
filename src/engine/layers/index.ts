@@ -21,6 +21,7 @@ import { glyphRainLayer } from './glyph-rain';
 import { contentShadeLayer } from './content-shade';
 import { nebulaLayer } from './nebula';
 import { inkFlowLayer } from './ink-flow';
+import { momentsLayer } from './moments';
 
 export const standardLayers: readonly Layer[] = [
   gradientBaseLayer,
@@ -34,6 +35,7 @@ export const standardLayers: readonly Layer[] = [
   flowFieldLayer,
   glyphRainLayer,
   gridLayer,
+  momentsLayer,
   lightFollowLayer,
   vignetteLayer,
   contentShadeLayer,
@@ -57,6 +59,7 @@ export {
   flowFieldLayer,
   glyphRainLayer,
   gridLayer,
+  momentsLayer,
   lightFollowLayer,
   vignetteLayer,
   contentShadeLayer,

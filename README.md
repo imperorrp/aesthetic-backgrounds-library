@@ -180,6 +180,9 @@ To share the palette with design tools, `paletteToTokens()` (from `space-backgro
 | `intensity` | `1` | One knob for how much the background asserts itself. Skins scale motion, density, and contrast by it. `0` to `1`. |
 | `motion` | `'auto'` | `auto` honors `prefers-reduced-motion`; `full`, `reduced`, or `off` force a mode. `off` renders a single frame. |
 | `density` | `1` | Population multiplier for generated entities (clamped 0.25–2). |
+| `light` | seeded | `{ angle, warmth }`. One key light every layer reads. Omit `angle` and the seed picks an upper corner; `warmth` runs from cool (`-1`) to warm (`1`). |
+| `legibility` | `'auto'` | Measure the page's content boxes (`main, article, [data-bg-content]`) and make the background recede behind them, adding a feathered shade above `intensity` 0.55. `'off'`, or `{ selector, strength }` for a fixed shade. |
+| `quiet` | `[]` | Extra quiet zones as viewport fractions `{ x, y, width, height }`, for content the selector cannot see. |
 | `detail` | `'low'` | Label / HUD budget for the default skin (`none`, `low`, `medium`, `high`). |
 | `cameraSpeed` | `0.25` | Base drift speed, in world units per frame at 60 fps. Real speed is time-based. |
 | `targetFps` | `60` | Frame cap for the render loop. Lowering it does not slow the animation. |
@@ -187,7 +190,7 @@ To share the palette with design tools, `paletteToTokens()` (from `space-backgro
 | `zIndex` | `0` | z-index of the background root. |
 | `fonts` | `false` | Load the display fonts used by built-in canvas text (Orbit, Syne Mono) from Google Fonts. Off by default so the package makes no network requests. |
 
-`<bg-engine>` attributes: `seed`, `skin`, `palette`, `intensity`, `motion`, `density`, `detail`, `speed`, `fps`, `fonts`, `z-index`.
+`<bg-engine>` attributes: `seed`, `skin`, `palette`, `intensity`, `motion`, `density`, `detail`, `speed`, `fps`, `fonts`, `z-index`, `light-angle`, `warmth`, `legibility` (`auto` or `off`).
 
 ## What the engine guarantees today
 
@@ -198,7 +201,8 @@ To share the palette with design tools, `paletteToTokens()` (from `space-backgro
 - **Container-aware sizing.** The canvas fills whatever it is mounted in and follows it through a `ResizeObserver`, with a window fallback. Backing store is scaled by `devicePixelRatio`, capped at 1.5x.
 - **Scoped styling.** Palette tokens are written as `--bge-*` custom properties on the engine root only, never on your `:root`.
 - **DOM isolation and clean teardown.** Everything lives in a `.bg-engine-root` with `pointer-events: none`; `destroy()` removes the DOM, disconnects observers and listeners, cancels the loop, and is safe to call twice.
-- **Zero dependencies, small by default.** The host is about 8 KB gzipped; each small skin adds about 4 KB. Budgets are enforced in CI.
+- **Text stays readable.** By default the host finds your content boxes, motion layers thin out behind them, and busy scenes get a feathered shade. Every built-in preset holds a mean 7:1 contrast behind a text column in the browser gates.
+- **Zero dependencies, small by default.** The host is about 15 KB gzipped; each small skin adds about 5 KB. Budgets are enforced in CI.
 
 ## Scenes and Layers
 
@@ -224,13 +228,13 @@ mount(document.body, {
 });
 ```
 
-Standard layers: `gradient-base`, `mesh-gradient`, `aurora`, `starfield`, `particles-drift`, `plexus`, `flow-field`, `glyph-rain`, `grid`, `light-follow`, `vignette`, `content-shade` (a feathered shade behind your text column so any scene passes a contrast check), `grain`, `scanlines`. Any whole skin can also be used as a layer (`fromSkin`), and `void-tactical` registers itself that way. Every layer reads colors from the palette or from tokens like `accent` and `inkDim`, scales itself by `intensity` and `quality`, and draws deterministically from the seeded streams.
+Standard layers: `gradient-base`, `mesh-gradient`, `aurora`, `starfield`, `particles-drift`, `plexus`, `flow-field`, `glyph-rain`, `grid`, `light-follow`, `vignette`, `content-shade` (a feathered shade behind your text column so any scene passes a contrast check), `moments` (rare seeded events, below), `grain`, `scanlines`. Any whole skin can also be used as a layer (`fromSkin`), and `void-tactical` registers itself that way. Every layer reads colors from the palette or from tokens like `accent` and `inkDim`, scales itself by `intensity` and `quality`, and draws deterministically from the seeded streams.
 
 Options are validated against each layer's schema: numbers are clamped, unknown enum values fall back to defaults, and nothing throws on a typo in a JSON preset. The same schema drives the playground controls and is what an agent fills in when it builds a scene for you.
 
 ### Shader layers
 
-Layers can render on the GPU. `createShaderLayer` takes a GLSL ES 3.00 fragment shader and gives it a private WebGL2 surface composited like any other layer. Uniforms arrive from the frame (`u_time`, `u_dt`), the host (`u_resolution`, `u_pointer`, `u_intensity`, `u_quality`, `u_seed`), the palette (`u_bg`, `u_accent`, `u_ink`, `u_hazard`), and every numeric, boolean, and color field in your schema as `u_<name>`. A prelude provides `hash21`, `vnoise`, and `fbm`.
+Layers can render on the GPU. `createShaderLayer` takes a GLSL ES 3.00 fragment shader and gives it a private WebGL2 surface composited like any other layer. Uniforms arrive from the frame (`u_time`, `u_dt`), the host (`u_resolution`, `u_pointer`, `u_intensity`, `u_quality`, `u_seed`), the palette (`u_bg`, `u_accent`, `u_accent2`, `u_accent3`, `u_ink`, `u_hazard`), the scene light (`u_lightDir`, `u_lightPos`, `u_warmth`), and every numeric, boolean, and color field in your schema as `u_<name>`. A prelude provides `hash21`, `vnoise`, and `fbm`.
 
 ```ts
 import { createShaderLayer } from 'space-background-engine/shader';
@@ -246,7 +250,7 @@ registerLayer(createShaderLayer({
 }));
 ```
 
-Because every input is a uniform, shader layers stay deterministic: the same seed renders identical pixels. Built-in shader layers are `nebula` and `ink-flow`. Where WebGL2 is unavailable the layer logs once and is skipped, and the rest of the scene renders normally. Heavy layers can set `rate: 0.5` to render every other frame.
+Because every input is a uniform, shader layers stay deterministic: the same seed renders identical pixels. Built-in shader layers are `nebula` and `ink-flow`. Where WebGL2 is unavailable the layer logs once and is skipped, and the rest of the scene renders normally. If the GPU drops the context, the layer pauses and rebuilds its program when the context is restored. Heavy layers can set `rate: 0.5` to render every other frame.
 
 To publish your own preset, wrap a scene:
 
@@ -261,6 +265,25 @@ registerPreset({
   scene: { layers: [{ use: 'gradient-base' }, { use: 'particles-drift', with: { glow: 0.9 } }] },
 });
 ```
+
+## Light, quiet zones, moments, transitions
+
+Layers in a scene agree with each other because the host gives them a shared composition.
+
+- **One key light.** `host.light` holds an angle, a unit direction, an in-frame key position, and a warmth. `gradient-base` puts its main glow at the key and a fill light opposite. `vignette` opens toward the light. The `nebula` shader lights the side of each cloud that faces the key, and `moments` aims comet tails and flare spikes by it. Shader layers receive `u_lightDir`, `u_lightPos`, and `u_warmth`. By default the seed places the light in an upper corner, never top center; set `light: { angle: 225, warmth: 0.4 }` to pin it.
+- **Quiet zones.** With `legibility: 'auto'`, the host measures your content boxes on mount, resize, and scroll. `host.quiet(x, y)` returns 0 to 1 near those boxes with a soft falloff. Particles, stars, plexus links, glyph-rain heads, and flow lines recede there (each layer's `quiet` option sets how much), so text sits on calm ground instead of under a shade box. At high `intensity` a feathered shade is added too.
+- **Moments.** The `moments` layer stages rare, seeded events: a meteor every minute or so, a slow comet, a star that flares. Gaps are random and long, events avoid your text, and the same seed stages the same events at the same seconds. Under reduced motion only flares remain.
+- **Transitions.** `transition(handle, nextOptions, { kind, duration })` mounts the next scene in place and reveals it with `crossfade`, `wipe` (from the lit side), or `iris` (opening from the new scene's key light). It is driven by the incoming scene's own clock, so it replays deterministically. It is instant with motion off, and a crossfade under reduced motion. In React, pass `transition` to `<Background>`.
+
+```ts
+import { mount, transition } from 'space-background-engine';
+
+let bg = mount(document.body, { skin: 'deep-field', light: { warmth: -0.2 } });
+// later, when the page changes section:
+bg = transition(bg, { skin: 'aurora-night' }, { kind: 'iris', duration: 1.4 }).handle;
+```
+
+`handle.composition()` reports the light, the measured content rects, the quiet zones, and the current shade strength, and `handle.onFrame(fn)` subscribes to frames. The studio's "Show composition" overlay draws all of it over the live background.
 
 ## The void-tactical skin
 
@@ -358,6 +381,8 @@ What the host gives a skin (`SkinHost`):
 | `viewport` | Live `width`, `height`, `dpr`, `isMobile`, `isTouch`. |
 | `pointer` | Live position, velocity, `active`, `down`, seconds `idle`. |
 | `motion`, `intensity`, `quality` | Live policy and budgets to scale your effect by. |
+| `light` | Scene key light: `angle`, unit `dx`/`dy`, key position `x`/`y` (0 to 1), `warmth`. |
+| `quiet(x, y)` | 0 to 1: how close a CSS-pixel point is to page content. Recede there. |
 
 Each frame receives `{ t, dt, frame, timestamp }` in seconds. Rules that keep skins portable: no `Math.random`, `Date.now`, `performance.now`, or timers; move by `dt`; read colors from `host.palette`; release everything in `destroy()`.
 
@@ -388,8 +413,10 @@ pnpm build:lib    # Library bundle + generated type declarations
 pnpm size         # Gzip budget per entry closure (run after build:lib)
 ```
 
-**Browser gates.** `pnpm test:e2e` renders every built-in skin and preset through `/check.html`, a harness that mounts with a manual clock at a fixed seed and steps a fixed number of frames, so each render is reproducible. For each subject it asserts three things: the render matches its stored screenshot in `e2e/__screenshots__` (visual regression, per platform), the palette ink keeps at least WCAG AA contrast over the canvas behind a 40rem text column with no more than a small share of failing pixels, and two independent browser contexts produce byte-identical PNGs for the same seed. After an intentional visual change, refresh baselines with `pnpm test:e2e:update` and commit them. The first run on a new platform writes its own baselines.
+**Browser gates.** `pnpm test:e2e` renders every built-in skin and preset through `/check.html`, a harness that mounts with a manual clock at a fixed seed and steps a fixed number of frames, so each render is reproducible. For each subject it asserts three things: the render matches its stored screenshot in `e2e/__screenshots__` (visual regression, per platform), the palette ink reaches a mean WCAG contrast of 7:1 (AAA) over the canvas behind a 40rem text column, with at most 5% of sampled pixels below AA, and two independent browser contexts produce byte-identical PNGs for the same seed. After an intentional visual change, refresh baselines with `pnpm test:e2e:update` and commit them. The first run on a new platform writes its own baselines.
 
-The playground at `/` is a scene studio: browse the preset gallery, edit the layer stack with controls generated from each schema, derive a palette from a brand color, undo and redo with Ctrl/Cmd+Z, hit **Randomize** to perturb every option inside its schema range, and **Fit shade** to place a legibility mask over the page's content column. Export a `mount()` call, a preset JSON, a PNG or WebP (DOM layers included), or an 8 second WebM loop rendered on a fixed clock. The URL hash holds the whole state, so a link reproduces the exact background. Run `pnpm sync-gallery` once to populate the gallery thumbnails from the test baselines.
+The playground at `/` is a scene studio: browse the preset gallery, edit the layer stack with controls generated from each schema, derive a palette from a brand color, undo and redo with Ctrl/Cmd+Z, hit **Randomize** to perturb every option inside its schema range, and **Fit shade** to place a legibility mask over the page's content column. Set the key light's angle and warmth, switch legibility between auto and off, pick the transition used when you change presets, and turn on **Show composition** to see thirds, the light ray, measured content boxes, and quiet zones over the live render. Export a `mount()` call, a preset JSON, a PNG or WebP (DOM layers included), or an 8 second WebM loop rendered on a fixed clock. The URL hash holds the whole state, so a link reproduces the exact background. Run `pnpm sync-gallery` once to populate the gallery thumbnails from the test baselines.
 
 Smoke pages served by the dev server: `/quick.html` (`mount(document.body)`), `/element.html` (`<bg-engine>`), `/skins.html` (container mounts with skin ids and palettes).
+
+**Blind compare.** `pnpm compare` stages every current baseline next to its render from the 0.2.0 release (0.3.0 for presets added since) in `public/compare`. `/compare.html` then shows each pair with shuffled sides and a flip view, and reveals which version you preferred only at the end. It is how an aesthetic change is accepted: the maintainer has to prefer the new render without knowing which one it is.

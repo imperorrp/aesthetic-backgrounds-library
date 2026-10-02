@@ -1,5 +1,5 @@
 import type { Layer } from '../core/layer';
-import { color, frames60, rgbaOf } from './util';
+import { color, frames60, QUIET_FIELD, quietFactor, rgbaOf } from './util';
 
 const CHARSETS: Record<string, string> = {
   katakana: 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレゲゼデベペオォコソトノホモヨョロゴゾドボポヴッン0123456789',
@@ -17,6 +17,7 @@ const schema = {
   charset: { type: 'enum', values: ['katakana', 'hex', 'binary', 'latin', 'symbols'], default: 'katakana', label: 'Charset' },
   head: { type: 'color', default: 'ink', label: 'Head color' },
   trail: { type: 'color', default: 'accent', label: 'Trail color' },
+  quiet: QUIET_FIELD,
 } as const;
 
 type Column = { alive: boolean; row: number; acc: number; speed: number; glyph: string };
@@ -31,7 +32,7 @@ export const glyphRainLayer: Layer = {
   schema,
   canvas(host) {
     const { ctx, rng } = host;
-    const o = host.options as { fontSize: number; speed: number; density: number; fade: number; charset: string; head: string; trail: string };
+    const o = host.options as { fontSize: number; speed: number; density: number; fade: number; charset: string; head: string; trail: string; quiet: number };
     const head = color(host, o.head);
     const trail = color(host, o.trail);
     const chars = CHARSETS[o.charset] ?? CHARSETS.katakana;
@@ -76,7 +77,7 @@ export const glyphRainLayer: Layer = {
             c.acc -= 1;
             if (c.glyph && c.row >= 0 && c.row < rows) {
               ctx.clearRect(i * o.fontSize, c.row * o.fontSize, o.fontSize, o.fontSize);
-              ctx.fillStyle = rgbaOf(trail, 1);
+              ctx.fillStyle = rgbaOf(trail, quietFactor(host, x, c.row * o.fontSize, o.quiet));
               ctx.fillText(c.glyph, x, c.row * o.fontSize);
             }
             c.row += 1;
@@ -87,7 +88,9 @@ export const glyphRainLayer: Layer = {
             }
             if (c.row >= 0) {
               c.glyph = chars.charAt(Math.floor(rng() * chars.length));
-              ctx.fillStyle = head.hex;
+              // Heads are the brightest marks; behind text they drop to the trail color.
+              const q = quietFactor(host, x, c.row * o.fontSize, o.quiet);
+              ctx.fillStyle = q < 0.999 ? rgbaOf(trail, q) : head.hex;
               ctx.fillText(c.glyph, x, c.row * o.fontSize);
             }
           }

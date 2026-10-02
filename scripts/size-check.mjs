@@ -16,7 +16,8 @@ const DIST = resolve('dist');
 const BUDGETS_KB = {
   // host + scene compositor + schema: must never pull a skin, a layer, or the GLSL prelude.
   // 13 covers the compositor's WebGL surface handling and snapshotScene (M5/M6).
-  'core.js': 13,
+  // 16 since M9 put the scene light, quiet zones, auto-shade, and transitions in the host.
+  'core.js': 16,
   // shader authoring (GLSL prelude + program setup), opt-in
   'shader.js': 15,
   // manifest validation/loading and the design-token bridge, opt-in (M8)
@@ -30,13 +31,14 @@ const BUDGETS_KB = {
   'layers.js': 20,
   'presets.js': 22,
   // batteries included: core + all skins + layers + presets + shader/manifest/token tooling.
-  // 62 since M8 added the manifest and token entries to the batteries bundle.
-  'index.js': 62,
-  // framework adapters: core + all built-in skins, layers, and presets (no tooling)
-  'element.js': 58,
-  'react.js': 58,
-  'vue.js': 58,
-  'svelte.js': 58,
+  // 62 since M8 added the manifest and token entries to the batteries bundle; 67 since
+  // M9 (host lighting and legibility, the moments layer, light-aware base layers).
+  'index.js': 67,
+  // framework adapters: core + all built-in skins, layers, and presets (no tooling); 59 since M9
+  'element.js': 59,
+  'react.js': 59,
+  'vue.js': 59,
+  'svelte.js': 59,
 };
 
 function walk(dir, out = []) {

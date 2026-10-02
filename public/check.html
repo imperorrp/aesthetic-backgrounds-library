@@ -30,7 +30,7 @@
       <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.</p>
     </main>
     <script type="module">
-      import { mount, createManualScheduler, probeContrast, resolvePalette, getSkin } from '/src/lib.ts';
+      import { mount, createManualScheduler, probeContrast, resolvePalette, getSkin, loadPresetManifest } from '/src/lib.ts';
 
       const q = new URLSearchParams(location.search);
       const skinId = q.get('skin') ?? 'void-tactical';
@@ -42,7 +42,9 @@
       if (q.get('text') === '0') document.body.dataset.hideText = '1';
 
       const scheduler = manual ? createManualScheduler() : undefined;
-      const skin = getSkin(skinId);
+      // Community presets are JSON, loaded the way any site would load them.
+      let skin = getSkin(skinId);
+      if (!skin) skin = await loadPresetManifest(`/registry/community/${skinId}.json`).catch(() => undefined);
       if (!skin) throw new Error(`unknown skin ${skinId}`);
 
       const handle = mount(document.body, {

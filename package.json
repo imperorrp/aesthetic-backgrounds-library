@@ -1,6 +1,6 @@
 {
   "name": "space-background-engine",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": false,
   "type": "module",
   "license": "MIT",
@@ -127,6 +127,7 @@
     "registry:check": "node scripts/build-registry.mjs --check",
     "schema-diff": "node scripts/schema-diff.mjs",
     "sync-gallery": "node scripts/sync-gallery.mjs",
+    "compare": "node scripts/prepare-compare.mjs",
     "build:site": "pnpm sync-gallery && vite build --base=./",
     "size": "node scripts/size-check.mjs",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm registry:check && pnpm build:lib && pnpm size && pnpm schema-diff --check"

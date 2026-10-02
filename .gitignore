@@ -9,6 +9,8 @@ playwright-report
 
 # Copied from the e2e baselines by `pnpm sync-gallery`
 public/gallery
+# Staged by `pnpm compare` for the blind side-by-side
+public/compare/
 .DS_Store
 *.local
 .env

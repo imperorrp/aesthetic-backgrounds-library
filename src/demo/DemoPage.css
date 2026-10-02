@@ -200,6 +200,49 @@
   background: rgb(var(--hazard-rgb) / 0.08);
 }
 
+.demo-composition {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  font-family: "Orbit", monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.demo-composition line {
+  stroke: rgb(var(--accent-rgb) / 0.35);
+  stroke-dasharray: 2 6;
+}
+
+.demo-composition .light-ray {
+  stroke: #ffd27a;
+  stroke-dasharray: 6 4;
+  stroke-width: 1.5;
+}
+
+.demo-composition .light-key {
+  fill: rgba(255, 210, 122, 0.25);
+  stroke: #ffd27a;
+}
+
+.demo-composition .content {
+  fill: rgb(var(--accent-rgb) / 0.06);
+  stroke: var(--accent);
+  stroke-dasharray: 5 4;
+}
+
+.demo-composition .quiet {
+  fill: rgba(255, 255, 255, 0.04);
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-dasharray: 1 4;
+}
+
+.demo-composition text {
+  fill: var(--ink);
+  text-transform: uppercase;
+}
+
 .demo-swatches {
   display: flex;
   gap: 3px;

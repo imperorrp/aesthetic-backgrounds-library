@@ -1,5 +1,5 @@
 import type { Layer } from '../core/layer';
-import { color, rgbaOf, wrap } from './util';
+import { color, QUIET_FIELD, quietFactor, rgbaOf, wrap } from './util';
 
 const schema = {
   density: { type: 'number', min: 0, max: 2, default: 1, label: 'Density' },
@@ -8,6 +8,7 @@ const schema = {
   drift: { type: 'number', min: 0, max: 2, default: 0.4, label: 'Drift', description: 'Parallax scroll speed' },
   size: { type: 'number', min: 0.5, max: 2.5, default: 1, label: 'Star size' },
   tint: { type: 'number', min: 0, max: 1, default: 0.3, label: 'Accent tint', description: 'Share of stars tinted toward the accent' },
+  quiet: QUIET_FIELD,
 } as const;
 
 type Star = { x: number; y: number; r: number; a: number; tw: number; ph: number; tinted: boolean };
@@ -21,7 +22,7 @@ export const starfieldLayer: Layer = {
   schema,
   canvas(host) {
     const { ctx, rng } = host;
-    const o = host.options as { density: number; bands: number; twinkle: number; drift: number; size: number; tint: number };
+    const o = host.options as { density: number; bands: number; twinkle: number; drift: number; size: number; tint: number; quiet: number };
     const ink = color(host, 'ink');
     const accent = color(host, 'accent');
     const bands: Star[][] = [];
@@ -58,7 +59,9 @@ export const starfieldLayer: Layer = {
             const x = wrap(s.x * width - offset, width);
             const y = s.y * height;
             const tw = o.twinkle > 0 ? 1 - o.twinkle * 0.5 * (0.5 + 0.5 * Math.sin(t * s.tw + s.ph)) : 1;
-            ctx.fillStyle = rgbaOf(s.tinted ? accent : ink, s.a * tw * (0.6 + 0.4 * intensity));
+            const a = s.a * tw * (0.6 + 0.4 * intensity) * quietFactor(host, x, y, o.quiet);
+            if (a < 0.01) continue;
+            ctx.fillStyle = rgbaOf(s.tinted ? accent : ink, a);
             ctx.beginPath();
             ctx.arc(x, y, s.r, 0, 6.283);
             ctx.fill();

@@ -1,5 +1,5 @@
 import type { Layer } from '../core/layer';
-import { color, frames60, rgbaOf } from './util';
+import { color, frames60, QUIET_FIELD, rgbaOf } from './util';
 
 const schema = {
   lines: { type: 'number', min: 20, max: 800, step: 1, default: 220, label: 'Streams' },
@@ -9,6 +9,7 @@ const schema = {
   width: { type: 'number', min: 0.5, max: 3, default: 1, label: 'Stroke width' },
   evolve: { type: 'number', min: 0, max: 1, default: 0.3, label: 'Evolution', description: 'How fast the field itself changes' },
   color: { type: 'color', default: 'accent', label: 'Color' },
+  quiet: QUIET_FIELD,
 } as const;
 
 type S = { x: number; y: number; life: number };
@@ -26,7 +27,10 @@ export const flowFieldLayer: Layer = {
   schema,
   canvas(host) {
     const { ctx, rng, noise } = host;
-    const o = host.options as { lines: number; scale: number; speed: number; trail: number; width: number; evolve: number; color: string };
+    const o = host.options as { lines: number; scale: number; speed: number; trail: number; width: number; evolve: number; color: string; quiet: number };
+    // Per-stream dither threshold: behind content a stream draws only when its threshold
+    // clears the local quietness, thinning the field there while keeping one batched stroke.
+    const dither = Array.from({ length: Math.round(o.lines) }, (_, i) => ((Math.imul(i + 1, 2654435761) >>> 0) % 1000) / 1000);
     const c = color(host, o.color);
     const streams: S[] = Array.from({ length: Math.round(o.lines) }, () => ({ x: rng(), y: rng(), life: rng() * 200 }));
     const respawn = (s: S) => {
@@ -60,8 +64,12 @@ export const flowFieldLayer: Layer = {
           const angle = noise.fbm2(s.x * o.scale, s.y * o.scale + tt, 2) * Math.PI * 2;
           const nx = s.x + Math.cos(angle) * step;
           const ny = s.y + Math.sin(angle) * step * (width / height);
-          ctx.moveTo(s.x * width, s.y * height);
-          ctx.lineTo(nx * width, ny * height);
+          const px = s.x * width;
+          const py = s.y * height;
+          if (o.quiet <= 0 || dither[i] >= o.quiet * host.quiet(px, py)) {
+            ctx.moveTo(px, py);
+            ctx.lineTo(nx * width, ny * height);
+          }
           s.x = nx;
           s.y = ny;
           s.life -= f;

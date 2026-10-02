@@ -10,6 +10,9 @@ export { registerSkin, getSkin, listSkins, resolveSkin, DEFAULT_SKIN_ID } from '
 export { registerLayer, getLayer, listLayers, resolveLayer, fromSkin } from '../engine/core/layer';
 export type { Layer, LayerHost, GLLayerHost, LayerInstance } from '../engine/core/layer';
 export { sceneSkin, createPreset, registerPreset, snapshotScene, SCENE_SKIN_ID } from '../engine/core/scene';
+export { transition } from '../engine/core/transition';
+export type { Transition, TransitionKind, TransitionOptions } from '../engine/core/transition';
+export { quietnessAt, QUIET_FEATHER } from '../engine/core/legibility';
 export type { Scene, SceneLayer, PresetDefinition, PresetSkin } from '../engine/core/scene';
 export { resolveOptions, schemaDefaults, resolveColor, COLOR_TOKENS } from '../engine/core/schema';
 export { probeContrast } from '../engine/core/probe';
@@ -29,6 +32,9 @@ export type {
   PointerState,
   Viewport,
   Camera,
+  LightState,
+  PxRect,
+  CompositionState,
 } from '../engine/core/skin';
 export {
   applyPalette,
@@ -44,13 +50,16 @@ export {
   HARMONIES,
 } from '../engine/palette';
 export type { PaletteId, Palette, PaletteSpec, PaletteFrom, PaletteTheme, Harmony } from '../engine/palette';
-export { resolveBackgroundConfig, withConfigDefaults, DETAIL_OPTIONS } from '../engine/config';
+export { resolveBackgroundConfig, withConfigDefaults, DETAIL_OPTIONS, DEFAULT_CONTENT_SELECTOR } from '../engine/config';
 export type {
   BackgroundConfig,
   ResolvedBackgroundConfig,
   LabelDensity,
   MotionMode,
   MotionPreference,
+  LightConfig,
+  LegibilityConfig,
+  NormRect,
 } from '../engine/config';
 export { randomSeedString, createRng, forkRng, hashSeed, mulberry32, pick, randRange, randInt, token } from '../engine/rng';
 export type { Rng } from '../engine/rng';

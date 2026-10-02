@@ -103,6 +103,8 @@ export function mount<T = any>(
     pause: () => loop.pause(),
     resume: () => loop.resume(),
     renderOnce: () => loop.renderOnce(),
+    onFrame: (listener) => loop.onFrame(listener),
+    composition: () => loop.composition(),
     destroy() {
       if (destroyed) return;
       destroyed = true;

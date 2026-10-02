@@ -49,10 +49,10 @@ for (const skin of SUBJECTS) {
       await openCheck(page, skin);
       const report = (await page.evaluate(() => (window as any).__bge.probe())) as Probe;
       expect(report.samples).toBeGreaterThan(1000);
-      // Mean background behind the column must clear WCAG AA for body text against the palette ink.
-      expect(report.meanContrast, `mean contrast for ${skin}`).toBeGreaterThanOrEqual(4.5);
-      // And no more than a small share of individual pixels may fall below AA.
-      expect(report.failingShare, `failing share for ${skin}`).toBeLessThanOrEqual(0.12);
+      // M9 gate: the background behind the column must reach WCAG AAA (7:1) against the
+      // palette ink on average, and almost no individual pixel may fall below AA.
+      expect(report.meanContrast, `mean contrast for ${skin}`).toBeGreaterThanOrEqual(7);
+      expect(report.failingShare, `failing share for ${skin}`).toBeLessThanOrEqual(0.05);
     });
 
     test('replays pixel-identically for the same seed', async ({ page, browser }) => {

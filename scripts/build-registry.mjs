@@ -134,6 +134,42 @@ try {
           intensity: { type: 'number', minimum: 0, maximum: 1 },
           motion: { enum: ['auto', 'full', 'reduced', 'off'] },
           density: { type: 'number', minimum: 0.25, maximum: 2 },
+          light: {
+            type: 'object',
+            description: 'Scene key light. Omit angle for a seeded upper-corner light.',
+            properties: {
+              angle: { type: 'number', description: 'Degrees; 0 is right, 270 is straight up' },
+              warmth: { type: 'number', minimum: -1, maximum: 1, description: 'Cool (-1) to warm (1) tint of lit areas' },
+            },
+            additionalProperties: false,
+          },
+          legibility: {
+            oneOf: [
+              { enum: ['auto', 'off'] },
+              {
+                type: 'object',
+                properties: {
+                  selector: { type: 'string', description: 'Content selector to measure' },
+                  strength: { type: 'number', minimum: 0, maximum: 1 },
+                },
+                additionalProperties: false,
+              },
+            ],
+          },
+          quiet: {
+            type: 'array',
+            description: 'Extra quiet zones as fractions of the viewport',
+            items: {
+              type: 'object',
+              required: ['x', 'y', 'width', 'height'],
+              properties: {
+                x: { type: 'number', minimum: 0, maximum: 1 },
+                y: { type: 'number', minimum: 0, maximum: 1 },
+                width: { type: 'number', minimum: 0, maximum: 1 },
+                height: { type: 'number', minimum: 0, maximum: 1 },
+              },
+            },
+          },
         },
       },
       scene: {

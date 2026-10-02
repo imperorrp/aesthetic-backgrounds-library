@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Background } from '../react-entry';
+import { Background, type MountHandle, type TransitionKind } from '../react-entry';
 import {
   COLOR_TOKENS,
   DETAIL_OPTIONS,
@@ -64,6 +64,10 @@ type Studio = {
   motion: MotionPreference;
   density: number;
   detail: LabelDensity;
+  /** null = seeded by the engine. */
+  lightAngle: number | null;
+  warmth: number;
+  legibility: 'auto' | 'off';
 };
 
 const BLENDS: GlobalCompositeOperation[] = ['source-over', 'lighter', 'screen', 'multiply', 'overlay', 'soft-light'];
@@ -107,8 +111,11 @@ function studioFor(source: string, prev?: Partial<Studio>): Studio {
     motion: prev?.motion ?? 'auto',
     density: prev?.density ?? 1,
     detail: prev?.detail ?? 'low',
+    lightAngle: null,
+    warmth: 0,
+    legibility: prev?.legibility ?? 'auto',
   };
-  const applyDefaults = (d: { palette?: PaletteSpec; intensity?: number; density?: number; detail?: LabelDensity } | undefined) => {
+  const applyDefaults = (d: { palette?: PaletteSpec; intensity?: number; density?: number; detail?: LabelDensity; light?: { angle?: number; warmth?: number } } | undefined) => {
     if (!d) return;
     if (typeof d.palette === 'string') {
       base.paletteMode = d.palette as PaletteId;
@@ -121,6 +128,8 @@ function studioFor(source: string, prev?: Partial<Studio>): Studio {
     if (typeof d.intensity === 'number') base.intensity = d.intensity;
     if (typeof d.density === 'number') base.density = d.density;
     if (d.detail) base.detail = d.detail;
+    if (d.light?.angle !== undefined) base.lightAngle = d.light.angle;
+    if (d.light?.warmth !== undefined) base.warmth = d.light.warmth;
   };
   const preset = allPresets.find((p) => p.id === source);
   if (preset) {
@@ -175,6 +184,14 @@ export default function DemoPage() {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const historyRef = useRef(new History<Studio>());
   const history = historyRef.current;
+  const [handle, setHandle] = useState<MountHandle | null>(null);
+  const [showComposition, setShowComposition] = useState(false);
+  const [transitionKind, setTransitionKind] = useState<TransitionKind>('iris');
+  const renderedSource = useRef(studio.source);
+  const sourceChanged = renderedSource.current !== studio.source;
+  useEffect(() => {
+    renderedSource.current = studio.source;
+  });
 
   // Live legibility readout: sample the canvas behind the sample column once a second.
   useEffect(() => {
@@ -270,6 +287,8 @@ export default function DemoPage() {
       intensity: studio.intensity,
     };
     if (studio.motion !== 'auto') cfg.motion = studio.motion;
+    if (studio.lightAngle !== null || studio.warmth !== 0) cfg.light = { ...(studio.lightAngle !== null ? { angle: studio.lightAngle } : {}), ...(studio.warmth ? { warmth: studio.warmth } : {}) };
+    if (studio.legibility === 'off') cfg.legibility = 'off';
     if (sceneMode) cfg.options = studio.scene;
     else {
       if (Object.keys(studio.skinOptions).length) cfg.options = studio.skinOptions;
@@ -436,7 +455,6 @@ export default function DemoPage() {
   return (
     <div className="demo-root">
       <Background
-        key={`${studio.source}-${sceneMode}`}
         skin={sceneMode ? 'scene' : studio.source}
         options={sceneMode ? studio.scene ?? { layers: [] } : studio.skinOptions}
         seed={studio.seed}
@@ -445,9 +463,16 @@ export default function DemoPage() {
         motion={studio.motion}
         density={studio.density}
         detail={studio.detail}
+        light={studio.lightAngle !== null ? { angle: studio.lightAngle, warmth: studio.warmth } : { warmth: studio.warmth }}
+        legibility={studio.legibility}
         adaptiveQuality
         pauseWhenHidden={false}
+        // Switching source dissolves into the new scene; option tweaks remount instantly.
+        transition={sourceChanged ? { duration: 0.9, kind: transitionKind } : undefined}
+        onReady={setHandle}
       />
+
+      {showComposition && handle && <CompositionOverlay handle={handle} />}
 
       {showContent && (
         <main id="demo-content" className="demo-content" style={{ color: resolvePalette(palette).ink }}>
@@ -622,6 +647,41 @@ export default function DemoPage() {
               </select>
             </label>
 
+            <p className="demo-kicker demo-kicker-gap">Light and composition</p>
+            <label className="demo-toggle-field" title="Let the seed choose the light angle (upper left or upper right)">
+              <input type="checkbox" checked={studio.lightAngle === null} onChange={(e) => update({ lightAngle: e.target.checked ? null : handle?.composition().light.angle ?? 225 })} />
+              <span className="demo-toggle-label">Seeded light angle</span>
+            </label>
+            {studio.lightAngle !== null && (
+              <label className="demo-field">
+                <span>Light angle {Math.round(studio.lightAngle)}°</span>
+                <input type="range" min={0} max={359} step={1} value={studio.lightAngle} onChange={(e) => update({ lightAngle: Number(e.target.value) })} />
+              </label>
+            )}
+            <label className="demo-field">
+              <span>Warmth {studio.warmth > 0 ? '+' : ''}{studio.warmth.toFixed(2)}</span>
+              <input type="range" min={-1} max={1} step={0.05} value={studio.warmth} onChange={(e) => update({ warmth: Number(e.target.value) })} />
+            </label>
+            <label className="demo-field" title="Auto finds page content, makes layers recede there, and shades behind it above intensity 0.55">
+              <span>Legibility</span>
+              <select value={studio.legibility} onChange={(e) => update({ legibility: e.target.value as 'auto' | 'off' })}>
+                <option value="auto">Auto (recede and shade behind content)</option>
+                <option value="off">Off</option>
+              </select>
+            </label>
+            <label className="demo-field">
+              <span>Transition between sources</span>
+              <select value={transitionKind} onChange={(e) => setTransitionKind(e.target.value as TransitionKind)}>
+                <option value="iris">Iris from the key light</option>
+                <option value="wipe">Wipe from the lit side</option>
+                <option value="crossfade">Crossfade</option>
+              </select>
+            </label>
+            <label className="demo-toggle-field">
+              <input type="checkbox" checked={showComposition} onChange={(e) => setShowComposition(e.target.checked)} />
+              <span className="demo-toggle-label">Show composition (thirds, light, content, quiet zones)</span>
+            </label>
+
             {!sceneMode && (
               <>
                 <label className="demo-field">
@@ -735,6 +795,54 @@ function Gallery({ onPick, onClose }: { onPick: (id: string) => void; onClose: (
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * What the engine knows about layout: rule-of-thirds guides, the scene light and its
+ * key position, measured page content (where layers recede and the shade sits), and
+ * explicit quiet zones. Read from the live handle a few times a second.
+ */
+function CompositionOverlay({ handle }: { handle: MountHandle }) {
+  const [state, setState] = useState(() => handle.composition());
+  const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  useEffect(() => {
+    const tick = () => {
+      setState(handle.composition());
+      const r = handle.canvas.getBoundingClientRect();
+      setSize({ w: r.width, h: r.height });
+    };
+    tick();
+    const id = window.setInterval(tick, 400);
+    return () => window.clearInterval(id);
+  }, [handle]);
+  const { w, h } = size;
+  const { light, content, quiet, shade } = state;
+  const lx = light.x * w;
+  const ly = light.y * h;
+  return (
+    <svg className="demo-composition" viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true">
+      {[1, 2].map((i) => (
+        <g key={i}>
+          <line x1={(w * i) / 3} y1={0} x2={(w * i) / 3} y2={h} />
+          <line x1={0} y1={(h * i) / 3} x2={w} y2={(h * i) / 3} />
+        </g>
+      ))}
+      <line className="light-ray" x1={w / 2} y1={h / 2} x2={lx} y2={ly} />
+      <circle className="light-key" cx={lx} cy={ly} r={9} />
+      <text x={lx + 14} y={ly + 4}>
+        key light {Math.round(light.angle)}° · warmth {light.warmth.toFixed(2)}
+      </text>
+      {content.map((r, i) => (
+        <g key={`c${i}`}>
+          <rect className="content" x={r.x} y={r.y} width={r.width} height={r.height} />
+          <text x={r.x + 6} y={r.y - 6}>content · shade {shade.toFixed(2)}</text>
+        </g>
+      ))}
+      {quiet.map((r, i) => (
+        <rect key={`q${i}`} className="quiet" x={r.x} y={r.y} width={r.width} height={r.height} />
+      ))}
+    </svg>
   );
 }
 

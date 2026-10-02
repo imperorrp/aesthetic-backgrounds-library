@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bg-engine blind compare</title>
+    <style>
+      :root { color-scheme: dark; --ink: #e6e9f0; --mute: #8a93a6; --line: #262b38; --accent: #7cc7ff; }
+      html, body { margin: 0; background: #07080c; color: var(--ink); font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
+      header { display: flex; gap: 1rem; align-items: baseline; padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--line); }
+      header h1 { font-size: 1rem; font-weight: 600; margin: 0; }
+      header p { margin: 0; color: var(--mute); }
+      #progress { margin-left: auto; color: var(--mute); font-variant-numeric: tabular-nums; }
+      main { padding: 1rem 1.25rem 2rem; }
+      .stage { position: relative; max-width: 1280px; margin: 0 auto; aspect-ratio: 1280 / 800; border: 1px solid var(--line); }
+      .stage img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+      .stage img[hidden] { display: none; }
+      .tag { position: absolute; top: 0.6rem; left: 0.6rem; padding: 0.15rem 0.55rem; background: #000a; border: 1px solid var(--line); font-weight: 600; letter-spacing: 0.04em; }
+      .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; max-width: 1280px; margin: 0.75rem auto 0; }
+      .pair figure { margin: 0; cursor: pointer; border: 1px solid var(--line); }
+      .pair figure:hover, .pair figure.on { border-color: var(--accent); }
+      .pair img { width: 100%; display: block; }
+      .pair figcaption { padding: 0.3rem 0.5rem; color: var(--mute); }
+      .controls { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; max-width: 1280px; margin: 1rem auto 0; }
+      button { font: inherit; color: var(--ink); background: #11141c; border: 1px solid var(--line); padding: 0.45rem 0.9rem; cursor: pointer; }
+      button:hover { border-color: var(--accent); }
+      kbd { font: 12px ui-monospace, monospace; padding: 0 0.3rem; border: 1px solid var(--line); border-radius: 3px; color: var(--mute); }
+      .hint { text-align: center; color: var(--mute); margin-top: 0.6rem; }
+      table { border-collapse: collapse; margin: 1rem auto; min-width: 32rem; }
+      th, td { text-align: left; padding: 0.35rem 0.8rem; border-bottom: 1px solid var(--line); }
+      td.new { color: #8fe3a5; } td.old { color: #f0a58f; } td.tie { color: var(--mute); }
+      .summary { text-align: center; font-size: 1.1rem; margin-top: 1rem; }
+      .error { max-width: 40rem; margin: 3rem auto; color: var(--mute); }
+      code { color: var(--ink); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Blind compare</h1>
+      <p>Which render is better? Sides are shuffled per subject; versions are revealed at the end.</p>
+      <span id="progress"></span>
+    </header>
+    <main id="app"></main>
+    <script type="module">
+      const app = document.getElementById('app');
+      const progress = document.getElementById('progress');
+      const pairs = await fetch('./compare/index.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (!pairs?.length) {
+        app.innerHTML = '<p class="error">No pairs staged. Run <code>node scripts/prepare-compare.mjs</code>, then reload this page under <code>pnpm dev</code>.</p>';
+        throw new Error('compare: nothing staged');
+      }
+
+      // Shuffle order and sides. Math.random is fine here: this page judges renders, it is not one.
+      const order = pairs.map((p) => ({ ...p, newOnLeft: Math.random() < 0.5 })).sort(() => Math.random() - 0.5);
+      const votes = [];
+      let i = 0;
+      let showing = 'A';
+
+      const srcs = (p) => {
+        const oldSrc = `./compare/old/${p.id}.png`;
+        const newSrc = `./compare/new/${p.id}.png`;
+        return p.newOnLeft ? [newSrc, oldSrc] : [oldSrc, newSrc];
+      };
+
+      function render() {
+        if (i >= order.length) return reveal();
+        const p = order[i];
+        const [a, b] = srcs(p);
+        progress.textContent = `${i + 1} / ${order.length}`;
+        app.innerHTML = `
+          <div class="stage">
+            <img id="imgA" src="${a}" alt="A" />
+            <img id="imgB" src="${b}" alt="B" hidden />
+            <span class="tag" id="tag">A</span>
+          </div>
+          <div class="pair">
+            <figure data-pick="A"><img src="${a}" alt="A" /><figcaption>A</figcaption></figure>
+            <figure data-pick="B"><img src="${b}" alt="B" /><figcaption>B</figcaption></figure>
+          </div>
+          <div class="controls">
+            <button data-pick="A">A is better <kbd>1</kbd></button>
+            <button data-pick="=">No preference <kbd>0</kbd></button>
+            <button data-pick="B">B is better <kbd>2</kbd></button>
+            <button data-flip>Flip <kbd>Space</kbd></button>
+            ${i > 0 ? '<button data-undo>Back <kbd>Backspace</kbd></button>' : ''}
+          </div>
+          <p class="hint">Subject ${i + 1}. The large view flips between A and B in place, which shows small differences that side-by-side hides.</p>`;
+        showing = 'A';
+      }
+
+      function flip() {
+        const a = document.getElementById('imgA');
+        const b = document.getElementById('imgB');
+        if (!a || !b) return;
+        showing = showing === 'A' ? 'B' : 'A';
+        a.hidden = showing !== 'A';
+        b.hidden = showing !== 'B';
+        document.getElementById('tag').textContent = showing;
+        document.querySelectorAll('.pair figure').forEach((f) => f.classList.toggle('on', f.dataset.pick === showing));
+      }
+
+      function pick(choice) {
+        const p = order[i];
+        if (!p) return;
+        const winner = choice === '=' ? 'tie' : (choice === 'A') === p.newOnLeft ? 'new' : 'old';
+        votes[i] = { id: p.id, from: p.from, winner };
+        i++;
+        render();
+      }
+
+      function reveal() {
+        progress.textContent = 'done';
+        const count = (w) => votes.filter((v) => v.winner === w).length;
+        const rows = votes
+          .map((v) => `<tr><td>${v.id}</td><td>${v.from}</td><td class="${v.winner}">${v.winner === 'new' ? 'current' : v.winner === 'old' ? v.from : 'no preference'}</td></tr>`)
+          .join('');
+        const result = { at: new Date().toISOString(), current: count('new'), previous: count('old'), ties: count('tie'), votes };
+        localStorage.setItem('bge-compare-last', JSON.stringify(result));
+        app.innerHTML = `
+          <p class="summary">Current preferred on <strong>${result.current}</strong> of ${votes.length}; previous on <strong>${result.previous}</strong>; ${result.ties} without preference.</p>
+          <table><thead><tr><th>Subject</th><th>Compared with</th><th>Preferred</th></tr></thead><tbody>${rows}</tbody></table>
+          <div class="controls"><button data-copy>Copy results as JSON</button><button data-restart>Run again</button></div>`;
+        app.querySelector('[data-copy]').onclick = () => navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+        app.querySelector('[data-restart]').onclick = () => location.reload();
+      }
+
+      app.addEventListener('click', (e) => {
+        const el = e.target.closest('[data-pick],[data-flip],[data-undo]');
+        if (!el) return;
+        if (el.matches('.pair figure')) {
+          if (el.dataset.pick !== showing) flip();
+          return;
+        }
+        if (el.hasAttribute('data-flip')) return flip();
+        if (el.hasAttribute('data-undo')) return (i = Math.max(0, i - 1)), render();
+        pick(el.dataset.pick);
+      });
+      addEventListener('keydown', (e) => {
+        if (i >= order.length) return;
+        if (e.key === ' ') return e.preventDefault(), flip();
+        if (e.key === '1') return pick('A');
+        if (e.key === '2') return pick('B');
+        if (e.key === '0') return pick('=');
+        if (e.key === 'Backspace' && i > 0) return (i--, render());
+      });
+      render();
+    </script>
+  </body>
+</html>
