@@ -16,6 +16,16 @@ export {
 } from './engine/skins';
 export type { VoidTacticalOptions, NetworkSkinOptions, MatrixSkinOptions } from './engine/skins';
 export type { OverlayFlags, OverlayId } from './engine/skins/void-tactical/overlays/flags';
-export { voidTacticalLayer } from './entries/skins/void-tactical';
+export {
+  voidTacticalLayer,
+  registerUniverse,
+  getUniverse,
+  listUniverses,
+  validateUniverse,
+  universePrompt,
+  githubUniverse,
+  GithubUniverseError,
+} from './entries/skins/void-tactical';
+export type { UniversePack, UniverseValidation } from './entries/skins/void-tactical';
 export * from './engine/layers';
 export * from './engine/presets';

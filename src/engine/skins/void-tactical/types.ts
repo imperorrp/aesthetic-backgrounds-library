@@ -4,6 +4,8 @@
  * @description TypeScript interfaces and types for space background elements and their properties.
  * @module
  */
+import type { AnomalyStyle, Rarity, ShipClass, StructureRole, UniversePack } from './universe';
+import type { Formation } from './ships';
 
 export interface Point {
   x: number;
@@ -27,27 +29,66 @@ export interface Constellation {
   color: string;
 }
 
-export interface Fleet {
-  id: string;
+/** One hull in a fleet. `slot` is its formation position (leader-local units). */
+export interface Ship {
+  cls: ShipClass;
+  color: string;
   x: number;
   y: number;
   vx: number;
   vy: number;
-  glyph: string;
-  color: string;
-  history: Point[];
+  heading: number;
+  slot: [number, number];
+}
+
+/** Cubic Hermite path from p0 (velocity v0) to p1 (velocity v1) over T seconds from t0. */
+export interface FleetPlan {
+  p0x: number; p0y: number; v0x: number; v0y: number;
+  p1x: number; p1y: number; v1x: number; v1y: number;
+  T: number;
+  t0: number;
+}
+
+export interface FleetTarget {
+  kind: 'structure' | 'system' | 'anomaly' | 'exit' | 'point';
+  id?: string;
+  x: number;
+  y: number;
+  label?: string;
+  role?: StructureRole;
+}
+
+export type FleetPurpose = 'patrol' | 'cargo' | 'survey' | 'transit';
+export type FleetMode = 'transit' | 'orbit' | 'docked' | 'jumping' | 'gone';
+
+export interface Fleet {
+  id: string;
+  /** Call sign shown on the map, e.g. "FLT-215" or a data-driven name. */
+  callsign: string;
+  cls: ShipClass;
+  faction: number;
+  purpose: FleetPurpose;
+  /** ships[0] is the leader; the rest hold formation slots. */
+  ships: Ship[];
+  formation: Formation;
+  spacing: number;
+  mode: FleetMode;
+  plan?: FleetPlan;
+  target?: FleetTarget;
+  orbit?: { cx: number; cy: number; r: number; ang: number; w: number; until: number };
+  dockedUntil?: number;
+  jumpAt?: number;
+  /** Leader history as flat x,y pairs, oldest first. */
+  trail: number[];
+  lastSample: number;
   showLabel: boolean;
-  type: 'fighter' | 'cruiser' | 'freighter' | 'scout';
-  formationOffset: Point; // Offset from the fleet center
-  curvature: number; // How much the path curves
-  curveDirection: number; // 1 for clockwise, -1 for counter-clockwise
-  curvePhase: number; // Starting phase for the curve
-  spiralFactor: number; // Additional spiral tightening factor
-  state: 'cruising' | 'approaching' | 'orbiting' | 'docking' | 'launching'; // Fleet AI state
-  targetId?: string; // ID of target system/structure
-  approachTarget?: Point; // Target position for approaching
-  targetType?: 'planet' | 'structure'; // Type of target being approached
-  dockedUntil?: number; // Sim time (s) at which a docked fleet departs
+  /** 0..1 visibility (fades on launch, dock, and jump). */
+  fade: number;
+  fadeTo: number;
+  visits: number;
+  maxVisits: number;
+  /** Anomaly ids already surveyed, so scouts move on. */
+  surveyed: string[];
 }
 
 export interface Planet {
@@ -62,25 +103,28 @@ export interface Planet {
 
 export interface Structure {
   id: string;
-  // Vastly expanded ontology
-  kind: 
-    // Infrastructure
-    | 'station' | 'shipyard' | 'jumpgate' | 'comm_buoy' | 'defense_grid' | 'mining_outpost'
-    // Megastructures
-    | 'dyson_sphere' | 'ringworld' | 'stellar_lifter' | 'matrioshka_brain' | 'penrose_sphere'
-    // Celestial / Hazards
-    | 'black_hole' | 'neutron_star' | 'quasar' | 'magnetar' | 'rogue_planet'
-    // Ancient / Mystery
-    | 'void_rift' | 'precursor_relic' | 'ancient_gate' | 'psionic_beacon' | 'derelict_hulk' | 'monolith';
+  kind: string;
+  label: string;
+  role: StructureRole;
+  rarity: Rarity;
+  art: string[];
+  chatter: string[];
   x: number;
   y: number;
   size: number;
   color?: string;
   active?: boolean;
+  /** Per-structure phase for idle animations. */
+  spin: number;
+  /** Sim time of the last flash (dock, launch, jump). */
+  flashAt?: number;
+  /** Sim time of this structure's next behavior (launch, cargo run, arrival). */
+  nextAction: number;
 }
 
 export interface StarSystem {
   id: string;
+  name: string;
   x: number;
   y: number;
   starColor: string;
@@ -130,6 +174,11 @@ export interface Anomaly {
   x: number;
   y: number;
   type: string;
+  style: AnomalyStyle;
+  color: string;
+  /** 0..1 animation phase offset. */
+  seed: number;
+  born: number;
   age: number;
   text: string; // Associated text that stays with this anomaly
 }
@@ -143,12 +192,21 @@ export interface TacticalElement {
   priority: 'low' | 'medium' | 'high';
   color: string;
   glow?: boolean;
-  followId?: string; // Optional id of entity this overlay should track (e.g., fleet id)
+  followId?: string; // Optional id of a fleet this overlay tracks
   lifetime: number;       // ms remaining
   duration: number;       // initial ms duration
   anchor: 'screen' | 'world'; // world => transform by camera
   parallax?: number;      // Parallax factor for movement
   createdAt: number;
+}
+
+/** A target lock: brackets close on a contact while its data types out. */
+export interface TargetLock {
+  kind: 'fleet' | 'structure';
+  id: string;
+  start: number;
+  duration: number;
+  lines: string[];
 }
 
 import type { LabelDensity } from '../../config';
@@ -174,4 +232,11 @@ export interface SystemState {
   width: number;
   height: number;
   settings: SimSettings;
+  /** The fiction this map belongs to. */
+  universe: UniversePack;
+  /** 0..1 slow activity curve: calm stretches and busy stretches. */
+  tension: number;
+  lock: TargetLock | null;
+  /** Monotonic id counter, per world (keeps ids deterministic across instances). */
+  seq: number;
 }

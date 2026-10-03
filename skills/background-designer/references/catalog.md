@@ -25,7 +25,12 @@ Community presets live in `registry/community/*.json` and in `registry/index.jso
 
 | Id | Look | Key options |
 | --- | --- | --- |
-| `void-tactical` | streaming sci-fi sector map with systems, structures, fleets, HUD chatter | `hueVariety`, `lineWeight`, `spriteScale`, `hud`, `paths`, `trails`, CSS layer toggles; config `detail`, `density` |
+| `void-tactical` | living sci-fi sector map: fleets in formation between working structures, anomalies, target locks, chatter | `universe` (`void`, `saltwind`, `choir`) or `pack` (a universe pack JSON, e.g. from `universePrompt()`), `hueVariety`, `lineWeight`, `spriteScale`, `shipScale`, `hud`, `paths`, `trails`, `lock`, CSS layer toggles; config `detail`, `density` |
+| `sonar` | submarine passive sonar waterfall | `contacts`, `speed`, `grain`, `labels` |
+| `atc-radar` | approach radar with phosphor returns, data blocks, clearances | `traffic`, `sweep`, `timeScale`, `weather` |
+| `seismograph` | station traces, quakes sweeping the stack, crust section | `stations`, `speed`, `activity`, `section` |
+| `abyssal` | deep-sea scanner: bioluminescent animals, marine snow, sonar fan | `life`, `snow`, `scan` |
+| `mars-radar` | Martian dust-storm radar over crater contours | `storms`, `sweep`, `contours`, `barbs` |
 | `drifting-dust` | drifting node network with pointer links | `connectionRadius`, `maxNodes`, `pointerRadius` |
 | `matrix-rain` | glyph rain with fading trails | `fontSize`, `fallSpeed`, `charset`, `fade` |
 

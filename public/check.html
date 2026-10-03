@@ -30,15 +30,18 @@
       <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.</p>
     </main>
     <script type="module">
-      import { mount, createManualScheduler, probeContrast, resolvePalette, getSkin, loadPresetManifest } from '/src/lib.ts';
+      import { mount, createManualScheduler, probeContrast, resolvePalette, getSkin, loadPresetManifest, getUniverse } from '/src/lib.ts';
 
       const q = new URLSearchParams(location.search);
       const skinId = q.get('skin') ?? 'void-tactical';
       const seed = q.get('seed') ?? 'orion-7';
       const frames = Number(q.get('frames') ?? 240);
       const manual = q.get('manual') !== '0';
-      const palette = q.get('palette') ?? undefined;
+      const universeId = q.has('options') ? JSON.parse(q.get('options')).universe : undefined;
+      // A universe brings its own palette unless one is given explicitly.
+      const palette = q.get('palette') ?? (universeId ? getUniverse(universeId)?.palette : undefined) ?? undefined;
       const intensity = q.has('intensity') ? Number(q.get('intensity')) : undefined;
+      const options = q.has('options') ? JSON.parse(q.get('options')) : undefined;
       if (q.get('text') === '0') document.body.dataset.hideText = '1';
 
       const scheduler = manual ? createManualScheduler() : undefined;
@@ -52,6 +55,7 @@
         seed,
         palette,
         intensity,
+        options,
         scheduler,
         adaptiveQuality: false,
         pauseWhenHidden: false,

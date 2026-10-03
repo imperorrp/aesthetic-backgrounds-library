@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- **Sector map overhaul.**
+  - **Restored look:** structures sit in soft circles in their own color again, and the network lanes pulse at their original strength.
+  - **Ships:** vector silhouettes for six classes that fly in formation (V, column, escort) with engine glow.
+  - **Paths:** each fleet follows a planned curve, so its trail, the ship, and the drawn course are one continuous line, and the course is always true.
+  - **Fleets and structures:** fleets live on the same plane as structures. Freighters dock at stations, mines send convoys, shipyards launch, gates jump fleets elsewhere, and scouts survey anomalies.
+  - **Anomalies:** each kind has animated ASCII art and a pulsing ring in its own color.
+  - **HUD:** periodic target lock with typed data. Event chatter tied to what is on screen. Label placement that never overlaps. A slow tension curve.
+- **Universe packs.** Everything a world needs lives in one JSON file: names, factions, ship classes, structures with art and roles, anomalies, chatter, and background words. Built in: The Void Sector, Saltwind Reach, Choir of Hollow Stars. `universePrompt(subject)` writes a prompt any AI can answer with a pack, and `validateUniverse` accepts what comes back.
+- **GitHub galaxy.** `githubUniverse(username)` maps a public account to a pack: repos are systems, languages are factions, recent activity is fleets, and issues are anomalies.
+- **Instruments.** New skins: `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`.
+- **Studio.** "Copy prompt for your AI" is the main export. One Shuffle button replaces Randomize, and Fit shade is gone. The universe and GitHub panels are new. The gallery leads with the featured pieces, with the rest under Basics. Sample text is off by default.
+- **README.** Rewritten as a short note about the idea; the technical reference moved to `docs/REFERENCE.md`.
+
 ## 0.4.0 — 2026-10-02
 
 Aesthetic depth (ROADMAP M9).

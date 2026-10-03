@@ -67,6 +67,17 @@ function makeContext(canvas: HTMLCanvasElement) {
       if (key === 'getImageData') {
         return (_x: number, _y: number, w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h });
       }
+      if (key === 'createImageData') {
+        return (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h });
+      }
+      if (key === 'putImageData') {
+        // Fold the pixels into the hash so image-based skins are covered by determinism tests.
+        return (img: { data: Uint8ClampedArray }, x: number, y: number) => {
+          let h = 0;
+          for (let i = 0; i < img.data.length; i += 7) h = (Math.imul(h, 31) + img.data[i]) | 0;
+          record(`putImageData(${h},${x},${y})`);
+        };
+      }
       if (key === 'getTransform') return () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 });
       if (key in target) return target[key];
       return (...args: unknown[]) => record(`${key}(${serialize(args)})`);

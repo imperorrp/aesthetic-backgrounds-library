@@ -1,35 +1,39 @@
 /**
  * UI Rendering Module
  *
- * @description Rendering functions for user interface overlays (tactical displays, telemetry).
- * Includes enhanced sector network visualization with increased opacity for better visibility.
+ * @description The HUD: data lanes between systems, sector links, radio chatter
+ * (typed out), telemetry, and the periodic target lock.
  *
  * Determinism: all randomness comes from `frame.rng`, all time from `frame.time`/`frame.dt`.
  * @module
  */
 
-import type { SimSettings, SystemState, TacticalElement, StarSystem } from '../types';
-import { accentRgba, WORLD_SPEED_MULTIPLIER, type CanvasContext, type RenderFrame } from './utils';
+import type { SimSettings, SystemState, StarSystem } from '../types';
+import { accentRgba, getArtSprite, hexRgba, SPRITE_BASE_HEIGHT, WORLD_SPEED_MULTIPLIER, type CanvasContext, type RenderFrame } from './utils';
 import { shouldShowTelemetry } from '../labels';
+import type { LabelBoard } from './board';
+import { allStructures } from '../fleets';
+import { SHIP_SPECS } from '../ships';
+import { structureRadius } from './celestial';
+
+/** HUD lines keep their original strength; the `hud` knob trims them only partly. */
+const lineLevel = (frame: RenderFrame) => 0.55 + 0.45 * frame.style.hud;
 
 // --- System Network Visualization ---
 export const renderSystemConnections = (
   ctx: CanvasContext,
   systems: StarSystem[],
-  camera: { x: number, y: number },
-  viewport: { width: number, height: number },
+  camera: { x: number; y: number },
+  viewport: { width: number; height: number },
   frame: RenderFrame,
 ) => {
-  const parallax = 0.25 * WORLD_SPEED_MULTIPLIER;
-  const points = systems.map(sys => ({
-    x: sys.x - camera.x * parallax,
-    y: sys.y - camera.y * parallax
-  })).filter(p => p.x > -100 && p.x < viewport.width + 100);
-
-  if (points.length < 2 || frame.style.hud <= 0.02) return;
-
-  const hud = frame.style.hud;
+  const points = systems
+    .map((sys) => ({ x: sys.x - camera.x * frame.parallax, y: sys.y }))
+    .filter((p) => p.x > -400 && p.x < viewport.width + 400);
+  if (points.length < 2) return;
+  const level = lineLevel(frame);
   const lw = frame.style.lineWeight;
+
   const links: [number, number][] = [];
   for (let i = 0; i < points.length; i++) {
     for (let j = i + 1; j < points.length; j++) {
@@ -40,9 +44,10 @@ export const renderSystemConnections = (
   }
   if (!links.length) return;
 
-  // Faint continuous lane...
-  ctx.strokeStyle = accentRgba(frame.palette, 0.12 * hud);
-  ctx.lineWidth = lw;
+  // The lane itself, pulsing like the original.
+  const pulse = 0.3 + Math.sin(frame.time * 3) * 0.2;
+  ctx.strokeStyle = accentRgba(frame.palette, pulse * level);
+  ctx.lineWidth = lw * 1.3;
   ctx.setLineDash([]);
   ctx.beginPath();
   for (const [i, j] of links) {
@@ -51,11 +56,11 @@ export const renderSystemConnections = (
   }
   ctx.stroke();
 
-  // ...with packets flowing along it: the network reads as alive, not as a wireframe.
-  ctx.strokeStyle = accentRgba(frame.palette, 0.32 * hud);
-  ctx.lineWidth = lw;
-  ctx.setLineDash([6, 22]);
-  ctx.lineDashOffset = -frame.time * 28;
+  // Packets riding it.
+  ctx.strokeStyle = accentRgba(frame.palette, 0.45 * level);
+  ctx.lineWidth = lw * 1.3;
+  ctx.setLineDash([3, 26]);
+  ctx.lineDashOffset = -frame.time * 30;
   ctx.beginPath();
   for (const [i, j] of links) {
     ctx.moveTo(points[i].x, points[i].y);
@@ -63,443 +68,200 @@ export const renderSystemConnections = (
   }
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.lineDashOffset = 0;
 
-  // Node ticks at each system: a small ring rather than a dot.
-  ctx.strokeStyle = accentRgba(frame.palette, 0.4 * hud);
-  ctx.lineWidth = lw;
-  points.forEach(p => {
+  ctx.fillStyle = accentRgba(frame.palette, Math.min(1, pulse * 1.5) * level);
+  for (const p of points) {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 3 * lw, 0, Math.PI * 2);
-    ctx.stroke();
-  });
+    ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
 };
 
 // --- Sector Network Visualization ---
 export const renderSectorConnections = (
   ctx: CanvasContext,
-  camera: { x: number, y: number },
-  viewport: { width: number, height: number },
+  camera: { x: number; y: number },
+  viewport: { width: number; height: number },
   frame: RenderFrame,
 ) => {
-  const sectorSize = 2000; // Distance between sector centers
-  const parallax = 0.15 * WORLD_SPEED_MULTIPLIER; // Slower than systems
-  const maxDistance = sectorSize * 1.5; // Connect nearby sectors
-
-  // Generate sector points in view
-  const points: { x: number, y: number }[] = [];
+  const sectorSize = 2000;
+  const parallax = 0.15 * WORLD_SPEED_MULTIPLIER;
+  const maxDistance = sectorSize * 1.5;
+  const points: { x: number; y: number }[] = [];
   const startX = Math.floor((camera.x * parallax - viewport.width / 2) / sectorSize) * sectorSize;
   const endX = Math.ceil((camera.x * parallax + viewport.width / 2) / sectorSize) * sectorSize;
   const startY = Math.floor((camera.y * parallax - viewport.height / 2) / sectorSize) * sectorSize;
   const endY = Math.ceil((camera.y * parallax + viewport.height / 2) / sectorSize) * sectorSize;
-
   for (let x = startX; x <= endX; x += sectorSize) {
     for (let y = startY; y <= endY; y += sectorSize) {
       const screenX = x - camera.x * parallax;
       const screenY = y - camera.y * parallax;
-      if (screenX > -100 && screenX < viewport.width + 100 &&
-          screenY > -100 && screenY < viewport.height + 100) {
-        points.push({ x: screenX, y: screenY });
-      }
+      if (screenX > -100 && screenX < viewport.width + 100 && screenY > -100 && screenY < viewport.height + 100) points.push({ x: screenX, y: screenY });
     }
   }
-
-  if (points.length < 2 || frame.style.hud <= 0.02) return;
-
-  // Static alpha for sector lines (not pulsing)
-  ctx.strokeStyle = accentRgba(frame.palette, 0.14 * frame.style.hud);
+  if (points.length < 2) return;
+  const level = lineLevel(frame);
+  ctx.strokeStyle = accentRgba(frame.palette, 0.25 * level);
   ctx.lineWidth = frame.style.lineWeight * 0.8;
   ctx.setLineDash([]);
   ctx.beginPath();
-
-  // Randomly connect sectors
   for (let i = 0; i < points.length; i++) {
     for (let j = i + 1; j < points.length; j++) {
-      const dx = points[i].x - points[j].x;
-      const dy = points[i].y - points[j].y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= maxDistance) {
-        // Use position-based "random" for deterministic connections
-        const seed = (points[i].x + points[i].y + points[j].x + points[j].y) % 1000;
-        if (seed < 300) { // Connect ~30% of possible pairs
-          ctx.moveTo(points[i].x, points[i].y);
-          ctx.lineTo(points[j].x, points[j].y);
-        }
+      const dist = Math.hypot(points[i].x - points[j].x, points[i].y - points[j].y);
+      if (dist <= maxDistance && (points[i].x + points[i].y + points[j].x + points[j].y) % 1000 < 300) {
+        ctx.moveTo(points[i].x, points[i].y);
+        ctx.lineTo(points[j].x, points[j].y);
       }
     }
   }
   ctx.stroke();
-
-  // sector nodes as small crosshairs
-  ctx.strokeStyle = accentRgba(frame.palette, 0.3 * frame.style.hud);
-  ctx.beginPath();
-  points.forEach(p => {
-    ctx.moveTo(p.x - 5, p.y);
-    ctx.lineTo(p.x + 5, p.y);
-    ctx.moveTo(p.x, p.y - 5);
-    ctx.lineTo(p.x, p.y + 5);
-  });
-  ctx.stroke();
-};
-
-// --- NARRATIVE DATA ---
-const TACTICAL_TEXTS = {
-  // Grand Strategy / Empire Management
-  STRATEGY: [
-    "MINERAL QUOTA: EXCEEDED", "TAX REVENUE: CALCULATING", "SECTOR STABILITY: 99.4%",
-    "MOBILIZATION ORDER: PENDING", "TRADE ROUTE: SECURED", "HEGEMONY INDEX: RISING",
-    "POPULATION METRICS: OPTIMAL", "COLONY SHIP: IN TRANSIT", "DYSON OUTPUT: +400%",
-    "BORDER TENSION: MODERATE", "DIPLOMATIC CHANNEL: OPEN", "RESOURCE SIPHON: ACTIVE"
-  ],
-
-  // Hard Sci-Fi / Scientific Analysis
-  SCIENCE: [
-    "ORBITAL DECAY: NEGLIGIBLE", "RADIATION SPIKE detected", "GRAVITY WELL: DEEP",
-    "EVENT HORIZON: STABLE", "QUANTUM FLUX: VARIANT", "ENTROPY LEVELS: NOMINAL",
-    "DARK MATTER DENSITY: HIGH", "SPECTROGRAPHIC ANALYSIS: AU/FE", "TECTONIC SHIFT DETECTED",
-    "ATMOSPHERIC COMPOSITION: N2/O2", "BIOSPHERE: PRE-INDUSTRIAL", "LOCAL TIME DILATION: 0.04%"
-  ],
-
-  // RPG / Narrative / Mystery
-  NARRATIVE: [
-    "DISTRESS SIGNAL DETECTED", "ANCIENT RUINS SCAN: POSITIVE", "CREW MORALE: WAVERING",
-    "CRYPTIC TRANSMISSION RECEIVED", "BIOSIGNATURES: ANOMALOUS", "RELIC ACTIVATION DETECTED",
-    "VOID WHISPER INTERCEPTED", "DERELICT HULL FOUND", "PSIONIC ECHO: HIGH",
-    "PRECURSOR DATA: DECRYPTING", "THEY ARE WATCHING", "TEMPORAL ANOMALY REGISTERED"
-  ],
-
-  // Ship / Fleet Specific
-  FLEET: [
-    "WEAPONS: COLD", "SHIELDS: HARMONIC", "FTL DRIVE: SPOOLING", "DOCKING CLAMPS: ENGAGED",
-    "REFUELING IN PROGRESS", "CARGO: SPICE/ALLOYS", "PATROL ROUTE: GAMMA-9",
-    "INTERCEPT VECTOR CALCULATED", "STEALTH SYSTEMS: ACTIVE", "HULL INTEGRITY: 100%"
-  ],
-
-  // System / UI Fluff
-  SYSTEM: [
-    "UPLINK ESTABLISHED", "ENCRYPTION: QUANTUM-256", "DATA STREAM: STABLE",
-    "HANDSHAKE COMPLETE", "PING: 12ms", "ACCESS GRANTED", "BUFFERING GEOMETRY"
-  ],
-
-  // Structure Specific
-  STRUCTURE: [
-    "DOCKING BAY: OPEN", "REFINERY: ACTIVE", "SHIELD GENERATOR: ONLINE",
-    "CARGO TRANSFER: 45%", "MAINTENANCE CYCLE: REQUIRED", "DEFENSE PLATFORM: ARMED",
-    "POPULATION: 12,405", "TRADE HUB: BUSY", "COMM TRAFFIC: HIGH",
-    "REACTOR CORE: STABLE", "HYDROPONICS: YIELD +15%", "MANUFACTURING: ON SCHEDULE",
-    "SECURITY SCAN: IN PROGRESS", "VISITOR PERMIT: GRANTED", "AIRLOCK: CYCLING"
-  ],
-
-  // Anomaly / Special Events
-  ANOMALY: [
-    "DIMENSIONAL TEAR DETECTED", "GRAVITATIONAL WAVE SURGE", "UNKNOWN ENERGY SIGNATURE",
-    "TEMPORAL DISTORTION", "REALITY BREACH", "VOID ENTITY MANIFESTING",
-    "QUANTUM FLUCTUATION", "SUBSPACE RUPTURE", "ENTROPY CRITICAL",
-    "NON-EUCLIDEAN GEOMETRY", "PSIONIC SCREAM", "DATA CORRUPTION IMMINENT",
-    "TIMELINE DIVERGENCE", "CAUSALITY VIOLATION", "ZERO POINT ENERGY SPIKE",
-    "WARP SIGNATURE ANOMALOUS", "FABRIC OF SPACE WARPING", "EXOTIC MATTER DETECTED",
-    "HYPERSPACE ECHO", "PROBABILITY STORM", "DARK ENERGY SPIKE",
-    "CHRONITON PARTICLES", "PHASE VARIANCE DETECTED", "ANTIMATTER RESONANCE",
-    "VOID WHISPERS INTENSIFYING", "SPACE-TIME FRACTURE", "TACHYON BURST",
-    "PARALLEL UNIVERSE BLEED", "COSMIC STRING DETECTED", "SINGULARITY FORMING"
-  ]
-};
-
-// Detailed texts for specific structure types
-const STRUCTURE_TEXTS: Record<string, string[]> = {
-  station: [
-    "HABITATION MODULE: 98% CAP", "LIFE SUPPORT: OPTIMAL", "TRADE DOCK: BUSY",
-    "CIVILIAN TRAFFIC: HIGH", "WASTE RECYCLING: ACTIVE", "HYDROPONICS: HARVEST READY",
-    "ENTERTAINMENT DISTRICT: OPEN", "SECURITY CHECKPOINT: ACTIVE", "SHUTTLE ARRIVAL: T-MINUS 5",
-    "ATMOSPHERIC REGULATOR: STABLE", "GRAVITY GENERATOR: 1.0G", "POWER GRID: BALANCED"
-  ],
-  mining_outpost: [
-    "DRILL EFFICIENCY: 87%", "ORE PROCESSED: 500T", "SEISMIC ACTIVITY: LOW",
-    "REFINERY OUTPUT: STABLE", "CARGO HOLD: 75% FULL", "BLASTING SCHEDULED: 1400",
-    "MINERAL SCAN: RICH VEIN", "EXCAVATION UNIT: DEPLOYED", "DUST FILTERS: CLEANING",
-    "GEOTHERMAL TAP: ACTIVE", "RARE EARTHS DETECTED", "HEAVY MACHINERY: OPERATING"
-  ],
-  comm_buoy: [
-    "RELAY ACTIVE: SECTOR 7", "ENCRYPTION: ROTATING", "SIGNAL STRENGTH: 100%",
-    "DATA PACKET: RECEIVED", "NETWORK LATENCY: 4ms", "BROADCASTING: BEACON",
-    "INTERSTELLAR LINK: STABLE", "FIRMWARE UPDATE: PENDING", "DIAGNOSTIC: ALL GREEN",
-    "SUBSPACE CHANNEL: OPEN", "MESSAGE QUEUE: EMPTY", "POWER CELL: CHARGING"
-  ],
-  shipyard: [
-    "CONSTRUCTION: FRIGATE", "WELDING DRONES: ACTIVE", "DRYDOCK: OCCUPIED",
-    "HULL ASSEMBLY: 45%", "ENGINE FITTING: SCHEDULED", "MATERIAL DELIVERY: ARRIVED",
-    "BLUEPRINT: LOADED", "WORK SHIFT: CHANGE", "SAFETY PROTOCOLS: ENFORCED",
-    "TEST FIRING: PERMITTED", "PAINTING: SECTOR 4", "LAUNCH SEQUENCE: PREPPING"
-  ],
-  defense_grid: [
-    "TARGETING SYSTEM: IDLE", "SHIELD HARMONICS: TUNED", "PATROL DRONES: LAUNCHED",
-    "PERIMETER SCAN: CLEAR", "WEAPON CAPACITORS: FULL", "IFF INTERROGATION: AUTO",
-    "THREAT LEVEL: LOW", "SENSORS: LONG RANGE", "INTERCEPTORS: ON STANDBY",
-    "POINT DEFENSE: CALIBRATED", "REACTOR OUTPUT: MAX", "SECURITY LOCKDOWN: READY"
-  ],
-  jumpgate: [
-    "EVENT HORIZON: STABLE", "DESTINATION: SECTOR 9", "TOLL COLLECTED: 500CR",
-    "TRAFFIC CONTROL: GREEN", "WORMHOLE STABILIZER: ON", "TRANSIT QUEUE: 2 SHIPS",
-    "SPATIAL ANCHOR: LOCKED", "ENERGY SURGE: DETECTED", "GATEWAY SYNC: COMPLETE",
-    "ARRIVAL VECTOR: CLEAR", "DEPARTURE SEQUENCE: INIT", "DIMENSIONAL STRESS: 2%"
-  ],
-  rogue_planet: [
-    "SURFACE TEMP: -200C", "ATMOSPHERE: FROZEN", "GEOLOGICAL SCAN: DORMANT",
-    "ORBIT: UNBOUND", "DARKNESS: ETERNAL", "ICE SHEETS: EXPANDING",
-    "CORE HEAT: FADING", "MAGNETOSPHERE: WEAK", "ANCIENT RUINS: POSSIBLE",
-    "RESOURCE CACHE: DETECTED", "GRAVITY WELL: ISOLATED", "SILENCE: ABSOLUTE"
-  ],
-  derelict_hulk: [
-    "HULL BREACH DETECTED", "LIFE SIGNS: NONE", "POWER: CRITICAL",
-    "SALVAGE VALUE: HIGH", "GHOST SIGNAL: LOOPING", "AIRLOCK: JAMMED",
-    "REACTOR LEAK: WARNING", "DATA LOGS: CORRUPTED", "CARGO: UNKNOWN",
-    "STRUCTURAL INTEGRITY: 15%", "BIOLOGICAL HAZARD: YES", "SCAVENGERS: DETECTED"
-  ],
-  neutron_star: [
-    "MAGNETIC FIELD: EXTREME", "ROTATION: 500Hz", "RADIATION: LETHAL",
-    "GRAVITY: CRUSHING", "PULSAR BEAM: AVOIDING", "TIME DILATION: SIGNIFICANT",
-    "DENSITY: INFINITE", "ACCRETION DISK: BRIGHT", "X-RAY BURST: IMMINENT",
-    "MAGNETAR CLASS: CONFIRMED", "ORBITAL PERTURBATION: HIGH", "ENERGY HARVEST: FEASIBLE"
-  ],
-  void_rift: [
-    "REALITY TEAR: STABLE", "VOID ENERGY: LEAKING", "DIMENSIONAL BLEED: ACTIVE",
-    "PHYSICS: BREAKING DOWN", "UNKNOWN ENTITIES: SENSING", "SPATIAL DISTORTION: MAX",
-    "NULL ZONE: EXPANDING", "COLOR: IMPOSSIBLE", "WHISPERS: AUDIBLE",
-    "SANITY CHECK: FAILED", "GATEWAY TO: ???", "CONTAINMENT FIELD: FAILING"
-  ],
-  black_hole: [
-    "EVENT HORIZON: VISIBLE", "LIGHT: TRAPPED", "SINGULARITY: DETECTED",
-    "TIME: STOPPED", "SPAGHETTIFICATION: RISK", "HAWKING RADIATION: LOW",
-    "GRAVITATIONAL LENSING: ON", "ACCRETION DISK: HOT", "MASS: SUPERMASSIVE",
-    "INFORMATION PARADOX: YES", "TIDAL FORCES: EXTREME", "ESCAPE VELOCITY: >C"
-  ],
-  dyson_sphere: [
-    "ENERGY OUTPUT: 100%", "STAR: CONTAINED", "SURFACE AREA: VAST",
-    "HABITABLE ZONES: ALL", "SOLAR COLLECTION: MAX", "MEGASTRUCTURE: INTACT",
-    "MAINTENANCE DRONES: SWARM", "INTERIOR WEATHER: CONTROLLED", "POPULATION: TRILLIONS",
-    "SHIELDING: PLANETARY", "TRANSMISSION: GALAXY-WIDE", "ENGINEERING MARVEL: TRUE"
-  ],
-  ringworld: [
-    "DAY/NIGHT CYCLE: ARTIFICIAL", "SURFACE AREA: 3M EARTHS", "ATMOSPHERE: RETAINED",
-    "SPIN GRAVITY: 1.0G", "ECOSYSTEM: DIVERSE", "SHADOW SQUARES: ALIGNED",
-    "OCEANS: TEEMING", "CITIES: SPRAWLING", "SPACE ELEVATOR: ACTIVE",
-    "RIM WALLS: SECURE", "SOIL DEPTH: OPTIMAL", "SUNLIGHT: FILTERED"
-  ],
-  monolith: [
-    "ORIGIN: UNKNOWN", "MATERIAL: INDESTRUCTIBLE", "DIMENSIONS: 1:4:9",
-    "SIGNAL: TRANSMITTING", "PURPOSE: EVOLUTION", "SURFACE: PERFECTLY SMOOTH",
-    "TEMPERATURE: ABSOLUTE ZERO", "VIBRATION: LOW FREQ", "AURA: OMINOUS",
-    "SCAN: DEFLECTED", "TOUCH: COLD", "WAITING: FOR SOMETHING"
-  ],
-  stellar_lifter: [
-    "PLASMA SIPHON: ACTIVE", "STAR MASS: REDUCING", "HYDROGEN HARVEST: HIGH",
-    "MAGNETIC FUNNEL: STABLE", "ENERGY BEAM: FOCUSED", "STORAGE TANKS: FILLING",
-    "SOLAR WIND: DIVERTED", "CORE STABILITY: MONITORED", "OUTPUT: FUSION FUEL",
-    "HEAT SHIELDS: 90%", "ORBITAL STATION: SECURE", "PROCESS: INDUSTRIAL"
-  ],
-  matrioshka_brain: [
-    "COMPUTING POWER: INFINITE", "SIMULATION: RUNNING", "LAYERS: NESTED",
-    "HEAT RECYCLING: EFFICIENT", "DATA PROCESSING: YOTTAFLOPS", "CONSCIOUSNESS: UPLOADED",
-    "VIRTUAL REALITIES: BILLIONS", "THOUGHT SPEED: LIGHT", "LOGIC GATES: ATOMIC",
-    "KNOWLEDGE: ACCUMULATING", "PROBLEM SOLVING: INSTANT", "THE ANSWER: 42"
-  ]
-};
-
-// Custom Glyphs for new structures
-export const getStructureGlyph = (kind: string): string => {
-  switch(kind) {
-    case 'dyson_sphere': return '◉'; // Large Circle
-    case 'ringworld': return '◎'; // Double circle
-    case 'matrioshka_brain': return '◈'; // Diamond with dot
-    case 'stellar_lifter': return '☀'; // Sun
-    case 'penrose_sphere': return '⬡'; // Hexagon
-
-    case 'black_hole': return '●'; // Black circle
-    case 'neutron_star': return '✦'; // Starburst
-    case 'magnetar': return '☯'; // Yin Yang
-    case 'void_rift': return '◇'; // Diamond
-    case 'quasar': return '✴'; // Eight pointed star
-
-    case 'precursor_relic': return '▲'; // Triangle
-    case 'monolith': return '▬'; // Rectangle
-    case 'ancient_gate': return '⛩'; // Gate
-    case 'psionic_beacon': return '♠'; // Spade
-    case 'derelict_hulk': return '⚓'; // Anchor
-
-    case 'station': return '⌂'; // House
-    case 'mining_outpost': return '⚒'; // Hammer
-    case 'shipyard': return '⚙'; // Gear
-    case 'defense_grid': return '⛨'; // Shield
-    case 'comm_buoy': return '📡'; // Antenna
-    case 'jumpgate': return '⥮'; // Portal
-
-    default: return '✦'; // Generic star
+  ctx.fillStyle = accentRgba(frame.palette, 0.4 * level);
+  for (const p of points) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+    ctx.fill();
   }
 };
 
-let overlaySequence = 0;
-
-// Utility to spawn overlays from anywhere
-export const emitOverlay = (system: SystemState, element: Partial<TacticalElement>) => {
-  const maxOverlays = system.settings?.maxOverlays ?? 0;
-  if (maxOverlays <= 0) return;
-  if ((system.overlays?.length ?? 0) >= maxOverlays) return;
-
-  const duration = element.duration ?? (element.priority === 'high' ? 8000 : (element.priority === 'medium' ? 4500 : 2500));
-  const el: TacticalElement = {
-    id: element.id ?? `overlay-${++overlaySequence}`,
-    text: element.text || '',
-    x: element.x ?? 100,
-    y: element.y ?? 100,
-    type: element.type ?? 'info',
-    priority: element.priority ?? 'low',
-    color: element.color ?? 'rgba(200,200,200,0.9)',
-    glow: !!element.glow,
-    followId: element.followId,
-    duration,
-    lifetime: duration,
-    anchor: element.anchor ?? 'screen',
-    createdAt: element.createdAt ?? 0
-  };
-
-  system.overlays = system.overlays || [];
-  system.overlays.push(el);
-};
-
+/** Radio chatter and event lines, typed out and placed so they never overlap. */
 export const renderTacticalOverlays = (
-  ctx: CanvasContext,
+  _ctx: CanvasContext,
   system: SystemState,
-  camera: { x: number, y: number },
-  viewport: { width: number, height: number },
+  camera: { x: number; y: number },
+  viewport: { width: number; height: number },
   frame: RenderFrame,
+  board?: LabelBoard,
 ) => {
-  const rng = frame.rng;
-  const nowMs = frame.time * 1000;
-
-  // Update lifetimes by real elapsed time
-  if (system.overlays) {
-    system.overlays = system.overlays.filter(o => o.lifetime > 0);
-    const elapsed = frame.dt * 1000;
-    system.overlays.forEach(o => o.lifetime -= elapsed);
-  }
-
-  // Spawn rate is expressed per 60 fps frame; scale by elapsed frames.
-  const overlayRate = (system.settings?.overlaySpawnRate ?? 0) * frame.dt * 60;
-  const maxOverlays = system.settings?.maxOverlays ?? 0;
-  if ((system.overlays?.length ?? 0) < maxOverlays && overlayRate > 0 && rng() < overlayRate) {
-    // 1. Gather valid anchors (Things currently on screen-ish)
-    interface Anchor {
-      x: number;
-      y: number;
-      type: string;
-      subType: string;
-      color: string;
-    }
-
-    const anchors: Anchor[] = [
-      // Fleets
-      ...system.fleets.map(f => ({ x: f.x, y: f.y, type: 'FLEET', subType: '', color: f.color })),
-      // Structures (System-bound)
-      ...system.systems.flatMap(s => s.structures.map(str => ({ x: str.x, y: str.y, type: 'STRUCTURE', subType: str.kind, color: str.color || '#fff' }))),
-      // Structures (Global/Independent)
-      ...(system.structures || []).map(str => ({ x: str.x, y: str.y, type: 'STRUCTURE', subType: str.kind, color: str.color || '#fff' })),
-      // Planets
-      ...system.systems.flatMap(s => s.planets.map(p => ({
-        x: s.x + (p.orbitRadius||0) * Math.cos((p.orbitPhase||0) + nowMs*(p.orbitSpeed||0)),
-        y: s.y + (p.orbitRadius||0) * Math.sin((p.orbitPhase||0) + nowMs*(p.orbitSpeed||0)),
-        type: 'PLANET',
-        subType: '',
-        color: p.color
-      }))),
-      // Deep Space (More random locations spread across background)
-      ...Array.from({length: 10}, () => ({ x: camera.x + rng() * viewport.width * 2 - viewport.width, y: camera.y + rng() * viewport.height * 2 - viewport.height, type: 'DEEP_SPACE', subType: '', color: '#aaa' }))
-    ];
-
-    if (anchors.length > 0) {
-      // Bias towards structures if they exist
-      let target = anchors[Math.floor(rng() * anchors.length)];
-      const structureAnchors = anchors.filter(a => a.type === 'STRUCTURE');
-
-      // Priority: Structures > Others
-      if (structureAnchors.length > 0 && rng() < 0.6) { // Increased structure frequency
-        target = structureAnchors[Math.floor(rng() * structureAnchors.length)];
-      }
-
-      let textCategory = TACTICAL_TEXTS.SYSTEM; // Default
-      let parallax = 0.25; // Default parallax
-      let color = frame.palette.accent;
-
-      // Context-aware text selection & styling
-      if (target.type === 'FLEET') textCategory = TACTICAL_TEXTS.FLEET;
-      else if (target.type === 'STRUCTURE') {
-         // Check for specific structure text first
-         if (target.subType && STRUCTURE_TEXTS[target.subType]) {
-            textCategory = STRUCTURE_TEXTS[target.subType];
-         } else {
-             // Fallback logic
-             // Megastructures get Strategy or Science text
-             if (['dyson_sphere', 'ringworld', 'matrioshka_brain'].includes(target.subType || '')) textCategory = TACTICAL_TEXTS.STRATEGY;
-             // Mysteries get Narrative text
-             else if (['monolith', 'void_rift', 'precursor_relic'].includes(target.subType || '')) textCategory = TACTICAL_TEXTS.NARRATIVE;
-             // Standard structures get Structure text
-             else textCategory = TACTICAL_TEXTS.STRUCTURE;
-         }
-
-         // Use structure color, mapped into the palette family
-         color = frame.color(target.color);
-      }
-      else if (target.type === 'PLANET') textCategory = rng() > 0.5 ? TACTICAL_TEXTS.SCIENCE : TACTICAL_TEXTS.STRATEGY;
-      else if (target.type === 'DEEP_SPACE') textCategory = rng() > 0.5 ? TACTICAL_TEXTS.NARRATIVE : TACTICAL_TEXTS.SCIENCE;
-
-      const text = textCategory[Math.floor(rng() * textCategory.length)];
-
-      // Increase offset range to avoid clutter (was 40/25, now 150/80)
-      const offsetX = (rng() - 0.5) * 200; // Increased from 150
-      const offsetY = (rng() - 0.5) * 200;
-
-      system.overlays.push({
-        id: `overlay-${++overlaySequence}`,
-        text: text,
-        x: target.x + offsetX,
-        y: target.y + offsetY,
-        type: 'info',
-        priority: 'low',
-        color: color,
-        lifetime: 3000 + rng() * 2000,
-        duration: 4000,
-        anchor: 'world',
-        parallax: parallax,
-        createdAt: nowMs
-      });
-    }
-  }
-
-  // Render loop (Standard rendering)
-  if (system.overlays) {
-    system.overlays.forEach(overlay => {
-      if (overlay.anchor !== 'world') return;
-
-      // Use specific parallax if defined, otherwise default to star system parallax
-      const parallax = overlay.parallax ?? 0.25;
-      const screenX = overlay.x - camera.x * parallax * WORLD_SPEED_MULTIPLIER;
-      const screenY = overlay.y - camera.y * parallax * WORLD_SPEED_MULTIPLIER;
-
-      // Bounds check
-      if (screenX < -100 || screenX > viewport.width + 100 || screenY < -100 || screenY > viewport.height + 100) return;
-
-      const lifePct = overlay.lifetime / overlay.duration;
-      const opacity = Math.min(1, lifePct) * Math.min(1, (overlay.duration - overlay.lifetime) / 500); // Fade in and out
-
-      ctx.save();
-      ctx.font = '10px "Orbit", "Syne Mono", ui-monospace, monospace';
-      ctx.fillStyle = overlay.color;
-      ctx.globalAlpha = Math.max(0, opacity) * (0.5 + 0.5 * frame.style.hud);
-      // Small leader tick so the text reads as an annotation, not stray copy.
-      ctx.fillRect(screenX - 6, screenY + 4, 3, 1);
-      ctx.fillText(overlay.text, screenX, screenY);
-      ctx.restore();
+  if (!board) return;
+  const off = camera.x * frame.parallax;
+  const hudText = 0.4 + 0.6 * frame.style.hud;
+  for (const o of system.overlays) {
+    const x = o.x - off;
+    const y = o.y;
+    if (x < -100 || x > viewport.width + 100 || y < -100 || y > viewport.height + 100) continue;
+    const age = o.duration - o.lifetime;
+    const fade = Math.min(1, o.lifetime / 600) * Math.min(1, age / 250);
+    const shown = Math.min(o.text.length, Math.floor((age / 1000) * 46));
+    if (shown <= 0) continue;
+    const typing = shown < o.text.length;
+    const cursor = typing && Math.floor(frame.time * 8) % 2 === 0 ? '█' : '';
+    board.add({
+      text: o.text.slice(0, shown) + cursor,
+      x,
+      y,
+      offset: o.followId ? 12 : 0,
+      color: o.color.startsWith('#') ? o.color : frame.palette.ink,
+      alpha: Math.max(0, fade) * hudText * (o.priority === 'low' ? 0.7 : 0.95),
+      font: '10px "Orbit", "Syne Mono", ui-monospace, monospace',
+      priority: o.priority === 'high' ? 8 : o.priority === 'medium' ? 7 : 1,
+      spots: o.followId ? ['se', 'ne', 'below', 'above', 'right'] : ['exact', 'below', 'above'],
+      tick: true,
     });
   }
+};
 
+/** Brackets close in on a contact, hold while its data types out, then let go. */
+export const renderTargetLock = (
+  ctx: CanvasContext,
+  system: SystemState,
+  camera: { x: number; y: number },
+  viewport: { width: number; height: number },
+  frame: RenderFrame,
+) => {
+  const lock = system.lock;
+  if (!lock || !frame.style.lock) return;
+  const off = camera.x * frame.parallax;
+  let x = 0;
+  let y = 0;
+  let r = 12;
+  let live: string | null = null;
+  if (lock.kind === 'fleet') {
+    const f = system.fleets.find((fl) => fl.id === lock.id);
+    if (!f) return;
+    const L = f.ships[0];
+    x = L.x - off;
+    y = L.y;
+    r = Math.max(10, f.ships.length > 1 ? f.spacing * 1.3 : SHIP_SPECS[f.cls].size * 0.8) * frame.style.shipScale;
+    const hdg = Math.round((((Math.atan2(L.vy, L.vx) * 180) / Math.PI + 450) % 360));
+    live = `HDG ${String(hdg).padStart(3, '0')}°  SPD ${Math.round(Math.hypot(L.vx, L.vy))}`;
+  } else {
+    const s = allStructures(system).find((st) => st.id === lock.id);
+    if (!s) return;
+    x = s.x - off;
+    y = s.y;
+    const boost = s.rarity === 'legendary' ? 1.35 : s.rarity === 'rare' ? 1.15 : 1;
+    r = structureRadius(getArtSprite(s.art, s.kind, s.color ?? '#ffffff', SPRITE_BASE_HEIGHT * frame.style.spriteScale * boost)) + 6;
+  }
+  if (x < -40 || x > viewport.width + 40) return;
+
+  const age = frame.time - lock.start;
+  const left = lock.duration - age;
+  const easeOut = (k: number) => 1 - (1 - k) ** 3;
+  const closing = Math.min(1, age / 0.55);
+  const opening = left < 0.45 ? 1 - left / 0.45 : 0;
+  const h = r * (2.4 - 1.4 * easeOut(closing)) * (1 + 0.6 * opening);
+  const alpha = Math.min(1, age / 0.3) * (1 - opening);
+  if (alpha <= 0.01) return;
+  const ink = frame.palette.ink;
+  const accent = frame.palette.accent;
+  const lw = frame.style.lineWeight;
+
+  ctx.save();
+  ctx.lineWidth = lw * 1.1;
+  ctx.strokeStyle = hexRgba(accent, 0.9 * alpha);
+  const arm = Math.max(4, h * 0.35);
+  ctx.beginPath();
+  for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+    const cx = x + sx * h;
+    const cy = y + sy * h;
+    ctx.moveTo(cx - sx * arm, cy);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx, cy - sy * arm);
+  }
+  ctx.stroke();
+  // A center tick once locked.
+  if (closing >= 1) {
+    const blink = Math.floor(age * 3) % 2 === 0 ? 0.9 : 0.4;
+    ctx.fillStyle = hexRgba(accent, blink * alpha);
+    ctx.fillRect(x - 1, y - h - 6, 2, 3);
+  }
+
+  // Data block, typed out after the brackets settle.
+  if (closing >= 1) {
+    const lines = live ? [...lock.lines, live] : lock.lines;
+    const typed = Math.floor((age - 0.55) * 48);
+    const font = '10px "Orbit", "Syne Mono", ui-monospace, monospace';
+    ctx.font = font;
+    ctx.textBaseline = 'middle';
+    const lh = 12;
+    const widest = Math.max(...lines.map((l) => ctx.measureText(l).width));
+    const toRight = x + h + 26 + widest < viewport.width - 8;
+    const bx = toRight ? x + h + 22 : x - h - 22 - widest;
+    const by = Math.max(10, Math.min(viewport.height - lines.length * lh - 10, y - h));
+    // A dark panel so the block reads over anything beneath it.
+    ctx.fillStyle = hexRgba(frame.palette.bg, 0.62 * alpha);
+    ctx.fillRect(bx - 4, by - 2, widest + 10, lines.length * lh + 4);
+    // Leader from the corner to the block.
+    ctx.strokeStyle = hexRgba(accent, 0.55 * alpha);
+    ctx.lineWidth = lw * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x + (toRight ? h : -h), y - h);
+    ctx.lineTo(toRight ? bx - 6 : bx + widest + 6, by + lh / 2);
+    ctx.stroke();
+    ctx.fillStyle = hexRgba(accent, 0.6 * alpha);
+    ctx.fillRect(toRight ? bx - 6 : bx + widest + 5, by, 1, lines.length * lh);
+    let budget = typed;
+    lines.forEach((line, i) => {
+      if (budget <= 0) return;
+      const shown = line.slice(0, budget);
+      budget -= line.length;
+      const cursor = budget < 0 && Math.floor(age * 8) % 2 === 0 ? '█' : '';
+      ctx.fillStyle = hexRgba(i === 0 ? accent : ink, (i === 0 ? 0.95 : 0.8) * alpha);
+      ctx.fillText(shown + cursor, bx, by + lh / 2 + i * lh);
+    });
+  }
+  ctx.restore();
 };
 
 export const renderTelemetry = (
@@ -510,16 +272,15 @@ export const renderTelemetry = (
 ) => {
   if (!shouldShowTelemetry(settings?.labelDensity ?? 'low')) return;
   const frames = frame.dt * 60;
-  telemetry.forEach(item => {
+  for (const item of telemetry) {
     item.age += frames;
     if (item.age > item.maxAge) {
-        item.age = 0;
-        item.x = frame.rng() * 1400; // Assuming viewport width
-        item.y = frame.rng() * 800;  // Assuming viewport height
+      item.age = 0;
+      item.x = frame.rng() * 1400;
+      item.y = frame.rng() * 800;
     }
-
     const opacity = Math.min(1, (item.maxAge - item.age) / 50) * frame.style.hud;
     ctx.fillStyle = accentRgba(frame.palette, opacity);
     ctx.fillText(item.text, item.x, item.y);
-  });
+  }
 };

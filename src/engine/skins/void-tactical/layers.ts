@@ -1,7 +1,7 @@
 /**
  * Void-tactical as separable layers. All canvas layers share one simulation per
  * mount (see `sharedVoidWorld`), so a scene can drop the HUD, dim the fleets, or
- * put grain between the systems and the text, while fleets still steer toward the
+ * put grain between the systems and the text, while fleets still dock at the
  * structures the systems layer draws.
  */
 import type { Layer } from '../../core/layer';
@@ -12,24 +12,27 @@ import { createOverlayStack } from './overlays/stack';
 import { renderStars, renderGrids } from './renderers/background';
 import { renderCelestialBodies, renderStarSystem, renderStructures } from './renderers/celestial';
 import { renderFleets, renderAnomalies } from './renderers/entities';
-import { renderTacticalOverlays, renderTelemetry, renderSystemConnections, renderSectorConnections } from './renderers/ui';
+import { renderTacticalOverlays, renderTelemetry, renderSystemConnections, renderSectorConnections, renderTargetLock } from './renderers/ui';
+import { createLabelBoard } from './renderers/board';
 import { FONT } from './renderers/utils';
-import { OVERLAY_SCHEMA, overlayFlags } from './runtime';
+import { ambientWords, OVERLAY_SCHEMA, overlayFlags, UNIVERSE_SCHEMA } from './runtime';
 import { resolveStyle, sharedVoidWorld, STYLE_SCHEMA } from './world';
+import { allStructures } from './fleets';
 
-const pick = (keys: string[]): Schema => Object.fromEntries(keys.map((k) => [k, STYLE_SCHEMA[k]]));
+const pick = (keys: string[]): Schema => ({ ...UNIVERSE_SCHEMA, ...Object.fromEntries(keys.map((k) => [k, STYLE_SCHEMA[k]])) });
 
 const TAGS = ['space', 'sci-fi', 'dark'];
 
-/** CSS atmosphere: gradient plate, mesh constellations, tactical grid, ASCII wallpaper, clouds, grain, mouse glow. */
+/** CSS atmosphere: gradient plate, mesh constellations, tactical grid, background words, clouds, grain, mouse glow. */
 export const voidAtmosphereLayer: Layer = {
   id: 'void-atmosphere',
   label: 'Void atmosphere (CSS)',
-  description: 'The sector map\'s GPU-composited plate: gradient, mesh, grid, ASCII wallpaper, clouds, grain, mouse glow.',
+  description: 'The sector map\'s GPU-composited plate: gradient, mesh, grid, background words, clouds, grain, mouse glow.',
   tags: [...TAGS, 'base'],
-  schema: OVERLAY_SCHEMA,
-  dom(root, { options }) {
-    const stack = createOverlayStack(root, overlayFlags(options as Record<string, boolean>), { position: 'absolute' });
+  schema: { ...UNIVERSE_SCHEMA, ...OVERLAY_SCHEMA },
+  dom(root, { options, config }) {
+    const opts = options as Record<string, unknown>;
+    const stack = createOverlayStack(root, overlayFlags(opts as Record<string, boolean>), { position: 'absolute', words: ambientWords(opts, config.seed) });
     return () => stack.destroy();
   },
   /** Export equivalent of the gradient plate and grid; the SVG wallpaper layers are omitted. */
@@ -64,7 +67,7 @@ export const voidStarsLayer: Layer = {
   label: 'Void stars',
   description: 'The sector map\'s parallax star layer.',
   tags: [...TAGS, 'motion'],
-  schema: {},
+  schema: { ...UNIVERSE_SCHEMA },
   canvas(host) {
     const sim = sharedVoidWorld(host);
     const style = resolveStyle({});
@@ -83,12 +86,13 @@ export const voidStarsLayer: Layer = {
 export const voidSystemsLayer: Layer = {
   id: 'void-systems',
   label: 'Void systems',
-  description: 'Star systems with orbits and hex radars, the data lanes between them, and ASCII structures.',
+  description: 'Star systems with orbits and hex radars, the data lanes between them, and the structures.',
   tags: [...TAGS, 'structure'],
   schema: pick(['hueVariety', 'lineWeight', 'spriteScale', 'hud']),
   canvas(host) {
     const sim = sharedVoidWorld(host);
     const style = resolveStyle(host.options);
+    const board = createLabelBoard();
     return {
       resize: (v) => sim.resize(v),
       frame(info) {
@@ -100,10 +104,10 @@ export const voidSystemsLayer: Layer = {
         ctx.font = FONT;
         ctx.textBaseline = 'top';
         renderCelestialBodies(ctx, world.celestialBodies, camera, viewport, frame);
-        world.systems.forEach((sys) => renderStarSystem(ctx, sys, camera, viewport, world.settings, frame));
+        world.systems.forEach((sys) => renderStarSystem(ctx, sys, camera, viewport, world.settings, frame, board));
         renderSystemConnections(ctx, world.systems, camera, viewport, frame);
-        const structures = [...world.structures, ...world.systems.flatMap((s) => s.structures)];
-        renderStructures(ctx, structures, camera, viewport, world.settings, frame);
+        renderStructures(ctx, allStructures(world), camera, viewport, world.settings, frame, board);
+        board.flush(ctx, viewport);
       },
     };
   },
@@ -112,12 +116,13 @@ export const voidSystemsLayer: Layer = {
 export const voidFleetsLayer: Layer = {
   id: 'void-fleets',
   label: 'Void fleets',
-  description: 'Fleets with AI states, trails, predicted paths, and anomaly markers.',
+  description: 'Fleets in formation with trails and planned courses, plus the anomalies.',
   tags: [...TAGS, 'motion'],
-  schema: pick(['hueVariety', 'lineWeight', 'paths', 'trails', 'hud']),
+  schema: pick(['hueVariety', 'lineWeight', 'shipScale', 'paths', 'trails', 'hud']),
   canvas(host) {
     const sim = sharedVoidWorld(host);
     const style = resolveStyle(host.options);
+    const board = createLabelBoard();
     return {
       resize: (v) => sim.resize(v),
       frame(info) {
@@ -127,8 +132,9 @@ export const voidFleetsLayer: Layer = {
         const frame = sim.frameFor(info, style);
         ctx.font = FONT;
         ctx.textBaseline = 'top';
-        renderFleets(ctx, sim.world.fleets, sim.world.systems, sim.camera, viewport, sim.world, frame);
-        renderAnomalies(ctx, sim.world.anomalies, sim.camera, viewport, sim.world.settings, frame);
+        renderAnomalies(ctx, sim.world, sim.camera, viewport, frame, board);
+        renderFleets(ctx, sim.world, sim.camera, viewport, frame, board);
+        board.flush(ctx, viewport);
       },
     };
   },
@@ -137,12 +143,13 @@ export const voidFleetsLayer: Layer = {
 export const voidHudLayer: Layer = {
   id: 'void-hud',
   label: 'Void HUD',
-  description: 'Sector grid, sector links, telemetry, and the ambient chatter overlays.',
+  description: 'Sector grid, sector links, radio chatter, and the target lock.',
   tags: [...TAGS, 'hud'],
-  schema: pick(['hud', 'lineWeight', 'hueVariety']),
+  schema: pick(['hud', 'lineWeight', 'hueVariety', 'lock']),
   canvas(host) {
     const sim = sharedVoidWorld(host);
     const style = resolveStyle(host.options);
+    const board = createLabelBoard();
     return {
       resize: (v) => sim.resize(v),
       frame(info) {
@@ -155,7 +162,9 @@ export const voidHudLayer: Layer = {
         renderGrids(ctx, sim.camera, viewport, frame);
         renderSectorConnections(ctx, sim.camera, viewport, frame);
         renderTelemetry(ctx, sim.world.telemetry, sim.world.settings, frame);
-        renderTacticalOverlays(ctx, sim.world, sim.camera, viewport, frame);
+        renderTacticalOverlays(ctx, sim.world, sim.camera, viewport, frame, board);
+        board.flush(ctx, viewport);
+        renderTargetLock(ctx, sim.world, sim.camera, viewport, frame);
       },
     };
   },

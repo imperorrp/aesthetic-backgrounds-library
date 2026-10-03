@@ -5,6 +5,106 @@
   "entries": [
     {
       "kind": "skin",
+      "id": "abyssal",
+      "label": "Abyssal scanner",
+      "description": "A deep submersible's view: marine snow, bioluminescent animals, and a sonar fan that identifies them.",
+      "tags": [
+        "instrument",
+        "ocean",
+        "dark",
+        "cyan"
+      ],
+      "themes": [
+        "dark"
+      ],
+      "cost": "medium",
+      "schema": {
+        "life": {
+          "type": "number",
+          "min": 0.3,
+          "max": 2,
+          "default": 1,
+          "label": "Life"
+        },
+        "snow": {
+          "type": "number",
+          "min": 0,
+          "max": 2,
+          "default": 1,
+          "label": "Marine snow"
+        },
+        "scan": {
+          "type": "boolean",
+          "default": true,
+          "label": "Sonar fan"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#22d3ee"
+        },
+        "intensity": 0.55
+      },
+      "preview": "gallery/abyssal.png",
+      "source": "builtin"
+    },
+    {
+      "kind": "skin",
+      "id": "atc-radar",
+      "label": "Approach radar",
+      "description": "An air traffic control scope: sweep, fading returns, arrivals, departures, and typed clearances.",
+      "tags": [
+        "instrument",
+        "aviation",
+        "dark",
+        "green"
+      ],
+      "themes": [
+        "dark"
+      ],
+      "cost": "medium",
+      "schema": {
+        "traffic": {
+          "type": "number",
+          "min": 3,
+          "max": 18,
+          "default": 10,
+          "step": 1,
+          "label": "Traffic"
+        },
+        "sweep": {
+          "type": "number",
+          "min": 2,
+          "max": 10,
+          "default": 4.8,
+          "label": "Sweep period (s)"
+        },
+        "timeScale": {
+          "type": "number",
+          "min": 4,
+          "max": 30,
+          "default": 14,
+          "label": "Time compression"
+        },
+        "weather": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "default": 0.5,
+          "label": "Weather returns"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#34d399"
+        },
+        "intensity": 0.6
+      },
+      "preview": "gallery/atc-radar.png",
+      "source": "builtin"
+    },
+    {
+      "kind": "skin",
       "id": "drifting-dust",
       "label": "drifting-dust",
       "tags": [],
@@ -68,6 +168,59 @@
     },
     {
       "kind": "skin",
+      "id": "mars-radar",
+      "label": "Martian weather radar",
+      "description": "Dust storm radar over Jezero: contours, drifting storm cells, sweep-refreshed reflectivity, dust devils.",
+      "tags": [
+        "instrument",
+        "mars",
+        "dark",
+        "rust"
+      ],
+      "themes": [
+        "dark"
+      ],
+      "cost": "medium",
+      "schema": {
+        "storms": {
+          "type": "number",
+          "min": 1,
+          "max": 8,
+          "default": 4,
+          "step": 1,
+          "label": "Storm cells"
+        },
+        "sweep": {
+          "type": "number",
+          "min": 3,
+          "max": 14,
+          "default": 6.5,
+          "label": "Sweep period (s)"
+        },
+        "contours": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "default": 0.6,
+          "label": "Contours"
+        },
+        "barbs": {
+          "type": "boolean",
+          "default": true,
+          "label": "Wind barbs"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#f97316"
+        },
+        "intensity": 0.6
+      },
+      "preview": "gallery/mars-radar.png",
+      "source": "builtin"
+    },
+    {
+      "kind": "skin",
       "id": "matrix-rain",
       "label": "matrix-rain",
       "tags": [],
@@ -81,9 +234,115 @@
     },
     {
       "kind": "skin",
+      "id": "seismograph",
+      "label": "Seismograph",
+      "description": "A seismic record: station traces trembling, quakes sweeping across the stack, the crust below.",
+      "tags": [
+        "instrument",
+        "science",
+        "dark",
+        "amber"
+      ],
+      "themes": [
+        "dark"
+      ],
+      "cost": "medium",
+      "schema": {
+        "stations": {
+          "type": "number",
+          "min": 6,
+          "max": 18,
+          "default": 12,
+          "step": 1,
+          "label": "Stations"
+        },
+        "speed": {
+          "type": "number",
+          "min": 0.3,
+          "max": 3,
+          "default": 1,
+          "label": "Paper speed"
+        },
+        "activity": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "default": 0.6,
+          "label": "Activity"
+        },
+        "section": {
+          "type": "boolean",
+          "default": true,
+          "label": "Crust section"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#f59e0b"
+        },
+        "intensity": 0.6
+      },
+      "preview": "gallery/seismograph.png",
+      "source": "builtin"
+    },
+    {
+      "kind": "skin",
+      "id": "sonar",
+      "label": "Sonar waterfall",
+      "description": "A submarine's passive sonar: contacts drifting across a scrolling bearing-time waterfall.",
+      "tags": [
+        "instrument",
+        "naval",
+        "dark",
+        "green"
+      ],
+      "themes": [
+        "dark"
+      ],
+      "cost": "medium",
+      "schema": {
+        "contacts": {
+          "type": "number",
+          "min": 2,
+          "max": 9,
+          "default": 5,
+          "step": 1,
+          "label": "Contacts"
+        },
+        "speed": {
+          "type": "number",
+          "min": 0.3,
+          "max": 2.5,
+          "default": 1,
+          "label": "Scroll speed"
+        },
+        "grain": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "default": 0.55,
+          "label": "Ocean noise"
+        },
+        "labels": {
+          "type": "boolean",
+          "default": true,
+          "label": "Contact labels"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#4ade80"
+        },
+        "intensity": 0.6
+      },
+      "preview": "gallery/sonar.png",
+      "source": "builtin"
+    },
+    {
+      "kind": "skin",
       "id": "void-tactical",
       "label": "Void tactical",
-      "description": "Streaming sci-fi sector map: systems, structures, fleets, and an ambient HUD.",
+      "description": "A living sci-fi sector map: fleets in formation, working structures, anomalies, and an ambient HUD.",
       "tags": [
         "space",
         "sci-fi",
@@ -95,6 +354,17 @@
       ],
       "cost": "medium",
       "schema": {
+        "universe": {
+          "type": "enum",
+          "values": [
+            "void",
+            "saltwind",
+            "choir"
+          ],
+          "default": "void",
+          "label": "Universe",
+          "description": "Whose map this is: names, factions, structures, chatter, background words"
+        },
         "hueVariety": {
           "type": "number",
           "min": 0,
@@ -107,42 +377,55 @@
           "type": "number",
           "min": 0.5,
           "max": 2,
-          "default": 1.7,
+          "default": 1.4,
           "label": "Line weight"
         },
         "spriteScale": {
           "type": "number",
-          "min": 0.7,
+          "min": 0.5,
           "max": 2.5,
-          "default": 0.95,
+          "default": 0.8,
           "label": "Sprite scale",
           "description": "Size of the ASCII structure art"
+        },
+        "shipScale": {
+          "type": "number",
+          "min": 0.6,
+          "max": 2,
+          "default": 1,
+          "label": "Ship size"
         },
         "hud": {
           "type": "number",
           "min": 0,
           "max": 1,
-          "default": 0.52,
+          "default": 0.6,
           "label": "HUD opacity",
-          "description": "Grid, sector links, labels, telemetry, and overlay text"
+          "description": "Labels, telemetry, and chatter text"
         },
         "paths": {
           "type": "enum",
           "values": [
-            "dots",
             "dashed",
+            "dots",
             "off"
           ],
-          "default": "dots",
+          "default": "dashed",
           "label": "Fleet paths",
-          "description": "Predicted-path rendering"
+          "description": "How the planned course ahead of each fleet is drawn"
         },
         "trails": {
           "type": "number",
           "min": 0,
           "max": 1,
-          "default": 0.92,
+          "default": 0.9,
           "label": "Fleet trails"
+        },
+        "lock": {
+          "type": "boolean",
+          "default": true,
+          "label": "Target lock",
+          "description": "Brackets close on a contact every half minute while its data types out"
         },
         "gradient": {
           "type": "boolean",
@@ -162,12 +445,12 @@
         "ascii1": {
           "type": "boolean",
           "default": true,
-          "label": "ASCII map 1"
+          "label": "Background words (far)"
         },
         "ascii2": {
           "type": "boolean",
           "default": true,
-          "label": "ASCII map 2"
+          "label": "Background words (near)"
         },
         "clouds": {
           "type": "boolean",
@@ -1948,7 +2231,7 @@
       "kind": "layer",
       "id": "void-atmosphere",
       "label": "Void atmosphere (CSS)",
-      "description": "The sector map's GPU-composited plate: gradient, mesh, grid, ASCII wallpaper, clouds, grain, mouse glow.",
+      "description": "The sector map's GPU-composited plate: gradient, mesh, grid, background words, clouds, grain, mouse glow.",
       "tags": [
         "space",
         "sci-fi",
@@ -1960,6 +2243,17 @@
       ],
       "cost": "low",
       "schema": {
+        "universe": {
+          "type": "enum",
+          "values": [
+            "void",
+            "saltwind",
+            "choir"
+          ],
+          "default": "void",
+          "label": "Universe",
+          "description": "Whose map this is: names, factions, structures, chatter, background words"
+        },
         "gradient": {
           "type": "boolean",
           "default": true,
@@ -1978,12 +2272,12 @@
         "ascii1": {
           "type": "boolean",
           "default": true,
-          "label": "ASCII map 1"
+          "label": "Background words (far)"
         },
         "ascii2": {
           "type": "boolean",
           "default": true,
-          "label": "ASCII map 2"
+          "label": "Background words (near)"
         },
         "clouds": {
           "type": "boolean",
@@ -2012,7 +2306,7 @@
       "kind": "layer",
       "id": "void-fleets",
       "label": "Void fleets",
-      "description": "Fleets with AI states, trails, predicted paths, and anomaly markers.",
+      "description": "Fleets in formation with trails and planned courses, plus the anomalies.",
       "tags": [
         "space",
         "sci-fi",
@@ -2024,6 +2318,17 @@
       ],
       "cost": "low",
       "schema": {
+        "universe": {
+          "type": "enum",
+          "values": [
+            "void",
+            "saltwind",
+            "choir"
+          ],
+          "default": "void",
+          "label": "Universe",
+          "description": "Whose map this is: names, factions, structures, chatter, background words"
+        },
         "hueVariety": {
           "type": "number",
           "min": 0,
@@ -2036,34 +2341,41 @@
           "type": "number",
           "min": 0.5,
           "max": 2,
-          "default": 1.7,
+          "default": 1.4,
           "label": "Line weight"
+        },
+        "shipScale": {
+          "type": "number",
+          "min": 0.6,
+          "max": 2,
+          "default": 1,
+          "label": "Ship size"
         },
         "paths": {
           "type": "enum",
           "values": [
-            "dots",
             "dashed",
+            "dots",
             "off"
           ],
-          "default": "dots",
+          "default": "dashed",
           "label": "Fleet paths",
-          "description": "Predicted-path rendering"
+          "description": "How the planned course ahead of each fleet is drawn"
         },
         "trails": {
           "type": "number",
           "min": 0,
           "max": 1,
-          "default": 0.92,
+          "default": 0.9,
           "label": "Fleet trails"
         },
         "hud": {
           "type": "number",
           "min": 0,
           "max": 1,
-          "default": 0.52,
+          "default": 0.6,
           "label": "HUD opacity",
-          "description": "Grid, sector links, labels, telemetry, and overlay text"
+          "description": "Labels, telemetry, and chatter text"
         }
       },
       "source": "builtin"
@@ -2072,7 +2384,7 @@
       "kind": "layer",
       "id": "void-hud",
       "label": "Void HUD",
-      "description": "Sector grid, sector links, telemetry, and the ambient chatter overlays.",
+      "description": "Sector grid, sector links, radio chatter, and the target lock.",
       "tags": [
         "space",
         "sci-fi",
@@ -2084,19 +2396,30 @@
       ],
       "cost": "low",
       "schema": {
+        "universe": {
+          "type": "enum",
+          "values": [
+            "void",
+            "saltwind",
+            "choir"
+          ],
+          "default": "void",
+          "label": "Universe",
+          "description": "Whose map this is: names, factions, structures, chatter, background words"
+        },
         "hud": {
           "type": "number",
           "min": 0,
           "max": 1,
-          "default": 0.52,
+          "default": 0.6,
           "label": "HUD opacity",
-          "description": "Grid, sector links, labels, telemetry, and overlay text"
+          "description": "Labels, telemetry, and chatter text"
         },
         "lineWeight": {
           "type": "number",
           "min": 0.5,
           "max": 2,
-          "default": 1.7,
+          "default": 1.4,
           "label": "Line weight"
         },
         "hueVariety": {
@@ -2106,6 +2429,12 @@
           "default": 0.94,
           "label": "Hue variety",
           "description": "0 pulls every entity into the palette family; 1 keeps the original rainbow"
+        },
+        "lock": {
+          "type": "boolean",
+          "default": true,
+          "label": "Target lock",
+          "description": "Brackets close on a contact every half minute while its data types out"
         }
       },
       "source": "builtin"
@@ -2125,14 +2454,26 @@
         "dark"
       ],
       "cost": "low",
-      "schema": {},
+      "schema": {
+        "universe": {
+          "type": "enum",
+          "values": [
+            "void",
+            "saltwind",
+            "choir"
+          ],
+          "default": "void",
+          "label": "Universe",
+          "description": "Whose map this is: names, factions, structures, chatter, background words"
+        }
+      },
       "source": "builtin"
     },
     {
       "kind": "layer",
       "id": "void-systems",
       "label": "Void systems",
-      "description": "Star systems with orbits and hex radars, the data lanes between them, and ASCII structures.",
+      "description": "Star systems with orbits and hex radars, the data lanes between them, and the structures.",
       "tags": [
         "space",
         "sci-fi",
@@ -2144,6 +2485,17 @@
       ],
       "cost": "low",
       "schema": {
+        "universe": {
+          "type": "enum",
+          "values": [
+            "void",
+            "saltwind",
+            "choir"
+          ],
+          "default": "void",
+          "label": "Universe",
+          "description": "Whose map this is: names, factions, structures, chatter, background words"
+        },
         "hueVariety": {
           "type": "number",
           "min": 0,
@@ -2156,14 +2508,14 @@
           "type": "number",
           "min": 0.5,
           "max": 2,
-          "default": 1.7,
+          "default": 1.4,
           "label": "Line weight"
         },
         "spriteScale": {
           "type": "number",
-          "min": 0.7,
+          "min": 0.5,
           "max": 2.5,
-          "default": 0.95,
+          "default": 0.8,
           "label": "Sprite scale",
           "description": "Size of the ASCII structure art"
         },
@@ -2171,9 +2523,9 @@
           "type": "number",
           "min": 0,
           "max": 1,
-          "default": 0.52,
+          "default": 0.6,
           "label": "HUD opacity",
-          "description": "Grid, sector links, labels, telemetry, and overlay text"
+          "description": "Labels, telemetry, and chatter text"
         }
       },
       "source": "builtin"
@@ -2193,6 +2545,17 @@
       ],
       "cost": "medium",
       "schema": {
+        "universe": {
+          "type": "enum",
+          "values": [
+            "void",
+            "saltwind",
+            "choir"
+          ],
+          "default": "void",
+          "label": "Universe",
+          "description": "Whose map this is: names, factions, structures, chatter, background words"
+        },
         "hueVariety": {
           "type": "number",
           "min": 0,
@@ -2205,42 +2568,55 @@
           "type": "number",
           "min": 0.5,
           "max": 2,
-          "default": 1.7,
+          "default": 1.4,
           "label": "Line weight"
         },
         "spriteScale": {
           "type": "number",
-          "min": 0.7,
+          "min": 0.5,
           "max": 2.5,
-          "default": 0.95,
+          "default": 0.8,
           "label": "Sprite scale",
           "description": "Size of the ASCII structure art"
+        },
+        "shipScale": {
+          "type": "number",
+          "min": 0.6,
+          "max": 2,
+          "default": 1,
+          "label": "Ship size"
         },
         "hud": {
           "type": "number",
           "min": 0,
           "max": 1,
-          "default": 0.52,
+          "default": 0.6,
           "label": "HUD opacity",
-          "description": "Grid, sector links, labels, telemetry, and overlay text"
+          "description": "Labels, telemetry, and chatter text"
         },
         "paths": {
           "type": "enum",
           "values": [
-            "dots",
             "dashed",
+            "dots",
             "off"
           ],
-          "default": "dots",
+          "default": "dashed",
           "label": "Fleet paths",
-          "description": "Predicted-path rendering"
+          "description": "How the planned course ahead of each fleet is drawn"
         },
         "trails": {
           "type": "number",
           "min": 0,
           "max": 1,
-          "default": 0.92,
+          "default": 0.9,
           "label": "Fleet trails"
+        },
+        "lock": {
+          "type": "boolean",
+          "default": true,
+          "label": "Target lock",
+          "description": "Brackets close on a contact every half minute while its data types out"
         },
         "gradient": {
           "type": "boolean",
@@ -2260,12 +2636,12 @@
         "ascii1": {
           "type": "boolean",
           "default": true,
-          "label": "ASCII map 1"
+          "label": "Background words (far)"
         },
         "ascii2": {
           "type": "boolean",
           "default": true,
-          "label": "ASCII map 2"
+          "label": "Background words (near)"
         },
         "clouds": {
           "type": "boolean",

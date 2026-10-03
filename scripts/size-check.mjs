@@ -25,20 +25,23 @@ const BUDGETS_KB = {
   'tokens.js': 14,
   'skins/drifting-dust.js': 11,
   'skins/matrix-rain.js': 11,
-  // the sector map skin plus its five part layers and the void-sector preset
-  'skins/void-tactical.js': 33,
+  // the sector map skin plus its five part layers and the void-sector preset; 52 since the
+  // overhaul added universe packs (three built in), fleets, anomaly art, and the GitHub galaxy
+  'skins/void-tactical.js': 52,
   // standard layer library (now including two shader layers) and the presets built from it
   'layers.js': 20,
   'presets.js': 22,
   // batteries included: core + all skins + layers + presets + shader/manifest/token tooling.
   // 62 since M8 added the manifest and token entries to the batteries bundle; 67 since
-  // M9 (host lighting and legibility, the moments layer, light-aware base layers).
-  'index.js': 67,
-  // framework adapters: core + all built-in skins, layers, and presets (no tooling); 59 since M9
-  'element.js': 59,
-  'react.js': 59,
-  'vue.js': 59,
-  'svelte.js': 59,
+  // M9 (host lighting and legibility, the moments layer, light-aware base layers); 101
+  // since the void-tactical overhaul and the five instrument skins.
+  'index.js': 101,
+  // framework adapters: core + all built-in skins, layers, and presets (no tooling); 59 since M9,
+  // 89 with the overhauled sector map and the instruments
+  'element.js': 89,
+  'react.js': 89,
+  'vue.js': 89,
+  'svelte.js': 89,
 };
 
 function walk(dir, out = []) {

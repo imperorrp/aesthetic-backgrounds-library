@@ -32,8 +32,15 @@ type Probe = {
 const GPU_SUBJECTS = new Set(['nebula-drift', 'ink-wash']);
 const framesFor = (skin: string) => (GPU_SUBJECTS.has(skin) ? '90' : '240');
 
-async function openCheck(page: Page, skin: string, extra: Record<string, string> = {}) {
-  const params = new URLSearchParams({ skin, seed: 'orion-7', frames: framesFor(skin), ...extra });
+/** `skin~universe` subjects run void-tactical in another universe pack. */
+const parseSubject = (subject: string) => {
+  const [skin, universe] = subject.split('~');
+  return { skin, options: universe ? JSON.stringify({ universe }) : undefined, file: subject.replace('~', '-') };
+};
+
+async function openCheck(page: Page, subject: string, extra: Record<string, string> = {}) {
+  const { skin, options } = parseSubject(subject);
+  const params = new URLSearchParams({ skin, seed: 'orion-7', frames: framesFor(skin), ...(options ? { options } : {}), ...extra });
   await page.goto(`/check.html?${params.toString()}`);
   await page.waitForSelector('body[data-ready="1"]', { timeout: 90_000 });
 }
@@ -42,7 +49,7 @@ for (const skin of SUBJECTS) {
   test.describe(skin, () => {
     test('matches its reference render', async ({ page }) => {
       await openCheck(page, skin, { text: '0' });
-      await expect(page).toHaveScreenshot(`${skin}.png`);
+      await expect(page).toHaveScreenshot(`${parseSubject(skin).file}.png`);
     });
 
     test('keeps page text legible at default settings', async ({ page }) => {

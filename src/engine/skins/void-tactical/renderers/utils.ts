@@ -10,6 +10,7 @@ import type { StructureType } from './art';
 import type { Rng } from '../../../rng';
 import { rgba, type Palette } from '../../../palette';
 import { hexToOklch, oklchToHex, parseHex, toTriplet } from '../../../color';
+import type { UniversePack } from '../universe';
 
 export type CanvasContext = CanvasRenderingContext2D;
 
@@ -21,12 +22,16 @@ export type VoidStyle = {
   lineWeight: number;
   /** ASCII sprite height multiplier. */
   spriteScale: number;
-  /** Opacity of HUD elements: grid, sector links, labels, telemetry, overlays. */
+  /** Ship silhouette size multiplier. */
+  shipScale: number;
+  /** Opacity of HUD text: labels, telemetry, chatter. */
   hud: number;
   /** Fleet predicted-path rendering. */
   paths: 'dots' | 'dashed' | 'off';
   /** Fleet history trail opacity. */
   trails: number;
+  /** Periodic target lock on a contact. */
+  lock: boolean;
 };
 
 /**
@@ -43,6 +48,10 @@ export type RenderFrame = {
   intensity: number;
   /** Map an authored entity color into the palette family per `style.hueVariety` (memoized). */
   color(hex: string): string;
+  /** The universe this map belongs to. */
+  pack: UniversePack;
+  /** Screen x = world x - camera.x * parallax for the map plane. */
+  parallax: number;
 };
 
 export function accentRgba(palette: Palette, alpha = 1): string {
@@ -103,10 +112,14 @@ const asciiCache = new Map<string, HTMLCanvasElement>();
  * the font size that yields `targetHeight` so glyphs stay crisp (no downscaling).
  */
 export function getAsciiSprite(kind: string, color: string, targetHeight = SPRITE_BASE_HEIGHT): HTMLCanvasElement {
-  const art = ASCII_ART[kind as StructureType] || ['?'];
-  const lines = art.length;
+  return getArtSprite(ASCII_ART[kind as StructureType] || ['?'], kind, color, targetHeight);
+}
+
+/** Cached sprite for arbitrary ASCII art (a universe pack's own structures). */
+export function getArtSprite(art: readonly string[], id: string, color: string, targetHeight = SPRITE_BASE_HEIGHT): HTMLCanvasElement {
+  const lines = Math.max(1, art.length);
   const fontSize = Math.max(5, Math.min(18, Math.round((targetHeight / lines) * 0.92)));
-  const key = `${kind}|${color}|${fontSize}`;
+  const key = `${id}|${art.join('\n')}|${color}|${fontSize}`;
   const hit = asciiCache.get(key);
   if (hit) return hit;
 

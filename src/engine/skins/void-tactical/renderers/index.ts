@@ -1,11 +1,12 @@
 /**
  * Background Renderers Module
  *
- * @description Main rendering orchestrator and exports for all background rendering functions. This module coordinates the
- * rendering order for stars, systems, structures, fleets, anomalies, and UI overlays.
+ * @description Draw order for the sector map: stars, systems, lanes, structures,
+ * grid, anomalies, fleets, chatter, labels, then the target lock on top. Labels
+ * from every part go through one board so none overlap.
  *
- * Every renderer receives a `RenderFrame` (time, dt, seeded rng, palette) so the picture is a
- * pure function of seed + elapsed time and never touches the wall clock or `Math.random`.
+ * Every renderer receives a `RenderFrame` (time, dt, seeded rng, palette, pack) so
+ * the picture is a pure function of seed + elapsed time.
  * @module
  */
 
@@ -14,66 +15,42 @@ import { FONT, type RenderFrame } from './utils';
 import { renderStars, renderGrids } from './background';
 import { renderCelestialBodies, renderStarSystem, renderStructures } from './celestial';
 import { renderFleets, renderAnomalies } from './entities';
-import { renderTacticalOverlays, renderTelemetry, renderSystemConnections, renderSectorConnections } from './ui';
+import { renderTacticalOverlays, renderTelemetry, renderSystemConnections, renderSectorConnections, renderTargetLock } from './ui';
+import { createLabelBoard } from './board';
+import { allStructures } from '../fleets';
+
+const board = createLabelBoard();
 
 export const renderSystem = (
   ctx: CanvasRenderingContext2D,
   system: SystemState,
-  camera: { x: number, y: number },
-  viewport: { width: number, height: number },
+  camera: { x: number; y: number },
+  viewport: { width: number; height: number },
   frame: RenderFrame,
 ) => {
   ctx.font = FONT;
   ctx.textBaseline = 'top';
-
-  // 0. RENDER STARS (Deep Background Layer)
   renderStars(ctx, system.stars, camera, viewport, frame);
-
-  // 0.5 RENDER CONSTELLATIONS (Star Connections) - DISABLED
-  // renderConstellations(ctx, system.constellations, system.stars, camera, viewport);
-
-  // 0.7 RENDER CELESTIAL BODIES (Planets, Asteroids, Moons)
   renderCelestialBodies(ctx, system.celestialBodies, camera, viewport, frame);
-
-  // 0.8 RENDER STAR SYSTEMS (Stars with orbiting planets)
-  system.systems.forEach(sys => renderStarSystem(ctx, sys, camera, viewport, system.settings, frame));
-
-  // 0.82 RENDER SYSTEM CONNECTIONS (Network overlay)
-  renderSystemConnections(ctx, system.systems || [], camera, viewport, frame);
-
-  // 0.85 RENDER GLOBAL STRUCTURES (Independent + System-bound)
-  const allStructures = [
-    ...(system.structures || []),
-    ...system.systems.flatMap(s => s.structures || [])
-  ];
-  renderStructures(ctx, allStructures, camera, viewport, system.settings, frame);
-
-  // 1. RENDER SECTOR GRID (Background Layer)
+  for (const sys of system.systems) renderStarSystem(ctx, sys, camera, viewport, system.settings, frame, board);
+  renderSystemConnections(ctx, system.systems, camera, viewport, frame);
+  renderStructures(ctx, allStructures(system), camera, viewport, system.settings, frame, board);
   renderGrids(ctx, camera, viewport, frame);
-
-  // 1.1 RENDER SECTOR CONNECTIONS (Network overlay)
   renderSectorConnections(ctx, camera, viewport, frame);
-
-  // 2. RENDER NODES & CONNECTIONS (Mid Layer) - DISABLED
-  // renderNodes(ctx, system.nodes, camera, viewport, frame);
-
-  // 3. RENDER FLEETS (Mid-Foreground Layer)
-  renderFleets(ctx, system.fleets, system.systems, camera, viewport, system, frame);
-
-  // 4. RENDER ANOMALIES (Foreground Layer)
-  renderAnomalies(ctx, system.anomalies, camera, viewport, system.settings, frame);
-
-  // 5. RENDER TELEMETRY (UI Layer - No Parallax)
+  renderAnomalies(ctx, system, camera, viewport, frame, board);
+  renderFleets(ctx, system, camera, viewport, frame, board);
+  ctx.font = FONT;
+  ctx.textBaseline = 'top';
   renderTelemetry(ctx, system.telemetry, system.settings, frame);
-
-  // 5.5 RENDER TACTICAL OVERLAYS (Text)
-  renderTacticalOverlays(ctx, system, camera, viewport, frame);
+  renderTacticalOverlays(ctx, system, camera, viewport, frame, board);
+  board.flush(ctx, viewport);
+  renderTargetLock(ctx, system, camera, viewport, frame);
 };
 
-// Re-export all individual renderers for direct access if needed
 export { renderStars, renderConstellations, renderGrids } from './background';
-export { renderCelestialBodies, renderStarSystem } from './celestial';
-export { renderNodes, renderFleets, renderAnomalies } from './entities';
-export { renderTacticalOverlays, renderTelemetry, renderSystemConnections, renderSectorConnections } from './ui';
-export { getAsciiSprite, getGlowSprite, snap, CHAR_SIZE, FONT, SPRITE_BASE_HEIGHT } from './utils';
+export { renderCelestialBodies, renderStarSystem, renderStructures } from './celestial';
+export { renderFleets, renderAnomalies } from './entities';
+export { renderTacticalOverlays, renderTelemetry, renderSystemConnections, renderSectorConnections, renderTargetLock } from './ui';
+export { createLabelBoard } from './board';
+export { getAsciiSprite, getArtSprite, getGlowSprite, snap, CHAR_SIZE, FONT, SPRITE_BASE_HEIGHT } from './utils';
 export type { RenderFrame, VoidStyle } from './utils';

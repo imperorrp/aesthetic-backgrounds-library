@@ -1441,6 +1441,15 @@
                       "type": "object",
                       "additionalProperties": false,
                       "properties": {
+                        "universe": {
+                          "description": "Whose map this is: names, factions, structures, chatter, background words",
+                          "enum": [
+                            "void",
+                            "saltwind",
+                            "choir"
+                          ],
+                          "default": "void"
+                        },
                         "gradient": {
                           "description": "Space gradient",
                           "type": "boolean",
@@ -1457,12 +1466,12 @@
                           "default": true
                         },
                         "ascii1": {
-                          "description": "ASCII map 1",
+                          "description": "Background words (far)",
                           "type": "boolean",
                           "default": true
                         },
                         "ascii2": {
-                          "description": "ASCII map 2",
+                          "description": "Background words (near)",
                           "type": "boolean",
                           "default": true
                         },
@@ -1508,6 +1517,15 @@
                       "type": "object",
                       "additionalProperties": false,
                       "properties": {
+                        "universe": {
+                          "description": "Whose map this is: names, factions, structures, chatter, background words",
+                          "enum": [
+                            "void",
+                            "saltwind",
+                            "choir"
+                          ],
+                          "default": "void"
+                        },
                         "hueVariety": {
                           "description": "0 pulls every entity into the palette family; 1 keeps the original rainbow",
                           "type": "number",
@@ -1520,30 +1538,37 @@
                           "type": "number",
                           "minimum": 0.5,
                           "maximum": 2,
-                          "default": 1.7
+                          "default": 1.4
+                        },
+                        "shipScale": {
+                          "description": "Ship size",
+                          "type": "number",
+                          "minimum": 0.6,
+                          "maximum": 2,
+                          "default": 1
                         },
                         "paths": {
-                          "description": "Predicted-path rendering",
+                          "description": "How the planned course ahead of each fleet is drawn",
                           "enum": [
-                            "dots",
                             "dashed",
+                            "dots",
                             "off"
                           ],
-                          "default": "dots"
+                          "default": "dashed"
                         },
                         "trails": {
                           "description": "Fleet trails",
                           "type": "number",
                           "minimum": 0,
                           "maximum": 1,
-                          "default": 0.92
+                          "default": 0.9
                         },
                         "hud": {
-                          "description": "Grid, sector links, labels, telemetry, and overlay text",
+                          "description": "Labels, telemetry, and chatter text",
                           "type": "number",
                           "minimum": 0,
                           "maximum": 1,
-                          "default": 0.52
+                          "default": 0.6
                         }
                       }
                     }
@@ -1567,19 +1592,28 @@
                       "type": "object",
                       "additionalProperties": false,
                       "properties": {
+                        "universe": {
+                          "description": "Whose map this is: names, factions, structures, chatter, background words",
+                          "enum": [
+                            "void",
+                            "saltwind",
+                            "choir"
+                          ],
+                          "default": "void"
+                        },
                         "hud": {
-                          "description": "Grid, sector links, labels, telemetry, and overlay text",
+                          "description": "Labels, telemetry, and chatter text",
                           "type": "number",
                           "minimum": 0,
                           "maximum": 1,
-                          "default": 0.52
+                          "default": 0.6
                         },
                         "lineWeight": {
                           "description": "Line weight",
                           "type": "number",
                           "minimum": 0.5,
                           "maximum": 2,
-                          "default": 1.7
+                          "default": 1.4
                         },
                         "hueVariety": {
                           "description": "0 pulls every entity into the palette family; 1 keeps the original rainbow",
@@ -1587,6 +1621,11 @@
                           "minimum": 0,
                           "maximum": 1,
                           "default": 0.94
+                        },
+                        "lock": {
+                          "description": "Brackets close on a contact every half minute while its data types out",
+                          "type": "boolean",
+                          "default": true
                         }
                       }
                     }
@@ -1609,7 +1648,17 @@
                     "with": {
                       "type": "object",
                       "additionalProperties": false,
-                      "properties": {}
+                      "properties": {
+                        "universe": {
+                          "description": "Whose map this is: names, factions, structures, chatter, background words",
+                          "enum": [
+                            "void",
+                            "saltwind",
+                            "choir"
+                          ],
+                          "default": "void"
+                        }
+                      }
                     }
                   }
                 }
@@ -1631,6 +1680,15 @@
                       "type": "object",
                       "additionalProperties": false,
                       "properties": {
+                        "universe": {
+                          "description": "Whose map this is: names, factions, structures, chatter, background words",
+                          "enum": [
+                            "void",
+                            "saltwind",
+                            "choir"
+                          ],
+                          "default": "void"
+                        },
                         "hueVariety": {
                           "description": "0 pulls every entity into the palette family; 1 keeps the original rainbow",
                           "type": "number",
@@ -1643,21 +1701,21 @@
                           "type": "number",
                           "minimum": 0.5,
                           "maximum": 2,
-                          "default": 1.7
+                          "default": 1.4
                         },
                         "spriteScale": {
                           "description": "Size of the ASCII structure art",
                           "type": "number",
-                          "minimum": 0.7,
+                          "minimum": 0.5,
                           "maximum": 2.5,
-                          "default": 0.95
+                          "default": 0.8
                         },
                         "hud": {
-                          "description": "Grid, sector links, labels, telemetry, and overlay text",
+                          "description": "Labels, telemetry, and chatter text",
                           "type": "number",
                           "minimum": 0,
                           "maximum": 1,
-                          "default": 0.52
+                          "default": 0.6
                         }
                       }
                     }
@@ -1681,6 +1739,15 @@
                       "type": "object",
                       "additionalProperties": false,
                       "properties": {
+                        "universe": {
+                          "description": "Whose map this is: names, factions, structures, chatter, background words",
+                          "enum": [
+                            "void",
+                            "saltwind",
+                            "choir"
+                          ],
+                          "default": "void"
+                        },
                         "hueVariety": {
                           "description": "0 pulls every entity into the palette family; 1 keeps the original rainbow",
                           "type": "number",
@@ -1693,37 +1760,49 @@
                           "type": "number",
                           "minimum": 0.5,
                           "maximum": 2,
-                          "default": 1.7
+                          "default": 1.4
                         },
                         "spriteScale": {
                           "description": "Size of the ASCII structure art",
                           "type": "number",
-                          "minimum": 0.7,
+                          "minimum": 0.5,
                           "maximum": 2.5,
-                          "default": 0.95
+                          "default": 0.8
+                        },
+                        "shipScale": {
+                          "description": "Ship size",
+                          "type": "number",
+                          "minimum": 0.6,
+                          "maximum": 2,
+                          "default": 1
                         },
                         "hud": {
-                          "description": "Grid, sector links, labels, telemetry, and overlay text",
+                          "description": "Labels, telemetry, and chatter text",
                           "type": "number",
                           "minimum": 0,
                           "maximum": 1,
-                          "default": 0.52
+                          "default": 0.6
                         },
                         "paths": {
-                          "description": "Predicted-path rendering",
+                          "description": "How the planned course ahead of each fleet is drawn",
                           "enum": [
-                            "dots",
                             "dashed",
+                            "dots",
                             "off"
                           ],
-                          "default": "dots"
+                          "default": "dashed"
                         },
                         "trails": {
                           "description": "Fleet trails",
                           "type": "number",
                           "minimum": 0,
                           "maximum": 1,
-                          "default": 0.92
+                          "default": 0.9
+                        },
+                        "lock": {
+                          "description": "Brackets close on a contact every half minute while its data types out",
+                          "type": "boolean",
+                          "default": true
                         },
                         "gradient": {
                           "description": "Space gradient",
@@ -1741,12 +1820,12 @@
                           "default": true
                         },
                         "ascii1": {
-                          "description": "ASCII map 1",
+                          "description": "Background words (far)",
                           "type": "boolean",
                           "default": true
                         },
                         "ascii2": {
-                          "description": "ASCII map 2",
+                          "description": "Background words (near)",
                           "type": "boolean",
                           "default": true
                         },

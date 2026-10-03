@@ -5,7 +5,6 @@ import {
   DETAIL_OPTIONS,
   PALETTE_OPTIONS,
   builtInSkins,
-  createRng,
   getLayer,
   getSkin,
   HARMONIES,
@@ -33,17 +32,15 @@ import {
   type Schema,
   voidSectorPreset,
 } from '../engine';
-import {
-  History,
-  contentShadeFor,
-  download,
-  exportImage,
-  exportVideo,
-  jitterOptions,
-  jitterScene,
-  type ExportOptions,
-} from './studio-tools';
+import { History, download, exportImage, exportVideo, type ExportOptions } from './studio-tools';
+import { listUniverses, universePrompt, validateUniverse, type UniversePack } from '../engine/skins/void-tactical/universe';
+import { githubUniverse } from '../engine/skins/void-tactical/github';
+import { instrumentSkins } from '../engine/skins/instruments';
+import { aiPrompt } from './ai-prompt';
 import './DemoPage.css';
+
+/** The ones with a point of view; everything else is under "Basics". */
+const FEATURED_SKINS = ['void-tactical', ...instrumentSkins.map((s) => s.id)];
 
 type PaletteMode = PaletteId | 'custom';
 
@@ -173,13 +170,13 @@ function paletteOf(s: Studio): PaletteSpec {
 
 export default function DemoPage() {
   const [studio, setStudio] = useState<Studio>(() => {
-    if (typeof window === 'undefined') return studioFor('calm-mesh');
-    return decodeState(window.location.hash) ?? studioFor('calm-mesh');
+    if (typeof window === 'undefined') return studioFor('void-tactical');
+    return decodeState(window.location.hash) ?? studioFor('void-tactical');
   });
   const [panelOpen, setPanelOpen] = useState(true);
   const [seedDraft, setSeedDraft] = useState(studio.seed);
-  const [copied, setCopied] = useState(false);
-  const [showContent, setShowContent] = useState(true);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [showContent, setShowContent] = useState(false);
   const [report, setReport] = useState<ContrastReport | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const historyRef = useRef(new History<Studio>());
@@ -299,14 +296,21 @@ export default function DemoPage() {
   }, [studio, sceneMode, palette]);
 
   const snippet = `import { mount } from 'space-background-engine';\n\nmount(document.body, ${JSON.stringify(exportConfig, null, 2)});`;
+  const sourceLabel = (() => {
+    const base = allPresets.find((p) => p.id === studio.source)?.label ?? getSkin(studio.source)?.label ?? studio.source;
+    const pack = studio.skinOptions.pack as UniversePack | undefined;
+    const uni = pack?.name ?? listUniverses().find((u) => u.id === studio.skinOptions.universe)?.name;
+    return studio.source === 'void-tactical' && uni ? `${base} · ${uni}` : base;
+  })();
 
-  const copySnippet = async () => {
+  /** Copy text and flash which button did it. */
+  const copy = async (what: string, text: string) => {
     try {
-      await navigator.clipboard.writeText(snippet);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      await navigator.clipboard.writeText(text);
+      setCopied(what);
+      setTimeout(() => setCopied((c) => (c === what ? null : c)), 1600);
     } catch {
-      /* clipboard unavailable; the textarea is selectable */
+      /* clipboard unavailable */
     }
   };
 
@@ -418,32 +422,51 @@ export default function DemoPage() {
     }
   };
 
-  /** Perturb every option inside its schema range; the stack and palette stay. */
-  const randomize = () => {
-    const key = randomSeedString();
-    commit((s) => {
-      if (s.scene) return { ...s, scene: jitterScene(s.scene, key, 0.3) };
-      const sk = getSkin(s.source);
-      if (!sk?.schema) return s;
-      const rng = createRng(key);
-      return { ...s, skinOptions: jitterOptions(sk.schema, { ...schemaDefaults(sk.schema), ...s.skinOptions }, rng, 0.3) };
-    });
-  };
+  // ---- universes (void-tactical) -------------------------------------------------------
+  const [subject, setSubject] = useState('');
+  const [pasted, setPasted] = useState('');
+  const [packNote, setPackNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [githubUser, setGithubUser] = useState('');
+  const [githubBusy, setGithubBusy] = useState(false);
+  const activePack = studio.skinOptions.pack as UniversePack | undefined;
 
-  /** Add or refit a content-shade layer to the measured content column. */
-  const fitShade = () => {
-    const canvas = document.querySelector<HTMLCanvasElement>('.bg-engine-root canvas');
-    if (!canvas || !studio.scene) return;
-    const ref = contentShadeFor(canvas, 0.45);
-    if (!ref) return;
-    setScene((scene) => {
-      const i = scene.layers.findIndex((l) => l.use === 'content-shade');
-      if (i >= 0) return { layers: scene.layers.map((l, j) => (j === i ? { ...l, with: ref.with } : l)) };
-      const at = Math.max(0, scene.layers.findIndex((l) => l.use === 'grain' || l.use === 'scanlines'));
-      const layers = [...scene.layers];
-      layers.splice(at > 0 ? at : layers.length, 0, ref);
-      return { layers };
-    });
+  const applyPack = (pack: UniversePack, note: string) => {
+    const { pack: _old, ...rest } = studio.skinOptions;
+    const patch: Partial<Studio> = { skinOptions: { ...rest, universe: undefined, pack } };
+    if (pack.palette && /^#[0-9a-f]{3,6}$/i.test(pack.palette)) Object.assign(patch, { paletteMode: 'custom', customHex: pack.palette, theme: 'dark' });
+    if (typeof pack.warmth === 'number') patch.warmth = pack.warmth;
+    update(patch);
+    setPackNote({ ok: true, text: note });
+  };
+  const chooseUniverse = (id: string) => {
+    const pack = listUniverses().find((u) => u.id === id);
+    const { pack: _old, ...rest } = studio.skinOptions;
+    const patch: Partial<Studio> = { skinOptions: { ...rest, universe: id } };
+    if (pack?.palette) Object.assign(patch, { paletteMode: 'custom', customHex: pack.palette, theme: 'dark' });
+    else Object.assign(patch, { paletteMode: 'void-cyan' });
+    patch.warmth = pack?.warmth ?? 0;
+    update(patch);
+    setPackNote(null);
+  };
+  const applyPasted = () => {
+    const { pack, errors, warnings } = validateUniverse(pasted);
+    if (errors.length) {
+      setPackNote({ ok: false, text: errors.join(' ') });
+      return;
+    }
+    applyPack(pack, warnings.length ? `Loaded "${pack.name}". ${warnings.length} gap${warnings.length > 1 ? 's' : ''} filled: ${warnings.slice(0, 2).join(' ')}` : `Loaded "${pack.name}".`);
+  };
+  const loadGithub = async () => {
+    setGithubBusy(true);
+    setPackNote(null);
+    try {
+      const pack = await githubUniverse(githubUser);
+      applyPack(pack, `${pack.systems?.length ?? 0} repositories, ${pack.fleets?.length ?? 0} recent events, ${pack.factions.length} languages.`);
+    } catch (err) {
+      setPackNote({ ok: false, text: err instanceof Error ? err.message : 'Could not reach GitHub.' });
+    } finally {
+      setGithubBusy(false);
+    }
   };
 
   const applySeed = (next: string) => {
@@ -490,10 +513,17 @@ export default function DemoPage() {
 
       {galleryOpen && (
         <Gallery
-          onPick={(id) => {
+          onPick={(id, universe) => {
             const next = studioFor(id, studio);
+            if (universe) {
+              const pack = listUniverses().find((u) => u.id === universe);
+              next.skinOptions = { ...next.skinOptions, universe };
+              if (pack?.palette) Object.assign(next, { paletteMode: 'custom', customHex: pack.palette, theme: 'dark' });
+              if (typeof pack?.warmth === 'number') next.warmth = pack.warmth;
+            }
             commit(() => next);
             setSeedDraft(next.seed);
+            setPackNote(null);
             setGalleryOpen(false);
           }}
           onClose={() => setGalleryOpen(false)}
@@ -512,43 +542,117 @@ export default function DemoPage() {
 
         {panelOpen && (
           <div className="demo-panel">
-            <p className="demo-kicker">Background engine · {studio.source}</p>
+            <p className="demo-kicker">{sourceLabel}</p>
+
+            <div className="demo-export demo-export-top">
+              <button type="button" className="demo-primary" onClick={() => copy('prompt', aiPrompt(exportConfig, sourceLabel))}>
+                {copied === 'prompt' ? 'Copied. Paste it into your AI.' : 'Copy prompt for your AI'}
+              </button>
+              <p className="demo-hint">Paste it into Claude, ChatGPT, Cursor, or v0 and it will add exactly this background to your site.</p>
+            </div>
 
             <div className="demo-text-row demo-toolbar">
+              <button type="button" onClick={() => applySeed(randomSeedString())} title="A new seed: same settings, a different world">Shuffle</button>
               <button type="button" onClick={undo} disabled={!history.canUndo} title="Ctrl/Cmd+Z">Undo</button>
               <button type="button" onClick={redo} disabled={!history.canRedo} title="Ctrl/Cmd+Shift+Z">Redo</button>
-              <button type="button" onClick={randomize} title="Perturb every option inside its schema range">Randomize</button>
-              {sceneMode && <button type="button" onClick={fitShade} title="Fit a content-shade layer to the page's content column">Fit shade</button>}
             </div>
 
             <label className="demo-field">
-              <span>Source</span>
+              <span>Background</span>
               <select
                 value={studio.source}
                 onChange={(e) => {
                   const next = studioFor(e.target.value, studio);
                   setStudio(next);
                   setSeedDraft(next.seed);
+                  setPackNote(null);
                 }}
               >
-                <optgroup label="Presets (scenes)">
+                <optgroup label="Featured">
+                  {FEATURED_SKINS.map((id) => (
+                    <option key={id} value={id}>
+                      {getSkin(id)?.label ?? id}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Basics">
                   {allPresets.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.label}
                     </option>
                   ))}
-                  <option value="scene">Blank scene</option>
-                </optgroup>
-                <optgroup label="Skins">
-                  {builtInSkins.map((s) => (
+                  {builtInSkins.filter((s) => !FEATURED_SKINS.includes(s.id)).map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.label ?? s.id}
                     </option>
                   ))}
+                  <option value="scene">Blank scene</option>
                 </optgroup>
               </select>
               {(getSkin(studio.source)?.description) && <em className="demo-hint">{getSkin(studio.source)?.description}</em>}
             </label>
+
+            {studio.source === 'void-tactical' && (
+              <div className="demo-universe">
+                <p className="demo-kicker demo-kicker-gap">Universe</p>
+                <label className="demo-field">
+                  <span>Whose map is this</span>
+                  <select
+                    value={activePack ? '__pack' : String(studio.skinOptions.universe ?? 'void')}
+                    onChange={(e) => {
+                      if (e.target.value !== '__pack') chooseUniverse(e.target.value);
+                    }}
+                  >
+                    {listUniverses().map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
+                    ))}
+                    {activePack && <option value="__pack">{activePack.name}</option>}
+                  </select>
+                  {(activePack?.tagline || listUniverses().find((u) => u.id === (studio.skinOptions.universe ?? 'void'))?.tagline) && (
+                    <em className="demo-hint">{activePack?.tagline ?? listUniverses().find((u) => u.id === (studio.skinOptions.universe ?? 'void'))?.tagline}</em>
+                  )}
+                </label>
+
+                <details className="demo-details">
+                  <summary>Make your own from any book, film, game, or world</summary>
+                  <label className="demo-field">
+                    <span>1. Name it or describe it</span>
+                    <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="The Expanse · Dune · my TTRPG's frontier · a lonely lighthouse planet" spellCheck={false} />
+                  </label>
+                  <button type="button" onClick={() => copy('universe', universePrompt(subject))}>
+                    {copied === 'universe' ? 'Copied. Paste it into your AI.' : '2. Copy the prompt for your AI'}
+                  </button>
+                  <label className="demo-field">
+                    <span>3. Paste what it gives back</span>
+                    <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} rows={4} spellCheck={false} placeholder="{ &quot;name&quot;: … }" />
+                  </label>
+                  <button type="button" onClick={applyPasted} disabled={!pasted.trim()}>4. Bring it to life</button>
+                </details>
+
+                <details className="demo-details">
+                  <summary>Your GitHub, as a galaxy</summary>
+                  <p className="demo-hint">Repositories become star systems, languages become factions, your recent pushes, pull requests, and releases fly between them, and open issues become anomalies. Public data only.</p>
+                  <span className="demo-text-row">
+                    <input
+                      value={githubUser}
+                      onChange={(e) => setGithubUser(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && githubUser.trim()) loadGithub();
+                      }}
+                      placeholder="username"
+                      spellCheck={false}
+                      aria-label="GitHub username"
+                    />
+                    <button type="button" onClick={loadGithub} disabled={!githubUser.trim() || githubBusy}>
+                      {githubBusy ? 'Charting…' : 'Chart it'}
+                    </button>
+                  </span>
+                </details>
+                {packNote && <p className={`demo-hint ${packNote.ok ? 'demo-ok' : 'demo-warn'}`}>{packNote.text}</p>}
+              </div>
+            )}
 
             <label className="demo-field">
               <span>Seed</span>
@@ -563,7 +667,6 @@ export default function DemoPage() {
                   aria-label="Seed"
                 />
                 <button type="button" onClick={() => applySeed(seedDraft)}>Apply</button>
-                <button type="button" onClick={() => applySeed(randomSeedString())}>Random</button>
               </span>
             </label>
 
@@ -622,7 +725,7 @@ export default function DemoPage() {
 
             <label className="demo-toggle-field">
               <input type="checkbox" checked={showContent} onChange={(e) => setShowContent(e.target.checked)} />
-              <span className="demo-toggle-label">Sample content column</span>
+              <span className="demo-toggle-label">Show sample text</span>
             </label>
             {report && (
               <div className={`demo-readout${report.meanContrast >= 4.5 && report.failingShare <= 0.12 ? ' is-ok' : ' is-warn'}`}>
@@ -700,9 +803,9 @@ export default function DemoPage() {
                 )}
                 {skin?.schema && Object.keys(skin.schema).length > 0 && (
                   <div className="demo-toggles">
-                    <p className="demo-kicker demo-kicker-gap">Skin options</p>
+                    <p className="demo-kicker demo-kicker-gap">Fine tuning</p>
                     <SchemaControls
-                      schema={skin.schema}
+                      schema={Object.fromEntries(Object.entries(skin.schema).filter(([k]) => k !== 'universe'))}
                       values={studio.skinOptions}
                       onChange={(key, value) => update({ skinOptions: { ...studio.skinOptions, [key]: value } })}
                     />
@@ -716,40 +819,43 @@ export default function DemoPage() {
             )}
 
             <div className="demo-export">
-              <p className="demo-kicker demo-kicker-gap">Export</p>
-              <textarea readOnly value={snippet} rows={8} spellCheck={false} aria-label="mount() snippet" />
+              <p className="demo-kicker demo-kicker-gap">Take it with you</p>
               <div className="demo-text-row">
-                <button type="button" onClick={copySnippet}>{copied ? 'Copied' : 'Copy snippet'}</button>
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard?.writeText(window.location.href).catch(() => undefined)}
-                >
-                  Copy link
+                <button type="button" className="demo-primary" onClick={() => copy('prompt', aiPrompt(exportConfig, sourceLabel))}>
+                  {copied === 'prompt' ? 'Copied' : 'Copy prompt for your AI'}
                 </button>
-                <button type="button" onClick={saveJson} title="Download this configuration as JSON">JSON</button>
-                <label className="demo-file-button" title="Load a preset JSON">
-                  Load
-                  <input
-                    type="file"
-                    accept="application/json,.json"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) loadJson(f);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
+                <button type="button" onClick={() => copy('link', window.location.href)}>{copied === 'link' ? 'Copied' : 'Copy link'}</button>
               </div>
               <div className="demo-text-row">
-                <button type="button" onClick={() => saveImage('image/png')} disabled={!!busy} title="Still image including DOM layers such as grain">
-                  PNG
+                <button type="button" onClick={() => saveImage('image/png')} disabled={!!busy} title="Still image, wallpaper size">
+                  Wallpaper (PNG)
                 </button>
-                <button type="button" onClick={() => saveImage('image/webp')} disabled={!!busy}>WebP</button>
-                <button type="button" onClick={saveVideo} disabled={!!busy} title="8 second loop at 30 fps, rendered on a fixed clock">
-                  WebM loop
+                <button type="button" onClick={saveVideo} disabled={!!busy} title="8 second loop at 30 fps">
+                  Video loop
                 </button>
               </div>
               {busy && <p className="demo-hint demo-busy">{busy}</p>}
+              <details className="demo-details">
+                <summary>Code</summary>
+                <textarea readOnly value={snippet} rows={8} spellCheck={false} aria-label="mount() snippet" />
+                <div className="demo-text-row">
+                  <button type="button" onClick={() => copy('code', snippet)}>{copied === 'code' ? 'Copied' : 'Copy code'}</button>
+                  <button type="button" onClick={saveJson} title="Download this configuration as JSON">JSON</button>
+                  <label className="demo-file-button" title="Load a configuration JSON">
+                    Load
+                    <input
+                      type="file"
+                      accept="application/json,.json"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) loadJson(f);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  <button type="button" onClick={() => saveImage('image/webp')} disabled={!!busy}>WebP</button>
+                </div>
+              </details>
             </div>
           </div>
         )}
@@ -762,7 +868,9 @@ export default function DemoPage() {
  * Preset gallery. Images are the e2e screenshot baselines copied to public/gallery
  * by `pnpm sync-gallery`, so a card shows the exact pixels the tests protect.
  */
-function Gallery({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
+type GalleryEntry = { key: string; image: string; source: string; universe?: string; label: string; description?: string; tags: string[]; community?: boolean };
+
+function Gallery({ onPick, onClose }: { onPick: (source: string, universe?: string) => void; onClose: () => void }) {
   const [available, setAvailable] = useState<string[] | null>(null);
   useEffect(() => {
     fetch('/gallery/index.json')
@@ -770,30 +878,48 @@ function Gallery({ onPick, onClose }: { onPick: (id: string) => void; onClose: (
       .then((list: string[]) => setAvailable(list))
       .catch(() => setAvailable([]));
   }, []);
-  const entries = allPresets.map((p) => ({ id: p.id, label: p.label ?? p.id, description: p.description, tags: (p.tags ?? []).filter((t) => t !== 'community'), community: (p.tags ?? []).includes('community') }));
+  const vt = getSkin('void-tactical');
+  const featured: GalleryEntry[] = [
+    ...listUniverses().map((u) => ({
+      key: `vt-${u.id}`,
+      image: u.id === 'void' ? 'void-tactical' : `void-tactical-${u.id}`,
+      source: 'void-tactical',
+      universe: u.id,
+      label: u.id === 'void' ? vt?.label ?? 'Void tactical' : `${u.name}`,
+      description: u.tagline ?? vt?.description,
+      tags: ['sector map', u.id === 'void' ? 'the original' : 'universe'],
+    })),
+    ...instrumentSkins.map((s) => ({ key: s.id, image: s.id, source: s.id, label: s.label ?? s.id, description: s.description, tags: (s.tags ?? []).filter((t) => t !== 'instrument' && t !== 'dark') })),
+  ];
+  const basics: GalleryEntry[] = allPresets.map((p) => ({
+    key: p.id,
+    image: p.id,
+    source: p.id,
+    label: p.label ?? p.id,
+    description: p.description,
+    tags: (p.tags ?? []).filter((t) => t !== 'community'),
+    community: (p.tags ?? []).includes('community'),
+  }));
+  const card = (e: GalleryEntry) => (
+    <button type="button" key={e.key} className="demo-card" onClick={() => onPick(e.source, e.universe)}>
+      {available?.includes(e.image) ? <img src={`/gallery/${e.image}.png`} alt="" loading="lazy" /> : <span className="demo-card-placeholder">no preview yet</span>}
+      <strong>
+        {e.label}
+        {e.community && <span className="demo-badge">community</span>}
+      </strong>
+      <em>{e.description}</em>
+      <span className="demo-card-tags">{e.tags.join(' · ')}</span>
+    </button>
+  );
   return (
-    <div className="demo-gallery" role="dialog" aria-label="Preset gallery">
+    <div className="demo-gallery" role="dialog" aria-label="Gallery">
       <div className="demo-gallery-head">
-        <p className="demo-kicker">Presets</p>
+        <p className="demo-kicker">Featured</p>
         <button type="button" onClick={onClose}>Close</button>
       </div>
-      <div className="demo-gallery-grid">
-        {entries.map((e) => (
-          <button type="button" key={e.id} className="demo-card" onClick={() => onPick(e.id)}>
-            {available?.includes(e.id) ? (
-              <img src={`/gallery/${e.id}.png`} alt="" loading="lazy" />
-            ) : (
-              <span className="demo-card-placeholder">no preview yet</span>
-            )}
-            <strong>
-              {e.label}
-              {e.community && <span className="demo-badge">community</span>}
-            </strong>
-            <em>{e.description}</em>
-            <span className="demo-card-tags">{e.tags.join(' · ')}</span>
-          </button>
-        ))}
-      </div>
+      <div className="demo-gallery-grid">{featured.map(card)}</div>
+      <p className="demo-kicker demo-kicker-gap">Basics</p>
+      <div className="demo-gallery-grid demo-gallery-basics">{basics.map(card)}</div>
     </div>
   );
 }

@@ -546,6 +546,130 @@
   margin-bottom: 0.45rem;
 }
 
+/* The one button that matters: copy a prompt for whatever AI builds the site. */
+.demo-export .demo-primary,
+.demo-primary {
+  width: 100%;
+  font-family: "Orbit", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bg, #05070c);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 0.75rem 0.9rem;
+  cursor: pointer;
+}
+
+.demo-export .demo-primary:hover,
+.demo-primary:hover {
+  filter: brightness(1.12);
+  background: var(--accent);
+}
+
+.demo-export-top {
+  margin-bottom: 0.9rem;
+}
+
+.demo-export-top .demo-hint {
+  margin-top: 0.4rem;
+}
+
+.demo-export .demo-text-row {
+  margin-bottom: 0.4rem;
+}
+
+.demo-export .demo-text-row .demo-primary {
+  flex: 2;
+}
+
+.demo-universe {
+  margin: 0 0 0.6rem;
+  padding: 0.7rem 0.75rem 0.4rem;
+  border: 1px solid rgb(var(--accent-rgb) / 0.22);
+  background: rgb(var(--accent-rgb) / 0.04);
+}
+
+.demo-universe .demo-kicker-gap {
+  margin-top: 0;
+}
+
+.demo-details {
+  margin: 0.2rem 0 0.6rem;
+  font-family: "Syne Mono", monospace;
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+
+.demo-details summary {
+  cursor: pointer;
+  font-family: "Orbit", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 0.35rem 0;
+}
+
+.demo-details > .demo-field:first-of-type {
+  margin-top: 0.4rem;
+}
+
+.demo-details > button,
+.demo-universe button {
+  font-family: "Orbit", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(6, 10, 18, 0.6);
+  border: 1px solid rgb(var(--accent-rgb) / 0.45);
+  padding: 0.45rem 0.6rem;
+  margin-bottom: 0.7rem;
+  cursor: pointer;
+}
+
+.demo-details > button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.demo-details textarea {
+  width: 100%;
+  resize: vertical;
+  background: rgba(3, 6, 12, 0.9);
+  border: 1px solid rgb(var(--accent-rgb) / 0.3);
+  color: var(--ink);
+  font-family: "Syne Mono", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0.45rem;
+}
+
+.demo-details input {
+  background: rgba(3, 6, 12, 0.9);
+  border: 1px solid rgb(var(--accent-rgb) / 0.3);
+  color: var(--ink);
+  font-family: "Syne Mono", monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0.45rem 0.55rem;
+}
+
+.demo-ok {
+  color: #86efac;
+}
+
+.demo-warn {
+  color: #fca5a5;
+}
+
+.demo-gallery-basics .demo-card {
+  opacity: 0.8;
+}
+
 @media (max-width: 720px) {
   .demo-hud {
     top: auto;

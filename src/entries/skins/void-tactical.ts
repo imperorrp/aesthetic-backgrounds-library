@@ -30,4 +30,16 @@ export {
   voidSectorPreset,
 } from '../../engine/skins/void-tactical/layers';
 export type { VoidTacticalOptions } from '../../engine/skins/void-tactical/runtime';
+export {
+  registerUniverse,
+  getUniverse,
+  listUniverses,
+  validateUniverse,
+  universePrompt,
+  VOID_PACK,
+  SALTWIND_PACK,
+  CHOIR_PACK,
+} from '../../engine/skins/void-tactical/universe';
+export type { UniversePack, UniverseValidation, ShipClass, AnomalyStyle, StructureRole } from '../../engine/skins/void-tactical/universe';
+export { githubUniverse, packFromGithub, GithubUniverseError } from '../../engine/skins/void-tactical/github';
 export type { OverlayFlags, OverlayId } from '../../engine/skins/void-tactical/overlays/flags';
