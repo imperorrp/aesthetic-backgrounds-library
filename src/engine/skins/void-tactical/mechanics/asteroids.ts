@@ -74,7 +74,7 @@ registerMechanic({
     };
 
     const hire = () => {
-      const docks = api.structures().filter((s) => (s.role === 'mine' || s.role === 'dock') && api.onScreen(s.x, s.y, 100));
+      const docks = api.structures().filter((s) => !s.z && (s.role === 'mine' || s.role === 'dock') && api.onScreen(s.x, s.y, 100));
       const from = docks.length ? docks[Math.floor(api.rng() * docks.length)] : null;
       const v = api.view();
       const at = from ? { x: from.x, y: from.y } : { x: v.right + 40, y: 60 + api.rng() * (api.height - 120) };

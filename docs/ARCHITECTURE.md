@@ -1,0 +1,149 @@
+# Architecture
+
+How the engine is put together, for anyone (or any agent) extending it. The README
+says what it does; [REFERENCE.md](REFERENCE.md) lists the API. This page explains how the
+pieces fit, and the conventions that keep them fitting.
+
+## Layers
+
+```mermaid
+flowchart TB
+  host["core host · createBackground<br/>canvas, DPR, clock, seeded rng, palette, light, quiet zones, pointer, scroll"]
+  sim["engine/sim · renderer-agnostic, node-testable<br/>view (camera + depth) · bus (events) · director (camera operator) · spatial hash"]
+  domain["domains · plain data stepped by pure functions<br/>star map: systems, structures, fleets, anomalies"]
+  plugins["mechanics · plugins per universe<br/>raids, mining, storms, songs, the maw, war..."]
+  render["renderers · draw in screen space through the view"]
+  host --> sim --> domain --> plugins
+  domain --> render
+  plugins --> render
+```
+
+- **Host** (`engine/core`). Sizes the canvas, runs the clock, and owns the user-facing
+  policies: reduced motion, pausing, the quality governor, legibility. It knows nothing
+  about any particular background.
+- **Sim** (`engine/sim`). Small modules with no DOM: the `View` (camera and projection),
+  the `Bus` (event stream), the `Director` (camera operator), and a spatial hash. A node
+  test can import any of them directly.
+- **Domain**. The star map's world (`skins/void-tactical/world.ts`) holds plain data and
+  steps it with pure functions (`fleets.ts`). Randomness comes from named, seeded streams
+  (`host.fork('fleets')`), so a seed replays exactly.
+- **Mechanics**. Plugins that own a piece of what happens: they spawn and steer fleets,
+  emit events, and draw at a pass. A universe pack lists the ones it runs.
+- **Renderers**. Free functions that draw the domain, projecting every point through
+  the view.
+
+## One frame
+
+```mermaid
+sequenceDiagram
+  participant H as host clock
+  participant W as world.update
+  participant D as director
+  participant M as mechanics + services
+  participant R as renderers
+  H->>W: t, dt
+  W->>W: drift the base frame, cull and spawn scenery, run structures
+  W->>D: recent bus events + pointer + gestures
+  D->>D: pick a focus, spring the camera
+  W->>W: step fleets
+  W->>M: update each mechanic, then service hooks, then effects
+  H->>R: stars → ground → under → systems, lanes, structures → grid → anomalies → mid → fleets → over → chatter + labels → lock → hud
+```
+
+`SkinInstance.advance(info)` runs the update without drawing. The host uses it for time
+scale above 1 and `fastForward`; the lab and the headless runner use it to skip ahead cheaply.
+
+## Space, the camera, and depth
+
+World space: x grows right (the map streams this way), y grows down, z is depth (0 is
+the main plane, larger is farther). The view projects a point as
+
+```
+s  = zoom / (1 + z)
+sx = W/2 + (x - camera.x) * s
+sy = H/2 + (y - camera.y) * s
+```
+
+Two frames matter:
+- the **base frame**: where the camera would be with no director (the steady drift, zoom 1).
+  Spawning, culling, and behavior decisions use it, so they never depend on where the
+  camera happens to look.
+- the **camera**: what is drawn. The director (or the user, in interactive mode) can zoom
+  in, never out, and look around only inside the base frame, so nothing unpopulated shows.
+
+Depth gives the map volume: `look.depth` of the scenery sits on far planes (z 0.55 and 1.1),
+smaller, dimmer, and slower. Fleets carry a `z` too; a plan eases depth from `z0` to `z1`,
+so a freighter bound for a far station sinks into the distance as it flies.
+
+**Rendering rule.** Core renderers project every point (`view.sx/sy`) and scale sizes by
+`view.scale(z)`. Text is always drawn at its pixel size at a projected point, and sprites
+are re-rasterized at the nearest font size, so nothing blurs at any zoom.
+
+**Mechanic rule.** Mechanic draw passes run inside the camera transform. Draw in *map
+space* (`api.screenX(x)`, world `y`), as if the camera never moved; pan and zoom apply on
+their own. Mechanics live on the main plane: skip anything with `z`.
+
+## Events
+
+Everything noteworthy goes on the bus as a plain object:
+
+```ts
+api.emit({ type: 'raid', x, y, weight: 0.85, color, follow: api.follow(target) });
+```
+
+`weight` (0..1) is how much it matters. The director uses it to choose what to look at,
+audio uses it for loudness, and tooling uses the log. `follow` lets the camera track a
+moving subject until it is gone. Lines said on the map are `say` events. High-priority
+lines also emit an `alert`, so even a mechanic that never emits anything still draws the
+camera's attention.
+
+## Extending
+
+A mechanic:
+
+```ts
+registerMechanic({
+  id: 'patrol', label: 'Patrols', description: '…',
+  schema: { rate: { type: 'number', min: 0.1, max: 2, default: 0.5 } },
+  create(api, params) {
+    return {
+      update(dt) { /* spawn, steer, emit */ },
+      draw(ctx, pass, frame, board) { /* map space */ },
+    };
+  },
+});
+```
+
+A shared service (an economy, a signal network, a flow field) is a module that exports a
+`useX(api)` accessor:
+
+```ts
+export const useLedger = (api: MechanicApi) => api.use('ledger', () => {
+  const ledger = createLedger();
+  api.onUpdate((dt) => ledger.tick(dt));
+  api.onDraw('mid', (ctx) => ledger.draw(ctx));
+  return ledger;
+});
+```
+
+It is created on first use, shared by every mechanic that asks for it, and never shipped
+or run by a universe that does not import it.
+
+Conventions:
+- No `Math.random`, `Date.now`, or timers. Fork a stream: `host.fork('my-thing')`.
+- Move by `dt`. Never assume 60 fps.
+- Factory functions returning a documented interface (`createX(): X`), plain data objects,
+  pure step functions. A comment at the top of each file says what it is for.
+- A mechanic that throws is switched off with a warning; the scene keeps running.
+
+## Fast checks
+
+| Tool | What it does | Typical time |
+|---|---|---|
+| `pnpm sim choir 90` | Steps a universe sim-only in node and prints counts, the event log, and problems (NaN, empty fleets, runaway counts, failed mechanics). Exits 1 on problems. | ~1–4 s |
+| `pnpm lab u=siege seek="FALLS TO" after=0.5,3,8` | One browser page: fast-forwards to a moment and saves a contact sheet PNG. Also `t=…`, `every=…`, `crop=…`, `dsf=2`, `opt.camera=cinematic`. | ~2–6 s |
+| `?debug` in the studio | Time scale ×1/×4/×16, skip 30 s, live counts, the event log. | live |
+| `*.sim.test.ts` | Node-environment tests built on the headless runner. | seconds |
+| `pnpm test:e2e` | Screenshot, contrast, and replay gates in a real browser. | minutes |
+
+Typecheck with `pnpm typecheck` (`tsc -b`).

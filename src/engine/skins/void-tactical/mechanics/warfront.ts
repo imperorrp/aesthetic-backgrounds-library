@@ -74,11 +74,12 @@ registerMechanic({
       a.phase = b.phase = 'fight';
       a.until = b.until = api.t + 26;
       api.say(`CONTACT ALONG THE FRONT`, at, y - 20, api.host.palette.ink, { priority: 'medium', duration: 3500 });
+      api.emit({ type: 'combat', x: at, y, weight: 0.65, follow: api.follow(a.f) });
     };
 
     const volley = () => {
       const side = api.rng() < 0.5 ? 0 : 1;
-      const enemy = api.world.systems.filter((s) => owner.get(s.id) === 1 - side && api.onScreen(s.x, s.y, 0));
+      const enemy = api.world.systems.filter((s) => !s.z && owner.get(s.id) === 1 - side && api.onScreen(s.x, s.y, 0));
       if (!enemy.length) return;
       const target = enemy[Math.floor(api.rng() * enemy.length)];
       const v = api.view();
@@ -99,7 +100,7 @@ registerMechanic({
         combat.update(dt);
         // Ownership follows the front; a system the front passes changes hands.
         for (const s of api.world.systems) {
-          if (!api.onScreen(s.x, s.y, 60)) continue;
+          if (s.z || !api.onScreen(s.x, s.y, 60)) continue;
           const side = api.screenX(s.x) < frontX(s.y, api.t) ? 0 : 1;
           const prev = owner.get(s.id);
           if (prev === undefined) owner.set(s.id, side);
@@ -108,6 +109,7 @@ registerMechanic({
             api.fx.ring(s.x, s.y, colorOf(side), 90, 1.4, 4, 2);
             api.fx.flash(s.x, s.y, colorOf(side), 40, 0.8);
             api.say(`${s.name} FALLS TO ${nameOf(side)}`, s.x, s.y + 30, colorOf(side), { priority: 'high', duration: 5000 });
+            api.emit({ type: 'capture', x: s.x, y: s.y, weight: 0.85, color: colorOf(side), side });
           }
         }
         if (api.t >= nextClash) {

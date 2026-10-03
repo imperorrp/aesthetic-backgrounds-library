@@ -8,7 +8,7 @@
  */
 
 import type { SystemState } from '../types';
-import { crispPx, hexRgba, type CanvasContext, type RenderFrame } from './utils';
+import { crispPx, depthAlpha, hexRgba, type CanvasContext, type RenderFrame } from './utils';
 import { shouldShowAnomalyScanline, shouldShowAnomalyText, shouldShowFleetLabel } from '../labels';
 import { classLabel, predictPath } from '../fleets';
 import { drawShip, SHIP_SPECS } from '../ships';
@@ -39,31 +39,35 @@ function strokeRamp(ctx: CanvasContext, pts: number[], color: string, a0: number
 export const renderFleets = (
   ctx: CanvasContext,
   world: SystemState,
-  camera: { x: number; y: number },
+  _camera: { x: number; y: number },
   viewport: { width: number; height: number },
   frame: RenderFrame,
   board?: LabelBoard,
 ) => {
-  const off = camera.x * frame.parallax;
+  const v = frame.view;
   const lw = frame.style.lineWeight;
   const density = world.settings.labelDensity;
   const t = frame.time;
   const hudText = 0.4 + 0.6 * frame.style.hud;
+  // Far fleets first, so near ones pass in front of them.
+  const fleets = world.fleets.some((f) => f.z) ? [...world.fleets].sort((a, b) => b.z - a.z) : world.fleets;
 
   ctx.save();
   ctx.lineCap = 'round';
-  for (const f of world.fleets) {
+  for (const f of fleets) {
     const L = f.ships[0];
-    const lx = L.x - off;
-    const ly = L.y;
+    const z = f.z;
+    const k = v.scale(z);
+    const lx = v.sx(L.x, z);
+    const ly = v.sy(L.y, z);
     if (lx < -160 || lx > viewport.width + 160 || ly < -160 || ly > viewport.height + 160) continue;
-    const a = Math.max(0, Math.min(1, f.fade));
+    const a = Math.max(0, Math.min(1, f.fade)) * depthAlpha(z);
     const color = frame.color(L.color);
 
     // Trail: where the leader has actually been, ending at the ship.
     if (frame.style.trails > 0.02 && f.trail.length >= 4 && a > 0.05) {
       path.length = 0;
-      for (let i = 0; i < f.trail.length; i += 2) path.push(f.trail[i] - off, f.trail[i + 1]);
+      for (let i = 0; i < f.trail.length; i += 2) path.push(v.sx(f.trail[i], z), v.sy(f.trail[i + 1], z));
       path.push(lx, ly);
       ctx.lineWidth = lw;
       ctx.setLineDash([2, 4]);
@@ -74,7 +78,10 @@ export const renderFleets = (
     // Course: the unflown part of the same plan, starting at the ship.
     if (frame.style.paths !== 'off' && (f.mode === 'transit' || f.mode === 'orbit') && a > 0.3) {
       predictPath(f, t, 3.2, 5, path);
-      for (let i = 0; i < path.length; i += 2) path[i] -= off;
+      for (let i = 0; i < path.length; i += 2) {
+        path[i] = v.sx(path[i], z);
+        path[i + 1] = v.sy(path[i + 1], z);
+      }
       if (frame.style.paths === 'dashed') {
         ctx.lineWidth = lw;
         ctx.setLineDash([4, 6]);
@@ -106,8 +113,8 @@ export const renderFleets = (
       }
       // Where the plan ends inside the horizon, mark the destination.
       if (f.mode === 'transit' && f.plan && f.target && f.target.kind !== 'exit' && f.plan.t0 + f.plan.T - t < 3.2) {
-        const ex = f.plan.p1x - off;
-        const ey = f.plan.p1y;
+        const ex = v.sx(f.plan.p1x, f.plan.z1);
+        const ey = v.sy(f.plan.p1y, f.plan.z1);
         ctx.strokeStyle = hexRgba(color, 0.45 * a);
         ctx.lineWidth = lw * 0.8;
         ctx.beginPath();
@@ -128,19 +135,19 @@ export const renderFleets = (
       const sp = Math.hypot(s.vx, s.vy);
       const thrust = thrustBase * Math.max(0.25, Math.min(1, sp / spec.speed));
       const flicker = 0.5 + 0.5 * Math.sin(t * 23 + i * 1.7 + seed * 40);
-      drawShip(ctx, s.cls, s.x - off, s.y, s.heading, frame.color(s.color), a, thrust, flicker, frame.style.shipScale);
-      board?.reserve(s.x - off, s.y, spec.size * 0.45 * frame.style.shipScale);
+      drawShip(ctx, s.cls, v.sx(s.x, z), v.sy(s.y, z), s.heading, frame.color(s.color), a, thrust, flicker, frame.style.shipScale * k);
+      board?.reserve(v.sx(s.x, z), v.sy(s.y, z), spec.size * 0.45 * frame.style.shipScale * k);
     }
 
     const locked = world.lock?.kind === 'fleet' && world.lock.id === f.id && frame.style.lock;
-    if (board && shouldShowFleetLabel(density, f.showLabel) && a > 0.4 && !locked) {
+    if (board && shouldShowFleetLabel(density, f.showLabel) && a > 0.4 && !locked && z < 0.8) {
       const cls = classLabel(frame.pack, f.cls);
       board.add({
         // Named fleets ("PUSH API", "PR #12") already say what they are.
         text: f.callsign.startsWith(cls) || /[ #]/.test(f.callsign) ? f.callsign : `${cls} ${f.callsign}`,
         x: lx,
         y: ly,
-        offset: SHIP_SPECS[f.cls].size * 0.5 * frame.style.shipScale + 4,
+        offset: SHIP_SPECS[f.cls].size * 0.5 * frame.style.shipScale * k + 4,
         color: frame.palette.ink,
         alpha: 0.72 * hudText * a,
         font: LABEL_FONT,
@@ -155,17 +162,18 @@ export const renderFleets = (
 export const renderAnomalies = (
   ctx: CanvasContext,
   world: SystemState,
-  camera: { x: number; y: number },
+  _camera: { x: number; y: number },
   viewport: { width: number; height: number },
   frame: RenderFrame,
   board?: LabelBoard,
 ) => {
-  const off = camera.x * frame.parallax;
+  const v = frame.view;
+  const k = v.zoom;
   const density = world.settings.labelDensity;
   const hudText = 0.4 + 0.6 * frame.style.hud;
   for (const a of world.anomalies) {
-    const x = a.x - off;
-    const y = a.y;
+    const x = v.sx(a.x);
+    const y = v.sy(a.y);
     if (x < -60 || x > viewport.width + 60 || y < -60 || y > viewport.height + 60) continue;
     const fadeIn = Math.max(0, Math.min(1, (frame.time - a.born) / 1.4));
     const color = frame.color(a.color);
@@ -175,14 +183,22 @@ export const renderAnomalies = (
       ctx.fillStyle = hexRgba(color, 0.035 * fadeIn);
       ctx.fillRect(x, 0, 1, viewport.height);
     }
-    drawAnomaly(ctx, a.style, crispPx(x, frame.dpr), crispPx(y, frame.dpr), frame.time, a.seed, color, alpha, frame.style.lineWeight * 0.8);
-    board?.reserve(x, y, ANOMALY_RING + 3);
+    if (k === 1) {
+      drawAnomaly(ctx, a.style, crispPx(x, frame.dpr), crispPx(y, frame.dpr), frame.time, a.seed, color, alpha, frame.style.lineWeight * 0.8);
+    } else {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(k, k);
+      drawAnomaly(ctx, a.style, 0, 0, frame.time, a.seed, color, alpha, (frame.style.lineWeight * 0.8) / k);
+      ctx.restore();
+    }
+    board?.reserve(x, y, (ANOMALY_RING + 3) * k);
     if (board && shouldShowAnomalyText(density)) {
       board.add({
         text: a.text,
         x,
         y,
-        offset: ANOMALY_RING + 5,
+        offset: ANOMALY_RING * k + 5,
         color,
         alpha: 0.8 * hudText * fadeIn,
         font: SMALL_FONT,

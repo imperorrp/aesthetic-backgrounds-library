@@ -53,6 +53,11 @@ export type BackgroundConfig = {
   legibility?: LegibilityConfig;
   /** Extra zones where layers recede (negative space), in normalized canvas coordinates. */
   quiet?: NormRect[];
+  /**
+   * Let the background take the wheel (zoom) and drags on empty page areas (pan), for
+   * wallpaper-like pages. Default false: the page keeps every gesture.
+   */
+  interactive?: boolean;
 };
 
 export type ResolvedLegibility = { mode: 'auto' | 'off' | 'fixed'; selector: string; strength: number };
@@ -73,6 +78,7 @@ export type ResolvedBackgroundConfig = {
   light: { angle: number; warmth: number };
   legibility: ResolvedLegibility;
   quiet: NormRect[];
+  interactive: boolean;
 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -131,6 +137,7 @@ export function resolveBackgroundConfig(config: BackgroundConfig = {}): Resolved
       width: clamp(q.width, 0, 1),
       height: clamp(q.height, 0, 1),
     })),
+    interactive: config.interactive ?? false,
   };
 }
 

@@ -58,6 +58,9 @@ export function createBackground<T = any>(
     isTouch: coarsePointer || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0),
   };
   const pointer: PointerState = { x: 0, y: 0, nx: 0.5, ny: 0.5, vx: 0, vy: 0, active: false, down: false, idle: Infinity };
+  const scroll = { y: typeof window !== 'undefined' ? window.scrollY || 0 : 0 };
+  /** Gestures accumulated since the skin last took them (interactive mode only). */
+  const gesture = { zoom: 1, panX: 0, panY: 0 };
 
   const reducedQuery = typeof window.matchMedia === 'function'
     ? window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -102,6 +105,14 @@ export function createBackground<T = any>(
     options: options.options as T,
     viewport,
     pointer,
+    scroll,
+    takeGesture() {
+      const g = { ...gesture };
+      gesture.zoom = 1;
+      gesture.panX = 0;
+      gesture.panY = 0;
+      return g;
+    },
     get motion() {
       return state.motion;
     },
@@ -182,6 +193,18 @@ export function createBackground<T = any>(
   let lastTs = -1;
   let frameIndex = 0;
   let costEma = 0;
+  /** Seconds simulated beyond the wall clock (time scale above 1, fastForward). */
+  let skipped = 0;
+  /** `t` of the last simulated step, so fastForward continues from it. */
+  let lastT = 0;
+  let timeScale = 1;
+
+  /** One sim-only step: the skin's `advance`, or a full frame for skins without one. */
+  const simulate = (info: FrameInfo) => {
+    lastT = info.t;
+    if (instance!.advance) instance!.advance(info);
+    else instance!.frame(info);
+  };
 
   /**
    * Two levers, in order: resolution (backing-store scale 1 → 0.75 → 0.5), then content
@@ -211,7 +234,14 @@ export function createBackground<T = any>(
     const rawDt = lastTs < 0 ? interval : timestamp - lastTs;
     lastTs = timestamp;
     const dt = Math.min(Math.max(rawDt, 0), MAX_DT * 1000) / 1000;
-    const info: FrameInfo = { t: (timestamp - startTime) / 1000, dt, frame: frameIndex++, timestamp };
+    const wall = (timestamp - startTime) / 1000;
+    // Time scale k: k - 1 sim-only steps of dt, then the drawn frame, all on one timeline.
+    for (let i = 1; i < timeScale; i++) {
+      simulate({ t: wall + skipped, dt, frame: frameIndex++, timestamp });
+      skipped += dt;
+    }
+    const info: FrameInfo = { t: wall + skipped, dt, frame: frameIndex++, timestamp };
+    lastT = info.t;
 
     pointer.idle += dt;
     const decay = Math.exp(-dt * 6);
@@ -297,6 +327,7 @@ export function createBackground<T = any>(
   // scroll, coalesced to one measurement per frame.
   let scrollPending = false;
   const onScroll = () => {
+    scroll.y = window.scrollY || 0;
     if (scrollPending || resolved.legibility.mode === 'off') return;
     scrollPending = true;
     const run = () => {
@@ -306,11 +337,31 @@ export function createBackground<T = any>(
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
     else run();
   };
-  const onPointerDown = () => {
+  // Interactive mode: the wheel zooms and a drag on empty page area pans. "Empty" means the
+  // event target is the page itself or the engine, never a link, input, or text block.
+  const isBackdrop = (el: EventTarget | null) =>
+    el === document.body || el === document.documentElement || (el instanceof Element && !!el.closest('.bg-engine-root'));
+  let dragging = false;
+  const onPointerDown = (e: PointerEvent) => {
     pointer.down = true;
+    dragging = resolved.interactive && isBackdrop(e.target);
   };
   const onPointerUp = () => {
     pointer.down = false;
+    dragging = false;
+  };
+  const onDragMove = (e: PointerEvent) => {
+    if (!dragging) return;
+    gesture.panX += e.movementX;
+    gesture.panY += e.movementY;
+  };
+  const onWheel = (e: WheelEvent) => {
+    if (!isBackdrop(e.target)) return;
+    // Only claim the wheel when the page has nothing to scroll; otherwise it is the page's.
+    const root = document.scrollingElement ?? document.documentElement;
+    if (root.scrollHeight > root.clientHeight + 2 && !e.ctrlKey) return;
+    e.preventDefault();
+    gesture.zoom *= Math.exp(-e.deltaY * 0.0015);
   };
 
   let resizeObserver: ResizeObserver | undefined;
@@ -335,6 +386,10 @@ export function createBackground<T = any>(
   window.addEventListener('pointerdown', onPointerDown, { passive: true });
   window.addEventListener('pointerup', onPointerUp, { passive: true });
   window.addEventListener('pointercancel', onPointerUp, { passive: true });
+  if (resolved.interactive) {
+    window.addEventListener('pointermove', onDragMove, { passive: true });
+    window.addEventListener('wheel', onWheel, { passive: false });
+  }
   document.addEventListener('visibilitychange', onVisibility);
   reducedQuery?.addEventListener?.('change', onMotionChange);
 
@@ -364,6 +419,31 @@ export function createBackground<T = any>(
         shade: contentRects.length ? autoShadeStrength(resolved.legibility, effectiveIntensity()) : 0,
       };
     },
+    fastForward(seconds, { step = 1 / 60, until } = {}) {
+      if (destroyed || seconds <= 0) return 0;
+      if (startTime < 0) {
+        // Nothing drawn yet: anchor the clock now so the first frame continues from here.
+        startTime = scheduler.now();
+        lastT = -step;
+      }
+      const from = lastT;
+      const n = Math.round(seconds / step);
+      let done = 0;
+      for (let i = 1; i <= n; i++) {
+        const info: FrameInfo = { t: from + i * step, dt: step, frame: frameIndex++, timestamp: lastTs < 0 ? startTime : lastTs };
+        simulate(info);
+        done = i * step;
+        if (until?.(info)) break;
+      }
+      skipped += done;
+      return done;
+    },
+    setTimeScale(scale) {
+      timeScale = Math.max(1, Math.min(32, Math.round(scale)));
+    },
+    inspect() {
+      return instance?.inspect?.();
+    },
     destroy() {
       if (destroyed) return;
       destroyed = true;
@@ -378,6 +458,8 @@ export function createBackground<T = any>(
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
+      window.removeEventListener('pointermove', onDragMove);
+      window.removeEventListener('wheel', onWheel);
       document.removeEventListener('visibilitychange', onVisibility);
       reducedQuery?.removeEventListener?.('change', onMotionChange);
       instance?.destroy();

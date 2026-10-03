@@ -1754,6 +1754,25 @@
                           ],
                           "default": "void"
                         },
+                        "camera": {
+                          "description": "Steady: the classic fixed framing. Director: now and then it leans in on something happening. Cinematic: it chases the action.",
+                          "enum": [
+                            "steady",
+                            "director",
+                            "cinematic"
+                          ],
+                          "default": "director"
+                        },
+                        "lean": {
+                          "description": "The camera drifts a few percent toward the mouse",
+                          "type": "boolean",
+                          "default": true
+                        },
+                        "scroll": {
+                          "description": "Scrolling down the page carries the map forward through the sector",
+                          "type": "boolean",
+                          "default": false
+                        },
                         "hueVariety": {
                           "description": "0 pulls every entity into the palette family; 1 keeps the original rainbow",
                           "type": "number",

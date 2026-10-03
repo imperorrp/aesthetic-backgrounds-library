@@ -43,10 +43,15 @@ export interface Ship {
   hp: number;
 }
 
-/** Cubic Hermite path from p0 (velocity v0) to p1 (velocity v1) over T seconds from t0. */
+/**
+ * Cubic Hermite path from p0 (velocity v0) to p1 (velocity v1) over T seconds from t0.
+ * Depth eases from z0 to z1 along the way, so a fleet bound for a far station visibly
+ * sinks into the distance as it goes.
+ */
 export interface FleetPlan {
   p0x: number; p0y: number; v0x: number; v0y: number;
   p1x: number; p1y: number; v1x: number; v1y: number;
+  z0: number; z1: number;
   T: number;
   t0: number;
 }
@@ -56,6 +61,8 @@ export interface FleetTarget {
   id?: string;
   x: number;
   y: number;
+  /** Depth of the target (0 = main plane). */
+  z?: number;
   label?: string;
   role?: StructureRole;
 }
@@ -72,6 +79,8 @@ export interface Fleet {
   purpose: FleetPurpose;
   /** ships[0] is the leader; the rest hold formation slots. */
   ships: Ship[];
+  /** Depth of the whole fleet (0 = main plane; see `View`). */
+  z: number;
   formation: Formation;
   spacing: number;
   mode: FleetMode;
@@ -118,6 +127,8 @@ export interface Structure {
   chatter: string[];
   x: number;
   y: number;
+  /** Depth: 0 on the main plane, up to ~1.2 far behind it (smaller, slower, dimmer). */
+  z?: number;
   size: number;
   color?: string;
   active?: boolean;
@@ -134,6 +145,8 @@ export interface StarSystem {
   name: string;
   x: number;
   y: number;
+  /** Depth (see `Structure.z`). */
+  z?: number;
   starColor: string;
   starRadius: number;
   planets: Planet[];
@@ -200,6 +213,8 @@ export interface TacticalElement {
   color: string;
   glow?: boolean;
   followId?: string; // Optional id of a fleet this overlay tracks
+  /** Depth of what it is about (follows the fleet's depth). */
+  z?: number;
   lifetime: number;       // ms remaining
   duration: number;       // initial ms duration
   anchor: 'screen' | 'world'; // world => transform by camera

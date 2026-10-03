@@ -22,8 +22,11 @@ import { allStructures, chooseTarget, classLabel, goTo, spawnFleet, stepFleet, t
 import { createColorMapper, WORLD_SPEED_MULTIPLIER, type RenderFrame, type VoidStyle } from './renderers/utils';
 import { DEFAULT_EVENTS, resolveUniverse, type ShipClass, type UniversePack } from './universe';
 import { SHIP_SPECS } from './ships';
-import type { FrameInfo, SkinHost, Viewport } from '../../core/skin';
+import type { FrameInfo, SkinHost, SkinInspection, Viewport } from '../../core/skin';
 import { resolveOptions, type Schema } from '../../core/schema';
+import { createView, type View } from '../../sim/view';
+import { createBus, type Bus, type WorldEvent } from '../../sim/bus';
+import { createDirector, type CameraMode } from '../../sim/director';
 
 /** Screen x = world x - camera.x * MAP_PARALLAX for everything on the map plane. */
 export const MAP_PARALLAX = 0.25 * WORLD_SPEED_MULTIPLIER;
@@ -48,13 +51,32 @@ export const STYLE_SCHEMA: Schema = {
   lock: { type: 'boolean', default: true, label: 'Target lock', description: 'Brackets close on a contact every half minute while its data types out' },
 };
 
+/** How the camera behaves: the director leans in on events; input options add the pointer. */
+export const CAMERA_SCHEMA: Schema = {
+  camera: {
+    type: 'enum',
+    values: ['steady', 'director', 'cinematic'],
+    default: 'director',
+    label: 'Camera',
+    description: 'Steady: the classic fixed framing. Director: now and then it leans in on something happening. Cinematic: it chases the action.',
+  },
+  lean: { type: 'boolean', default: true, label: 'Lean toward the pointer', description: 'The camera drifts a few percent toward the mouse' },
+  scroll: { type: 'boolean', default: false, label: 'Travel with the page scroll', description: 'Scrolling down the page carries the map forward through the sector' },
+};
+
+/** Fleet events as camera interest and sound weight (0..1). */
+const FLEET_EVENT_WEIGHT: Record<string, number> = { launch: 0.3, jump: 0.35, arrive: 0.35, cargo: 0.15, survey: 0.2, dock: 0.1, depart: 0.1, approach: 0.1 };
+
 export function resolveStyle(options: unknown): VoidStyle {
   return resolveOptions(STYLE_SCHEMA, options) as unknown as VoidStyle;
 }
 
 export type VoidWorld = {
   world: SystemState;
+  /** The drift accumulator (the classic camera); `view` is what is actually drawn. */
   camera: { x: number; y: number };
+  view: View;
+  bus: Bus;
   readonly width: number;
   readonly height: number;
   /** Advance spawning, fleets, culling, and the camera by one frame. Idempotent per `info.frame`. */
@@ -64,6 +86,8 @@ export type VoidWorld = {
   frameFor(info: FrameInfo, style: VoidStyle): RenderFrame;
   /** Draw the universe's mechanics (and, in the `over` pass, effects) at one depth. */
   drawPass(ctx: CanvasRenderingContext2D, pass: MechanicPass, frame: RenderFrame, board?: LabelBoard): void;
+  /** Counts, the log of everything said on the map, and any problems, for tooling. */
+  inspect(): SkinInspection;
 };
 
 const fill = (template: string, target?: string) => template.replace(/\{target\}/i, target ?? 'UNKNOWN');
@@ -71,7 +95,7 @@ const fill = (template: string, target?: string) => template.replace(/\{target\}
 export function createVoidWorld(host: SkinHost): VoidWorld {
   const { rng, config, palette } = host;
   const pack: UniversePack = resolveUniverse(host.options as { universe?: unknown; pack?: unknown });
-  const look = { lanes: 'straight', grid: 'crosses', traffic: 1, anomalies: 1, ...pack.look };
+  const look = { lanes: 'straight', grid: 'crosses', traffic: 1, anomalies: 1, depth: 0.35, ...pack.look };
   let width = host.viewport.width;
   let height = host.viewport.height;
   const frameRng = host.fork('frame');
@@ -113,7 +137,21 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
   const camera = { x: 0, y: 0 };
   const P = MAP_PARALLAX;
   const nextId = () => ++world.seq;
+  /** The base frame on the main plane, in world units (spawning, culling, fleet reach). */
   const view = (): SimView => ({ left: camera.x * P, right: camera.x * P + width, top: 0, bottom: height });
+
+  // ---- camera, events, director ----------------------------------------------------------------
+  const cam = createView(width, height);
+  const bus = createBus(() => now);
+  const opts = (host.options ?? {}) as { camera?: unknown; lean?: unknown; scroll?: unknown };
+  let lastScrollY = host.scroll?.y ?? 0;
+  const cameraMode: CameraMode = opts.camera === 'steady' || opts.camera === 'cinematic' ? opts.camera : 'director';
+  const director = createDirector(cam, bus, cameraMode, host.fork('director'));
+  /** Base-frame screen position at depth z (ignores the director): for reach and culling. */
+  const baseSx = (x: number, z = 0) => width / 2 + (x - cam.baseX) / (1 + z);
+  const baseSy = (y: number, z = 0) => height / 2 + (y - cam.baseY) / (1 + z);
+  const syncBase = () => cam.setBase(camera.x * P + width / 2, height / 2);
+  syncBase();
 
   let now = 0;
   let systemIndex = 0;
@@ -122,8 +160,12 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
   const recentRoles: StructureRole[] = [];
   const recentAnomalies: string[] = [];
 
+  /** Problems noticed along the way (failed mechanics), for `inspect()`. */
+  const problems: string[] = [];
+
   // ---- overlays (event text and ambient chatter) -------------------------------------------
   const say = (el: Omit<TacticalElement, 'id' | 'lifetime' | 'createdAt' | 'anchor' | 'type'> & { type?: TacticalElement['type'] }) => {
+    if (!silent) bus.emit({ type: 'say', text: el.text, priority: el.priority, x: el.x, y: el.y, color: el.color });
     if (world.settings.maxOverlays <= 0) return;
     if (world.overlays.length >= world.settings.maxOverlays) {
       // Events outrank ambient chatter: replace the oldest low-priority line.
@@ -136,9 +178,12 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
   };
 
   let silent = false;
+  /** Where a fleet's leader is now, while it exists: lets the camera track it. */
+  const followFleet = (f: Fleet) => () => (f.mode !== 'gone' && f.ships[0] ? { x: f.ships[0].x, y: f.ships[0].y, z: f.z } : null);
   const onEvent = (e: FleetEvent) => {
     if (silent) return;
     const L = e.fleet.ships[0];
+    bus.emit({ type: e.kind, x: L.x, y: L.y, z: e.fleet.z, weight: FLEET_EVENT_WEIGHT[e.kind] ?? 0.1, color: L.color, follow: followFleet(e.fleet) });
     const template = pack.events?.[e.kind] ?? DEFAULT_EVENTS[e.kind];
     say({
       text: `${e.fleet.callsign} ${fill(template, e.target)}`,
@@ -151,7 +196,8 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
       type: 'fleet',
     });
   };
-  const ctx = (): FleetCtx => ({ rng: fleetRng, t: now, view: view(), emit: onEvent, nextId });
+  const fleetFrame = { sx: baseSx, sy: baseSy, get width() { return width; }, get height() { return height; } };
+  const ctx = (): FleetCtx => ({ rng: fleetRng, t: now, view: view(), frame: fleetFrame, emit: onEvent, nextId });
 
   // ---- placement ---------------------------------------------------------------------------
   const pushStructure = (next: Structure) => {
@@ -168,25 +214,41 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
   };
   const newSystem = (x: number, y: number) => generateSingleSystem(x, y, rng, palette, pack, systemIndex++);
 
+  /**
+   * Depth for new scenery: most of it on the main plane, `look.depth` of it farther back
+   * (two planes, 0.55 and 1.1). Far scenery covers more world for the same screen, so it
+   * is placed and spaced in units scaled by (1 + z).
+   */
+  const depthFor = (r: number) => (look.depth > 0 && r < look.depth ? (r < look.depth * 0.55 ? 0.55 : 1.1) : 0);
+  /** Same plane, roughly: things only crowd each other on their own plane. */
+  const samePlane = (a: number | undefined, b: number) => Math.abs((a ?? 0) - b) < 0.3;
+
   const placeSystem = () => {
+    const z = depthFor(rng());
+    const k = 1 + z;
     for (let attempt = 0; attempt < 8; attempt++) {
-      const x = camera.x * P + rng() * width;
-      const y = rng() * height;
-      if (!world.systems.some((s) => Math.hypot(s.x - x, s.y - y) < layout.systemDist)) {
-        world.systems.push(newSystem(x, y));
+      const x = cam.baseX + (rng() - 0.5) * width * k;
+      const y = height / 2 + (rng() - 0.5) * height * k;
+      if (!world.systems.some((s) => samePlane(s.z, z) && Math.hypot(s.x - x, s.y - y) < layout.systemDist * k)) {
+        const sys = newSystem(x, y);
+        sys.z = z;
+        world.systems.push(sys);
         return;
       }
     }
-    world.systems.push(newSystem(camera.x * P + rng() * width, rng() * height));
   };
   const placeStructure = () => {
     // Keep clear of other structures and of system cores; give up rather than overlap.
+    const z = depthFor(rng());
+    const k = 1 + z;
     for (let attempt = 0; attempt < 24; attempt++) {
-      const x = camera.x * P + 40 + rng() * (width - 80);
-      const y = 40 + rng() * (height - 80);
-      if (world.structures.some((s) => Math.hypot(s.x - x, s.y - y) < layout.structDist * 0.6)) continue;
-      if (world.systems.some((s) => Math.hypot(s.x - x, s.y - y) < 70)) continue;
-      pushStructure(newStructure(x, y));
+      const x = cam.baseX + (rng() - 0.5) * (width - 80) * k;
+      const y = height / 2 + (rng() - 0.5) * (height - 80) * k;
+      if (world.structures.some((s) => samePlane(s.z, z) && Math.hypot(s.x - x, s.y - y) < layout.structDist * 0.6 * k)) continue;
+      if (world.systems.some((s) => samePlane(s.z, z) && Math.hypot(s.x - x, s.y - y) < 70 * k)) continue;
+      const s = newStructure(x, y);
+      s.z = z;
+      pushStructure(s);
       return;
     }
   };
@@ -279,16 +341,19 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
 
   const tensionAt = (t: number) => Math.max(0, Math.min(1, 0.5 + 0.6 * host.noise.fbm2(t / 110, 7.7, 3)));
 
-  const visibleOnScreen = (x: number, y: number, margin = 0) => {
-    const sx = x - camera.x * P;
-    return sx > margin && sx < width - margin && y > margin && y < height - margin;
+  /** Inside the base frame (not the zoomed camera), so behavior never depends on the director. */
+  const visibleOnScreen = (x: number, y: number, margin = 0, z = 0) => {
+    const sx = baseSx(x, z);
+    const sy = baseSy(y, z);
+    return sx > margin && sx < width - margin && sy > margin && sy < height - margin;
   };
 
   // ---- structure behaviors ----------------------------------------------------------------------
   const runStructures = (rate: number) => {
     for (const s of allStructures(world)) {
       if (now < s.nextAction) continue;
-      if (!visibleOnScreen(s.x, s.y, 30)) {
+      const z = s.z ?? 0;
+      if (!visibleOnScreen(s.x, s.y, 30, z)) {
         s.nextAction = now + 2;
         continue;
       }
@@ -297,7 +362,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
         case 'shipyard': {
           if (!busy) {
             const ang = fleetRng() * Math.PI * 2;
-            const f = launch({ x: s.x + Math.cos(ang) * 16, y: s.y + Math.sin(ang) * 16, vx: Math.cos(ang) * 12, vy: Math.sin(ang) * 12 }, { fadeIn: true });
+            const f = launch({ x: s.x + Math.cos(ang) * 16, y: s.y + Math.sin(ang) * 16, vx: Math.cos(ang) * 12, vy: Math.sin(ang) * 12 }, { fadeIn: true, z });
             s.flashAt = now;
             onEvent({ kind: 'launch', fleet: f, target: s.label });
           }
@@ -310,10 +375,10 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
             const dest = docks[Math.floor(fleetRng() * docks.length)];
             const ang = Math.atan2(dest.y - s.y, dest.x - s.x);
             const c = ctx();
-            const f = spawnFleet(world, c, { x: s.x + Math.cos(ang) * 18, y: s.y + Math.sin(ang) * 18, vx: Math.cos(ang) * 8, vy: Math.sin(ang) * 8 }, { cls: 'freighter', purpose: 'cargo', fadeIn: true });
+            const f = spawnFleet(world, c, { x: s.x + Math.cos(ang) * 18, y: s.y + Math.sin(ang) * 18, vx: Math.cos(ang) * 8, vy: Math.sin(ang) * 8 }, { cls: 'freighter', purpose: 'cargo', fadeIn: true, z });
             world.fleets.push(f);
-            f.target = { kind: 'structure', id: s.id, x: s.x, y: s.y, label: s.label, role: 'mine' };
-            goTo(f, { kind: 'structure', id: dest.id, x: dest.x, y: dest.y, label: dest.label, role: dest.role }, world, c);
+            f.target = { kind: 'structure', id: s.id, x: s.x, y: s.y, z, label: s.label, role: 'mine' };
+            goTo(f, { kind: 'structure', id: dest.id, x: dest.x, y: dest.y, z: dest.z ?? 0, label: dest.label, role: dest.role }, world, c);
             s.flashAt = now;
             onEvent({ kind: 'cargo', fleet: f, target: dest.label });
           }
@@ -324,7 +389,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
           if (!busy) {
             const ang = fleetRng() * Math.PI * 2;
             const cls: ShipClass = (['cruiser', 'carrier', 'freighter', 'fighter', 'capital'] as const)[Math.floor(fleetRng() * 5)];
-            const f = launch({ x: s.x + Math.cos(ang) * 20, y: s.y + Math.sin(ang) * 20, vx: Math.cos(ang) * 14, vy: Math.sin(ang) * 14 }, { cls, fadeIn: true });
+            const f = launch({ x: s.x + Math.cos(ang) * 20, y: s.y + Math.sin(ang) * 20, vx: Math.cos(ang) * 14, vy: Math.sin(ang) * 14 }, { cls, fadeIn: true, z });
             s.flashAt = now;
             onEvent({ kind: 'arrive', fleet: f, target: s.label });
           }
@@ -341,9 +406,9 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
     const p = world.settings.overlaySpawnRate * frames * rate;
     if (p <= 0 || chatterRng() >= p) return;
     const v = view();
-    const onScreen = <T extends { x: number; y: number }>(items: T[]) => items.filter((i) => visibleOnScreen(i.x, i.y, 40));
+    const onScreen = <T extends { x: number; y: number; z?: number }>(items: T[]) => items.filter((i) => visibleOnScreen(i.x, i.y, 40, i.z ?? 0));
     const structs = onScreen(allStructures(world));
-    const fleets = onScreen(world.fleets.map((f) => ({ f, x: f.ships[0].x, y: f.ships[0].y })));
+    const fleets = onScreen(world.fleets.map((f) => ({ f, x: f.ships[0].x, y: f.ships[0].y, z: f.z })));
     const systems = onScreen(world.systems);
     const roll = chatterRng();
     const line = (lines: string[]) => (lines.length ? lines[Math.floor(chatterRng() * lines.length)] : '');
@@ -369,9 +434,10 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
 
   // ---- target lock ------------------------------------------------------------------------------
   const pickLock = () => {
-    const quiet = (x: number, y: number) => host.quiet(x - camera.x * P, y);
-    const fleets = world.fleets.filter((f) => f.mode !== 'docked' && f.fade > 0.8 && visibleOnScreen(f.ships[0].x, f.ships[0].y, 90) && quiet(f.ships[0].x, f.ships[0].y) < 0.3);
-    const structs = allStructures(world).filter((s) => visibleOnScreen(s.x, s.y, 90) && quiet(s.x, s.y) < 0.3);
+    const quiet = (x: number, y: number, z = 0) => host.quiet(cam.sx(x, z), cam.sy(y, z));
+    // Locks stay on the main plane, where the action is.
+    const fleets = world.fleets.filter((f) => f.mode !== 'docked' && f.fade > 0.8 && f.z < 0.2 && visibleOnScreen(f.ships[0].x, f.ships[0].y, 90) && quiet(f.ships[0].x, f.ships[0].y) < 0.3);
+    const structs = allStructures(world).filter((s) => !s.z && visibleOnScreen(s.x, s.y, 90) && quiet(s.x, s.y) < 0.3);
     const pickFleet = fleets.length && (frameRng() < 0.65 || !structs.length);
     if (pickFleet) {
       const f = fleets[Math.floor(frameRng() * fleets.length)];
@@ -419,9 +485,11 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
     if (i < 0) return;
     const size = { fighter: 0.7, scout: 0.7, freighter: 1.1, cruiser: 1.5, carrier: 1.7, capital: 2.3 }[s.cls];
     fx.explode(s.x, s.y, s.color, size);
+    bus.emit({ type: 'explosion', x: s.x, y: s.y, z: f.z, size, weight: Math.min(1, 0.2 + size * 0.25), color: s.color });
     f.ships.splice(i, 1);
     if (!f.ships.length) {
       f.mode = 'gone';
+      bus.emit({ type: 'lost', x: s.x, y: s.y, z: f.z, weight: 0.5, color: s.color });
       say({ text: `${f.callsign} LOST`, x: s.x, y: s.y, color: s.color, priority: 'high', duration: 4200, type: 'fleet' });
       if (size >= 1.1 && world.structures.filter((st) => st.role === 'wreck').length < 6) {
         world.structures.push(
@@ -463,12 +531,27 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
     return f;
   };
 
+  // Services attach lazily through `api.use`, with their own update and draw hooks.
+  const services = new Map<string, unknown>();
+  const serviceUpdates: ((dt: number) => void)[] = [];
+  const serviceDraws: { pass: MechanicPass; fn: (c: CanvasRenderingContext2D, frame: RenderFrame, board?: LabelBoard) => void }[] = [];
+
   const api: MechanicApi = {
     world,
     host,
     rng: mechRng,
     pack,
     fx,
+    camera: cam,
+    bus,
+    emit: (e: WorldEvent) => bus.emit(e),
+    follow: followFleet,
+    use<T>(key: string, create: () => T): T {
+      if (!services.has(key)) services.set(key, create());
+      return services.get(key) as T;
+    },
+    onUpdate: (fn) => serviceUpdates.push(fn),
+    onDraw: (pass, fn) => serviceDraws.push({ pass, fn }),
     get t() {
       return now;
     },
@@ -484,8 +567,15 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
     view,
     screenX: (x) => x - camera.x * P,
     onScreen: (x, y, margin = 0) => visibleOnScreen(x, y, margin),
-    quiet: (x, y) => host.quiet(x - camera.x * P, y),
-    say: (text, x, y, color, o = {}) => say({ text, x, y, color, priority: o.priority ?? 'medium', followId: o.followId, duration: o.duration ?? 4000, type: 'fleet' }),
+    quiet: (x, y) => host.quiet(cam.sx(x), cam.sy(y)),
+    say: (text, x, y, color, o = {}) => {
+      // An alert worth hearing is worth a look: high-priority lines double as camera interest.
+      if (o.priority === 'high') {
+        const f = o.followId ? world.fleets.find((fl) => fl.id === o.followId) : undefined;
+        bus.emit({ type: 'alert', x, y, weight: 0.55, color, follow: f ? followFleet(f) : undefined });
+      }
+      say({ text, x, y, color, priority: o.priority ?? 'medium', followId: o.followId, duration: o.duration ?? 4000, type: 'fleet' });
+    },
     spawnFleet: mechSpawn,
     release: (f) => {
       f.steer = null;
@@ -514,6 +604,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
   const drop = (m: MechanicInstance | string, err: unknown) => {
     const id = typeof m === 'string' ? m : mechIds.get(m);
     console.warn(`[void-tactical] mechanic "${id}" failed and was switched off:`, err);
+    problems.push(`mechanic ${id} threw at t=${now.toFixed(2)}: ${err instanceof Error ? err.message : String(err)}`);
     if (typeof m !== 'string') mechs = mechs.filter((x) => x !== m);
   };
   const mechIds = new Map<MechanicInstance, string>();
@@ -533,9 +624,21 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
   let lastQuality = host.quality;
   let lastFrame = -1;
 
+  /** Mechanic label requests arrive in map space; the board works in screen space. */
+  const mapBoard = (board: LabelBoard): LabelBoard => {
+    const left = () => camera.x * P;
+    return {
+      add: (r) => board.add({ ...r, x: cam.sx(r.x + left()), y: cam.sy(r.y), offset: r.offset * cam.zoom }),
+      reserve: (x, y, r) => board.reserve(cam.sx(x + left()), cam.sy(y), r * cam.zoom),
+      flush: (c, v, dpr) => board.flush(c, v, dpr),
+    };
+  };
+
   return {
     world,
     camera,
+    view: cam,
+    bus,
     get width() {
       return width;
     },
@@ -546,6 +649,8 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
       if (viewport.width === width && viewport.height === height && world.width === width) return;
       width = viewport.width;
       height = viewport.height;
+      cam.resize(width, height);
+      syncBase();
       updateLayout();
       world.width = width;
       world.height = height;
@@ -568,29 +673,50 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
       const rate = 0.55 + 1.05 * world.tension;
 
       if (host.motion !== 'off') camera.x += config.cameraSpeed * host.intensity * frames;
+      // Scroll-linked travel: scrolling down carries the map forward (never back, since the
+      // map only populates ahead).
+      const scrollY = host.scroll?.y ?? 0;
+      if (opts.scroll === true && scrollY > lastScrollY) camera.x += ((scrollY - lastScrollY) * 0.7) / P;
+      lastScrollY = scrollY;
       camera.y = 0;
       const left = camera.x * P;
+      // The base frame follows the drift; the director moves the camera inside it.
+      syncBase();
+      director.update(info.dt, now, {
+        pointer: opts.lean === false ? undefined : host.pointer,
+        gesture: host.takeGesture?.(),
+      });
 
-      world.systems = world.systems.filter((s) => s.x - left > -300);
-      world.structures = world.structures.filter((s) => s.x - left > -300);
+      // Cull whatever has scrolled off the left of the base frame (per depth).
+      world.systems = world.systems.filter((s) => baseSx(s.x, s.z) > -300);
+      world.structures = world.structures.filter((s) => baseSx(s.x, s.z) > -300);
       world.anomalies = world.anomalies.filter((a) => a.x - left > -200);
 
+      // New scenery appears just past the right edge, on its own plane.
       if (world.systems.length < layout.maxSystems && now - lastSystemSpawn > systemSpawnDelay) {
-        const x = left + width + 180 + rng() * 520;
-        let y = rng() * height;
-        for (let n = 0; n < 10 && world.systems.some((s) => Math.hypot(s.x - x, s.y - y) < layout.systemDist); n++) y = rng() * height;
-        world.systems.push(newSystem(x, y));
+        const z = depthFor(rng());
+        const k = 1 + z;
+        const x = cam.baseX + (width / 2 + 180 + rng() * 520) * k;
+        let y = height / 2 + (rng() - 0.5) * height * k;
+        for (let n = 0; n < 10 && world.systems.some((s) => samePlane(s.z, z) && Math.hypot(s.x - x, s.y - y) < layout.systemDist * k); n++) y = height / 2 + (rng() - 0.5) * height * k;
+        const sys = newSystem(x, y);
+        sys.z = z;
+        world.systems.push(sys);
         lastSystemSpawn = now;
         systemSpawnDelay = delay(1, 0.6);
       }
 
       if (world.structures.length < layout.maxStructs && now - lastStructureSpawn > structureSpawnDelay) {
+        const z = depthFor(rng());
+        const k = 1 + z;
         for (let attempt = 0; attempt < 12; attempt++) {
-          const x = left + width + 100 + rng() * 420;
-          const y = rng() * height;
-          if (world.structures.some((s) => Math.hypot(s.x - x, s.y - y) < layout.structDist * 0.6)) continue;
-          if (world.systems.some((s) => Math.hypot(s.x - x, s.y - y) < 70)) continue;
-          pushStructure(newStructure(x, y));
+          const x = cam.baseX + (width / 2 + 100 + rng() * 420) * k;
+          const y = height / 2 + (rng() - 0.5) * height * k;
+          if (world.structures.some((s) => samePlane(s.z, z) && Math.hypot(s.x - x, s.y - y) < layout.structDist * 0.6 * k)) continue;
+          if (world.systems.some((s) => samePlane(s.z, z) && Math.hypot(s.x - x, s.y - y) < 70 * k)) continue;
+          const s = newStructure(x, y);
+          s.z = z;
+          pushStructure(s);
           lastStructureSpawn = now;
           structureSpawnDelay = delay(0.7, 0.45);
           break;
@@ -629,6 +755,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
           }
           world.fleets = world.fleets.filter((f: Fleet) => f.mode !== 'gone' && f.ships.length > 0);
         }
+        for (const fn of serviceUpdates) fn(info.dt);
         // Missiles land during the effects update, so it can destroy fleets too.
         fx.update(info.dt);
         world.fleets = world.fleets.filter((f: Fleet) => f.mode !== 'gone' && f.ships.length > 0);
@@ -643,6 +770,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
         if (f?.ships[0]) {
           o.x = f.ships[0].x;
           o.y = f.ships[0].y;
+          o.z = f.z;
         } else {
           o.followId = undefined;
         }
@@ -662,16 +790,62 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
       }
     },
     drawPass(c2d, pass, frame, board) {
+      const left = camera.x * P;
+      const b = board ? mapBoard(board) : undefined;
+      c2d.save();
+      // Map space (world x - left, world y) → the camera. With the director idle this is
+      // the identity, so mechanics draw exactly as they did with a fixed camera.
+      c2d.translate(width / 2, height / 2);
+      c2d.scale(cam.zoom, cam.zoom);
+      c2d.translate(-(cam.x - left), -cam.y);
+      for (const d of serviceDraws) {
+        if (d.pass !== pass) continue;
+        c2d.save();
+        d.fn(c2d, frame, b);
+        c2d.restore();
+      }
       for (const m of mechs) {
         c2d.save();
         try {
-          m.draw?.(c2d, pass, frame, board);
+          m.draw?.(c2d, pass, frame, b);
         } catch (err) {
           drop(m, err);
         }
         c2d.restore();
       }
-      if (pass === 'over') fx.draw(c2d, camera.x * P, 1);
+      if (pass === 'over') fx.draw(c2d, left, 1);
+      c2d.restore();
+    },
+    inspect() {
+      // Invariants worth shouting about: non-finite positions and runaway populations.
+      const issues = [...problems];
+      for (const f of world.fleets) {
+        for (const s of f.ships) if (!Number.isFinite(s.x) || !Number.isFinite(s.y)) issues.push(`fleet ${f.callsign} has a non-finite position at t=${now.toFixed(2)}`);
+        if (!f.ships.length) issues.push(`fleet ${f.callsign} has no ships at t=${now.toFixed(2)}`);
+      }
+      if (world.fleets.length > 120) issues.push(`runaway fleets: ${world.fleets.length}`);
+      if (world.structures.length > 80) issues.push(`runaway structures: ${world.structures.length}`);
+      const byTag: Record<string, number> = {};
+      for (const f of world.fleets) byTag[`fleets.${f.tag ?? 'traffic'}`] = (byTag[`fleets.${f.tag ?? 'traffic'}`] ?? 0) + 1;
+      return {
+        t: now,
+        counts: {
+          fleets: world.fleets.length,
+          ships: world.fleets.reduce((n, f) => n + f.ships.length, 0),
+          structures: allStructures(world).length,
+          far: allStructures(world).filter((s) => s.z).length + world.systems.filter((s) => s.z).length,
+          systems: world.systems.length,
+          anomalies: world.anomalies.length,
+          overlays: world.overlays.length,
+          fx: fx.busy,
+          zoom: Math.round(cam.zoom * 100) / 100,
+          ...byTag,
+        },
+        // Lines said on the map, plus every typed event as `[type]` (for seeking by type).
+        log: bus.log.map((e) => ({ t: e.t ?? 0, text: e.text && e.type === 'say' ? e.text : `[${e.type}]${e.text ? ` ${e.text}` : ''}`, kind: e.type === 'say' ? e.priority ?? 'low' : e.type, type: e.type })),
+        seq: bus.seq,
+        problems: issues,
+      };
     },
     frameFor(info, style) {
       return {
@@ -685,6 +859,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
         pack,
         parallax: MAP_PARALLAX,
         dpr: host.viewport.dpr,
+        view: cam,
       };
     },
   };

@@ -1,0 +1,36 @@
+// @vitest-environment node
+/**
+ * Long runs of every built-in universe, sim-only on the headless host: no canvas, no
+ * jsdom, so a minute of simulation costs well under a second. These catch logic bugs
+ * (crashes, NaN positions, empty fleets, runaway counts, failing mechanics) and check
+ * that each universe actually does its thing.
+ */
+import { describe, expect, it } from 'vitest';
+import { runHeadless } from '../../../dev/headless';
+
+const run = (universe: string, seconds: number, seed = 'long-run') =>
+  runHeadless({ skin: 'void-tactical', options: { universe }, seconds, seed });
+
+describe('universes, long runs (headless)', () => {
+  for (const universe of ['void', 'saltwind', 'choir', 'siege']) {
+    it(`${universe}: 90 s without problems`, () => {
+      const r = run(universe, 90);
+      expect(r.threw).toBeUndefined();
+      expect(r.problems).toEqual([]);
+      expect(r.log.length).toBeGreaterThan(20);
+    });
+  }
+
+  it('replays identically for the same seed', () => {
+    const a = run('siege', 30, 'replay');
+    const b = run('siege', 30, 'replay');
+    expect(a.log.map((e) => `${e.t.toFixed(3)} ${e.text}`)).toEqual(b.log.map((e) => `${e.t.toFixed(3)} ${e.text}`));
+  });
+
+  it('each universe tells its own story', () => {
+    const said = (u: string) => run(u, 90).log.map((e) => e.text).join('\n');
+    expect(said('saltwind')).toMatch(/CLAIM|ORE|DUST/);
+    expect(said('siege')).toMatch(/FALLS TO|BOMBARDMENT|FRONT/);
+    expect(said('choir')).toMatch(/CHOIR SINGS|WISPS/);
+  });
+});

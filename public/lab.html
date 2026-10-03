@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>bg lab</title>
+    <!--
+      The lab: one page load renders a contact sheet of chosen moments of a scene.
+      The sim fast-forwards without drawing between captures, so t=120 costs about as
+      much as t=5. Driven by scripts/lab.mjs; also usable by hand in a browser.
+
+        ?skin=void-tactical&u=choir&t=5,20,40,80        times in seconds
+        ?every=10&count=6                                evenly spaced
+        ?seek=RAID|TAKING%20FIRE&after=0.5,2,5&max=240   first log line matching a regex, then captures after it
+        &crop=600,250,500,320                            zoom into a region (CSS px of the w x h stage)
+        &w=1280&h=800&tile=0.5&cols=2&seed=orion-7&options={...}&palette=...
+    -->
+    <style>
+      html, body { margin: 0; background: #05070b; color: #9ca3af; font: 12px ui-monospace, monospace; }
+      #stage { position: absolute; left: 0; top: 0; overflow: hidden; visibility: hidden; }
+      #sheet { display: block; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <canvas id="sheet"></canvas>
+    <script type="module">
+      import { mount, createManualScheduler, getUniverse, resolvePalette, getSkin } from '/src/lib.ts';
+
+      const q = new URLSearchParams(location.search);
+      const num = (k, d) => (q.has(k) ? Number(q.get(k)) : d);
+      const skinId = q.get('skin') ?? 'void-tactical';
+      const seed = q.get('seed') ?? 'orion-7';
+      const W = num('w', 1280);
+      const H = num('h', 800);
+      // Skin options: a JSON `options`, `u` for the universe, and `opt.<key>=<value>` for single
+      // options (shell-friendly: no quotes), e.g. opt.camera=cinematic opt.depth=0.
+      const parse = (v) => (v === 'true' ? true : v === 'false' ? false : v !== '' && !isNaN(Number(v)) ? Number(v) : v);
+      const single = Object.fromEntries([...q.entries()].filter(([k]) => k.startsWith('opt.')).map(([k, v]) => [k.slice(4), parse(v)]));
+      const options = { ...(q.has('options') ? JSON.parse(q.get('options')) : {}), ...single, ...(q.has('u') ? { universe: q.get('u') } : {}) };
+      const universe = options.universe ? getUniverse(options.universe) : undefined;
+      const palette = q.get('palette') ?? universe?.palette ?? undefined;
+      const crop = q.has('crop') ? q.get('crop').split(',').map(Number) : [0, 0, W, H];
+      const tileScale = num('tile', crop[2] < W ? 1 : 0.5);
+
+      const stage = document.getElementById('stage');
+      stage.style.width = `${W}px`;
+      stage.style.height = `${H}px`;
+      const scheduler = createManualScheduler();
+      const handle = mount(stage, {
+        skin: skinId, seed, palette, options: Object.keys(options).length ? options : undefined,
+        scheduler, adaptiveQuality: false, pauseWhenHidden: false, motion: 'full', legibility: 'off',
+      });
+      const bg = resolvePalette(palette ?? getSkin(skinId)?.defaults?.palette).bg;
+      const canvas = handle.canvas;
+
+      // ---- decide the capture times -------------------------------------------------------
+      scheduler.step(1); // frame 0 at t = 0
+      let cur = 0;
+      const shots = []; // { t, label }
+      if (q.has('seek')) {
+        const re = new RegExp(q.get('seek'), 'i');
+        let seen = handle.inspect()?.seq ?? 0;
+        let found = null;
+        let n = 0;
+        handle.fastForward(num('max', 240), {
+          until: (info) => {
+            if (++n % 6) return false;
+            const i = handle.inspect();
+            if (!i) return false;
+            const fresh = i.log.slice(i.log.length - Math.min(i.seq - seen, i.log.length));
+            seen = i.seq;
+            found = fresh.find((e) => re.test(e.text)) ?? null;
+            if (found) found = { ...found, at: info.t };
+            return !!found;
+          },
+        });
+        const at = found ? found.at : (handle.inspect()?.t ?? 0);
+        cur = at;
+        const after = (q.get('after') ?? '0.5,2,5,9').split(',').map(Number);
+        for (const a of after) shots.push({ t: at + a, label: found ? `${found.text} +${a}s` : `no match for /${q.get('seek')}/ +${a}s` });
+      } else if (q.has('every')) {
+        const every = num('every', 10);
+        for (let i = 1; i <= num('count', 6); i++) shots.push({ t: i * every, label: '' });
+      } else {
+        for (const t of (q.get('t') ?? '4,15,40').split(',').map(Number)) shots.push({ t, label: '' });
+      }
+      shots.sort((a, b) => a.t - b.t);
+
+      // ---- the sheet ------------------------------------------------------------------------
+      const cols = num('cols', shots.length >= 6 && tileScale <= 0.34 ? 3 : 2);
+      const tw = Math.round(crop[2] * tileScale);
+      const th = Math.round(crop[3] * tileScale);
+      const cap = 18;
+      const sheet = document.getElementById('sheet');
+      const rows = Math.ceil(shots.length / cols);
+      sheet.width = cols * tw + (cols - 1) * 4;
+      sheet.height = rows * (th + cap) + (rows - 1) * 4;
+      const sx = sheet.getContext('2d');
+      sx.fillStyle = '#05070b';
+      sx.fillRect(0, 0, sheet.width, sheet.height);
+      const scale = canvas.width / W; // backing pixels per CSS pixel
+
+      shots.forEach((s, i) => {
+        const ff = s.t - cur - 1 / 60;
+        if (ff > 0) handle.fastForward(ff);
+        scheduler.step(1);
+        cur = s.t;
+        const x = (i % cols) * (tw + 4);
+        const y = Math.floor(i / cols) * (th + cap + 4);
+        sx.fillStyle = bg;
+        sx.fillRect(x, y + cap, tw, th);
+        sx.imageSmoothingEnabled = true;
+        sx.drawImage(canvas, crop[0] * scale, crop[1] * scale, crop[2] * scale, crop[3] * scale, x, y + cap, tw, th);
+        const counts = handle.inspect()?.counts ?? {};
+        sx.fillStyle = '#9ca3af';
+        sx.font = '12px ui-monospace, monospace';
+        sx.textBaseline = 'middle';
+        const brief = ['fleets', 'ships', 'fx'].filter((k) => k in counts).map((k) => `${k} ${counts[k]}`).join(' · ');
+        sx.fillText(`t=${s.t.toFixed(1)}s ${s.label ? `· ${s.label.slice(0, 70)}` : ''}${brief ? `  [${brief}]` : ''}`, x + 4, y + cap / 2);
+      });
+
+      window.__lab = { dataUrl: () => sheet.toDataURL('image/png'), shots, problems: handle.inspect()?.problems ?? [] };
+      document.body.dataset.ready = '1';
+    </script>
+    <script>
+      window.addEventListener('error', (e) => { document.body.dataset.error = String(e.message); document.body.dataset.ready = '1'; });
+      window.addEventListener('unhandledrejection', (e) => { document.body.dataset.error = String(e.reason); document.body.dataset.ready = '1'; });
+    </script>
+  </body>
+</html>

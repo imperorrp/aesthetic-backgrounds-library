@@ -21,7 +21,7 @@ import { allStructures } from '../fleets';
 
 const board = createLabelBoard();
 
-type DrawPass = (ctx: CanvasRenderingContext2D, pass: 'under' | 'mid' | 'over', frame: RenderFrame, board?: ReturnType<typeof createLabelBoard>) => void;
+type DrawPass = (ctx: CanvasRenderingContext2D, pass: 'ground' | 'under' | 'mid' | 'over' | 'hud', frame: RenderFrame, board?: ReturnType<typeof createLabelBoard>) => void;
 
 export const renderSystem = (
   ctx: CanvasRenderingContext2D,
@@ -34,6 +34,7 @@ export const renderSystem = (
   ctx.font = FONT;
   ctx.textBaseline = 'top';
   renderStars(ctx, system.stars, camera, viewport, frame);
+  mechanics?.(ctx, 'ground', frame, board);
   mechanics?.(ctx, 'under', frame, board);
   renderCelestialBodies(ctx, system.celestialBodies, camera, viewport, frame);
   for (const sys of system.systems) renderStarSystem(ctx, sys, camera, viewport, system.settings, frame, board);
@@ -51,6 +52,7 @@ export const renderSystem = (
   renderTacticalOverlays(ctx, system, camera, viewport, frame, board);
   board.flush(ctx, viewport, frame.dpr);
   renderTargetLock(ctx, system, camera, viewport, frame);
+  mechanics?.(ctx, 'hud', frame);
 };
 
 export { renderStars, renderConstellations, renderGrids } from './background';

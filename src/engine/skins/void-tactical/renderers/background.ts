@@ -10,26 +10,41 @@ import { accentRgba, CHAR_SIZE, WORLD_SPEED_MULTIPLIER, type RenderFrame } from 
 
 import type { CanvasContext } from './utils';
 
+/**
+ * Camera offset for a backdrop that moves `rate` times as fast as the map plane, and the
+ * small zoom it picks up (`zoomShare` of the camera's), so the backdrop feels deep.
+ */
+export const backdrop = (frame: RenderFrame, viewport: { width: number; height: number }, rate: number, zoomShare: number) => {
+  const v = frame.view;
+  return {
+    x: (v.x - viewport.width / 2) * rate,
+    y: (v.y - viewport.height / 2) * rate,
+    zoom: 1 + (v.zoom - 1) * zoomShare,
+  };
+};
+
 export const renderStars = (
   ctx: CanvasContext,
   stars: SystemState['stars'],
-  camera: { x: number, y: number },
+  _camera: { x: number, y: number },
   viewport: { width: number, height: number },
   frame: RenderFrame,
 ) => {
-  const parallaxFactorStars = 0.5; // Horizontal parallax multiplier for stars
+  // Stars scroll at twice the map's rate (the original look) and barely zoom.
+  const cam = backdrop(frame, viewport, 2, 0.15);
+  const cx = viewport.width / 2;
+  const cy = viewport.height / 2;
 
   // Render each star using modulo wrapping across the viewport so stars
   // always reappear on the right when they pass the left edge. This keeps
   // the same star identities and relative layout (mod viewport size).
   stars.forEach(star => {
-    // Compute star position relative to camera with parallax
-    const relX = star.x - (camera.x * parallaxFactorStars * WORLD_SPEED_MULTIPLIER);
-    const relY = star.y - (camera.y * parallaxFactorStars * WORLD_SPEED_MULTIPLIER);
+    const relX = star.x - cam.x;
+    const relY = star.y - cam.y;
 
-    // Wrap horizontally and vertically into viewport space
-    const wrappedX = ((relX % viewport.width) + viewport.width) % viewport.width;
-    const wrappedY = ((relY % viewport.height) + viewport.height) % viewport.height;
+    // Wrap horizontally and vertically into viewport space, then zoom about the center.
+    const wrappedX = cx + ((((relX % viewport.width) + viewport.width) % viewport.width) - cx) * cam.zoom;
+    const wrappedY = cy + ((((relY % viewport.height) + viewport.height) % viewport.height) - cy) * cam.zoom;
 
     // Twinkle effect (smooth per-star brightness modulation, phase offset by position)
     const twinkle = 0.5 + Math.sin(frame.time * star.twinkle + star.x * 0.01) * 0.5;
@@ -91,7 +106,7 @@ export const renderConstellations = (
 
 export const renderGrids = (
   ctx: CanvasContext,
-  camera: { x: number, y: number },
+  _camera: { x: number, y: number },
   viewport: { width: number, height: number },
   frame: RenderFrame,
 ) => {
@@ -100,17 +115,20 @@ export const renderGrids = (
   const grid = frame.pack.look?.grid ?? 'crosses';
   if (grid === 'none') return;
   if (grid === 'claims') {
-    // Survey claims: corner-marked squares with lot numbers, scrolling with the map.
+    // Survey claims: corner-marked squares with lot numbers, on the map plane itself.
+    const v = frame.view;
     const size = 120;
-    const off = (camera.x * frame.parallax) % size;
-    const first = Math.floor((camera.x * frame.parallax) / size);
+    const i0 = Math.floor(v.wx(0) / size);
+    const i1 = Math.ceil(v.wx(viewport.width) / size);
+    const j0 = Math.floor(v.wy(0) / size);
+    const j1 = Math.ceil(v.wy(viewport.height) / size);
     ctx.strokeStyle = accentRgba(frame.palette, 0.13 * level);
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let i = 0; i * size - off < viewport.width + size; i++) {
-      for (let y = 0; y < viewport.height + size; y += size) {
-        const x = Math.round(i * size - off) + 0.5;
-        const yy = Math.round(y) + 0.5;
+    for (let i = i0; i <= i1; i++) {
+      for (let j = j0; j <= j1; j++) {
+        const x = Math.round(v.sx(i * size)) + 0.5;
+        const yy = Math.round(v.sy(j * size)) + 0.5;
         ctx.moveTo(x, yy + 7);
         ctx.lineTo(x, yy);
         ctx.lineTo(x + 7, yy);
@@ -119,19 +137,20 @@ export const renderGrids = (
     ctx.stroke();
     ctx.fillStyle = accentRgba(frame.palette, 0.16 * level);
     ctx.font = '8px "Syne Mono", ui-monospace, monospace';
-    for (let i = 0; i * size - off < viewport.width + size; i++) {
-      for (let y = 0; y < viewport.height; y += size) {
-        const lot = first + i;
-        if ((lot * 7 + y) % 3 !== 0) continue;
-        ctx.fillText(`LOT ${String(((lot % 900) + 900) % 900 + 100)}-${y / size + 1}`, Math.round(i * size - off + 4), Math.round(y + 12));
+    for (let i = i0; i <= i1; i++) {
+      for (let j = Math.max(0, j0); j <= j1; j++) {
+        if ((i * 7 + j * size) % 3 !== 0) continue;
+        ctx.fillText(`LOT ${String(((i % 900) + 900) % 900 + 100)}-${j + 1}`, Math.round(v.sx(i * size) + 4), Math.round(v.sy(j * size) + 12));
       }
     }
     return;
   }
   ctx.fillStyle = accentRgba(frame.palette, 0.1 * level);
-  const parallaxFactorGrid = 0.1;
-  const gridOffsetX = (camera.x * parallaxFactorGrid * WORLD_SPEED_MULTIPLIER) % (CHAR_SIZE * 6);
-  const gridOffsetY = (camera.y * parallaxFactorGrid * WORLD_SPEED_MULTIPLIER) % (CHAR_SIZE * 6);
+  // The cross grid sits deep: 0.4 of the map's parallax.
+  const cam = backdrop(frame, viewport, 0.4, 0.3);
+  const step = CHAR_SIZE * 6;
+  const gridOffsetX = ((cam.x % step) + step) % step;
+  const gridOffsetY = ((cam.y % step) + step) % step;
 
   for (let x = -gridOffsetX; x < viewport.width; x += CHAR_SIZE * 6) {
     for (let y = -gridOffsetY; y < viewport.height; y += CHAR_SIZE * 6) {

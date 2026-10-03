@@ -105,6 +105,9 @@ export function mount<T = any>(
     renderOnce: () => loop.renderOnce(),
     onFrame: (listener) => loop.onFrame(listener),
     composition: () => loop.composition(),
+    fastForward: (seconds, opts) => loop.fastForward(seconds, opts),
+    setTimeScale: (scale) => loop.setTimeScale(scale),
+    inspect: () => loop.inspect(),
     destroy() {
       if (destroyed) return;
       destroyed = true;

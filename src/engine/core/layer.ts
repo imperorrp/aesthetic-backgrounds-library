@@ -3,7 +3,7 @@
  * canvas (or on a private surface when a layer needs to fade or mask itself),
  * and can place DOM layers (CSS gradients, grain, scanlines) behind the canvas.
  */
-import type { BackgroundSkin, FrameInfo, SkinHost, SkinLayerContext, Viewport } from './skin';
+import type { BackgroundSkin, FrameInfo, SkinHost, SkinInspection, SkinLayerContext, Viewport } from './skin';
 import type { Schema } from './schema';
 
 export type LayerHost<T = any> = SkinHost<T> & {
@@ -15,6 +15,10 @@ export type LayerHost<T = any> = SkinHost<T> & {
 export type LayerInstance = {
   resize?(viewport: Viewport): void;
   frame?(info: FrameInfo): void;
+  /** Sim-only step (no drawing), for fast-forward. Layers without simulation omit it. */
+  advance?(info: FrameInfo): void;
+  /** Debug snapshot (see `SkinInstance.inspect`). */
+  inspect?(): SkinInspection | undefined;
   destroy?(): void;
 };
 

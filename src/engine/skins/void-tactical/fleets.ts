@@ -19,7 +19,13 @@ export type FleetEvent = { kind: FleetEventKind; fleet: Fleet; target?: string }
 export type FleetCtx = {
   rng: Rng;
   t: number;
+  /** The base frame on the main plane, in world units. */
   view: SimView;
+  /**
+   * Base-frame screen position of a world point at depth z. Lets reach checks work for
+   * far structures, whose world coordinates spread wider than the main plane's.
+   */
+  frame?: { sx(x: number, z: number): number; sy(y: number, z: number): number; width: number; height: number };
   emit(e: FleetEvent): void;
   nextId(): number;
 };
@@ -62,7 +68,7 @@ export function evalPlanAt(p: FleetPlan, s: number, out: number[]): void {
   out[3] = (d00 * p.p0y + d10 * T * p.v0y + d01 * p.p1y + d11 * T * p.v1y) / T;
 }
 
-function makePlan(x: number, y: number, vx: number, vy: number, tx: number, ty: number, v1x: number, v1y: number, speed: number, t: number): FleetPlan {
+function makePlan(x: number, y: number, vx: number, vy: number, tx: number, ty: number, v1x: number, v1y: number, speed: number, t: number, z0 = 0, z1 = 0): FleetPlan {
   const dx = tx - x;
   const dy = ty - y;
   const d = Math.hypot(dx, dy) || 1;
@@ -85,9 +91,16 @@ function makePlan(x: number, y: number, vx: number, vy: number, tx: number, ty: 
       sy *= 0.4;
     }
   }
-  const T = Math.max(1.4, (d / speed) * 1.2);
-  return { p0x: x, p0y: y, v0x: sx, v0y: sy, p1x: tx, p1y: ty, v1x, v1y, T, t0: t };
+  // Changing depth takes a little longer: the trip is "longer" through the third axis.
+  const T = Math.max(1.4, (d / speed) * 1.2) * (1 + Math.abs(z1 - z0) * 0.35);
+  return { p0x: x, p0y: y, v0x: sx, v0y: sy, p1x: tx, p1y: ty, v1x, v1y, z0, z1, T, t0: t };
 }
+
+/** Depth along a plan at normalized s: eased so the climb or dive is gentle at both ends. */
+export const planDepth = (p: FleetPlan, s: number) => {
+  const u = Math.max(0, Math.min(1, s));
+  return p.z0 + (p.z1 - p.z0) * u * u * (3 - 2 * u);
+};
 
 /**
  * The points a fleet's leader will pass through over the next `horizon` seconds,
@@ -161,6 +174,8 @@ export type SpawnOptions = {
   callsign?: string;
   /** Start invisible and fade in (launches, gate arrivals). */
   fadeIn?: boolean;
+  /** Starting depth (a launch from a far shipyard starts far). Default 0. */
+  z?: number;
 };
 
 export function spawnFleet(world: SystemState, c: FleetCtx, at: { x: number; y: number; vx: number; vy: number }, opts: SpawnOptions = {}): Fleet {
@@ -216,6 +231,7 @@ export function spawnFleet(world: SystemState, c: FleetCtx, at: { x: number; y: 
     faction,
     purpose: opts.purpose ?? comp.purpose,
     ships,
+    z: opts.z ?? 0,
     formation: comp.formation,
     spacing,
     mode: 'transit',
@@ -236,13 +252,21 @@ export function spawnFleet(world: SystemState, c: FleetCtx, at: { x: number; y: 
 const inReach = (x: number, y: number, v: SimView, margin: number) =>
   x > v.left - margin && x < v.right + margin && y > v.top - margin && y < v.bottom + margin;
 
+/** In (or near) the base frame at depth z. Falls back to the main-plane rectangle. */
+const reach = (c: FleetCtx, x: number, y: number, z: number | undefined, margin: number) => {
+  if (!c.frame || !z) return inReach(x, y, c.view, margin);
+  const sx = c.frame.sx(x, z);
+  const sy = c.frame.sy(y, z);
+  return sx > -margin && sx < c.frame.width + margin && sy > -margin && sy < c.frame.height + margin;
+};
+
 const dist2 = (ax: number, ay: number, bx: number, by: number) => (ax - bx) ** 2 + (ay - by) ** 2;
 
 export const allStructures = (world: SystemState): Structure[] =>
   world.systems.length ? [...world.structures, ...world.systems.flatMap((s) => s.structures)] : world.structures;
 
-const structureTarget = (s: Structure): FleetTarget => ({ kind: 'structure', id: s.id, x: s.x, y: s.y, label: s.label, role: s.role });
-const systemTarget = (s: StarSystem): FleetTarget => ({ kind: 'system', id: s.id, x: s.x, y: s.y, label: s.name });
+const structureTarget = (s: Structure): FleetTarget => ({ kind: 'structure', id: s.id, x: s.x, y: s.y, z: s.z ?? 0, label: s.label, role: s.role });
+const systemTarget = (s: StarSystem): FleetTarget => ({ kind: 'system', id: s.id, x: s.x, y: s.y, z: s.z ?? 0, label: s.name });
 const anomalyTarget = (a: Anomaly): FleetTarget => ({ kind: 'anomaly', id: a.id, x: a.x, y: a.y, label: a.text });
 
 /** Pick among the nearest few, so fleets do not all queue at one place. */
@@ -254,20 +278,31 @@ function nearestOf<T extends { x: number; y: number }>(rng: Rng, items: T[], x: 
 
 function exitTarget(f: Fleet, c: FleetCtx): FleetTarget {
   const L = f.ships[0];
-  const v = c.view;
+  // The base frame at the fleet's own depth: far planes cover more world, so their
+  // edges are farther out.
+  const k = 1 + f.z;
+  const cx = (c.view.left + c.view.right) / 2;
+  const cy = (c.view.top + c.view.bottom) / 2;
+  const v = {
+    left: cx - ((c.view.right - c.view.left) / 2) * k,
+    right: cx + ((c.view.right - c.view.left) / 2) * k,
+    top: cy - ((c.view.bottom - c.view.top) / 2) * k,
+    bottom: cy + ((c.view.bottom - c.view.top) / 2) * k,
+  };
   const r = c.rng();
+  const z = f.z;
   // The map scrolls left, so most traffic leaves that way; some leaves up, down, or ahead.
-  if (r < 0.45) return { kind: 'exit', x: v.left - 160, y: Math.max(v.top + 40, Math.min(v.bottom - 40, L.y + (c.rng() - 0.5) * 300)) };
-  if (r < 0.65) return { kind: 'exit', x: L.x + (c.rng() - 0.3) * 400, y: v.top - 140 };
-  if (r < 0.85) return { kind: 'exit', x: L.x + (c.rng() - 0.3) * 400, y: v.bottom + 140 };
-  return { kind: 'exit', x: v.right + 180, y: Math.max(v.top + 40, Math.min(v.bottom - 40, L.y + (c.rng() - 0.5) * 300)) };
+  if (r < 0.45) return { kind: 'exit', z, x: v.left - 160 * k, y: Math.max(v.top + 40, Math.min(v.bottom - 40, L.y + (c.rng() - 0.5) * 300)) };
+  if (r < 0.65) return { kind: 'exit', z, x: L.x + (c.rng() - 0.3) * 400, y: v.top - 140 * k };
+  if (r < 0.85) return { kind: 'exit', z, x: L.x + (c.rng() - 0.3) * 400, y: v.bottom + 140 * k };
+  return { kind: 'exit', z, x: v.right + 180 * k, y: Math.max(v.top + 40, Math.min(v.bottom - 40, L.y + (c.rng() - 0.5) * 300)) };
 }
 
 export function chooseTarget(f: Fleet, world: SystemState, c: FleetCtx): FleetTarget {
   const L = f.ships[0];
   if (f.visits >= f.maxVisits) return exitTarget(f, c);
   const here = f.target?.id;
-  const structs = allStructures(world).filter((s) => s.id !== here && inReach(s.x, s.y, c.view, 80));
+  const structs = allStructures(world).filter((s) => s.id !== here && reach(c, s.x, s.y, s.z, 80));
   const byRole = (...roles: StructureRole[]) => structs.filter((s) => roles.includes(s.role));
 
   switch (f.purpose) {
@@ -279,7 +314,7 @@ export function chooseTarget(f: Fleet, world: SystemState, c: FleetCtx): FleetTa
       return next ? structureTarget(next) : exitTarget(f, c);
     }
     case 'patrol': {
-      const posts = [...byRole('defense', 'gate', 'relay').map(structureTarget), ...world.systems.filter((s) => s.id !== here && inReach(s.x, s.y, c.view, 40)).map(systemTarget)];
+      const posts = [...byRole('defense', 'gate', 'relay').map(structureTarget), ...world.systems.filter((s) => s.id !== here && reach(c, s.x, s.y, s.z, 40)).map(systemTarget)];
       return nearestOf(c.rng, posts, L.x, L.y, 3) ?? exitTarget(f, c);
     }
     case 'survey': {
@@ -293,7 +328,7 @@ export function chooseTarget(f: Fleet, world: SystemState, c: FleetCtx): FleetTa
     default: {
       const gates = byRole('gate');
       if (gates.length && c.rng() < 0.45) return structureTarget(nearestOf(c.rng, gates, L.x, L.y, 2)!);
-      const systems = world.systems.filter((s) => s.id !== here && inReach(s.x, s.y, c.view, 40));
+      const systems = world.systems.filter((s) => s.id !== here && reach(c, s.x, s.y, s.z, 40));
       const pick = nearestOf(c.rng, [...systems.map(systemTarget), ...byRole('dock', 'giant').map(structureTarget)], L.x, L.y, 3);
       return pick ?? exitTarget(f, c);
     }
@@ -343,7 +378,7 @@ export function goTo(f: Fleet, target: FleetTarget, world: SystemState, c: Fleet
       v1y = Math.cos(ang) * speed * 0.7 * dir;
     }
   }
-  f.plan = makePlan(L.x, L.y, L.vx, L.vy, px, py, v1x, v1y, speed, c.t);
+  f.plan = makePlan(L.x, L.y, L.vx, L.vy, px, py, v1x, v1y, speed, c.t, f.z, target.z ?? f.z);
   f.target = target;
   f.mode = 'transit';
 }
@@ -419,7 +454,7 @@ function depart(f: Fleet, world: SystemState, c: FleetCtx): void {
 
 function jump(f: Fleet, world: SystemState, c: FleetCtx): void {
   const from = f.target?.id;
-  const gates = allStructures(world).filter((s) => s.role === 'gate' && s.id !== from && inReach(s.x, s.y, c.view, -20));
+  const gates = allStructures(world).filter((s) => s.role === 'gate' && s.id !== from && reach(c, s.x, s.y, s.z, -20));
   const dest = gates.length ? gates[Math.floor(c.rng() * gates.length)] : undefined;
   if (!dest) {
     f.mode = 'gone';
@@ -438,6 +473,7 @@ function jump(f: Fleet, world: SystemState, c: FleetCtx): void {
   f.trail = [];
   f.fade = 0;
   f.fadeTo = 1;
+  f.z = dest.z ?? 0;
   dest.flashAt = c.t;
   f.target = structureTarget(dest);
   c.emit({ kind: 'arrive', fleet: f, target: dest.label });
@@ -459,8 +495,10 @@ export function stepFleet(f: Fleet, world: SystemState, c: FleetCtx, dt: number)
   f.fade += (f.fadeTo - f.fade) * Math.min(1, dt * 2.5);
 
   if (f.steer) {
-    // A mechanic is flying the leader; the formation still follows below.
+    // A mechanic is flying the leader; the formation still follows below. Mechanics work
+    // on the main plane, so a steered fleet drifts back to depth 0.
     f.steer(f, dt);
+    f.z += (0 - f.z) * Math.min(1, dt * 0.8);
   } else switch (f.mode) {
     case 'transit': {
       const p = f.plan;
@@ -473,6 +511,7 @@ export function stepFleet(f: Fleet, world: SystemState, c: FleetCtx, dt: number)
       L.y = tmp[1];
       L.vx = tmp[2];
       L.vy = tmp[3];
+      f.z = planDepth(p, (c.t - p.t0) / p.T);
       if (c.t - p.t0 >= p.T) arrive(f, world, c);
       break;
     }
@@ -542,7 +581,7 @@ export function stepFleet(f: Fleet, world: SystemState, c: FleetCtx, dt: number)
   }
 
   // Leave once past the exit, or once the map has scrolled far past the fleet.
-  const v = c.view;
-  if (f.target?.kind === 'exit' && !inReach(L.x, L.y, v, 60)) f.mode = 'gone';
-  if (L.x < v.left - 500) f.mode = 'gone';
+  if (f.target?.kind === 'exit' && !reach(c, L.x, L.y, f.z, 60)) f.mode = 'gone';
+  const leftOfView = c.frame && f.z ? c.frame.sx(L.x, f.z) < -500 : L.x < c.view.left - 500;
+  if (leftOfView) f.mode = 'gone';
 }

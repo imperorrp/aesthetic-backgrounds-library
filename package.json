@@ -130,6 +130,9 @@
     "compare": "node scripts/prepare-compare.mjs",
     "build:site": "pnpm sync-gallery && vite build --base=./",
     "size": "node scripts/size-check.mjs",
+    "sim": "node scripts/sim.mjs",
+    "lab": "node scripts/lab.mjs",
+    "test:sim": "vitest run src/**/*.sim.test.ts",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm registry:check && pnpm build:lib && pnpm size && pnpm schema-diff --check"
   },
   "peerDependencies": {

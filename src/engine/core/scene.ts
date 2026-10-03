@@ -7,7 +7,7 @@ import type { BackgroundConfig } from '../config';
 import { resolveLayer, type GLLayerHost, type Layer, type LayerHost, type LayerInstance } from './layer';
 import { registerSkin } from './registry';
 import { resolveOptions } from './schema';
-import type { BackgroundSkin, FrameInfo, SkinHost, SkinLayerContext, Viewport } from './skin';
+import type { BackgroundSkin, FrameInfo, SkinHost, SkinInspection, SkinLayerContext, Viewport } from './skin';
 
 export type SceneLayer = {
   /** Registered layer id. */
@@ -158,6 +158,17 @@ function mountScene(host: SkinHost<Scene>, scene: Scene | undefined) {
           ctx.restore();
         }
       }
+    },
+    advance(info: FrameInfo) {
+      for (const m of mounted) m.instance.advance?.(info);
+    },
+    /** The first layer that can describe itself (void layers share one world). */
+    inspect(): SkinInspection | undefined {
+      for (const m of mounted) {
+        const r = m.instance.inspect?.();
+        if (r) return r;
+      }
+      return undefined;
     },
     destroy() {
       for (const m of mounted) {

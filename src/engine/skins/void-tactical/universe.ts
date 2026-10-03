@@ -87,6 +87,8 @@ export type UniverseLook = {
   traffic?: number;
   /** How many anomalies, 0 to 2. */
   anomalies?: number;
+  /** Share of systems and structures placed on far planes behind the main one, 0 to 0.8. Default 0.35. */
+  depth?: number;
 };
 
 export const ANOMALY_STYLE_COLORS: Record<AnomalyStyle, string> = {
@@ -647,6 +649,7 @@ export function validateUniverse(raw: unknown): UniverseValidation {
           grid: oneOf(r.look.grid, ['crosses', 'claims', 'none'] as const, 'crosses'),
           traffic: typeof r.look.traffic === 'number' ? Math.max(0, Math.min(2, r.look.traffic)) : undefined,
           anomalies: typeof r.look.anomalies === 'number' ? Math.max(0, Math.min(2, r.look.anomalies)) : undefined,
+          depth: typeof r.look.depth === 'number' ? Math.max(0, Math.min(0.8, r.look.depth)) : undefined,
         }
       : undefined,
   };

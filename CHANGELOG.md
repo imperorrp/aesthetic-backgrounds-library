@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **A camera with a director.** The sector map now has a real camera (`engine/sim/view.ts`): world points project through pan, zoom, and depth.
+  - The director (`sim/director.ts`) watches a new event bus (`sim/bus.ts`), and now and then leans in on raids, armadas, captures, and flares. It tracks moving subjects and lets go.
+  - New `camera` option: `steady`, `director` (default), or `cinematic`. Also new: `lean` (toward the pointer) and `scroll` (page scroll carries the map forward).
+  - New host config `interactive`: wheel zoom and drag pan on empty page areas.
+- **Depth.** Systems and structures sit on far planes as well as the main one (`look.depth`). Fleets sink into the distance as they fly to far stations.
+- **Mechanic API.** New on the API: `camera`, `bus`/`emit`/`follow`, and `use(key, create)` for shared services, with `onUpdate` and `onDraw` hooks.
+  - Two new passes: `ground` and `hud`.
+  - Mechanic passes now run inside the camera transform, so mechanics draw in map space.
+- **Fast checks.**
+  - `pnpm sim` runs a universe sim-only in node and prints its story and any problems.
+  - `pnpm lab` renders a contact sheet of chosen moments, or seeks to an event.
+  - Studio `?debug` adds time scale, skip-ahead, counts, and the event log.
+  - Host API: `fastForward`, `setTimeScale`, `inspect`, and `SkinInstance.advance` (sim-only stepping).
+  - Long universe tests now run headless in node, so the unit suite takes half as long.
+- **Docs.** `docs/ARCHITECTURE.md` explains the layers, the frame, space and depth, events, and how to extend.
 - **Mechanics.** Universes now play differently, not just look different. A mechanic is a plugin (`registerMechanic`) with its own schema, update, and draw passes (under the map, among the ships, over everything), plus an API to spawn, steer, damage, and release fleets, add and remove structures, and fire effects. Built in:
   - `skirmish`: raiders warp in, strafe, and fight.
   - `events`: armadas, flares, and gate surges.

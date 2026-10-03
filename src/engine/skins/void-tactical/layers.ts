@@ -73,6 +73,8 @@ export const voidStarsLayer: Layer = {
     const style = resolveStyle({});
     return {
       resize: (v) => sim.resize(v),
+      advance: (info) => sim.update(info),
+      inspect: () => sim.inspect(),
       frame(info) {
         sim.update(info);
         host.ctx.font = FONT;
@@ -95,6 +97,8 @@ export const voidSystemsLayer: Layer = {
     const board = createLabelBoard();
     return {
       resize: (v) => sim.resize(v),
+      advance: (info) => sim.update(info),
+      inspect: () => sim.inspect(),
       frame(info) {
         sim.update(info);
         const { ctx } = host;
@@ -103,6 +107,7 @@ export const voidSystemsLayer: Layer = {
         const { world, camera } = sim;
         ctx.font = FONT;
         ctx.textBaseline = 'top';
+        sim.drawPass(ctx, 'ground', frame, board);
         sim.drawPass(ctx, 'under', frame, board);
         renderCelestialBodies(ctx, world.celestialBodies, camera, viewport, frame);
         world.systems.forEach((sys) => renderStarSystem(ctx, sys, camera, viewport, world.settings, frame, board));
@@ -126,6 +131,8 @@ export const voidFleetsLayer: Layer = {
     const board = createLabelBoard();
     return {
       resize: (v) => sim.resize(v),
+      advance: (info) => sim.update(info),
+      inspect: () => sim.inspect(),
       frame(info) {
         sim.update(info);
         const { ctx } = host;
@@ -155,6 +162,8 @@ export const voidHudLayer: Layer = {
     const board = createLabelBoard();
     return {
       resize: (v) => sim.resize(v),
+      advance: (info) => sim.update(info),
+      inspect: () => sim.inspect(),
       frame(info) {
         sim.update(info);
         const { ctx } = host;
@@ -168,6 +177,7 @@ export const voidHudLayer: Layer = {
         renderTacticalOverlays(ctx, sim.world, sim.camera, viewport, frame, board);
         board.flush(ctx, viewport, frame.dpr);
         renderTargetLock(ctx, sim.world, sim.camera, viewport, frame);
+        sim.drawPass(ctx, 'hud', frame);
       },
     };
   },

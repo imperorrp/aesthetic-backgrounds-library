@@ -173,7 +173,8 @@ registerMechanic({
 
     const begin = () => {
       const color = colorParam(api, p.color, '#f87171');
-      const candidates = api.world.fleets.filter((f) => f.ships.length > 0 && !f.steer && !f.hostile && f.mode !== 'docked' && f.fade > 0.8 && api.onScreen(f.ships[0].x, f.ships[0].y, 120));
+      // Raids happen on the main plane, where the raiders live.
+      const candidates = api.world.fleets.filter((f) => f.ships.length > 0 && f.z < 0.15 && !f.steer && !f.hostile && f.mode !== 'docked' && f.fade > 0.8 && api.onScreen(f.ships[0].x, f.ships[0].y, 120));
       if (!candidates.length) return;
       const cargo = candidates.filter((f) => f.purpose === 'cargo');
       const pool = cargo.length && api.rng() < 0.7 ? cargo : candidates;
@@ -207,7 +208,7 @@ registerMechanic({
                 raid.phase = 'strafe';
                 combat.engage([raid.raiders], [raid.target], { weaponA: p.weapon as never, weaponB: 'mixed', seconds: raid.until - api.t, colorA: color });
                 for (const s of api.structures()) {
-                  if (s.role === 'defense' && Math.hypot(s.x - tl.x, s.y - tl.y) < 320) api.say(`${s.label} · ENGAGING`, s.x, s.y, s.color ?? color, { priority: 'medium' });
+                  if (!s.z && s.role === 'defense' && Math.hypot(s.x - tl.x, s.y - tl.y) < 320) api.say(`${s.label} · ENGAGING`, s.x, s.y, s.color ?? color, { priority: 'medium' });
                 }
               }
             } else {
@@ -218,7 +219,7 @@ registerMechanic({
       );
       api.say(`CONTACT · ${raid.raiders.ships.length} ${name}`, at.x, at.y, color, { priority: 'high', followId: raid.raiders.id });
       // The target runs, toward a defense platform if one is near, else away.
-      const haven = api.structures().filter((s) => s.role === 'defense' && api.onScreen(s.x, s.y, 0)).sort((a, b) => Math.hypot(a.x - L.x, a.y - L.y) - Math.hypot(b.x - L.x, b.y - L.y))[0];
+      const haven = api.structures().filter((s) => !s.z && s.role === 'defense' && api.onScreen(s.x, s.y, 0)).sort((a, b) => Math.hypot(a.x - L.x, a.y - L.y) - Math.hypot(b.x - L.x, b.y - L.y))[0];
       target.steer = (f, dt) => {
         const me = f.ships[0];
         const sp = SHIP_SPECS[f.cls].speed * 1.15;
@@ -227,6 +228,7 @@ registerMechanic({
         else if (r) steerToward(me, me.x + (me.x - r.x), me.y + (me.y - r.y), sp, 1.5, dt);
       };
       api.say(`${target.callsign} · TAKING FIRE`, L.x, L.y, target.ships[0].color, { priority: 'high', followId: target.id });
+      api.emit({ type: 'raid', x: L.x, y: L.y, weight: 0.85, color, follow: api.follow(target) });
       raids.push(raid);
     };
 
@@ -244,7 +246,7 @@ registerMechanic({
           // Defense platforms near the fight lance the raiders.
           if (raidersAlive && r.phase === 'strafe') {
             for (const s of api.structures()) {
-              if (s.role !== 'defense' || api.rng() > dt * 0.9) continue;
+              if (s.z || s.role !== 'defense' || api.rng() > dt * 0.9) continue;
               const rs = r.raiders.ships[Math.floor(api.rng() * r.raiders.ships.length)];
               if (rs && Math.hypot(s.x - rs.x, s.y - rs.y) < 300) {
                 const victim = rs;

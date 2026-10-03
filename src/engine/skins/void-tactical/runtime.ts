@@ -4,7 +4,7 @@ import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/s
 import { createOverlayStack } from './overlays/stack';
 import { DEFAULT_OVERLAYS, type OverlayFlags, type OverlayId } from './overlays/flags';
 import type { Schema } from '../../core/schema';
-import { createVoidWorld, resolveStyle, STYLE_SCHEMA } from './world';
+import { CAMERA_SCHEMA, createVoidWorld, resolveStyle, STYLE_SCHEMA } from './world';
 import { listUniverses, resolveUniverse, type UniversePack } from './universe';
 import { forkRng } from '../../rng';
 
@@ -45,7 +45,7 @@ export const UNIVERSE_SCHEMA: Schema = {
   },
 };
 
-const schema: Schema = { ...UNIVERSE_SCHEMA, ...STYLE_SCHEMA, ...OVERLAY_SCHEMA };
+const schema: Schema = { ...UNIVERSE_SCHEMA, ...CAMERA_SCHEMA, ...STYLE_SCHEMA, ...OVERLAY_SCHEMA };
 
 export function overlayFlags(options?: VoidTacticalOptions): OverlayFlags {
   const flags: OverlayFlags = { ...options?.layers };
@@ -102,6 +102,10 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
         ctx.clearRect(0, 0, width, height);
         renderSystem(ctx, sim.world, sim.camera, { width, height }, sim.frameFor(info, style), sim.drawPass);
       },
+      advance(info: FrameInfo) {
+        sim.update(info);
+      },
+      inspect: () => sim.inspect(),
       destroy() {},
     };
   },

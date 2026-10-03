@@ -16,8 +16,9 @@ const DIST = resolve('dist');
 const BUDGETS_KB = {
   // host + scene compositor + schema: must never pull a skin, a layer, or the GLSL prelude.
   // 13 covers the compositor's WebGL surface handling and snapshotScene (M5/M6).
-  // 16 since M9 put the scene light, quiet zones, auto-shade, and transitions in the host.
-  'core.js': 16,
+  // 16 since M9 put the scene light, quiet zones, auto-shade, and transitions in the host;
+  // 16.5 with fastForward, time scale, inspect, page scroll, and interactive gestures (v3 phase 1).
+  'core.js': 16.5,
   // shader authoring (GLSL prelude + program setup), opt-in
   'shader.js': 15,
   // manifest validation/loading and the design-token bridge, opt-in (M8)
@@ -36,14 +37,16 @@ const BUDGETS_KB = {
   // 62 since M8 added the manifest and token entries to the batteries bundle; 67 since
   // M9 (host lighting and legibility, the moments layer, light-aware base layers); 101
   // since the void-tactical overhaul and the five instrument skins; 116 with mechanics and
-  // the instruments' events (holds, torpedoes, aftershocks, predation, surface ops).
-  'index.js': 116,
+  // the instruments' events (holds, torpedoes, aftershocks, predation, surface ops); 118 with
+  // the v3 camera (view, bus, director). Lazy universe packs (v3 phase 2) should win this back.
+  'index.js': 118,
   // framework adapters: core + all built-in skins, layers, and presets (no tooling); 59 since M9,
-  // 89 with the overhauled sector map and the instruments, 107 with mechanics and events
-  'element.js': 107,
-  'react.js': 107,
-  'vue.js': 107,
-  'svelte.js': 107,
+  // 89 with the overhauled sector map and the instruments, 107 with mechanics and events,
+  // 109 with the v3 camera
+  'element.js': 109,
+  'react.js': 109,
+  'vue.js': 109,
+  'svelte.js': 109,
 };
 
 function walk(dir, out = []) {

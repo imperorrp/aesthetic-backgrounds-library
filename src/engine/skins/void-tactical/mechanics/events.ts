@@ -29,6 +29,7 @@ registerMechanic({
       const dir = fromLeft ? 0 : Math.PI;
       const f = api.spawnFleet({ x, y, vx: Math.cos(dir) * 20, vy: 0 }, { cls: 'capital', warpIn: true });
       api.say(`ARMADA · ${f.callsign} · ON STATION`, x, y, f.ships[0].color, { priority: 'high', followId: f.id, duration: 5000 });
+      api.emit({ type: 'armada', x, y, weight: 1, color: f.ships[0].color, follow: api.follow(f) });
       // A second wave a moment later, behind it.
       const g = api.spawnFleet({ x: x - Math.cos(dir) * 60, y: y + 50, vx: Math.cos(dir) * 20, vy: 0 }, { cls: 'carrier', warpIn: true });
       g.maxVisits = 1;
@@ -36,7 +37,7 @@ registerMechanic({
     };
 
     const flare = () => {
-      const sys = api.world.systems.filter((s) => api.onScreen(s.x, s.y, 80));
+      const sys = api.world.systems.filter((s) => !s.z && api.onScreen(s.x, s.y, 80));
       if (!sys.length) return false;
       const s = sys[Math.floor(api.rng() * sys.length)];
       flares.push({ x: s.x, y: s.y, t: api.t, color: s.starColor, name: s.name });
@@ -44,16 +45,18 @@ registerMechanic({
       api.fx.ring(s.x, s.y, s.starColor, 520, 4, 10, 2);
       api.fx.ring(s.x, s.y, '#ffffff', 300, 2.5, 6, 1);
       api.say(`STELLAR FLARE · ${s.name}`, s.x, s.y + 30, s.starColor, { priority: 'high', duration: 5000 });
+      api.emit({ type: 'flare', x: s.x, y: s.y, weight: 0.75, color: s.starColor });
       return true;
     };
 
     const surge = () => {
-      const gates = allStructures(api.world).filter((s) => s.role === 'gate' && api.onScreen(s.x, s.y, 60));
+      const gates = allStructures(api.world).filter((s) => !s.z && s.role === 'gate' && api.onScreen(s.x, s.y, 60));
       if (!gates.length) return false;
       const g = gates[Math.floor(api.rng() * gates.length)];
       g.flashAt = api.t;
       api.fx.ring(g.x, g.y, g.color ?? '#818cf8', 160, 1.6, 8, 2);
       api.say(`${g.label} · SURGE · TRAFFIC INBOUND`, g.x, g.y + 26, g.color ?? '#818cf8', { priority: 'high' });
+      api.emit({ type: 'surge', x: g.x, y: g.y, weight: 0.7, color: g.color });
       for (let i = 0; i < 3; i++) {
         const ang = api.rng() * Math.PI * 2;
         api.spawnFleet({ x: g.x + Math.cos(ang) * 24, y: g.y + Math.sin(ang) * 24, vx: Math.cos(ang) * 40, vy: Math.sin(ang) * 40 }, { warpIn: true });

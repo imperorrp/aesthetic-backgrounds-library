@@ -11,6 +11,7 @@ import type { Rng } from '../../../rng';
 import { rgba, type Palette } from '../../../palette';
 import { hexToOklch, oklchToHex, parseHex, toTriplet } from '../../../color';
 import type { UniversePack } from '../universe';
+import type { View } from '../../../sim/view';
 
 export type CanvasContext = CanvasRenderingContext2D;
 
@@ -50,11 +51,19 @@ export type RenderFrame = {
   color(hex: string): string;
   /** The universe this map belongs to. */
   pack: UniversePack;
-  /** Screen x = world x - camera.x * parallax for the map plane. */
+  /** @deprecated Project through `view` instead. Kept for third-party renderers. */
   parallax: number;
   /** Backing-store pixels per CSS pixel, for snapping text and sprites. */
   dpr: number;
+  /**
+   * The camera: project world points with `view.sx(x, z)` / `view.sy(y, z)` and scale
+   * sizes by `view.scale(z)`. Text stays at its pixel size; only positions move.
+   */
+  view: View;
 };
+
+/** Far things fade a little, so depth reads at a glance. */
+export const depthAlpha = (z = 0) => 1 - Math.min(0.5, z * 0.42);
 
 export function accentRgba(palette: Palette, alpha = 1): string {
   return rgba(palette.accentRgb, alpha);
@@ -115,9 +124,16 @@ const asciiCache = new Map<string, Sprite>();
 /** Snap a CSS-pixel coordinate to the device pixel grid so text and 1px lines stay sharp. */
 export const crispPx = (v: number, dpr = 1) => Math.round(v * dpr) / dpr;
 
-/** Draw a sprite at its CSS size, snapped to device pixels. */
-export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, cx: number, cy: number, dpr = 1) {
-  ctx.drawImage(s, crispPx(cx - s.cssW / 2, dpr), crispPx(cy - s.cssH / 2, dpr), s.cssW, s.cssH);
+/**
+ * Draw a sprite centered at (cx, cy), snapped to device pixels. `scale` stretches it a
+ * little when the sprite was rasterized at the nearest font size to a zoomed target
+ * (scale 1, the common case, draws it pixel for pixel).
+ */
+export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, cx: number, cy: number, dpr = 1, scale = 1) {
+  const w = s.cssW * scale;
+  const h = s.cssH * scale;
+  if (scale === 1) ctx.drawImage(s, crispPx(cx - w / 2, dpr), crispPx(cy - h / 2, dpr), w, h);
+  else ctx.drawImage(s, cx - w / 2, cy - h / 2, w, h);
 }
 
 /**
@@ -139,6 +155,8 @@ export function getArtSprite(art: readonly string[], id: string, color: string, 
   const key = `${id}|${art.join('\n')}|${color}|${fontSize}|${scale}`;
   const hit = asciiCache.get(key);
   if (hit) return hit;
+  // Zoom and depth ask for more sizes; keep the cache from growing without bound.
+  if (asciiCache.size > 800) asciiCache.clear();
 
   const lineHeight = Math.round(fontSize * 1.12);
   const c = document.createElement('canvas') as Sprite;

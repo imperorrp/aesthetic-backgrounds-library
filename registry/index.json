@@ -387,6 +387,29 @@
           "label": "Universe",
           "description": "Whose map this is: names, factions, structures, chatter, background words"
         },
+        "camera": {
+          "type": "enum",
+          "values": [
+            "steady",
+            "director",
+            "cinematic"
+          ],
+          "default": "director",
+          "label": "Camera",
+          "description": "Steady: the classic fixed framing. Director: now and then it leans in on something happening. Cinematic: it chases the action."
+        },
+        "lean": {
+          "type": "boolean",
+          "default": true,
+          "label": "Lean toward the pointer",
+          "description": "The camera drifts a few percent toward the mouse"
+        },
+        "scroll": {
+          "type": "boolean",
+          "default": false,
+          "label": "Travel with the page scroll",
+          "description": "Scrolling down the page carries the map forward through the sector"
+        },
         "hueVariety": {
           "type": "number",
           "min": 0,
@@ -2583,6 +2606,29 @@
           "default": "void",
           "label": "Universe",
           "description": "Whose map this is: names, factions, structures, chatter, background words"
+        },
+        "camera": {
+          "type": "enum",
+          "values": [
+            "steady",
+            "director",
+            "cinematic"
+          ],
+          "default": "director",
+          "label": "Camera",
+          "description": "Steady: the classic fixed framing. Director: now and then it leans in on something happening. Cinematic: it chases the action."
+        },
+        "lean": {
+          "type": "boolean",
+          "default": true,
+          "label": "Lean toward the pointer",
+          "description": "The camera drifts a few percent toward the mouse"
+        },
+        "scroll": {
+          "type": "boolean",
+          "default": false,
+          "label": "Travel with the page scroll",
+          "description": "Scrolling down the page carries the map forward through the sector"
         },
         "hueVariety": {
           "type": "number",

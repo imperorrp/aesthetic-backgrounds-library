@@ -84,6 +84,13 @@ export type SkinHost<T = any> = {
   readonly viewport: HostViewport;
   /** Live: pointer relative to the canvas. */
   readonly pointer: PointerState;
+  /** Live: the page's vertical scroll in CSS px, for scroll-linked scenes. */
+  readonly scroll: { y: number };
+  /**
+   * Wheel zoom and drag pan since the last call (identity unless `config.interactive`).
+   * Skins with a camera read it once per frame.
+   */
+  takeGesture(): { zoom: number; panX: number; panY: number };
   /** Live: `full`, `reduced` (honor by slowing/simplifying), or `off` (host renders a single frame). */
   readonly motion: MotionMode;
   /** Live: 0..1 user knob for how present the background should be. */
@@ -141,7 +148,28 @@ export type BackgroundSkin<T = any> = {
 export type SkinInstance = {
   resize(viewport: Viewport): void;
   frame(info: FrameInfo): void;
+  /**
+   * Optional sim-only step: everything `frame` does except drawing. The host uses it
+   * to fast-forward (time scale above 1, `fastForward`, the lab, the headless runner).
+   * Skins without it are fast-forwarded through `frame`.
+   */
+  advance?(info: FrameInfo): void;
+  /**
+   * Optional debug snapshot for the lab, the headless runner, and the studio's debug
+   * panel: entity counts and a log of what happened. Never used for drawing.
+   */
+  inspect?(): SkinInspection | undefined;
   destroy(): void;
+};
+
+/** What a skin reports about itself for tooling. `log` grows; `seq` counts every entry ever logged. */
+export type SkinInspection = {
+  t: number;
+  counts: Record<string, number>;
+  log: readonly { t: number; text: string; kind?: string; type?: string }[];
+  seq: number;
+  /** Problems the skin noticed (NaN positions, runaway counts, failed plugins). */
+  problems?: string[];
 };
 
 export type BackgroundHandle = {
@@ -156,5 +184,15 @@ export type BackgroundHandle = {
   onFrame(listener: (info: FrameInfo) => void): () => void;
   /** Light, measured content boxes, quiet zones, and shade strength right now. */
   composition(): CompositionState;
+  /**
+   * Run the simulation forward without drawing, `step` seconds at a time, then carry on
+   * from there. Stops early when `until` returns true. Returns the seconds simulated.
+   * Deterministic: the same calls on the same seed reach the same world.
+   */
+  fastForward(seconds: number, opts?: { step?: number; until?: (info: FrameInfo) => boolean }): number;
+  /** Simulated seconds per real second (1, 2, 4, 8, 16). Extra steps are sim-only. */
+  setTimeScale(scale: number): void;
+  /** The skin's debug snapshot, when it offers one. */
+  inspect(): SkinInspection | undefined;
   destroy(): void;
 };

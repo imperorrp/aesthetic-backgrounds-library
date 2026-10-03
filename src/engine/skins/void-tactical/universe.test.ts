@@ -80,14 +80,6 @@ describe('void-tactical with a universe', () => {
     expect(run({ pack: CHOIR_PACK }, 'u-1')).toBe(inline);
   }, 30_000);
 
-  it('runs every built-in universe through its events without failing', () => {
-    const warn = vi.spyOn(console, 'warn');
-    // 40 s of sim each: raids, belts, storms, songs, the maw, the front, captures, missiles.
-    for (const universe of ['void', 'saltwind', 'choir', 'siege']) run({ universe }, 'long-run', 2400);
-    expect(warn.mock.calls.filter((c) => String(c[0]).includes('mechanic'))).toEqual([]);
-    warn.mockRestore();
-  }, 180_000);
-
   it('lets options.mechanics replace the pack list, including mechanics registered from outside', () => {
     const calls = { created: 0, updates: 0, draws: 0 };
     registerMechanic({

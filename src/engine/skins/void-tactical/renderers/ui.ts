@@ -9,7 +9,7 @@
  */
 
 import type { SimSettings, SystemState, StarSystem } from '../types';
-import { accentRgba, crispPx, getArtSprite, hexRgba, SPRITE_BASE_HEIGHT, WORLD_SPEED_MULTIPLIER, type CanvasContext, type RenderFrame } from './utils';
+import { accentRgba, crispPx, getArtSprite, hexRgba, SPRITE_BASE_HEIGHT, type CanvasContext, type RenderFrame } from './utils';
 import { shouldShowTelemetry } from '../labels';
 import type { LabelBoard } from './board';
 import { allStructures } from '../fleets';
@@ -23,12 +23,14 @@ const lineLevel = (frame: RenderFrame) => 0.55 + 0.45 * frame.style.hud;
 export const renderSystemConnections = (
   ctx: CanvasContext,
   systems: StarSystem[],
-  camera: { x: number; y: number },
+  _camera: { x: number; y: number },
   viewport: { width: number; height: number },
   frame: RenderFrame,
 ) => {
+  // Lanes join systems at any depth; a lane to a far system reads as a line into the distance.
+  const v = frame.view;
   const points = systems
-    .map((sys) => ({ x: sys.x - camera.x * frame.parallax, y: sys.y }))
+    .map((sys) => ({ x: v.sx(sys.x, sys.z ?? 0), y: v.sy(sys.y, sys.z ?? 0) }))
     .filter((p) => p.x > -400 && p.x < viewport.width + 400);
   const lanes = frame.pack.look?.lanes ?? 'straight';
   if (points.length < 2 || lanes === 'none') return;
@@ -88,22 +90,24 @@ export const renderSystemConnections = (
 // --- Sector Network Visualization ---
 export const renderSectorConnections = (
   ctx: CanvasContext,
-  camera: { x: number; y: number },
+  _camera: { x: number; y: number },
   viewport: { width: number; height: number },
   frame: RenderFrame,
 ) => {
   const sectorSize = 2000;
-  const parallax = 0.15 * WORLD_SPEED_MULTIPLIER;
+  // The sector net sits deep behind the map: 0.6 of its parallax.
+  const camX = (frame.view.x - viewport.width / 2) * 0.6;
+  const camY = (frame.view.y - viewport.height / 2) * 0.6;
   const maxDistance = sectorSize * 1.5;
   const points: { x: number; y: number }[] = [];
-  const startX = Math.floor((camera.x * parallax - viewport.width / 2) / sectorSize) * sectorSize;
-  const endX = Math.ceil((camera.x * parallax + viewport.width / 2) / sectorSize) * sectorSize;
-  const startY = Math.floor((camera.y * parallax - viewport.height / 2) / sectorSize) * sectorSize;
-  const endY = Math.ceil((camera.y * parallax + viewport.height / 2) / sectorSize) * sectorSize;
+  const startX = Math.floor((camX - viewport.width / 2) / sectorSize) * sectorSize;
+  const endX = Math.ceil((camX + viewport.width / 2) / sectorSize) * sectorSize;
+  const startY = Math.floor((camY - viewport.height / 2) / sectorSize) * sectorSize;
+  const endY = Math.ceil((camY + viewport.height / 2) / sectorSize) * sectorSize;
   for (let x = startX; x <= endX; x += sectorSize) {
     for (let y = startY; y <= endY; y += sectorSize) {
-      const screenX = x - camera.x * parallax;
-      const screenY = y - camera.y * parallax;
+      const screenX = x - camX;
+      const screenY = y - camY;
       if (screenX > -100 && screenX < viewport.width + 100 && screenY > -100 && screenY < viewport.height + 100) points.push({ x: screenX, y: screenY });
     }
   }
@@ -135,17 +139,17 @@ export const renderSectorConnections = (
 export const renderTacticalOverlays = (
   _ctx: CanvasContext,
   system: SystemState,
-  camera: { x: number; y: number },
+  _camera: { x: number; y: number },
   viewport: { width: number; height: number },
   frame: RenderFrame,
   board?: LabelBoard,
 ) => {
   if (!board) return;
-  const off = camera.x * frame.parallax;
+  const v = frame.view;
   const hudText = 0.4 + 0.6 * frame.style.hud;
   for (const o of system.overlays) {
-    const x = o.x - off;
-    const y = o.y;
+    const x = v.sx(o.x, o.z ?? 0);
+    const y = v.sy(o.y, o.z ?? 0);
     if (x < -100 || x > viewport.width + 100 || y < -100 || y > viewport.height + 100) continue;
     const age = o.duration - o.lifetime;
     const fade = Math.min(1, o.lifetime / 600) * Math.min(1, age / 250);
@@ -172,13 +176,13 @@ export const renderTacticalOverlays = (
 export const renderTargetLock = (
   ctx: CanvasContext,
   system: SystemState,
-  camera: { x: number; y: number },
+  _camera: { x: number; y: number },
   viewport: { width: number; height: number },
   frame: RenderFrame,
 ) => {
   const lock = system.lock;
   if (!lock || !frame.style.lock) return;
-  const off = camera.x * frame.parallax;
+  const v = frame.view;
   let x = 0;
   let y = 0;
   let r = 12;
@@ -187,18 +191,19 @@ export const renderTargetLock = (
     const f = system.fleets.find((fl) => fl.id === lock.id);
     if (!f) return;
     const L = f.ships[0];
-    x = L.x - off;
-    y = L.y;
-    r = Math.max(10, f.ships.length > 1 ? f.spacing * 1.3 : SHIP_SPECS[f.cls].size * 0.8) * frame.style.shipScale;
+    x = v.sx(L.x, f.z);
+    y = v.sy(L.y, f.z);
+    r = Math.max(10, f.ships.length > 1 ? f.spacing * 1.3 : SHIP_SPECS[f.cls].size * 0.8) * frame.style.shipScale * v.scale(f.z);
     const hdg = Math.round((((Math.atan2(L.vy, L.vx) * 180) / Math.PI + 450) % 360));
     live = `HDG ${String(hdg).padStart(3, '0')}°  SPD ${Math.round(Math.hypot(L.vx, L.vy))}`;
   } else {
     const s = allStructures(system).find((st) => st.id === lock.id);
     if (!s) return;
-    x = s.x - off;
-    y = s.y;
+    const z = s.z ?? 0;
+    x = v.sx(s.x, z);
+    y = v.sy(s.y, z);
     const boost = s.rarity === 'legendary' ? 1.35 : s.rarity === 'rare' ? 1.15 : 1;
-    r = structureRadius(getArtSprite(s.art, s.kind, frame.color(s.color ?? '#ffffff'), SPRITE_BASE_HEIGHT * frame.style.spriteScale * boost, frame.dpr)) + 6;
+    r = structureRadius(getArtSprite(s.art, s.kind, frame.color(s.color ?? '#ffffff'), SPRITE_BASE_HEIGHT * frame.style.spriteScale * boost, frame.dpr)) * v.scale(z) + 6;
   }
   if (x < -40 || x > viewport.width + 40) return;
 

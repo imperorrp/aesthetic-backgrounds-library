@@ -39,6 +39,9 @@ import { instrumentSkins } from '../engine/skins/instruments';
 import { aiPrompt, compactConfig } from './ai-prompt';
 import './DemoPage.css';
 
+/** `?debug` in the URL shows the debug panel: time scale, skip ahead, counts, the event log. */
+const DEBUG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug');
+
 /** The ones with a point of view; everything else is under "Basics". */
 const FEATURED_SKINS = ['void-tactical', ...instrumentSkins.map((s) => s.id)];
 
@@ -541,6 +544,7 @@ export default function DemoPage() {
       />
 
       {showComposition && handle && <CompositionOverlay handle={handle} />}
+      {DEBUG && handle && <DebugPanel handle={handle} />}
 
       {showContent && (
         <main id="demo-content" className="demo-content" style={{ color: resolvePalette(palette).ink }}>
@@ -1108,6 +1112,42 @@ function LayerStack({ scene, onChange }: { scene: Scene; onChange: (fn: (scene: 
         <button type="button" onClick={add}>Add layer</button>
       </div>
     </div>
+  );
+}
+
+/** Developer panel (`?debug`): run the sim faster, skip ahead, and watch counts and the event log. */
+function DebugPanel({ handle }: { handle: MountHandle }) {
+  const [scale, setScale] = useState(1);
+  const [snap, setSnap] = useState<ReturnType<MountHandle['inspect']>>(undefined);
+  useEffect(() => {
+    const id = window.setInterval(() => setSnap(handle.inspect()), 400);
+    return () => window.clearInterval(id);
+  }, [handle]);
+  useEffect(() => handle.setTimeScale(scale), [handle, scale]);
+  const events = (snap?.log ?? []).filter((e) => e.kind !== 'low').slice(-8);
+  return (
+    <aside className="demo-debug" aria-label="Debug">
+      <div className="demo-text-row">
+        {[1, 4, 16].map((k) => (
+          <button key={k} type="button" aria-pressed={scale === k} onClick={() => setScale(k)}>×{k}</button>
+        ))}
+        <button type="button" onClick={() => handle.fastForward(30)}>+30 s</button>
+        <span>t {snap?.t.toFixed(0) ?? '–'} s</span>
+      </div>
+      {snap && (
+        <p className="demo-debug-counts">
+          {Object.entries(snap.counts).map(([k, v]) => `${k} ${v}`).join(' · ')}
+        </p>
+      )}
+      <ol>
+        {events.map((e, i) => (
+          <li key={`${e.t}-${i}`}>
+            <span>{e.t.toFixed(1)}</span> {e.text}
+          </li>
+        ))}
+      </ol>
+      {!!snap?.problems?.length && <p className="demo-warn">{snap.problems.slice(0, 3).join(' · ')}</p>}
+    </aside>
   );
 }
 

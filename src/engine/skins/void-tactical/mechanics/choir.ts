@@ -44,9 +44,9 @@ registerMechanic({
     const reach = Number(p.reach) || 700;
 
     const singers = () => {
-      const giants = allStructures(api.world).filter((s) => (s.role === 'giant' || s.role === 'mystery') && api.onScreen(s.x, s.y, 120));
+      const giants = allStructures(api.world).filter((s) => !s.z && (s.role === 'giant' || s.role === 'mystery') && api.onScreen(s.x, s.y, 120));
       if (giants.length) return giants.map((s) => ({ x: s.x, y: s.y, color: s.color ?? api.host.palette.accent, label: s.label }));
-      return api.world.systems.filter((s) => api.onScreen(s.x, s.y, 80)).map((s) => ({ x: s.x, y: s.y, color: s.starColor, label: s.name }));
+      return api.world.systems.filter((s) => !s.z && api.onScreen(s.x, s.y, 80)).map((s) => ({ x: s.x, y: s.y, color: s.starColor, label: s.name }));
     };
 
     return {
@@ -69,7 +69,7 @@ registerMechanic({
         // Resonance: entities the wave front passes ring for a moment.
         const ents = [
           ...api.world.fleets.filter((f) => f.ships.length > 0).map((f) => ({ id: f.id, x: f.ships[0].x, y: f.ships[0].y })),
-          ...allStructures(api.world).map((s) => ({ id: s.id, x: s.x, y: s.y })),
+          ...allStructures(api.world).filter((s) => !s.z).map((s) => ({ id: s.id, x: s.x, y: s.y })),
         ];
         for (const s of songs) {
           const r = (api.t - s.born) * speed;
@@ -271,7 +271,7 @@ registerMechanic({
     // The maw sits on a hazard structure. If none is in view for a while, one opens.
     let lastSeen = -99;
     const center = () => {
-      const h = allStructures(api.world).filter((s) => s.role === 'hazard' && api.onScreen(s.x, s.y, 60))[0];
+      const h = allStructures(api.world).filter((s) => !s.z && s.role === 'hazard' && api.onScreen(s.x, s.y, 60))[0];
       if (h) return { x: h.x, y: h.y, label: h.label };
       return null;
     };
@@ -430,7 +430,7 @@ registerMechanic({
         }
         // The chart changes.
         if (api.t >= nextChange && Number(p.changes ?? 0.8) > 0) {
-          const vis = api.world.systems.filter((s) => api.onScreen(s.x, s.y, 120));
+          const vis = api.world.systems.filter((s) => !s.z && api.onScreen(s.x, s.y, 120));
           if (vis.length > 1) {
             const s: StarSystem = vis[Math.floor(api.rng() * vis.length)];
             missing.push({ x: s.x, y: s.y, at: api.t, name: s.name });
