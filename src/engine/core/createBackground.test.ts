@@ -85,6 +85,26 @@ describe('frame loop', () => {
     handle.destroy();
   });
 
+  it('passes skin events to onEvent listeners, but not during fast-forward', () => {
+    const { skin } = stubSkin((info, host) => {
+      if (host.events?.active) host.events.emit({ type: 'tick', weight: 0.5, pan: 0, near: 1, size: info.frame });
+    });
+    const s = createManualScheduler();
+    const handle = createBackground(canvasInBody(), { skin, scheduler: s, config: { adaptiveQuality: false } });
+    const heard: number[] = [];
+    s.step(3);
+    expect(heard).toHaveLength(0);
+    const off = handle.onEvent((e) => heard.push(e.size ?? -1));
+    s.step(3);
+    expect(heard).toHaveLength(3);
+    handle.fastForward(1);
+    expect(heard).toHaveLength(3);
+    off();
+    s.step(3);
+    expect(heard).toHaveLength(3);
+    handle.destroy();
+  });
+
   it('clamps dt after a long stall', () => {
     const { skin, rec } = stubSkin();
     const s = createManualScheduler();

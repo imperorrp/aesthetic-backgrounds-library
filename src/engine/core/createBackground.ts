@@ -4,7 +4,7 @@ import { createNoise2D } from '../noise';
 import { resolveSkin } from './registry';
 import { createRafScheduler, type Scheduler } from './scheduler';
 import { autoShadeStrength, createShadePainter, lightState, measureContent, quietnessAt, quietRectsPx } from './legibility';
-import type { BackgroundHandle, BackgroundSkin, FrameInfo, HostViewport, PointerState, PxRect, SkinHost, Viewport } from './skin';
+import type { BackgroundHandle, BackgroundSkin, FrameInfo, HostViewport, PointerState, PxRect, SkinEvent, SkinEvents, SkinHost, Viewport } from './skin';
 
 export type CreateBackgroundOptions<T = any> = {
   config?: BackgroundConfig;
@@ -94,9 +94,24 @@ export function createBackground<T = any>(
     return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
   })();
 
+  // Skin events: fanned out to `onEvent` listeners, and silent during sim-only steps
+  // (fast-forward, time scale) so a burst of skipped time never plays as a burst of sound.
+  const eventListeners = new Set<(e: SkinEvent) => void>();
+  let simulating = 0;
+  const events: SkinEvents = {
+    get active() {
+      return eventListeners.size > 0 && simulating === 0;
+    },
+    emit(e) {
+      if (simulating) return;
+      for (const fn of eventListeners) fn(e);
+    },
+  };
+
   const host: SkinHost<T> = {
     canvas,
     ctx,
+    events,
     rng,
     fork: (label) => forkRng(seed, label),
     noise: createNoise2D(forkRng(seed, 'noise')),
@@ -202,8 +217,13 @@ export function createBackground<T = any>(
   /** One sim-only step: the skin's `advance`, or a full frame for skins without one. */
   const simulate = (info: FrameInfo) => {
     lastT = info.t;
-    if (instance!.advance) instance!.advance(info);
-    else instance!.frame(info);
+    simulating++;
+    try {
+      if (instance!.advance) instance!.advance(info);
+      else instance!.frame(info);
+    } finally {
+      simulating--;
+    }
   };
 
   /**
@@ -444,11 +464,16 @@ export function createBackground<T = any>(
     inspect() {
       return instance?.inspect?.();
     },
+    onEvent(listener) {
+      eventListeners.add(listener);
+      return () => eventListeners.delete(listener);
+    },
     destroy() {
       if (destroyed) return;
       destroyed = true;
       running = false;
       frameListeners.clear();
+      eventListeners.clear();
       scheduler.cancel(handle);
       resizeObserver?.disconnect();
       intersection?.disconnect();

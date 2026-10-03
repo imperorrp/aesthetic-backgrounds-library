@@ -287,6 +287,24 @@ bg = transition(bg, { skin: 'aurora-night' }, { kind: 'iris', duration: 1.4 }).h
 
 `handle.composition()` reports the light, the measured content rects, the quiet zones, and the current shade strength, and `handle.onFrame(fn)` subscribes to frames. The studio's "Show composition" overlay draws all of it over the live background.
 
+## Events and sound
+
+`handle.onEvent(fn)` reports what happens in a background as it happens. Each `SkinEvent` carries a `type` (`explosion`, `raid`, `capture`, `song`, `bombard`, ...), a `weight` (0..1, how much it matters), a `pan` (-1 to 1, where across the screen it happened), and a `near` value (1 when on screen and up front). The sector map reports its whole event stream; other skins report nothing yet. Events are silent during `fastForward` and time-scale steps.
+
+Sound is a separate, opt-in entry (about 5 KB gzip). Every sound is synthesized, so there are no assets to load:
+
+```ts
+import { mount } from 'space-background-engine';
+import { createSoundscape } from 'space-background-engine/audio';
+
+const bg = mount(document.body, { skin: 'void-tactical', options: { universe: 'siege' } });
+const sound = createSoundscape({ palette: 'siege', volume: 0.5 });
+sound.attach(bg);
+button.onclick = () => sound.start(); // browsers allow audio only after a click or key press
+```
+
+A **sound palette** maps event types to cues (boom, ping, bell, sweep, whoosh, thump, choir, crackle) and sets a drone underneath. There is one per universe: `void`, `saltwind`, `choir`, and `siege`. `registerSoundPalette()` adds your own. Each cue's loudness follows the event's weight and nearness, and a per-cue rate limit keeps a busy map from turning to noise. The soundscape suspends while the tab is hidden. In the studio, use the **Sound** toggle.
+
 ## The void-tactical skin
 
 The default skin is a streaming sci-fi sector map: star systems with orbiting planets and hex radars, a network of data lanes between systems, ASCII-art structures from stations to Dyson spheres, fleets with AI states and predicted paths, anomalies, and an ambient HUD of sector chatter. Every authored color is pulled into the active palette family, so it works with `palette: '#ff7a1a'` as well as the built-ins. It is calibratable through `options`:

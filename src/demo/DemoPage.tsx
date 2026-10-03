@@ -207,6 +207,10 @@ export default function DemoPage() {
   const [handle, setHandle] = useState<MountHandle | null>(null);
   const [showComposition, setShowComposition] = useState(false);
   const [transitionKind, setTransitionKind] = useState<TransitionKind>('iris');
+  const [soundOn, setSoundOn] = useState(false);
+  const [soundVolume, setSoundVolume] = useState(0.6);
+  const soundUniverse = typeof studio.skinOptions.universe === 'string' ? studio.skinOptions.universe : 'void';
+  useSoundscape(handle, soundOn, soundVolume, soundUniverse);
   const renderedSource = useRef(studio.source);
   const sourceChanged = renderedSource.current !== studio.source;
   useEffect(() => {
@@ -803,6 +807,17 @@ export default function DemoPage() {
               </select>
             </label>
 
+            <label className="demo-toggle-field" title="Generated sound bound to what happens on the map: explosions, raids, songs, volleys. Each universe sounds different.">
+              <input type="checkbox" checked={soundOn} onChange={(e) => setSoundOn(e.target.checked)} />
+              <span className="demo-toggle-label">Sound</span>
+            </label>
+            {soundOn && (
+              <label className="demo-field">
+                <span>Volume {Math.round(soundVolume * 100)}%</span>
+                <input type="range" min={0} max={1} step={0.05} value={soundVolume} onChange={(e) => setSoundVolume(Number(e.target.value))} />
+              </label>
+            )}
+
             <p className="demo-kicker demo-kicker-gap">Light and composition</p>
             <label className="demo-toggle-field" title="Let the seed choose the light angle (upper left or upper right)">
               <input type="checkbox" checked={studio.lightAngle === null} onChange={(e) => update({ lightAngle: e.target.checked ? null : handle?.composition().light.angle ?? 225 })} />
@@ -1116,6 +1131,38 @@ function LayerStack({ scene, onChange }: { scene: Scene; onChange: (fn: (scene: 
       </div>
     </div>
   );
+}
+
+/**
+ * The studio's sound: loads the audio module the first time it is switched on, follows
+ * the current mount (each remount is a new handle), and the universe's palette.
+ */
+function useSoundscape(handle: MountHandle | null, on: boolean, volume: number, universe: string) {
+  const sound = useRef<import('../engine/audio').Soundscape | null>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!on || sound.current) return;
+    let cancelled = false;
+    void import('../engine/audio').then(({ createSoundscape }) => {
+      if (cancelled) return;
+      sound.current = createSoundscape({ palette: universe, volume });
+      setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Created once; palette and volume follow through the effects below.
+  }, [on]);
+  useEffect(() => {
+    const s = sound.current;
+    if (!s) return;
+    if (on) void s.start();
+    else s.stop();
+  }, [on, ready]);
+  useEffect(() => (handle && sound.current ? sound.current.attach(handle) : undefined), [handle, ready]);
+  useEffect(() => sound.current?.setPalette(universe), [universe, ready]);
+  useEffect(() => sound.current?.setVolume(volume), [volume, ready]);
+  useEffect(() => () => sound.current?.destroy(), []);
 }
 
 /** Developer panel (`?debug`): run the sim faster, skip ahead, and watch counts and the event log. */

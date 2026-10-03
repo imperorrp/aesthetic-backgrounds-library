@@ -91,6 +91,8 @@ export type SkinHost<T = any> = {
    * Skins with a camera read it once per frame.
    */
   takeGesture(): { zoom: number; panX: number; panY: number };
+  /** Where a skin reports what happens, for sound and other reactions (`handle.onEvent`). */
+  events?: SkinEvents;
   /** Live: `full`, `reduced` (honor by slowing/simplifying), or `off` (host renders a single frame). */
   readonly motion: MotionMode;
   /** Live: 0..1 user knob for how present the background should be. */
@@ -162,6 +164,28 @@ export type SkinInstance = {
   destroy(): void;
 };
 
+/** Something that happened in a skin: a raid, an explosion, a song. Sound binds to these. */
+export type SkinEvent = {
+  type: string;
+  /** 0..1: how much it matters (how loud, for sound). */
+  weight: number;
+  /** -1 (left edge) to 1 (right edge): where across the screen it happened. */
+  pan: number;
+  /** 0..1: 1 on screen and up front; less off screen or far behind. */
+  near: number;
+  text?: string;
+  color?: string;
+  /** Size of the thing (explosions). */
+  size?: number;
+  priority?: 'low' | 'medium' | 'high';
+};
+
+/**
+ * The host's outlet for skin events. `active` is false while nobody listens (or while
+ * the host is fast-forwarding), so skins can skip the work of reporting.
+ */
+export type SkinEvents = { readonly active: boolean; emit(e: SkinEvent): void };
+
 /** What a skin reports about itself for tooling. `log` grows; `seq` counts every entry ever logged. */
 export type SkinInspection = {
   t: number;
@@ -194,5 +218,10 @@ export type BackgroundHandle = {
   setTimeScale(scale: number): void;
   /** The skin's debug snapshot, when it offers one. */
   inspect(): SkinInspection | undefined;
+  /**
+   * What happens, as it happens (skins that report events: the sector map). Silent during
+   * fast-forward. Returns an unsubscribe function. The audio entry listens here.
+   */
+  onEvent(listener: (e: SkinEvent) => void): () => void;
   destroy(): void;
 };

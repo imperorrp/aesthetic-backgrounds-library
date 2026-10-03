@@ -108,6 +108,7 @@ export function mount<T = any>(
     fastForward: (seconds, opts) => loop.fastForward(seconds, opts),
     setTimeScale: (scale) => loop.setTimeScale(scale),
     inspect: () => loop.inspect(),
+    onEvent: (listener) => loop.onEvent(listener),
     destroy() {
       if (destroyed) return;
       destroyed = true;

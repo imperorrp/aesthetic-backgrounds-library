@@ -24,6 +24,7 @@ export default defineConfig({
         tokens: 'src/entries/tokens.ts',
         layers: 'src/entries/layers.ts',
         presets: 'src/entries/presets.ts',
+        audio: 'src/entries/audio.ts',
       },
       formats: ['es'],
     },

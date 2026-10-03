@@ -102,6 +102,20 @@ mount(document.body, { skin: 'void-tactical', seed: 'orion-7', options: { univer
 
 Everything is seeded and deterministic. It respects reduced motion, pauses when the tab is hidden, and is dark enough behind a text column to keep body copy readable.
 
+### Sound, if you want it
+
+The sector map can be heard as well as seen. It's opt-in and generated, with no audio files, and adds about 5 KB:
+
+```ts
+import { createSoundscape } from 'space-background-engine/audio';
+
+const sound = createSoundscape({ palette: 'choir' });
+sound.attach(handle);
+playButton.onclick = () => sound.start();
+```
+
+Explosions boom where they happen across the screen. Raids bring a siren, a captured system rings a bell, and the Choir's songs are low voices answering each other. Each universe has its own palette and drone.
+
 ## Running it
 
 ```bash

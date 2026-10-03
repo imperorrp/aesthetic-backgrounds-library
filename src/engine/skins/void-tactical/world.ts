@@ -148,6 +148,25 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
   let lastScrollY = host.scroll?.y ?? 0;
   const cameraMode: CameraMode = opts.camera === 'steady' || opts.camera === 'cinematic' ? opts.camera : 'director';
   const director = createDirector(cam, bus, cameraMode, host.fork('director'));
+  // Report what happens to the host (sound binds here): where on screen, and how near.
+  bus.on('*', (e) => {
+    const out = host.events;
+    if (!out?.active) return;
+    const z = e.z ?? 0;
+    const sx = typeof e.x === 'number' ? cam.sx(e.x, z) : width / 2;
+    const sy = typeof e.y === 'number' ? cam.sy(e.y, z) : height / 2;
+    const onScreen = sx > -40 && sx < width + 40 && sy > -40 && sy < height + 40;
+    out.emit({
+      type: e.type,
+      weight: e.weight ?? 0.2,
+      pan: Math.max(-1, Math.min(1, (sx / Math.max(1, width)) * 2 - 1)),
+      near: (onScreen ? 1 : 0.35) / (1 + z),
+      text: e.text,
+      color: e.color,
+      size: typeof e.size === 'number' ? e.size : undefined,
+      priority: e.priority,
+    });
+  });
   /** Base-frame screen position at depth z (ignores the director): for reach and culling. */
   const baseSx = (x: number, z = 0) => width / 2 + (x - cam.baseX) / (1 + z);
   const baseSy = (y: number, z = 0) => height / 2 + (y - cam.baseY) / (1 + z);

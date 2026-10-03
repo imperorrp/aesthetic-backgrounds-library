@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Sound.** New opt-in entry `space-background-engine/audio` (4.9 KB gzip): generated sound bound to what happens.
+  - `createSoundscape({ palette, volume })`, then `attach(handle)` and `start()` (from a click or key press).
+  - Synthesized cues only, no assets: boom, ping, bell, sweep, whoosh, thump, choir, and crackle, with a drone, generated reverb, and stereo position from where things happen on screen.
+  - A palette per universe: the sector map's cold radio blips, Saltwind's industrial hum and dust, the Choir's low dissonant voices, and the Siege's distant guns, horns, and truce bell. Add your own with `registerSoundPalette`.
+  - The studio has a **Sound** toggle and a volume slider.
+- **Events on the handle.** `handle.onEvent(fn)` streams `SkinEvent`s (type, weight, screen pan, nearness). Skins report through `host.events`; the sector map forwards its whole bus. Events are silent while fast-forwarding.
 - **The Long Siege, at war.** The front now runs along the map: one side holds the top, the other the bottom, and the camera travels the line between them.
   - `front`: territory held hex by hex (`sim/cells.ts`), anchored to the world. Ground that changed hands glows warmer, and the old owner's color lingers.
   - Each side earns reserve from its ground and supply, and spends it on probes, on reinforcing failing cells, and, once it has saved enough, on an offensive with a stated reason. A starving enemy is an invitation.

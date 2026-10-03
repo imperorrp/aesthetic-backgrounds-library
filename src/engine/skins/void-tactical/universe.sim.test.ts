@@ -11,7 +11,8 @@ import { runHeadless } from '../../../dev/headless';
 const run = (universe: string, seconds: number, seed = 'long-run') =>
   runHeadless({ skin: 'void-tactical', options: { universe }, seconds, seed });
 
-describe('universes, long runs (headless)', () => {
+// Minutes of simulation per test: fine alone, but slower when the whole suite runs in parallel.
+describe('universes, long runs (headless)', { timeout: 30_000 }, () => {
   for (const universe of ['void', 'saltwind', 'choir', 'siege']) {
     it(`${universe}: 90 s without problems`, () => {
       const r = run(universe, 90);

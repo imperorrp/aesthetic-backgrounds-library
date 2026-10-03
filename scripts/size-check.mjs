@@ -24,6 +24,8 @@ const BUDGETS_KB = {
   // manifest validation/loading and the design-token bridge, opt-in (M8)
   'manifest.js': 16,
   'tokens.js': 14,
+  // generated sound bound to skin events, opt-in (v3 phase 5)
+  'audio.js': 6,
   'skins/drifting-dust.js': 11,
   'skins/matrix-rain.js': 11,
   // the sector map skin plus its five part layers and the void-sector preset; 52 since the

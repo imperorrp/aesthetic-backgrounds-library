@@ -96,7 +96,21 @@ api.emit({ type: 'raid', x, y, weight: 0.85, color, follow: api.follow(target) }
 ```
 
 `weight` (0..1) is how much it matters. The director uses it to choose what to look at,
-audio uses it for loudness, and tooling uses the log. `follow` lets the camera track a
+audio uses it for loudness, and tooling uses the log.
+
+Events also leave the skin. The world forwards every bus event to `host.events`, adding
+where it is across the screen (`pan`) and how near it is. The host fans these out to
+`handle.onEvent` listeners:
+
+```mermaid
+flowchart LR
+  bus["world bus"] -- "pan, near (via the camera)" --> host["host.events<br/>(silent while nobody listens<br/>or while fast-forwarding)"]
+  host --> on["handle.onEvent"]
+  on --> sound["audio entry: createSoundscape<br/>palette → cues → panner → reverb"]
+```
+
+The forwarder checks `host.events.active` first, so a page without sound pays nothing.
+The audio entry (`engine/audio`) is the only consumer shipped. It never touches the sim. `follow` lets the camera track a
 moving subject until it is gone. Lines said on the map are `say` events. High-priority
 lines also emit an `alert`, so even a mechanic that never emits anything still draws the
 camera's attention.

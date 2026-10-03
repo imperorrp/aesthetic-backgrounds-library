@@ -73,6 +73,10 @@
       "types": "./types/entries/tokens.d.ts",
       "import": "./dist/tokens.js"
     },
+    "./audio": {
+      "types": "./types/entries/audio.d.ts",
+      "import": "./dist/audio.js"
+    },
     "./layers": {
       "types": "./types/entries/layers.d.ts",
       "import": "./dist/layers.js"
