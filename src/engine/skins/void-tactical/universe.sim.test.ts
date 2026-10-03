@@ -30,7 +30,13 @@ describe('universes, long runs (headless)', () => {
   it('each universe tells its own story', () => {
     const said = (u: string) => run(u, 90).log.map((e) => e.text).join('\n');
     expect(said('saltwind')).toMatch(/CLAIM|ORE|DUST/);
-    expect(said('siege')).toMatch(/FALLS TO|BOMBARDMENT|FRONT/);
+    expect(said('siege')).toMatch(/OFFENSIVE|TARGET PAINTED|VOLLEY|FALLS TO/);
     expect(said('choir')).toMatch(/CHOIR SINGS|WISPS/);
+  });
+
+  it('the siege fights over ground: offensives, spotting, a duel, a truce, cells changing hands', () => {
+    const types = new Set(run('siege', 240).log.map((e) => e.type));
+    for (const t of ['offensive', 'spot', 'bombard', 'duel', 'truce', 'truce-end']) expect(types, t).toContain(t);
+    expect(types.has('front') || types.has('capture')).toBe(true);
   });
 });

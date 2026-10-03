@@ -32,7 +32,7 @@ The map can belong to any world. A *universe pack* is a small JSON file holding 
 Three hand-written packs come with it, and each one plays differently, not just in other colors:
 - **Saltwind Reach** is a poor mining frontier at the end of an old road. Belts of rock orbit across the map, and stray rocks collide and shatter. Miners cut ore, argue over claims, and haul ore home in their pods. Warden buoys stop and scan ships, and smugglers bolt with cutters behind them. Dust fronts blow through: beams go dark, miners run for the docks, and loose rock drifts on the wind. Now and then a bore blows out.
 - **Choir of Hollow Stars** is a region where every star has been emptied and something sings inside. A song that reaches another hollow star makes it answer, and the chorus spreads. Leviathans migrate through. The Mouth reaches for ships with tendrils, feeds, and exhales new stars. Cradles hatch ships that grow as they fly. A circle of the map sometimes replays its last seconds as ghosts. Words in the background rearrange themselves, an eye opens in the dark and follows your pointer, and now and then a star goes out for good.
-- **The Long Siege** is a war that has gone on longer than anyone has been alive. A front line moves across the map, systems change hands, squadrons clash where the front is, and bombardments arc over it.
+- **The Long Siege** is a war that has gone on longer than anyone has been alive. The camera travels along the front, which is held hex by hex. Long-held edges have hardened into walls, and a heat map shows where ground keeps changing hands. Each side saves up and then launches offensives. Supply convoys run to the line while the enemy hunts them, and a starved line gives way. Spotters paint targets before artillery arcs in, siege monitors duel across the line, fortress shields ripple and fail, and minefields go off in chains. Now and then a truce holds: medical ships cross no-man's-land, and the memorial beacon counts the names.
 
 | | |
 | --- | --- |
@@ -41,7 +41,7 @@ Three hand-written packs come with it, and each one plays differently, not just 
 
 ### What happens here
 
-What makes a universe play differently is its *mechanics*: small plugins that spawn fleets, steer them, fight, break things, and draw on the map. A pack lists the ones it runs and how they're tuned, and in the studio, under **What happens here**, you can switch any of them on or off and tune them for the world you're looking at. Built in: raids, great events (armadas, flares, gate surges), asteroid mining, storm fronts, singing stars, murmurations, the maw, a living chart, and war along a front.
+What makes a universe play differently is its *mechanics*: small plugins that spawn fleets, steer them, fight, break things, and draw on the map. A pack lists the ones it runs and how they're tuned, and in the studio, under **What happens here**, you can switch any of them on or off and tune them for the world you're looking at. Built in: raids, great events (armadas, flares, gate surges), an economy, police, gates, relays, asteroid mining, wardens, storm fronts, singing stars, murmurations, the Mouth, leviathans, echoes, cradles, a living chart, a front held cell by cell, spotted artillery, monitor duels, truces, and minefields.
 
 Writing a new one takes a few dozen lines:
 

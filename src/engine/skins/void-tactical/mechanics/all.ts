@@ -12,6 +12,8 @@ import './asteroids';
 import './storms';
 import './wardens';
 import './warfront';
+import './war';
+import './siege';
 import './choir';
 import './leviathans';
 import './echoes';

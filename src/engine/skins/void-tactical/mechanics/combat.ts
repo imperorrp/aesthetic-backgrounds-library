@@ -27,6 +27,8 @@ export type Combat = {
   readonly active: number;
   /** True while a fleet is in any engagement. */
   fighting(f: Fleet): boolean;
+  /** End every engagement this fleet is in (a truce, a retreat). */
+  disengage(f: Fleet): void;
 };
 
 export function createCombat(api: MechanicApi): Combat {
@@ -113,6 +115,9 @@ export function createCombat(api: MechanicApi): Combat {
     },
     fighting(f) {
       return battles.some((b) => b.a.includes(f) || b.b.includes(f));
+    },
+    disengage(f) {
+      for (let i = battles.length - 1; i >= 0; i--) if (battles[i].a.includes(f) || battles[i].b.includes(f)) battles.splice(i, 1);
     },
     engage(a, b, opts) {
       battles.push({

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **The Long Siege, at war.** The front now runs along the map: one side holds the top, the other the bottom, and the camera travels the line between them.
+  - `front`: territory held hex by hex (`sim/cells.ts`), anchored to the world. Ground that changed hands glows warmer, and the old owner's color lingers.
+  - Each side earns reserve from its ground and supply, and spends it on probes, on reinforcing failing cells, and, once it has saved enough, on an offensive with a stated reason. A starving enemy is an invitation.
+  - Supply convoys run from depots to the line, and the enemy sends interdictors after them. A cut supply line starves the line until it gives way. A starving side sends a relief convoy with escorts.
+  - Edges held long enough become walls, drawn in ASCII in the builder's color. Fire bases shoot enemy ships in range.
+  - Fortress worlds sit under hex-lattice shields that ripple from each impact, strain, and fail.
+  - `artillery`: a spotter paints the target with a dotted designator line and a closing reticle, then the volley arcs in. Kill the spotter and the volley never comes.
+  - `duels`: two siege monitors trade beam broadsides across the line. Their shields ripple and fail, armor plates break away, and sometimes one breaks up.
+  - `truces`: the guns stop. White-marked medical ships cross no-man's-land, and the memorial beacon counts the names.
+  - `mines`: fields along the line and around old hazards. Minelayers sow new ones, and one blast can set off the next in a chain.
+  - `warfront` remains available for packs that use it.
 - **The Choir of Hollow Stars, as cosmic horror.**
   - Resonance cascades: a song that reaches another hollow star makes it answer, and the chorus chains across the map.
   - Leviathans: vast segmented creatures with photophores, feelers, and pilot wisps. They migrate through, and ships scatter.

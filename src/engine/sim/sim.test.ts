@@ -10,6 +10,7 @@ import { createNetwork } from './signals';
 import { createField } from './fields';
 import { createBody, seek, stepBody } from './bodies';
 import { createHistory } from './history';
+import { createHexGrid } from './cells';
 import { createRng } from '../rng';
 import { createNoise2D } from '../noise';
 
@@ -192,6 +193,44 @@ describe('history', () => {
     expect(h.size).toBe(4);
     expect(h.near(3.2)?.items[0].x).toBe(33);
     expect(h.near(0.5)).toBeNull();
+  });
+});
+
+describe('hex cells', () => {
+  it('finds the cell under a point, seeds lazily, and records who held it', () => {
+    const grid = createHexGrid(40, (_q, _r, x) => ({ owner: x < 0 ? 0 : 1 }));
+    const c = grid.at(5, 3);
+    expect([c.q, c.r]).toEqual([0, 0]);
+    expect(grid.at(c.x + 20, c.y + 10)).toBe(c);
+    expect(grid.at(-200, 0).owner).toBe(0);
+    grid.setOwner(c, 0, 12);
+    expect(c.history).toEqual([[1, -Infinity]]);
+    expect(c.since).toBe(12);
+  });
+
+  it('neighbor i shares the edge from corner (6 - i) % 6 to the next', () => {
+    const grid = createHexGrid(40, () => ({}));
+    const c = grid.cell(2, -1);
+    const k = grid.corners(c);
+    grid.neighbors(c).forEach((n, i) => {
+      const a = (6 - i) % 6;
+      const b = (a + 1) % 6;
+      // The edge midpoint is halfway between the two centers.
+      const mx = (k[a * 2] + k[b * 2]) / 2;
+      const my = (k[a * 2 + 1] + k[b * 2 + 1]) / 2;
+      expect(mx).toBeCloseTo((c.x + n.x) / 2, 6);
+      expect(my).toBeCloseTo((c.y + n.y) / 2, 6);
+    });
+  });
+
+  it('visits every cell in a rectangle and forgets what scrolled away', () => {
+    const grid = createHexGrid(30, () => ({}));
+    const seen = new Set<string>();
+    grid.forEachIn({ left: 0, right: 300, top: 0, bottom: 200 }, (c) => seen.add(`${c.q},${c.r}`));
+    for (let x = 0; x <= 300; x += 10) for (let y = 0; y <= 200; y += 10) expect(seen.has(`${grid.at(x, y).q},${grid.at(x, y).r}`)).toBe(true);
+    const before = grid.count;
+    grid.prune(150);
+    expect(grid.count).toBeLessThan(before);
   });
 });
 

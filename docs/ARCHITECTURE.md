@@ -113,13 +113,41 @@ Shared, renderer-agnostic pieces in `engine/sim`, attached to a world on first u
 | `spatial.ts` | Uniform grid hash | collisions, neighbour queries |
 | `bodies.ts` | A steering head and a spine that follows at fixed spacing | leviathans, the Mouth's tendrils |
 | `history.ts` | A ring of past positions, nearest-moment lookup | echoes |
+| `cells.ts` | A lazily seeded hex grid: owner, hold, a free value, and ownership history per cell | the Siege's territory (`front`) |
 
 Body ids come from the caller, kept per world; a module-level counter would make a
-second mount number its bodies differently and break replays.
+second mount number its bodies differently and break replays. Likewise, a cell's starting
+state comes from a hash of its coordinates rather than the rng, so it doesn't matter which
+code touches a cell first.
 
 Domain bindings live next to their mechanics: `useLedger(api)` (economy.ts), `useNetwork(api)`
-(relays.ts), and `useWeather(api)` (weather.ts). Each one creates its service once per world and
-registers that service's update and draw hooks.
+(relays.ts), `useWeather(api)` (weather.ts), and `useWar(api)` (war.ts). Each one creates its
+service once per world and registers that service's update and draw hooks.
+
+### The Siege's war
+
+```mermaid
+flowchart LR
+  war["useWar · war.ts<br/>hex grid, two sides (supply, reserve),<br/>truce, names, shields, roster"]
+  front["front<br/>AI turns, squads, convoys,<br/>interdiction, walls, fire bases"]
+  art["artillery<br/>spotter → paint → volley"]
+  duels["duels<br/>monitor broadsides"]
+  truces["truces<br/>medics, the beacon"]
+  mines["mines<br/>fields, chains"]
+  front <--> war
+  art --> war
+  duels --> war
+  truces --> war
+  mines --> war
+  bus(("bus")) -- explosion, blast --> mines
+  bus -- explosion --> war
+```
+
+Every siege mechanic spends from its side's `reserve`, so offensives, volleys, duels, and
+minelayers compete for the same budget. That competition gives the war its rhythm: a side
+saves up, spends it, and goes quiet. `inTruce()` stops them all. Ships that fight for a
+side go on the roster (`enlist`), which is how fire bases and artillery choose whom to hit.
+Mines spare their own faction's ships, since they know the safe lanes.
 
 ## Loading on demand
 

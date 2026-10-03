@@ -82,9 +82,13 @@ export const SIEGE_PACK: UniversePack = {
     'REMEMBER THE NAMES',
   ],
   mechanics: [
-    { use: 'warfront', with: { battles: 1.8, mobility: 0.55, bombard: true } },
-    { use: 'skirmish', with: { rate: 0.4, raiders: 3, weapon: 'missiles', name: 'COMMANDOS', color: '#f87171' } },
-    { use: 'events', with: { rate: 0.4, flares: false } },
+    { use: 'front', with: { aggression: 1 } },
+    { use: 'artillery', with: { rate: 1.2, paint: 3, shells: 6 } },
+    { use: 'duels', with: { every: 1.6 } },
+    { use: 'truces', with: { every: 3.5, length: 32 } },
+    { use: 'mines', with: { layers: true, chain: 0.85 } },
+    { use: 'skirmish', with: { rate: 0.25, raiders: 3, weapon: 'missiles', name: 'COMMANDOS', color: '#f87171' } },
+    { use: 'events', with: { rate: 0.3, flares: false } },
   ],
   look: { lanes: 'straight', grid: 'crosses', traffic: 0.45, anomalies: 0.6, ground: 'nebula', groundColor: '#64748b' },
 };

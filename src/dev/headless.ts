@@ -41,7 +41,7 @@ export type HeadlessReport = {
   seconds: number;
   frames: number;
   msPerFrame: number;
-  log: { t: number; text: string; kind?: string }[];
+  log: { t: number; text: string; kind?: string; type?: string }[];
   samples: { t: number; counts: Record<string, number> }[];
   problems: string[];
   /** The error that stopped the run, if one did. */
