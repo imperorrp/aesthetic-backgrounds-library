@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **A living economy.** New `economy` mechanic on a shared ledger (`sim/economy.ts`).
+  - Mines, docks, and habitats make goods; docks, shipyards, defenses, and relays use them.
+  - When a place runs short, a convoy flies the goods there in glowing pods. Shipyards build only from stock they hold.
+  - Structures show small manifests; ore stacks up at depots; a price ticker runs in the corner.
+  - Packs define their own goods and roles (`economy`), and AI-written packs may too.
+- **Police, gates, relays.**
+  - `police`: defense platforms scramble interceptors at raids.
+  - `gates`: gates pair up with a visible throat; ships queue in holding loops, are scanned for the toll, and are sometimes turned away.
+  - `relays`: messages travel the network as light (`sim/signals.ts`), and distress calls ripple outward.
+- **Saltwind Reach, rebuilt.**
+  - Belts orbit across the map, and stray rocks collide and shatter.
+  - Two miners on one rock start a claim dispute: a standoff, warning shots, then one backs off or they fight.
+  - Miners haul ore home in their pods.
+  - `wardens`: toll buoys stop and scan ships, and smugglers bolt with cutters in pursuit.
+  - Dust fronts push wind through a shared field (`sim/fields.ts`): beams cut out, miners run for the docks, and loose rock drifts.
+  - Bore blowouts and shift changes.
+- **Ground.** `look.ground` adds drifting terrain under the map: dust for Saltwind, mist for the Choir, smoky nebula for the Siege.
+- **Smaller.** Universes and mechanics load on demand. The sector map's static bundle is 55.6 KB gzip, down from 57.2 KB, despite everything above.
+  - New APIs: `loadUniverse`, `registerUniverseLoader`, `registerMechanicLoader`, `loadMechanics`, `prepareVoidTactical`.
+  - Fixed: the library build had been tree-shaking away every mechanic's registration. Plugin modules are now in `sideEffects`, and `pnpm size` checks the build contains them.
 - **A camera with a director.** The sector map now has a real camera (`engine/sim/view.ts`): world points project through pan, zoom, and depth.
   - The director (`sim/director.ts`) watches a new event bus (`sim/bus.ts`), and now and then leans in on raids, armadas, captures, and flares. It tracks moving subjects and lets go.
   - New `camera` option: `steady`, `director` (default), or `cinematic`. Also new: `lean` (toward the pointer) and `scroll` (page scroll carries the map forward).

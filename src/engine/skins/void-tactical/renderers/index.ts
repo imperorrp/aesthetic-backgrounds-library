@@ -13,6 +13,7 @@
 import type { SystemState } from '../types';
 import { FONT, type RenderFrame } from './utils';
 import { renderStars, renderGrids } from './background';
+import { renderGround } from './ground';
 import { renderCelestialBodies, renderStarSystem, renderStructures } from './celestial';
 import { renderFleets, renderAnomalies } from './entities';
 import { renderTacticalOverlays, renderTelemetry, renderSystemConnections, renderSectorConnections, renderTargetLock } from './ui';
@@ -34,6 +35,7 @@ export const renderSystem = (
   ctx.font = FONT;
   ctx.textBaseline = 'top';
   renderStars(ctx, system.stars, camera, viewport, frame);
+  renderGround(ctx, frame, viewport);
   mechanics?.(ctx, 'ground', frame, board);
   mechanics?.(ctx, 'under', frame, board);
   renderCelestialBodies(ctx, system.celestialBodies, camera, viewport, frame);

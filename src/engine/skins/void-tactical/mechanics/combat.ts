@@ -228,7 +228,7 @@ registerMechanic({
         else if (r) steerToward(me, me.x + (me.x - r.x), me.y + (me.y - r.y), sp, 1.5, dt);
       };
       api.say(`${target.callsign} · TAKING FIRE`, L.x, L.y, target.ships[0].color, { priority: 'high', followId: target.id });
-      api.emit({ type: 'raid', x: L.x, y: L.y, weight: 0.85, color, follow: api.follow(target) });
+      api.emit({ type: 'raid', x: L.x, y: L.y, weight: 0.85, color, follow: api.follow(target), raiders: raid.raiders.id, target: target.id });
       raids.push(raid);
     };
 

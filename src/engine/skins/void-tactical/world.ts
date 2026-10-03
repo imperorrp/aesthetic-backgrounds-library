@@ -21,6 +21,7 @@ import { generateSystem, generateSingleSystem, generateSingleStructure, generate
 import { allStructures, chooseTarget, classLabel, goTo, spawnFleet, stepFleet, type FleetCtx, type FleetEvent, type SimView } from './fleets';
 import { createColorMapper, WORLD_SPEED_MULTIPLIER, type RenderFrame, type VoidStyle } from './renderers/utils';
 import { DEFAULT_EVENTS, resolveUniverse, type ShipClass, type UniversePack } from './universe';
+import { isVoidReady, prepareVoidTactical } from './ready';
 import { SHIP_SPECS } from './ships';
 import type { FrameInfo, SkinHost, SkinInspection, Viewport } from '../../core/skin';
 import { resolveOptions, type Schema } from '../../core/schema';
@@ -183,7 +184,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
   const onEvent = (e: FleetEvent) => {
     if (silent) return;
     const L = e.fleet.ships[0];
-    bus.emit({ type: e.kind, x: L.x, y: L.y, z: e.fleet.z, weight: FLEET_EVENT_WEIGHT[e.kind] ?? 0.1, color: L.color, follow: followFleet(e.fleet) });
+    bus.emit({ type: e.kind, x: L.x, y: L.y, z: e.fleet.z, weight: FLEET_EVENT_WEIGHT[e.kind] ?? 0.1, color: L.color, follow: followFleet(e.fleet), fleet: e.fleet.id, at: e.targetId });
     const template = pack.events?.[e.kind] ?? DEFAULT_EVENTS[e.kind];
     say({
       text: `${e.fleet.callsign} ${fill(template, e.target)}`,
@@ -357,6 +358,10 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
         s.nextAction = now + 2;
         continue;
       }
+      if (world.managedRoles?.has(s.role)) {
+        s.nextAction = now + 5;
+        continue;
+      }
       const busy = look.traffic <= 0 || world.fleets.filter((f) => !f.tag).length >= layout.maxFleets + 3;
       switch (s.role) {
         case 'shipyard': {
@@ -364,7 +369,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
             const ang = fleetRng() * Math.PI * 2;
             const f = launch({ x: s.x + Math.cos(ang) * 16, y: s.y + Math.sin(ang) * 16, vx: Math.cos(ang) * 12, vy: Math.sin(ang) * 12 }, { fadeIn: true, z });
             s.flashAt = now;
-            onEvent({ kind: 'launch', fleet: f, target: s.label });
+            onEvent({ kind: 'launch', fleet: f, target: s.label, targetId: s.id });
           }
           s.nextAction = now + delay(14, 14) / rate;
           break;
@@ -380,7 +385,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
             f.target = { kind: 'structure', id: s.id, x: s.x, y: s.y, z, label: s.label, role: 'mine' };
             goTo(f, { kind: 'structure', id: dest.id, x: dest.x, y: dest.y, z: dest.z ?? 0, label: dest.label, role: dest.role }, world, c);
             s.flashAt = now;
-            onEvent({ kind: 'cargo', fleet: f, target: dest.label });
+            onEvent({ kind: 'cargo', fleet: f, target: dest.label, targetId: dest.id });
           }
           s.nextAction = now + delay(16, 14) / rate;
           break;
@@ -391,7 +396,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
             const cls: ShipClass = (['cruiser', 'carrier', 'freighter', 'fighter', 'capital'] as const)[Math.floor(fleetRng() * 5)];
             const f = launch({ x: s.x + Math.cos(ang) * 20, y: s.y + Math.sin(ang) * 20, vx: Math.cos(ang) * 14, vy: Math.sin(ang) * 14 }, { cls, fadeIn: true, z });
             s.flashAt = now;
-            onEvent({ kind: 'arrive', fleet: f, target: s.label });
+            onEvent({ kind: 'arrive', fleet: f, target: s.label, targetId: s.id });
           }
           s.nextAction = now + delay(22, 18) / rate;
           break;
@@ -582,6 +587,11 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
       f.fadeTo = 1;
       const c = ctx();
       goTo(f, chooseTarget(f, world, c), world, c);
+    },
+    goTo: (f, s) => {
+      f.steer = null;
+      f.fadeTo = 1;
+      goTo(f, { kind: 'structure', id: s.id, x: s.x, y: s.y, z: s.z ?? 0, label: s.label, role: s.role }, world, ctx());
     },
     damage: damageShip,
     structures: () => allStructures(world),
@@ -794,10 +804,13 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
       const b = board ? mapBoard(board) : undefined;
       c2d.save();
       // Map space (world x - left, world y) → the camera. With the director idle this is
-      // the identity, so mechanics draw exactly as they did with a fixed camera.
-      c2d.translate(width / 2, height / 2);
-      c2d.scale(cam.zoom, cam.zoom);
-      c2d.translate(-(cam.x - left), -cam.y);
+      // the identity, so mechanics draw exactly as they did with a fixed camera. The hud
+      // pass is screen space: tickers and readouts stay put while the camera moves.
+      if (pass !== 'hud') {
+        c2d.translate(width / 2, height / 2);
+        c2d.scale(cam.zoom, cam.zoom);
+        c2d.translate(-(cam.x - left), -cam.y);
+      }
       for (const d of serviceDraws) {
         if (d.pass !== pass) continue;
         c2d.save();
@@ -860,6 +873,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
         parallax: MAP_PARALLAX,
         dpr: host.viewport.dpr,
         view: cam,
+        seed: host.config.seedHash,
       };
     },
   };
@@ -872,10 +886,16 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
  */
 const shared = new WeakMap<object, VoidWorld>();
 
-export function sharedVoidWorld(host: SkinHost): VoidWorld {
+/** The shared world, or null while a lazily loaded universe is still on its way. */
+export function sharedVoidWorld(host: SkinHost): VoidWorld | null {
   const key = host.config as object;
   let w = shared.get(key);
   if (!w) {
+    const o = host.options as { universe?: unknown; pack?: unknown; mechanics?: unknown } | undefined;
+    if (!isVoidReady(o)) {
+      void prepareVoidTactical(o);
+      return null;
+    }
     w = createVoidWorld(host);
     shared.set(key, w);
   }

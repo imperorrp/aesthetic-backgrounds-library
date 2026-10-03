@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import '../../test/load-all';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createBackground } from '../core/createBackground';
 import { createManualScheduler } from '../core/scheduler';

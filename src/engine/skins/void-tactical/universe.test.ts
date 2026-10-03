@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
+import '../../../test/load-all';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import '../../../lib';
 import { registerMechanic } from './mechanics';
-import { CHOIR_PACK, SALTWIND_PACK, SIEGE_PACK, universePrompt, validateUniverse, VOID_PACK } from './universe';
+import { getUniverse, listUniverses, universePrompt, validateUniverse, VOID_PACK } from './universe';
+import { CHOIR_PACK, SALTWIND_PACK, SIEGE_PACK } from './packs';
 import { createBackground } from '../../core/createBackground';
 import { createManualScheduler } from '../../core/scheduler';
 import { installCanvasStub, recorderFor } from '../../../test/canvas-stub';
@@ -36,6 +38,14 @@ describe('universe packs', () => {
   it('rejects input it cannot use', () => {
     expect(validateUniverse('not json').errors.length).toBe(1);
     expect(validateUniverse({ name: 'x' }).errors.join(' ')).toMatch(/No structures/);
+  });
+
+  it('lists lazily loaded universes with the same name, tagline, and colors as the packs themselves', () => {
+    for (const meta of listUniverses()) {
+      const pack = getUniverse(meta.id)!;
+      expect(pack, meta.id).toBeDefined();
+      expect({ name: pack.name, tagline: pack.tagline, palette: pack.palette, warmth: pack.warmth }).toEqual({ name: meta.name, tagline: meta.tagline, palette: meta.palette, warmth: meta.warmth });
+    }
   });
 
   it('round-trips the built-in packs', () => {

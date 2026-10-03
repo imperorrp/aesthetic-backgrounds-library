@@ -76,6 +76,34 @@ export type UniversePack = {
   mechanics?: { use: string; with?: Record<string, unknown>; enabled?: boolean }[];
   /** How the map itself is drawn. */
   look?: UniverseLook;
+  /** What is made, carried, and used here (the `economy` mechanic). */
+  economy?: PackEconomy;
+};
+
+export type PackGood = { id: string; label: string; color: string };
+
+/** Goods, and what each structure role makes and uses (units per second) and holds. */
+export type PackEconomy = {
+  goods: PackGood[];
+  roles?: Partial<Record<StructureRole, { cap?: number; makes?: Record<string, number>; uses?: Record<string, number> }>>;
+};
+
+/** The default economy: ore from mines, fuel and parts from docks, food from habitats. */
+export const DEFAULT_ECONOMY: PackEconomy = {
+  goods: [
+    { id: 'ore', label: 'ORE', color: '#f59e0b' },
+    { id: 'fuel', label: 'FUEL', color: '#22d3ee' },
+    { id: 'food', label: 'FOOD', color: '#4ade80' },
+    { id: 'parts', label: 'PARTS', color: '#c4b5fd' },
+  ],
+  roles: {
+    mine: { cap: 160, makes: { ore: 1.4 } },
+    dock: { cap: 220, makes: { fuel: 0.6, parts: 0.25 }, uses: { food: 0.3, ore: 0.3 } },
+    shipyard: { cap: 180, uses: { ore: 0.45, parts: 0.2 } },
+    giant: { cap: 200, makes: { food: 0.9 } },
+    defense: { cap: 90, uses: { fuel: 0.3 } },
+    relay: { cap: 40, uses: { fuel: 0.08 } },
+  },
 };
 
 export type UniverseLook = {
@@ -89,6 +117,10 @@ export type UniverseLook = {
   anomalies?: number;
   /** Share of systems and structures placed on far planes behind the main one, 0 to 0.8. Default 0.35. */
   depth?: number;
+  /** Terrain under everything: wind-combed dust, nebula clouds, or low mist. Default none. */
+  ground?: 'dust' | 'nebula' | 'mist' | 'none';
+  /** Color of the ground (hex). Default: the palette accent. */
+  groundColor?: string;
 };
 
 export const ANOMALY_STYLE_COLORS: Record<AnomalyStyle, string> = {
@@ -221,273 +253,77 @@ export const VOID_PACK: UniversePack = {
     'SOMETHING ANSWERED ON CHANNEL 0',
   ],
   mechanics: [
+    { use: 'economy', with: { convoys: 5 } },
+    { use: 'gates', with: { spacing: 4, disputes: 0.15 } },
+    { use: 'relays', with: { chatter: 0.6 } },
     { use: 'skirmish', with: { rate: 0.6, raiders: 4, weapon: 'tracers', name: 'RAIDERS' } },
+    { use: 'police', with: { wing: 3 } },
     { use: 'events', with: { rate: 0.6 } },
   ],
   look: { lanes: 'straight', grid: 'crosses', traffic: 1 },
 };
 
-/** A worked example of a hand-written pack: a hard, poor mining frontier. */
-export const SALTWIND_PACK: UniversePack = {
-  id: 'saltwind',
-  name: 'Saltwind Reach',
-  tagline: 'Ore, dust, and debt at the end of the old road.',
-  palette: '#f59e0b',
-  warmth: 0.5,
-  colorBy: 'faction',
-  ships: { fighter: 'CUTTER', scout: 'PROSPECTOR', freighter: 'ORE HAULER', cruiser: 'WARDEN', carrier: 'TENDER', capital: 'COMPANY BARGE' },
-  factions: [
-    { name: 'REACH MINING COMBINE', prefix: 'RMC', color: '#f59e0b', classes: ['freighter', 'carrier', 'capital', 'scout'], weight: 3 },
-    { name: 'FREE HAULERS', prefix: 'FH', color: '#2dd4bf', classes: ['freighter', 'scout', 'fighter'], weight: 2 },
-    { name: 'WARDENS', prefix: 'WRD', color: '#f87171', classes: ['fighter', 'cruiser'], weight: 1 },
-  ],
-  systemPrefix: 'DEPOT',
-  structures: [
-    { kind: 'deep_bore', label: 'DEEP BORE', role: 'mine', color: '#fbbf24', rarity: 'common',
-      art: ['  _|_  ', ' |###| ', ' |#v#| ', '  \\|/  ', '   V   '],
-      chatter: ['SHAFT 6 AT 4.1KM', 'BIT REPLACED · AGAIN', 'ORE GRADE FALLING', 'PUMPS HOLDING', 'NIGHT SHIFT ON'] },
-    { kind: 'haulers_rest', label: "HAULER'S REST", role: 'dock', color: '#fcd34d', rarity: 'common',
-      art: ['  .===.  ', ' |[] []| ', '=|  +  |=', ' |[] []| ', "  '==='  "],
-      chatter: ['BERTHS 2 OF 9 FREE', 'WATER RATIONED', 'FUEL ON CREDIT ONLY', 'NO WEAPONS PAST THE LOCK'] },
-    { kind: 'slag_foundry', label: 'SLAG FOUNDRY', role: 'shipyard', color: '#fb923c', rarity: 'common',
-      art: [' _|_|_|_ ', '|#######|', '|# [=] #|', "|_______|", ' /     \\ '],
-      chatter: ['HULL PLATES POURING', 'CRANE 2 DOWN', 'TENDER ON THE SLIP', 'FURNACE AT 1900C'] },
-    { kind: 'toll_buoy', label: 'TOLL BUOY', role: 'relay', color: '#a3e635', rarity: 'common',
-      art: ['   o   ', '  /|\\  ', ' /_$_\\ ', '   |   ', "   '   "],
-      chatter: ['TOLL 40 CREDITS', 'PAYMENT RECEIVED', 'UNPAID · FLAGGED', 'ROAD OPEN'] },
-    { kind: 'warden_picket', label: 'WARDEN PICKET', role: 'defense', color: '#f87171', rarity: 'uncommon',
-      art: ['  /^\\  ', ' |=X=| ', '<|===|>', ' |=X=| ', '  \\_/  '],
-      chatter: ['PAPERS, PLEASE', 'SCANNING HOLDS', 'CONTRABAND FOUND · BAY 2', 'PICKET HOLDING'] },
-    { kind: 'old_road_gate', label: 'OLD ROAD GATE', role: 'gate', color: '#c084fc', rarity: 'uncommon',
-      art: ['  .--.  ', ' /    \\ ', '| (  ) |', ' \\    / ', "  '--'  "],
-      chatter: ['GATE COLD FOR 9 DAYS', 'ONE SHIP PER HOUR', 'THROAT FLICKERING', 'OLD ROAD STILL OPEN'] },
-    { kind: 'cold_hulk', label: 'COLD HULK', role: 'wreck', color: '#94a3b8', rarity: 'uncommon',
-      art: ['  ____  ', ' /#  #\\ ', '|# xx #|', "'-#__#-'"],
-      chatter: ['STRIPPED TO THE FRAME', 'CLAIM MARKER · FH', 'NO SALVAGE LEFT', 'CREW NEVER FOUND'] },
-    { kind: 'cinder_well', label: 'CINDER WELL', role: 'hazard', color: '#ef4444', rarity: 'rare',
-      art: [' \\ | / ', '-- @ --', ' / | \\ '],
-      chatter: ['FLARE SEASON', 'HULL TEMP RISING', 'KEEP 2 AU CLEAR', 'DUST IGNITING'] },
-    { kind: 'singing_rock', label: 'SINGING ROCK', role: 'mystery', color: '#e9d5ff', rarity: 'rare',
-      art: ['  ___  ', ' / ~ \\ ', '| ~ ~ |', " \\_~_/ "],
-      chatter: ['IT HUMS AT 7HZ', 'SURVEYORS WONT LAND', 'NOT ON ANY CHART', 'THE SONG CHANGED'] },
-    { kind: 'the_furnace', label: 'THE FURNACE', role: 'giant', color: '#f97316', rarity: 'legendary',
-      art: ['  .-##-.  ', ' /######\\ ', '|##(@@)##|', ' \\######/ ', "  '-##-'  "],
-      chatter: ['A STAR, HARNESSED', 'COMBINE PROPERTY', 'OUTPUT SOLD FORWARD', 'WORKERS: 41,000'] },
-  ],
-  anomalies: [
-    { label: 'DUST FRONT', style: 'cloud', color: '#fcd34d' },
-    { label: 'MAGNETIC SHEAR', style: 'wave' },
-    { label: 'ECHO FROM THE BORE', style: 'psionic' },
-    { label: 'PRESSURE BLOOM', style: 'burst' },
-    { label: 'CLOCK SKEW · 3 SEC', style: 'temporal' },
-    { label: 'GRAVITY KNOT', style: 'singularity' },
-    { label: 'ORE THAT MOVES', style: 'exotic' },
-    { label: 'FAULT IN THE ROAD', style: 'rift' },
-    { label: 'STATIC SQUALL', style: 'cloud' },
-    { label: 'FLARE INCOMING', style: 'burst' },
-  ],
-  chatter: {
-    fleet: ['HOLD 92% · RETURNING', 'RUNNING ON FUMES', 'WARDENS ON OUR TAIL', 'PAID THE TOLL', 'CARGO · NICKEL', 'ONE ENGINE OUT', 'CONVOY · KEEP CLOSE', 'BOUND FOR THE REST'],
-    structure: ['BERTHS FULL', 'PAYDAY TOMORROW', 'NIGHT SHIFT ON', 'AIR SCRUBBERS SLOW'],
-    science: ['DUST DENSITY RISING', 'ORE GRADE 4.2%', 'FLARE INDEX HIGH', 'BELT DRIFTING'],
-    mystery: ['LIGHTS ON THE DEAD BELT', 'A SHIP WITH NO REGISTRY', 'SONG ON THE ORE RADIO', 'THE ROCK IS WARM'],
-    system: ['COMBINE NET UP', 'CREDIT CHECK PASSED', 'CHART 6 MONTHS OLD', 'NO SIGNAL PAST DEPOT 4'],
-  },
-  ambient: [
-    'NO WATER PAST THE SECOND BELT',
-    'COMBINE PAYS ON THE FIRST',
-    'WARDENS CHECK EVERY HOLD',
-    'THE OLD ROAD IS STILL OPEN',
-    'DEBT TRANSFERS TO NEXT OF KIN',
-    'SHAFT 6 · 41 DAYS WITHOUT LOSS',
-    'DUST SEASON · KEEP SEALED',
-    'FREE HAULERS DRINK AT THE REST',
-  ],
-  mechanics: [
-    { use: 'asteroids', with: { density: 1.1, miners: 3, richness: 0.5 } },
-    { use: 'skirmish', with: { rate: 1.1, raiders: 3, weapon: 'tracers', name: 'CLAIM JUMPERS', color: '#f43f5e' } },
-    { use: 'storms', with: { rate: 0.6, color: '#c08457', name: 'DUST FRONT' } },
-  ],
-  look: { lanes: 'none', grid: 'claims', traffic: 0.7, anomalies: 0.6 },
-};
-
-/** A second worked example: something older and stranger. */
-export const CHOIR_PACK: UniversePack = {
-  id: 'choir',
-  name: 'Choir of Hollow Stars',
-  tagline: 'Every star here was emptied, and something lives inside.',
-  palette: '#a78bfa',
-  warmth: -0.4,
-  colorBy: 'faction',
-  ships: { fighter: 'WISP', scout: 'LANTERN', freighter: 'CARRIER-SEED', cruiser: 'CANTOR', carrier: 'CRADLE SHIP', capital: 'CATHEDRAL' },
-  factions: [
-    { name: 'THE CHOIR', prefix: 'CHR', color: '#c4b5fd', classes: ['fighter', 'cruiser', 'capital', 'carrier'], weight: 2 },
-    { name: 'CARTOGRAPHERS', prefix: 'CRT', color: '#67e8f9', classes: ['scout', 'freighter'], weight: 2 },
-    { name: 'THE QUIET', prefix: 'QT', color: '#f9a8d4', classes: ['scout', 'fighter'], weight: 1 },
-  ],
-  systemPrefix: 'HOLLOW',
-  structures: [
-    { kind: 'listening_spire', label: 'LISTENING SPIRE', role: 'relay', color: '#a5f3fc', rarity: 'common',
-      art: ['   |   ', '  /|\\  ', ' / | \\ ', '  )|(  ', "  '|'  "],
-      chatter: ['LISTENING', 'SIGNAL IS A VOICE', 'NO REPLY SENT', 'DO NOT ANSWER'] },
-    { kind: 'tide_pool', label: 'TIDE POOL', role: 'dock', color: '#7dd3fc', rarity: 'common',
-      art: ['  .~~~.  ', ' ( ~ ~ ) ', '(~ ~ ~ ~)', ' ( ~ ~ ) ', "  '~~~'  "],
-      chatter: ['WARM WATER', 'SHIPS SLEEPING', 'THE POOL REMEMBERS', 'TIDE IN'] },
-    { kind: 'cradle', label: 'CRADLE', role: 'shipyard', color: '#c4b5fd', rarity: 'common',
-      art: ['  \\ | /  ', ' --(o)-- ', '  /(.)\\  ', ' ( (.) ) ', "  '---'  "],
-      chatter: ['A SHIP IS GROWING', 'SHELL HARDENING', 'IT TURNED TOWARD US', 'BIRTH IN 3 CYCLES'] },
-    { kind: 'seed_vault', label: 'SEED VAULT', role: 'mine', color: '#86efac', rarity: 'common',
-      art: ['  ___  ', ' /o o\\ ', '|o o o|', ' \\o_o/ '],
-      chatter: ['SEEDS COUNTED', 'ONE IS MISSING', 'COLD STORAGE HOLDING', 'HARVEST READY'] },
-    { kind: 'bone_gate', label: 'BONE GATE', role: 'gate', color: '#e9d5ff', rarity: 'uncommon',
-      art: ['  )   (  ', ' ) .-. ( ', ')  | |  (', ' ) \'-\' ( ', '  )   (  '],
-      chatter: ['THE GATE IS BREATHING', 'PASSAGE GRANTED', 'IT ASKED A QUESTION', 'COUNT YOUR CREW'] },
-    { kind: 'warden_choir', label: 'CHOIR WARD', role: 'defense', color: '#f0abfc', rarity: 'uncommon',
-      art: ['  * * *  ', ' *  |  * ', '*  -+-  *', ' *  |  * ', '  * * *  '],
-      chatter: ['HOLDING THE NOTE', 'HARMONY UNBROKEN', 'INTRUDER · SILENCED', 'ALL VOICES PRESENT'] },
-    { kind: 'calcified_ship', label: 'CALCIFIED SHIP', role: 'wreck', color: '#cbd5e1', rarity: 'uncommon',
-      art: ['   __    ', ' _/##\\_  ', '<_#  #_> ', "  \\__/   "],
-      chatter: ['TURNED TO STONE', 'CREW STILL ABOARD', 'DO NOT TOUCH', 'IT WAS ONE OF OURS'] },
-    { kind: 'the_mouth', label: 'THE MOUTH', role: 'hazard', color: '#818cf8', rarity: 'rare',
-      art: ['  .---.  ', ' / ::: \\ ', '| :(o): |', ' \\ ::: / ', "  '---'  "],
-      chatter: ['IT IS OPEN', 'STARS GO IN', 'NOTHING COMES OUT', 'KEEP SINGING'] },
-    { kind: 'standing_stone', label: 'STANDING STONE', role: 'mystery', color: '#fde68a', rarity: 'rare',
-      art: ['  ___  ', ' |   | ', ' | O | ', ' |   | ', ' |___| '],
-      chatter: ['OLDER THAN THE STARS', 'IT FACES US', 'CARVINGS CHANGED', 'COUNTING DOWN'] },
-    { kind: 'hollow_star', label: 'HOLLOW STAR', role: 'giant', color: '#a78bfa', rarity: 'legendary',
-      art: ['   .----.   ', '  / .--. \\  ', ' | /    \\ | ', ' | \\    / | ', "  \\ '--' /  ", "   '----'   "],
-      chatter: ['EMPTY INSIDE', 'A CITY IN THE SHELL', 'LIGHT FROM WITHIN', 'THE CHOIR LIVES HERE'] },
-  ],
-  anomalies: [
-    { label: 'A SECOND HEARTBEAT', style: 'psionic' },
-    { label: 'HYMN ON ALL CHANNELS', style: 'wave' },
-    { label: 'STARS MISSING FROM CHART', style: 'singularity' },
-    { label: 'THE SAME HOUR TWICE', style: 'temporal' },
-    { label: 'SOMETHING WOKE', style: 'burst' },
-    { label: 'A DOOR IN SPACE', style: 'rift' },
-    { label: 'MEMORY FOG', style: 'cloud' },
-    { label: 'A NAME WE DO NOT KNOW', style: 'exotic' },
-    { label: 'SILENCE, SUDDENLY', style: 'wave' },
-    { label: 'THE CHART HAS CHANGED', style: 'cloud' },
-  ],
-  chatter: {
-    fleet: ['FOLLOWING THE NOTE', 'LANTERN LIT', 'WE HEARD IT TOO', 'COURSE SET BY SONG', 'HOLDING FORMATION', 'CARRYING SEEDS', 'MAPPING THE HOLLOW', 'DO NOT LOOK BACK'],
-    structure: ['THE SHELL IS WARM', 'VOICES INSIDE', 'DOORS OPEN AT DUSK', 'TIDE OUT'],
-    science: ['NO MASS DETECTED', 'LIGHT BENDS INWARD', 'TEMPERATURE 3K', 'THE STAR IS AN ECHO'],
-    mystery: ['IT KNOWS OUR NAMES', 'SINGING FROM THE MOUTH', 'A NEW STAR, EMPTY', 'WE HAVE BEEN HERE BEFORE'],
-    system: ['CHART REDRAWN', 'CHOIR IN SESSION', 'SILENT HOUR', 'ALL LANTERNS ACCOUNTED'],
-  },
-  ambient: [
-    'WE HEAR YOU',
-    'THE CHART HAS CHANGED AGAIN',
-    'DO NOT ANSWER THE SPIRE',
-    'EVERY STAR HERE IS HOLLOW',
-    'THE CHOIR HAS ONE MORE VOICE',
-    'LANTERNS OUT AFTER DUSK',
-    'COUNT THE CREW AT EVERY GATE',
-    'IT WAS ALWAYS SINGING',
-  ],
-  mechanics: [
-    { use: 'song', with: { period: 7, harmonics: 5 } },
-    { use: 'flocks', with: { flocks: 3, size: 46, name: 'WISPS' } },
-    { use: 'maw', with: { radius: 230, hunger: 0.7 } },
-    { use: 'cartography', with: { linger: 60, scouts: 3, changes: 0.9 } },
-  ],
-  look: { lanes: 'curved', grid: 'none', traffic: 0.35, anomalies: 0.7 },
-};
-
-/** A third worked example: a war that has outlived its reasons. */
-export const SIEGE_PACK: UniversePack = {
-  id: 'siege',
-  name: 'The Long Siege',
-  tagline: 'Forty years on the same front. Neither side remembers why.',
-  palette: '#cbd5e1',
-  warmth: 0.15,
-  colorBy: 'faction',
-  ships: { fighter: 'INTERCEPTOR', scout: 'PICKET', freighter: 'SUPPLY TENDER', cruiser: 'LINE CRUISER', carrier: 'CARRIER', capital: 'SIEGE MONITOR' },
-  factions: [
-    { name: 'THE ASCENDANCY', prefix: 'ASC', color: '#f87171', classes: ['fighter', 'cruiser', 'capital'], weight: 2 },
-    { name: 'FREE WORLDS COMPACT', prefix: 'FWC', color: '#60a5fa', classes: ['fighter', 'cruiser', 'carrier'], weight: 2 },
-    { name: 'NEUTRAL TRADERS', prefix: 'NT', color: '#a3e635', classes: ['freighter', 'scout'], weight: 1 },
-  ],
-  systemPrefix: 'SECTOR',
-  structures: [
-    { kind: 'fire_base', label: 'FIRE BASE', role: 'defense', color: '#fca5a5', rarity: 'common',
-      art: [' _/^\\_ ', '[=====]', ' |# #| ', ' |___| '],
-      chatter: ['GUNS HOT', 'RELOADING', 'TARGETS DESIGNATED', 'SHELLS LOW'] },
-    { kind: 'forward_depot', label: 'FORWARD DEPOT', role: 'dock', color: '#e2e8f0', rarity: 'common',
-      art: [' .---. ', '[|###|]', '[|###|]', " '---' "],
-      chatter: ['DEPOT AT 30%', 'TENDERS QUEUED', 'MEDICAL BAY FULL', 'RATIONS · 9 DAYS'] },
-    { kind: 'orbital_foundry', label: 'ORBITAL FOUNDRY', role: 'shipyard', color: '#fdba74', rarity: 'common',
-      art: ['_|_|_|_', '|#####|', '|# = #|', '\\_____/'],
-      chatter: ['HULL 212 ON THE SLIP', 'WORKING THREE SHIFTS', 'ARMOR PLATE SHORT', 'LAUNCHING AT DAWN'] },
-    { kind: 'fuel_refinery', label: 'FUEL REFINERY', role: 'mine', color: '#fde047', rarity: 'common',
-      art: ['  ||   ', ' [##]  ', ' [##]= ', ' [##]  '],
-      chatter: ['OUTPUT DOWN 40%', 'PIPELINE HIT', 'TANKS FILLING', 'CONVOY DUE'] },
-    { kind: 'long_gate', label: 'LONG GATE', role: 'gate', color: '#c4b5fd', rarity: 'uncommon',
-      art: ['  .--.  ', ' / /\\ \\ ', '| |  | |', ' \\ \\/ / ', "  '--'  "],
-      chatter: ['GATE UNDER GUARD', 'REINFORCEMENTS INBOUND', 'TRANSIT RESTRICTED'] },
-    { kind: 'listening_post', label: 'LISTENING POST', role: 'relay', color: '#93c5fd', rarity: 'common',
-      art: ['   ^   ', '  /|\\  ', ' /_|_\\ ', '   |   '],
-      chatter: ['ENEMY TRAFFIC UP', 'CODES CHANGED', 'JAMMING ON 4', 'SILENT RUNNING'] },
-    { kind: 'wreck_field', label: 'WRECK FIELD', role: 'wreck', color: '#94a3b8', rarity: 'uncommon',
-      art: [' _ /\\ _ ', '/#\\  /#\\', '  \\_/   '],
-      chatter: ['BOTH FLAGS ON THE HULLS', 'SALVAGE FORBIDDEN', 'NO SURVIVORS'] },
-    { kind: 'minefield', label: 'MINEFIELD', role: 'hazard', color: '#f97316', rarity: 'rare',
-      art: ['* . * .', '. * . *', '* . * .'],
-      chatter: ['DO NOT TRANSIT', 'LAID IN YEAR 9', 'STILL LIVE'] },
-    { kind: 'fortress_world', label: 'FORTRESS WORLD', role: 'giant', color: '#fca5a5', rarity: 'legendary',
-      art: ['  .-##-.  ', ' /|####|\\ ', '|=|####|=|', ' \\|####|/ ', "  '-##-'  "],
-      chatter: ['THE WALL HOLDS', 'GARRISON 2 MILLION', 'NEVER FALLEN'] },
-    { kind: 'memorial_beacon', label: 'MEMORIAL BEACON', role: 'mystery', color: '#fef3c7', rarity: 'rare',
-      art: ['   |   ', '  -+-  ', '   |   ', '  /_\\  '],
-      chatter: ['NAMES: 4,112,009', 'BOTH SIDES SALUTE', 'LIGHT KEPT BURNING'] },
-  ],
-  anomalies: [
-    { label: 'ECHO OF A BATTLE', style: 'psionic' },
-    { label: 'GHOST FLEET', style: 'exotic' },
-    { label: 'JAMMING FIELD', style: 'cloud' },
-    { label: 'CHAFF CLOUD', style: 'cloud' },
-    { label: 'RADIATION FRONT', style: 'wave' },
-    { label: 'DEAD SIGNAL', style: 'temporal' },
-    { label: 'REACTOR BREACH', style: 'burst' },
-    { label: 'GRAVITY MINE', style: 'singularity' },
-  ],
-  chatter: {
-    fleet: ['WEAPONS FREE', 'MISSILES AWAY', 'SPLASH ONE', 'TAKING FIRE · DECK 4', 'REARMING', 'HOLD THE LINE', 'COVER THE TENDERS', 'BREAKING LEFT', 'ON YOUR WING', 'DAMAGE CONTROL'],
-    structure: ['SHELLS LOW', 'DEPOT AT 30%', 'GUNS HOT', 'CASUALTIES COUNTED'],
-    science: ['DEBRIS DENSITY RISING', 'FRONT MOVED 2 KM', 'SIGNAL TRAFFIC +40%', 'ORBITAL DECAY · WRECKS'],
-    mystery: ['NOBODY ORDERED THIS', 'FLAGS FROM BOTH SIDES', 'A TRUCE NO ONE SIGNED', 'THE OLD ORDERS STILL RUN'],
-    system: ['COMMAND NET UP', 'CODES ROTATED', 'CASUALTY LIST UPDATED', 'STANDING ORDERS · HOLD'],
-  },
-  ambient: [
-    'DAY 14,601 OF THE SIEGE',
-    'THE LINE HELD AGAIN',
-    'NO ONE CROSSES THE GRAVES',
-    'TRUCE EXPIRED AT 0400',
-    'BOTH SIDES SALUTE THE BEACON',
-    'NEW ORDERS · SAME AS THE OLD',
-    'THE FRONT MOVED TWO KILOMETERS',
-    'REMEMBER THE NAMES',
-  ],
-  mechanics: [
-    { use: 'warfront', with: { battles: 1.8, mobility: 0.55, bombard: true } },
-    { use: 'skirmish', with: { rate: 0.4, raiders: 3, weapon: 'missiles', name: 'COMMANDOS', color: '#f87171' } },
-    { use: 'events', with: { rate: 0.4, flares: false } },
-  ],
-  look: { lanes: 'straight', grid: 'crosses', traffic: 0.45, anomalies: 0.6 },
-};
-
 // ---- registry ------------------------------------------------------------------------------
 
+/** What a gallery or picker needs to show a universe without loading it. */
+export type UniverseMeta = Pick<UniversePack, 'id' | 'name' | 'tagline' | 'palette' | 'warmth'>;
+
 const registry = new Map<string, UniversePack>();
+const loaders = new Map<string, { meta: UniverseMeta; load: () => Promise<unknown> }>();
+const order: string[] = [];
+
+/** Register a full pack (available immediately). */
 export function registerUniverse(pack: UniversePack): UniversePack {
   registry.set(pack.id, pack);
+  if (!order.includes(pack.id)) order.push(pack.id);
   return pack;
 }
+
+/**
+ * Register a universe that loads on demand. `load` imports the module that registers
+ * the pack (and its mechanics). Until then only `meta` is known.
+ */
+export function registerUniverseLoader(meta: UniverseMeta, load: () => Promise<unknown>): void {
+  loaders.set(meta.id, { meta, load });
+  if (!order.includes(meta.id)) order.push(meta.id);
+}
+
+/** The full pack, if it is loaded. */
 export const getUniverse = (id: string): UniversePack | undefined => registry.get(id);
-export const listUniverses = (): UniversePack[] => [...registry.values()];
-[VOID_PACK, SALTWIND_PACK, CHOIR_PACK, SIEGE_PACK].forEach(registerUniverse);
+
+/** Every known universe, loaded or not, in registration order. */
+export const listUniverses = (): UniverseMeta[] =>
+  order.map((id) => {
+    const p = registry.get(id);
+    return p ? { id: p.id, name: p.name, tagline: p.tagline, palette: p.palette, warmth: p.warmth } : loaders.get(id)!.meta;
+  });
+
+/** True when the pack is available now (built in, already loaded, or unknown and so the default). */
+export const isUniverseReady = (id: string | undefined): boolean => !id || registry.has(id) || !loaders.has(id);
+
+/** Load a universe's pack and mechanics. Resolves to the pack (or undefined for an unknown id). */
+export async function loadUniverse(id: string): Promise<UniversePack | undefined> {
+  if (registry.has(id)) return registry.get(id);
+  const l = loaders.get(id);
+  if (!l) return undefined;
+  await l.load();
+  return registry.get(id);
+}
+
+registerUniverse(VOID_PACK);
+// The other built-ins load on demand; their names and colors are known up front.
+registerUniverseLoader(
+  { id: 'saltwind', name: 'Saltwind Reach', tagline: 'Ore, dust, and debt at the end of the old road.', palette: '#f59e0b', warmth: 0.5 },
+  () => import('./packs/saltwind'),
+);
+registerUniverseLoader(
+  { id: 'choir', name: 'Choir of Hollow Stars', tagline: 'Every star here was emptied, and something lives inside.', palette: '#a78bfa', warmth: -0.4 },
+  () => import('./packs/choir'),
+);
+registerUniverseLoader(
+  { id: 'siege', name: 'The Long Siege', tagline: 'Forty years on the same front. Neither side remembers why.', palette: '#cbd5e1', warmth: 0.15 },
+  () => import('./packs/siege'),
+);
 
 // ---- validation --------------------------------------------------------------------------------
 
@@ -650,10 +486,37 @@ export function validateUniverse(raw: unknown): UniverseValidation {
           traffic: typeof r.look.traffic === 'number' ? Math.max(0, Math.min(2, r.look.traffic)) : undefined,
           anomalies: typeof r.look.anomalies === 'number' ? Math.max(0, Math.min(2, r.look.anomalies)) : undefined,
           depth: typeof r.look.depth === 'number' ? Math.max(0, Math.min(0.8, r.look.depth)) : undefined,
+          ground: r.look.ground === undefined ? undefined : oneOf(r.look.ground, ['dust', 'nebula', 'mist', 'none'] as const, 'none'),
+          groundColor: typeof r.look.groundColor === 'string' ? color(r.look.groundColor, '#94a3b8') : undefined,
         }
       : undefined,
+    economy: validateEconomy(r.economy),
   };
   return { pack, errors, warnings };
+}
+
+/** Keep an AI-written economy only if it names some goods; clamp every rate. */
+function validateEconomy(raw: unknown): PackEconomy | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as { goods?: unknown; roles?: unknown };
+  const goods: PackGood[] = (Array.isArray(r.goods) ? r.goods : []).slice(0, 6).flatMap((g: any) => {
+    const id = typeof g?.id === 'string' ? slug(g.id) : typeof g?.label === 'string' ? slug(g.label) : '';
+    return id ? [{ id, label: clean(g.label ?? id, 10) || id.toUpperCase(), color: color(g.color, '#94a3b8') }] : [];
+  });
+  if (!goods.length) return undefined;
+  const known = new Set(goods.map((g) => g.id));
+  const rates = (v: unknown) =>
+    v && typeof v === 'object'
+      ? Object.fromEntries(Object.entries(v as Record<string, unknown>).flatMap(([k, n]) => (known.has(slug(k)) && typeof n === 'number' ? [[slug(k), Math.max(0, Math.min(5, n))]] : [])))
+      : undefined;
+  const roles: PackEconomy['roles'] = {};
+  if (r.roles && typeof r.roles === 'object') {
+    for (const [role, spec] of Object.entries(r.roles as Record<string, any>)) {
+      if (!STRUCTURE_ROLES.includes(role as StructureRole) || !spec || typeof spec !== 'object') continue;
+      roles[role as StructureRole] = { cap: typeof spec.cap === 'number' ? Math.max(10, Math.min(400, spec.cap)) : undefined, makes: rates(spec.makes), uses: rates(spec.uses) };
+    }
+  }
+  return { goods, roles: Object.keys(roles).length ? roles : undefined };
 }
 
 /** Resolve the pack for a mount: an inline pack object wins over a registered id. */
@@ -694,6 +557,7 @@ Return only JSON:
 - ambient: 8-12 haunting fragments, ≤34 chars
 - mechanics: 2-4 of what HAPPENS here, as {use, with:{params}}. This is what makes the world feel different, so choose for the story:
 ${menu || '  (see the studio for the list)'}
-- look: {lanes: straight|curved|none, grid: crosses|claims|none, traffic 0-2, anomalies 0-2}
+- look: {lanes: straight|curved|none, grid: crosses|claims|none, traffic 0-2, anomalies 0-2, depth 0-0.8, ground: dust|nebula|mist|none, groundColor}
+- economy (if goods move here; for the economy mechanic): {goods: 3-5 {id, label, color}, roles: {mine: {makes: {ore: 1.4}}, dock: {makes: {...}, uses: {...}}, ...}}
 All text uppercase.`;
 }

@@ -105,6 +105,8 @@ export interface Fleet {
   /** Who spawned it and why (e.g. 'raider', 'miner', 'war'). */
   tag?: string;
   hostile?: boolean;
+  /** What it is hauling: drawn as glowing pods behind each hull; delivered when it docks. */
+  cargo?: { good: string; amount: number; color: string; to?: string };
 }
 
 export interface Planet {
@@ -138,6 +140,8 @@ export interface Structure {
   flashAt?: number;
   /** Sim time of this structure's next behavior (launch, cargo run, arrival). */
   nextAction: number;
+  /** A gate's partner: jumps from here come out there. */
+  pairId?: string;
 }
 
 export interface StarSystem {
@@ -261,4 +265,9 @@ export interface SystemState {
   lock: TargetLock | null;
   /** Monotonic id counter, per world (keeps ids deterministic across instances). */
   seq: number;
+  /**
+   * Structure roles a mechanic has taken over (the economy runs mines and shipyards, for
+   * example). The world's default timed behavior skips them.
+   */
+  managedRoles?: Set<string>;
 }

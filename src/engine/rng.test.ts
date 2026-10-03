@@ -1,3 +1,4 @@
+import '../test/load-all';
 import { describe, expect, it } from 'vitest';
 import { createRng, hashSeed } from './rng';
 import { generateSystem, generateSingleSystem, generateSingleStructure } from './skins/void-tactical/generators';

@@ -4,12 +4,15 @@
  * put grain between the systems and the text, while fleets still dock at the
  * structures the systems layer draws.
  */
-import type { Layer } from '../../core/layer';
+import type { Layer, LayerHost, LayerInstance } from '../../core/layer';
+import type { Viewport } from '../../core/skin';
+import type { VoidWorld } from './world';
 import { registerLayer } from '../../core/layer';
 import { registerPreset, type PresetSkin } from '../../core/scene';
 import type { Schema } from '../../core/schema';
 import { createOverlayStack } from './overlays/stack';
 import { renderStars, renderGrids } from './renderers/background';
+import { renderGround } from './renderers/ground';
 import { renderCelestialBodies, renderStarSystem, renderStructures } from './renderers/celestial';
 import { renderFleets, renderAnomalies } from './renderers/entities';
 import { renderTacticalOverlays, renderTelemetry, renderSystemConnections, renderSectorConnections, renderTargetLock } from './renderers/ui';
@@ -20,6 +23,32 @@ import { resolveStyle, sharedVoidWorld, STYLE_SCHEMA } from './world';
 import { allStructures } from './fleets';
 
 const pick = (keys: string[]): Schema => ({ ...UNIVERSE_SCHEMA, ...Object.fromEntries(keys.map((k) => [k, STYLE_SCHEMA[k]])) });
+
+/**
+ * Build a layer once the shared world exists. A lazily loaded universe may still be on
+ * its way at mount; until it arrives the layer draws nothing.
+ */
+function onWorld(host: LayerHost, make: (sim: VoidWorld) => LayerInstance): LayerInstance {
+  let inner: LayerInstance | null = null;
+  let size: Viewport | null = null;
+  const ready = () => {
+    if (inner) return inner;
+    const sim = sharedVoidWorld(host);
+    if (!sim) return null;
+    inner = make(sim);
+    if (size) inner.resize?.(size);
+    return inner;
+  };
+  return {
+    resize(v) {
+      size = v;
+      ready()?.resize?.(v);
+    },
+    frame: (info) => ready()?.frame?.(info),
+    advance: (info) => ready()?.advance?.(info),
+    inspect: () => ready()?.inspect?.(),
+  };
+}
 
 const TAGS = ['space', 'sci-fi', 'dark'];
 
@@ -69,7 +98,7 @@ export const voidStarsLayer: Layer = {
   tags: [...TAGS, 'motion'],
   schema: { ...UNIVERSE_SCHEMA },
   canvas(host) {
-    const sim = sharedVoidWorld(host);
+    return onWorld(host, (sim) => {
     const style = resolveStyle({});
     return {
       resize: (v) => sim.resize(v),
@@ -82,6 +111,7 @@ export const voidStarsLayer: Layer = {
         renderStars(host.ctx, sim.world.stars, sim.camera, { width: sim.width, height: sim.height }, sim.frameFor(info, style));
       },
     };
+    });
   },
 };
 
@@ -92,7 +122,7 @@ export const voidSystemsLayer: Layer = {
   tags: [...TAGS, 'structure'],
   schema: pick(['hueVariety', 'lineWeight', 'spriteScale', 'hud']),
   canvas(host) {
-    const sim = sharedVoidWorld(host);
+    return onWorld(host, (sim) => {
     const style = resolveStyle(host.options);
     const board = createLabelBoard();
     return {
@@ -107,6 +137,7 @@ export const voidSystemsLayer: Layer = {
         const { world, camera } = sim;
         ctx.font = FONT;
         ctx.textBaseline = 'top';
+        renderGround(ctx, frame, viewport);
         sim.drawPass(ctx, 'ground', frame, board);
         sim.drawPass(ctx, 'under', frame, board);
         renderCelestialBodies(ctx, world.celestialBodies, camera, viewport, frame);
@@ -116,6 +147,7 @@ export const voidSystemsLayer: Layer = {
         board.flush(ctx, viewport, frame.dpr);
       },
     };
+    });
   },
 };
 
@@ -126,7 +158,7 @@ export const voidFleetsLayer: Layer = {
   tags: [...TAGS, 'motion'],
   schema: pick(['hueVariety', 'lineWeight', 'shipScale', 'paths', 'trails', 'hud']),
   canvas(host) {
-    const sim = sharedVoidWorld(host);
+    return onWorld(host, (sim) => {
     const style = resolveStyle(host.options);
     const board = createLabelBoard();
     return {
@@ -147,6 +179,7 @@ export const voidFleetsLayer: Layer = {
         board.flush(ctx, viewport, frame.dpr);
       },
     };
+    });
   },
 };
 
@@ -157,7 +190,7 @@ export const voidHudLayer: Layer = {
   tags: [...TAGS, 'hud'],
   schema: pick(['hud', 'lineWeight', 'hueVariety', 'lock']),
   canvas(host) {
-    const sim = sharedVoidWorld(host);
+    return onWorld(host, (sim) => {
     const style = resolveStyle(host.options);
     const board = createLabelBoard();
     return {
@@ -180,6 +213,7 @@ export const voidHudLayer: Layer = {
         sim.drawPass(ctx, 'hud', frame);
       },
     };
+    });
   },
 };
 

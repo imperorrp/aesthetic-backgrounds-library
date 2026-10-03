@@ -12,6 +12,9 @@
  *   report.problems // invariant breaks (NaN, empty fleets, runaway counts, failed plugins)
  */
 import '../lib';
+// Every universe, eagerly: the runner works synchronously.
+import '../engine/skins/void-tactical/packs';
+import '../engine/skins/void-tactical/mechanics/all';
 import { resolveBackgroundConfig, withConfigDefaults, type BackgroundConfig } from '../engine/config';
 import { createRng, forkRng } from '../engine/rng';
 import { createNoise2D } from '../engine/noise';

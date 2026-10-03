@@ -139,6 +139,29 @@ export const renderFleets = (
       board?.reserve(v.sx(s.x, z), v.sy(s.y, z), spec.size * 0.45 * frame.style.shipScale * k);
     }
 
+    // Cargo: a short string of glowing pods behind each hull, in the color of the load.
+    if (f.cargo && a > 0.2) {
+      const pods = Math.max(1, Math.min(3, Math.ceil(f.cargo.amount / 15)));
+      const c = frame.color(f.cargo.color);
+      for (const s of f.ships) {
+        const hx = Math.cos(s.heading);
+        const hy = Math.sin(s.heading);
+        const sx = v.sx(s.x, z);
+        const sy = v.sy(s.y, z);
+        for (let i = 0; i < pods; i++) {
+          const d = (SHIP_SPECS[s.cls].size * 0.55 + 2.5 + i * 4.4) * frame.style.shipScale * k;
+          const px = sx - hx * d;
+          const py = sy - hy * d;
+          ctx.fillStyle = hexRgba(c, 0.22 * a);
+          ctx.beginPath();
+          ctx.arc(px, py, 3.4 * k, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = hexRgba(c, 0.9 * a);
+          ctx.fillRect(px - 1.4 * k, py - 1.4 * k, 2.8 * k, 2.8 * k);
+        }
+      }
+    }
+
     const locked = world.lock?.kind === 'fleet' && world.lock.id === f.id && frame.style.lock;
     if (board && shouldShowFleetLabel(density, f.showLabel) && a > 0.4 && !locked && z < 0.8) {
       const cls = classLabel(frame.pack, f.cls);

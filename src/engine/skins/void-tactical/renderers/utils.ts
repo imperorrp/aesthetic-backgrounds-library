@@ -60,6 +60,8 @@ export type RenderFrame = {
    * sizes by `view.scale(z)`. Text stays at its pixel size; only positions move.
    */
   view: View;
+  /** The seed as a number, for renderers that make their own stable patterns (ground tiles). */
+  seed: number;
 };
 
 /** Far things fade a little, so depth reads at a glance. */

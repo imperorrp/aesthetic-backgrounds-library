@@ -4,9 +4,11 @@
  * sensors report it; behind it the air clears.
  */
 import { hexRgba } from '../renderers/utils';
+import type { FieldHandle } from '../../../sim/fields';
 import { registerMechanic } from './types';
+import { useWeather } from './weather';
 
-type Front = { born: number; dur: number; ang: number; width: number; seed: number; warned: boolean };
+type Front = { born: number; dur: number; ang: number; width: number; seed: number; warned: boolean; wind?: FieldHandle; off?: () => void };
 
 registerMechanic({
   id: 'storms',
@@ -33,16 +35,34 @@ registerMechanic({
       return (x - cx) * Math.cos(f.ang) + (y - cy) * Math.sin(f.ang);
     };
 
+    const weather = useWeather(api);
+    /** The front's center line, as a dot product along its direction in world units (for the wind field). */
+    const centerAlong = (f: Front, t: number) => {
+      const k = (t - f.born) / f.dur;
+      const reach = Math.hypot(api.width, api.height) + f.width * 2;
+      const cx = api.width / 2 - Math.cos(f.ang) * (reach / 2) + Math.cos(f.ang) * reach * k + api.view().left;
+      const cy = api.height / 2 - Math.sin(f.ang) * (reach / 2) + Math.sin(f.ang) * reach * k;
+      return cx * Math.cos(f.ang) + cy * Math.sin(f.ang);
+    };
+
     return {
       update() {
         if (api.t >= next) {
-          fronts.push({ born: api.t, dur: 34 + api.rng() * 18, ang: (api.rng() < 0.7 ? Math.PI : 0) + (api.rng() - 0.5) * 0.9, width: 220 + api.rng() * 180, seed: api.rng() * 1000, warned: false });
+          const f: Front = { born: api.t, dur: 34 + api.rng() * 18, ang: (api.rng() < 0.7 ? Math.PI : 0) + (api.rng() - 0.5) * 0.9, width: 220 + api.rng() * 180, seed: api.rng() * 1000, warned: false };
+          // The front blows: a band of wind in its direction of travel, and storminess inside it.
+          f.wind = weather.field.add({ kind: 'band', angle: f.ang, at: (t) => centerAlong(f, t), width: f.width, strength: 34 * (Number(p.density) || 0.8) });
+          f.off = weather.addStorm((x, y, t) => (t > f.born + f.dur ? 0 : Math.max(0, 1 - Math.abs(along(f, api.screenX(x), y, t)) / (f.width / 2))));
+          fronts.push(f);
+          api.emit({ type: 'storm', x: api.view().left + api.width / 2, y: api.height / 2, weight: 0.35 });
           next = api.t + (60 / (Number(p.rate) || 0.5)) * (0.7 + api.rng() * 0.6);
         }
         for (let i = fronts.length - 1; i >= 0; i--) {
           const f = fronts[i];
-          if (api.t > f.born + f.dur) fronts.splice(i, 1);
-          else if (!f.warned && api.t > f.born + f.dur * 0.25) {
+          if (api.t > f.born + f.dur) {
+            if (f.wind) weather.field.remove(f.wind);
+            f.off?.();
+            fronts.splice(i, 1);
+          } else if (!f.warned && api.t > f.born + f.dur * 0.25) {
             f.warned = true;
             api.say(`${name} · SENSORS DEGRADED`, api.view().left + api.width * 0.5, 40, color, { priority: 'high', duration: 5000 });
           }

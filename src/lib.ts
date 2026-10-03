@@ -19,16 +19,22 @@ export type { OverlayFlags, OverlayId } from './engine/skins/void-tactical/overl
 export {
   voidTacticalLayer,
   registerUniverse,
+  registerUniverseLoader,
   getUniverse,
   listUniverses,
+  loadUniverse,
+  isUniverseReady,
   validateUniverse,
   universePrompt,
   registerMechanic,
+  registerMechanicLoader,
+  loadMechanics,
+  prepareVoidTactical,
   getMechanic,
   listMechanics,
   steerToward,
   steerOrbit,
 } from './entries/skins/void-tactical';
-export type { UniversePack, UniverseValidation, Mechanic, MechanicApi, MechanicRef } from './entries/skins/void-tactical';
+export type { UniversePack, UniverseMeta, UniverseValidation, Mechanic, MechanicApi, MechanicRef } from './entries/skins/void-tactical';
 export * from './engine/layers';
 export * from './engine/presets';

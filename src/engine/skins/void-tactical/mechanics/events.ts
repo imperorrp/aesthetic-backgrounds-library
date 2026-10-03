@@ -15,11 +15,47 @@ registerMechanic({
     armada: { type: 'boolean', default: true, label: 'Armadas' },
     flares: { type: 'boolean', default: true, label: 'Stellar flares' },
     surges: { type: 'boolean', default: true, label: 'Gate surges' },
+    blowouts: { type: 'boolean', default: false, label: 'Bore blowouts (mines erupt)' },
+    shifts: { type: 'boolean', default: false, label: 'Shift changes (lanes flood)' },
   },
   create(api, p) {
     const rate = Number(p.rate) || 0.7;
     let next = api.t + 12 + api.rng() * 12;
     const flares: { x: number; y: number; t: number; color: string; name: string }[] = [];
+    /** A geyser of dust and ore out of a blown bore. */
+    const geysers: { x: number; y: number; t: number; seed: number }[] = [];
+
+    const blowout = () => {
+      const mines = allStructures(api.world).filter((s) => !s.z && s.role === 'mine' && api.onScreen(s.x, s.y, 80));
+      if (!mines.length) return false;
+      const m = mines[Math.floor(api.rng() * mines.length)];
+      m.flashAt = api.t;
+      geysers.push({ x: m.x, y: m.y, t: api.t, seed: api.rng() * 100 });
+      api.fx.flash(m.x, m.y, '#ffd8a0', 70, 1.2);
+      api.fx.ring(m.x, m.y, '#f2b45a', 180, 2, 6, 2);
+      api.fx.sparks(m.x, m.y, '#f2b45a', 40, 110);
+      api.say(`${m.label} · BORE BLOWOUT · CLEAR THE SHAFT`, m.x, m.y + 28, '#f2b45a', { priority: 'high', duration: 5000 });
+      // The asteroid mechanic (if running) throws fresh rock out of the hole.
+      api.emit({ type: 'blowout', x: m.x, y: m.y, weight: 0.85 });
+      return true;
+    };
+
+    const shift = () => {
+      const places = allStructures(api.world).filter((s) => !s.z && (s.role === 'dock' || s.role === 'mine') && api.onScreen(s.x, s.y, 40));
+      if (places.length < 2) return false;
+      const n = 6 + Math.floor(api.rng() * 5);
+      for (let i = 0; i < n; i++) {
+        const s = places[i % places.length];
+        const ang = api.rng() * Math.PI * 2;
+        const f = api.spawnFleet({ x: s.x + Math.cos(ang) * 18, y: s.y + Math.sin(ang) * 18, vx: Math.cos(ang) * 16, vy: Math.sin(ang) * 16 }, { cls: api.rng() < 0.6 ? 'freighter' : 'scout', wings: [], fadeIn: true });
+        f.tag = undefined; // ordinary traffic, just a lot of it
+        s.flashAt = api.t;
+      }
+      const c = places[0];
+      api.say('SHIFT CHANGE · LANES FILLING', c.x, c.y - 30, api.host.palette.ink, { priority: 'high', duration: 5000 });
+      api.emit({ type: 'shift', x: c.x, y: c.y, weight: 0.6 });
+      return true;
+    };
 
     const armada = () => {
       const v = api.view();
@@ -68,12 +104,35 @@ registerMechanic({
       update() {
         if (api.t < next) return;
         next = api.t + (60 / rate) * (0.6 + api.rng() * 0.8);
-        const options = [p.armada !== false && armada, p.flares !== false && flare, p.surges !== false && surge].filter(Boolean) as (() => unknown)[];
+        const options = [p.armada !== false && armada, p.flares !== false && flare, p.surges !== false && surge, p.blowouts === true && blowout, p.shifts === true && shift].filter(Boolean) as (() => unknown)[];
         if (!options.length) return;
         const pick = options[Math.floor(api.rng() * options.length)];
         if (pick() === false) options.find((o) => o !== pick)?.();
       },
       draw(ctx, pass, frame) {
+        if (pass === 'over') {
+          // Geysers: a column of dust and glinting ore, rising and falling back for a while.
+          for (let i = geysers.length - 1; i >= 0; i--) {
+            const g = geysers[i];
+            const age = frame.time - g.t;
+            if (age > 7) {
+              geysers.splice(i, 1);
+              continue;
+            }
+            const fade = Math.min(1, age * 3) * Math.max(0, 1 - age / 7);
+            const x0 = api.screenX(g.x);
+            for (let k = 0; k < 70; k++) {
+              const h = Math.sin(k * 12.9898 + g.seed) * 43758.5453;
+              const u = h - Math.floor(h);
+              const life = ((age * (0.6 + u * 0.8) + u * 3) % 2.2) / 2.2; // each particle loops up and falls
+              const spread = (u - 0.5) * (30 + life * 70);
+              const y = g.y - Math.sin(life * Math.PI) * (90 + u * 90);
+              ctx.fillStyle = k % 4 === 0 ? `rgba(242,180,90,${0.9 * fade})` : `rgba(160,130,100,${0.35 * fade * (1 - life)})`;
+              ctx.fillRect(x0 + spread, y, k % 4 === 0 ? 2 : 3, k % 4 === 0 ? 2 : 3);
+            }
+          }
+          return;
+        }
         if (pass !== 'under') return;
         // A flaring star lights its whole neighborhood for a while.
         for (let i = flares.length - 1; i >= 0; i--) {

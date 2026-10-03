@@ -101,6 +101,17 @@ for (const [entry, budget] of Object.entries(BUDGETS_KB)) {
   rows.push([entry, kb.toFixed(2), budget.toFixed(0), ok ? 'ok' : 'FAIL', files.map((f) => relative(DIST, f)).join(', ')]);
 }
 
+// Plugins register themselves as a side effect of being imported. If a module is not
+// listed in package.json `sideEffects`, the bundler drops it silently, so check the
+// built output really contains every built-in mechanic.
+const MECHANICS = ['skirmish', 'events', 'economy', 'police', 'gates', 'relays', 'asteroids', 'storms', 'wardens', 'song', 'flocks', 'maw', 'cartography', 'warfront'];
+const dist = allJs.map((f) => readFileSync(f, 'utf8')).join('\n');
+const missing = MECHANICS.filter((id) => !new RegExp(`id:\\s*"${id}"`).test(dist));
+if (missing.length) {
+  console.error(`Built output is missing mechanics: ${missing.join(', ')}. Check package.json "sideEffects".`);
+  failed = true;
+}
+
 const total = gzipKb(allJs);
 console.log('entry closure (gzip KB)      actual   budget  status');
 for (const [entry, kb, budget, status, files] of rows) {

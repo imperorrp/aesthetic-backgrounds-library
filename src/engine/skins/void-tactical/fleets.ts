@@ -15,7 +15,8 @@ import { SHIP_CLASSES, type ShipClass, type StructureRole, type UniversePack } f
 
 export type SimView = { left: number; right: number; top: number; bottom: number };
 export type FleetEventKind = 'approach' | 'dock' | 'depart' | 'jump' | 'arrive' | 'launch' | 'cargo' | 'survey';
-export type FleetEvent = { kind: FleetEventKind; fleet: Fleet; target?: string };
+/** `target` is a display name; `targetId` the structure or system id, when there is one. */
+export type FleetEvent = { kind: FleetEventKind; fleet: Fleet; target?: string; targetId?: string };
 export type FleetCtx = {
   rng: Rng;
   t: number;
@@ -403,7 +404,7 @@ function arrive(f: Fleet, world: SystemState, c: FleetCtx): void {
     f.jumpAt = c.t + 0.8;
     f.fadeTo = 0;
     struct.flashAt = c.t;
-    c.emit({ kind: 'jump', fleet: f, target: struct.label });
+    c.emit({ kind: 'jump', fleet: f, target: struct.label, targetId: struct.id });
     return;
   }
   if (struct && DOCK_ROLES.includes(struct.role)) {
@@ -413,7 +414,7 @@ function arrive(f: Fleet, world: SystemState, c: FleetCtx): void {
     struct.flashAt = c.t;
     L.vx = 0;
     L.vy = 0;
-    c.emit({ kind: 'dock', fleet: f, target: struct.label });
+    c.emit({ kind: 'dock', fleet: f, target: struct.label, targetId: struct.id });
     return;
   }
   // Everything else: hold an orbit for a while.
@@ -431,14 +432,14 @@ function arrive(f: Fleet, world: SystemState, c: FleetCtx): void {
   f.mode = 'orbit';
   if (tg.kind === 'anomaly') {
     f.surveyed.push(tg.id!);
-    c.emit({ kind: 'survey', fleet: f, target: tg.label });
+    c.emit({ kind: 'survey', fleet: f, target: tg.label, targetId: tg.id });
   }
 }
 
 function depart(f: Fleet, world: SystemState, c: FleetCtx): void {
   const L = f.ships[0];
   if (f.mode === 'docked') {
-    c.emit({ kind: 'depart', fleet: f, target: f.target?.label });
+    c.emit({ kind: 'depart', fleet: f, target: f.target?.label, targetId: f.target?.id });
     f.fadeTo = 1;
     // Push off the berth, away from the structure.
     if (f.target) {
@@ -455,7 +456,10 @@ function depart(f: Fleet, world: SystemState, c: FleetCtx): void {
 function jump(f: Fleet, world: SystemState, c: FleetCtx): void {
   const from = f.target?.id;
   const gates = allStructures(world).filter((s) => s.role === 'gate' && s.id !== from && reach(c, s.x, s.y, s.z, -20));
-  const dest = gates.length ? gates[Math.floor(c.rng() * gates.length)] : undefined;
+  // A paired gate always sends you to its partner; otherwise any gate in reach.
+  const here = allStructures(world).find((s) => s.id === from);
+  const pair = here?.pairId ? gates.find((g) => g.id === here.pairId) : undefined;
+  const dest = pair ?? (gates.length ? gates[Math.floor(c.rng() * gates.length)] : undefined);
   if (!dest) {
     f.mode = 'gone';
     return;
@@ -476,7 +480,7 @@ function jump(f: Fleet, world: SystemState, c: FleetCtx): void {
   f.z = dest.z ?? 0;
   dest.flashAt = c.t;
   f.target = structureTarget(dest);
-  c.emit({ kind: 'arrive', fleet: f, target: dest.label });
+  c.emit({ kind: 'arrive', fleet: f, target: dest.label, targetId: dest.id });
   goTo(f, chooseTarget(f, world, c), world, c);
 }
 

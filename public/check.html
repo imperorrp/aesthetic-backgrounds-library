@@ -30,7 +30,7 @@
       <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.</p>
     </main>
     <script type="module">
-      import { mount, createManualScheduler, probeContrast, resolvePalette, getSkin, loadPresetManifest, getUniverse } from '/src/lib.ts';
+      import { mount, createManualScheduler, probeContrast, resolvePalette, getSkin, loadPresetManifest, getUniverse, loadUniverse, listUniverses, prepareVoidTactical } from '/src/lib.ts';
 
       const q = new URLSearchParams(location.search);
       const skinId = q.get('skin') ?? 'void-tactical';
@@ -38,8 +38,12 @@
       const frames = Number(q.get('frames') ?? 240);
       const manual = q.get('manual') !== '0';
       const universeId = q.has('options') ? JSON.parse(q.get('options')).universe : undefined;
+      // Lazily loaded universes arrive before the clock starts, so frame counts stay exact.
+      if (universeId) await loadUniverse(universeId);
+      // ...and the mechanics the sector map will run (also for the void-sector preset).
+      await prepareVoidTactical(q.has('options') ? JSON.parse(q.get('options')) : undefined);
       // A universe brings its own palette unless one is given explicitly.
-      const palette = q.get('palette') ?? (universeId ? getUniverse(universeId)?.palette : undefined) ?? undefined;
+      const palette = q.get('palette') ?? (universeId ? getUniverse(universeId)?.palette ?? listUniverses().find((u) => u.id === universeId)?.palette : undefined) ?? undefined;
       const intensity = q.has('intensity') ? Number(q.get('intensity')) : undefined;
       const options = q.has('options') ? JSON.parse(q.get('options')) : undefined;
       if (q.get('text') === '0') document.body.dataset.hideText = '1';

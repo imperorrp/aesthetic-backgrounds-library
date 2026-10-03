@@ -23,9 +23,9 @@ import type { Bus, WorldEvent } from '../../../sim/bus';
  *   under   under the systems and structures: fronts, belts, currents
  *   mid     among the structures, under the ships: rings, routes, markers
  *   over    over the ships: beams, explosions, alerts
- *   hud     on top of everything, after the labels
+ *   hud     on top of everything, after the labels, in SCREEN space (tickers, readouts)
  *
- * Mechanic passes run inside the camera transform: draw in MAP SPACE (`api.screenX(x)`,
+ * The other passes run inside the camera transform: draw in MAP SPACE (`api.screenX(x)`,
  * world `y`), exactly as if the camera never moved, and the director's pan and zoom
  * apply on their own. Label requests made through the `board` argument use map space too.
  */
@@ -83,6 +83,8 @@ export type MechanicApi = {
   spawnFleet(at: { x: number; y: number; vx: number; vy: number }, opts?: MechanicSpawn): Fleet;
   /** Send a fleet back to its normal life (stop steering, pick a destination). */
   release(f: Fleet): void;
+  /** Stop steering a fleet and fly it to a structure (it docks, jumps, or orbits there as usual). */
+  goTo(f: Fleet, s: Structure): void;
   /** Hurt a ship; destroys it (explosion, debris, maybe a wreck) at zero. */
   damage(f: Fleet, ship: Ship, amount: number): void;
   structures(): Structure[];
@@ -107,12 +109,28 @@ export type Mechanic = {
 export type MechanicRef = { use: string; with?: Record<string, unknown>; enabled?: boolean };
 
 const registry = new Map<string, Mechanic>();
+const loaders = new Map<string, () => Promise<unknown>>();
+
 export function registerMechanic(m: Mechanic): Mechanic {
   registry.set(m.id, m);
   return m;
 }
+/**
+ * Register a mechanic that loads on demand: `load` imports the module that calls
+ * `registerMechanic`. The world waits for the mechanics its universe uses before it starts.
+ */
+export function registerMechanicLoader(id: string, load: () => Promise<unknown>): void {
+  loaders.set(id, load);
+}
 export const getMechanic = (id: string) => registry.get(id);
+/** Mechanics that are loaded (all of them once `mechanics/all` is imported). */
 export const listMechanics = () => [...registry.values()];
+/** True when every id is registered, or unknown (an unknown id is skipped, not waited for). */
+export const mechanicsReady = (ids: readonly string[]) => ids.every((id) => registry.has(id) || !loaders.has(id));
+/** Load the modules behind these ids. */
+export async function loadMechanics(ids: readonly string[]): Promise<void> {
+  await Promise.all(ids.filter((id) => !registry.has(id) && loaders.has(id)).map((id) => loaders.get(id)!()));
+}
 
 /** Steering helpers for mechanic-controlled leaders. */
 export function steerToward(s: Ship, tx: number, ty: number, speed: number, accel: number, dt: number, slowRadius = 0): void {

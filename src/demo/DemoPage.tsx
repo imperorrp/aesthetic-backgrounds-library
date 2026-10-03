@@ -33,7 +33,10 @@ import {
   voidSectorPreset,
 } from '../engine';
 import { History, download, exportImage, exportVideo, type ExportOptions } from './studio-tools';
-import { listUniverses, universePrompt, validateUniverse, type UniversePack } from '../engine/skins/void-tactical/universe';
+import { getUniverse, listUniverses, universePrompt, validateUniverse, type UniversePack } from '../engine/skins/void-tactical/universe';
+// The studio shows every universe, so it loads them all up front.
+import '../engine/skins/void-tactical/packs';
+import '../engine/skins/void-tactical/mechanics/all';
 import { listMechanics, type MechanicRef } from '../engine/skins/void-tactical/mechanics';
 import { instrumentSkins } from '../engine/skins/instruments';
 import { aiPrompt, compactConfig } from './ai-prompt';
@@ -685,7 +688,7 @@ export default function DemoPage() {
                   refs={
                     Array.isArray(studio.skinOptions.mechanics)
                       ? (studio.skinOptions.mechanics as MechanicRef[])
-                      : (activePack ?? listUniverses().find((u) => u.id === (studio.skinOptions.universe ?? 'void')))?.mechanics ?? []
+                      : (activePack ?? getUniverse(String(studio.skinOptions.universe ?? 'void')))?.mechanics ?? []
                   }
                   custom={Array.isArray(studio.skinOptions.mechanics)}
                   onChange={(mechanics) => update({ skinOptions: { ...studio.skinOptions, mechanics } })}

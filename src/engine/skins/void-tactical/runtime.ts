@@ -1,11 +1,12 @@
 import { renderSystem } from './renderers';
 import type { VoidStyle } from './renderers/utils';
-import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
+import type { BackgroundSkin, FrameInfo, SkinHost, SkinInstance, Viewport } from '../../core/skin';
 import { createOverlayStack } from './overlays/stack';
 import { DEFAULT_OVERLAYS, type OverlayFlags, type OverlayId } from './overlays/flags';
 import type { Schema } from '../../core/schema';
 import { CAMERA_SCHEMA, createVoidWorld, resolveStyle, STYLE_SCHEMA } from './world';
 import { listUniverses, resolveUniverse, type UniversePack } from './universe';
+import { isVoidReady, prepareVoidTactical } from './ready';
 import { forkRng } from '../../rng';
 
 /** Flat flags (matching the schema), calibration knobs, and/or a nested `layers` object; flat keys win. */
@@ -85,28 +86,76 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
   /** Dense, detailed, and held back to 45% presence so page content leads. */
   defaults: { palette: 'void-cyan', intensity: 0.45, density: 1.5, detail: 'high' },
   layers(root, { options, config }) {
-    const stack = createOverlayStack(root, overlayFlags(options), { position: 'absolute', words: ambientWords(options, config.seed) });
-    return () => stack.destroy();
-  },
-  mount(host: SkinHost<VoidTacticalOptions>) {
-    const { ctx } = host;
-    const style = resolveStyle(host.options);
-    const sim = createVoidWorld(host);
-    return {
-      resize(viewport: Viewport) {
-        sim.resize(viewport);
-      },
-      frame(info: FrameInfo) {
-        sim.update(info);
-        const { width, height } = sim;
-        ctx.clearRect(0, 0, width, height);
-        renderSystem(ctx, sim.world, sim.camera, { width, height }, sim.frameFor(info, style), sim.drawPass);
-      },
-      advance(info: FrameInfo) {
-        sim.update(info);
-      },
-      inspect: () => sim.inspect(),
-      destroy() {},
+    let stack = createOverlayStack(root, overlayFlags(options), { position: 'absolute', words: ambientWords(options, config.seed) });
+    let gone = false;
+    // A lazily loaded universe brings its own background words once it arrives.
+    if (!isVoidReady(options)) {
+      void prepareVoidTactical(options).then(() => {
+        if (gone) return;
+        stack.destroy();
+        stack = createOverlayStack(root, overlayFlags(options), { position: 'absolute', words: ambientWords(options, config.seed) });
+      });
+    }
+    return () => {
+      gone = true;
+      stack.destroy();
     };
   },
+  mount(host: SkinHost<VoidTacticalOptions>) {
+    if (!isVoidReady(host.options)) return deferred(host, prepareVoidTactical(host.options), () => mountWorld(host));
+    return mountWorld(host);
+  },
 };
+
+/**
+ * Show the plain plate while a universe loads, then hand over to the real instance. The
+ * world starts at whatever frame time it is when the pack arrives.
+ */
+function deferred(host: SkinHost, ready: Promise<unknown>, create: () => SkinInstance): SkinInstance {
+  let inner: SkinInstance | null = null;
+  let size: Viewport = { width: host.viewport.width, height: host.viewport.height };
+  let destroyed = false;
+  void ready.then(() => {
+    if (destroyed) return;
+    inner = create();
+    inner.resize(size);
+  });
+  return {
+    resize(v) {
+      size = v;
+      inner?.resize(v);
+    },
+    frame(info) {
+      if (inner) inner.frame(info);
+      else host.ctx.clearRect(0, 0, size.width, size.height);
+    },
+    advance: (info) => inner?.advance?.(info),
+    inspect: () => inner?.inspect?.(),
+    destroy() {
+      destroyed = true;
+      inner?.destroy();
+    },
+  };
+}
+
+function mountWorld(host: SkinHost<VoidTacticalOptions>): SkinInstance {
+  const { ctx } = host;
+  const style = resolveStyle(host.options);
+  const sim = createVoidWorld(host);
+  return {
+    resize(viewport: Viewport) {
+      sim.resize(viewport);
+    },
+    frame(info: FrameInfo) {
+      sim.update(info);
+      const { width, height } = sim;
+      ctx.clearRect(0, 0, width, height);
+      renderSystem(ctx, sim.world, sim.camera, { width, height }, sim.frameFor(info, style), sim.drawPass);
+    },
+    advance(info: FrameInfo) {
+      sim.update(info);
+    },
+    inspect: () => sim.inspect(),
+    destroy() {},
+  };
+}

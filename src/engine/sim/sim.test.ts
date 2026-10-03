@@ -5,7 +5,11 @@ import { createView, MAX_ZOOM } from './view';
 import { createBus } from './bus';
 import { createDirector } from './director';
 import { createSpatialHash } from './spatial';
+import { createLedger } from './economy';
+import { createNetwork } from './signals';
+import { createField } from './fields';
 import { createRng } from '../rng';
+import { createNoise2D } from '../noise';
 
 describe('view', () => {
   it('is the classic framing at rest: screen x = x - left, screen y = y', () => {
@@ -96,6 +100,72 @@ describe('director', () => {
   it('ignores small events in director mode', () => {
     const r = run('director', [{ at: 1, x: 850, y: 450, weight: 0.2 }], 8);
     expect(r.maxZoom).toBeLessThan(1.01);
+  });
+});
+
+describe('ledger', () => {
+  it('produces, consumes, reports shortages, moves goods, and prices scarcity', () => {
+    const l = createLedger(['ore', 'food']);
+    l.add('mine', { cap: 100, makes: { ore: 2 } });
+    l.add('dock', { cap: 100, uses: { food: 1 }, stock: { food: 10 } });
+    for (let i = 0; i < 60; i++) l.tick(0.5);
+    expect(l.get('mine')!.stock.ore).toBeCloseTo(60);
+    expect(l.get('dock')!.stock.food).toBe(0);
+    expect(l.shortages()).toEqual([{ id: 'dock', good: 'food', need: 1 }]);
+    expect(l.take('mine', 'ore', 25)).toBe(25);
+    expect(l.give('dock', 'ore', 500)).toBe(100);
+    expect(l.price('food')).toBeGreaterThan(l.price('ore'));
+  });
+});
+
+describe('signal network', () => {
+  const nodes = [
+    { id: 'a', x: 0, y: 0 },
+    { id: 'b', x: 100, y: 0 },
+    { id: 'c', x: 200, y: 0 },
+    { id: 'd', x: 900, y: 0 },
+  ];
+
+  it('links nearest neighbours in range and routes hop by hop', () => {
+    const net = createNetwork();
+    net.setNodes(nodes, 150, 2);
+    expect(net.route('a', 'c')).toEqual(['a', 'b', 'c']);
+    expect(net.route('a', 'd')).toBeNull();
+    let arrived = false;
+    net.send('a', 'c', { color: '#fff', speed: 100, onArrive: () => (arrived = true) });
+    let t = 0;
+    const hops: string[] = [];
+    for (let i = 0; i < 60 && !arrived; i++) {
+      t += 0.1;
+      hops.push(...net.update(0.1, t).hops.map((h) => h.node));
+    }
+    expect(hops).toEqual(['b']);
+    expect(arrived).toBe(true);
+    expect(net.packets.length).toBe(0);
+  });
+
+  it('broadcasts outward in rings', () => {
+    const net = createNetwork();
+    net.setNodes(nodes, 150, 2);
+    const w = net.broadcast('a', { color: '#f00', hopTime: 0.5 })!;
+    expect([...w.depth.entries()]).toEqual([['a', 0], ['b', 1], ['c', 2]]);
+  });
+});
+
+describe('flow field', () => {
+  it('sums sources: wind, a moving band, a vortex, and divergence-free noise', () => {
+    const field = createField(createNoise2D(createRng('field')));
+    const out = { x: 0, y: 0 };
+    field.add({ kind: 'uniform', angle: 0, strength: 10 });
+    expect(field.sample(5, 5, 0, out)).toEqual({ x: 10, y: expect.closeTo(0) });
+    const band = field.add({ kind: 'band', angle: 0, at: (t) => t * 100, width: 50, strength: 20 });
+    expect(field.sample(300, 0, 3, out).x).toBeGreaterThan(20);
+    expect(field.sample(900, 0, 3, out).x).toBeCloseTo(10);
+    field.remove(band);
+    const v = field.add({ kind: 'vortex', x: 0, y: 0, radius: 100, strength: 30 });
+    const s = field.sample(100, 0, 0, out);
+    expect(s.y).toBeGreaterThan(20); // swirling counter-clockwise in screen space at the radius
+    field.remove(v);
   });
 });
 

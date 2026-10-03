@@ -24,7 +24,7 @@
     <div id="stage"></div>
     <canvas id="sheet"></canvas>
     <script type="module">
-      import { mount, createManualScheduler, getUniverse, resolvePalette, getSkin } from '/src/lib.ts';
+      import { mount, createManualScheduler, getUniverse, loadUniverse, prepareVoidTactical, resolvePalette, getSkin } from '/src/lib.ts';
 
       const q = new URLSearchParams(location.search);
       const num = (k, d) => (q.has(k) ? Number(q.get(k)) : d);
@@ -37,7 +37,8 @@
       const parse = (v) => (v === 'true' ? true : v === 'false' ? false : v !== '' && !isNaN(Number(v)) ? Number(v) : v);
       const single = Object.fromEntries([...q.entries()].filter(([k]) => k.startsWith('opt.')).map(([k, v]) => [k.slice(4), parse(v)]));
       const options = { ...(q.has('options') ? JSON.parse(q.get('options')) : {}), ...single, ...(q.has('u') ? { universe: q.get('u') } : {}) };
-      const universe = options.universe ? getUniverse(options.universe) : undefined;
+      const universe = options.universe ? await loadUniverse(options.universe) ?? getUniverse(options.universe) : undefined;
+      await prepareVoidTactical(options);
       const palette = q.get('palette') ?? universe?.palette ?? undefined;
       const crop = q.has('crop') ? q.get('crop').split(',').map(Number) : [0, 0, W, H];
       const tileScale = num('tile', crop[2] < W ? 1 : 0.5);

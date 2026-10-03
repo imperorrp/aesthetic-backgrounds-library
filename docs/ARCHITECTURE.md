@@ -81,7 +81,11 @@ are re-rasterized at the nearest font size, so nothing blurs at any zoom.
 
 **Mechanic rule.** Mechanic draw passes run inside the camera transform. Draw in *map
 space* (`api.screenX(x)`, world `y`), as if the camera never moved; pan and zoom apply on
-their own. Mechanics live on the main plane: skip anything with `z`.
+their own. The exception is the `hud` pass, which is screen space (tickers, readouts).
+Mechanics live on the main plane: skip anything with `z`.
+
+**Ground.** `look.ground` (`dust`, `nebula`, `mist`) adds terrain on a plane at z 0.25. It is
+seamless value noise baked into small cached tiles (`renderers/ground.ts`).
 
 ## Events
 
@@ -96,6 +100,35 @@ audio uses it for loudness, and tooling uses the log. `follow` lets the camera t
 moving subject until it is gone. Lines said on the map are `say` events. High-priority
 lines also emit an `alert`, so even a mechanic that never emits anything still draws the
 camera's attention.
+
+## Services
+
+Shared, renderer-agnostic pieces in `engine/sim`, attached to a world on first use:
+
+| Module | What it is | Used by |
+|---|---|---|
+| `economy.ts` (ledger) | Goods held at places; producers, consumers, shortages, prices | `economy` (convoys, shipyards, manifests, ticker), miners, wardens |
+| `signals.ts` (network) | Nodes, nearest-k links, hop-by-hop packets, ring broadcasts | `relays` (messages, distress) |
+| `fields.ts` (flow field) | Sum of wind, moving bands, vortices, curl noise | `weather` → storms, drifting rock |
+| `spatial.ts` | Uniform grid hash | collisions, neighbour queries |
+
+Domain bindings live next to their mechanics: `useLedger(api)` (economy.ts), `useNetwork(api)`
+(relays.ts), and `useWeather(api)` (weather.ts). Each one creates its service once per world and
+registers that service's update and draw hooks.
+
+## Loading on demand
+
+The sector map's static bundle is the engine and the classic pack's data. Everything else
+loads when a scene asks for it:
+- **Universes** register a loader with metadata (`registerUniverseLoader`). `listUniverses()`
+  shows them all, and `loadUniverse(id)` fetches one.
+- **Mechanics** register a loader per id (`mechanics/index.ts`). A world starts once its
+  universe and every mechanic it runs are loaded. Until then the skin shows the plain plate.
+- `prepareVoidTactical(options)` loads both up front. The harnesses call it so that frame 0 is
+  the real first frame.
+- The studio, tests, and the headless runner import `packs` and `mechanics/all` eagerly.
+- Plugins register by side effect, so their modules are listed in `package.json`
+  `sideEffects`. `pnpm size` fails if the built output is missing any built-in mechanic.
 
 ## Extending
 

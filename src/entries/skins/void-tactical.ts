@@ -32,16 +32,17 @@ export {
 export type { VoidTacticalOptions } from '../../engine/skins/void-tactical/runtime';
 export {
   registerUniverse,
+  registerUniverseLoader,
   getUniverse,
   listUniverses,
+  loadUniverse,
+  isUniverseReady,
   validateUniverse,
   universePrompt,
   VOID_PACK,
-  SALTWIND_PACK,
-  CHOIR_PACK,
-  SIEGE_PACK,
 } from '../../engine/skins/void-tactical/universe';
-export type { UniversePack, UniverseLook, UniverseValidation, ShipClass, AnomalyStyle, StructureRole } from '../../engine/skins/void-tactical/universe';
-export { registerMechanic, getMechanic, listMechanics, steerToward, steerOrbit } from '../../engine/skins/void-tactical/mechanics';
+export type { UniversePack, UniverseMeta, UniverseLook, UniverseValidation, ShipClass, AnomalyStyle, StructureRole } from '../../engine/skins/void-tactical/universe';
+export { registerMechanic, registerMechanicLoader, getMechanic, listMechanics, loadMechanics, mechanicsReady, steerToward, steerOrbit } from '../../engine/skins/void-tactical/mechanics';
+export { prepareVoidTactical } from '../../engine/skins/void-tactical/ready';
 export type { Mechanic, MechanicApi, MechanicInstance, MechanicPass, MechanicRef, MechanicSpawn, Fx } from '../../engine/skins/void-tactical/mechanics';
 export type { OverlayFlags, OverlayId } from '../../engine/skins/void-tactical/overlays/flags';

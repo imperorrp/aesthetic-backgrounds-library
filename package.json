@@ -28,6 +28,8 @@
     "./src/engine/layers/index.ts",
     "./src/engine/presets/index.ts",
     "./src/entries/skins/*.ts",
+    "./src/engine/skins/void-tactical/mechanics/*.ts",
+    "./src/engine/skins/void-tactical/packs/*.ts",
     "./src/element.ts",
     "./src/adapters/*.ts",
     "*.css"

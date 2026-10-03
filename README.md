@@ -9,7 +9,10 @@ A fun little thing I made to test one idea: what if a website's background wasn'
 ## The sector map
 
 A living tactical chart of a stretch of space:
-- **Fleets.** They fly in formation between structures that actually do things. Freighter convoys run ore from mines to stations, shipyards launch new ships, and fleets jump out through one gate and arrive at another.
+- **Fleets.** They fly in formation between structures that actually do things, some on the main plane and some deep behind it.
+- **An economy.** Mines dig ore, docks refine fuel and parts, and habitats grow food. When a station runs short, a convoy carries the goods over in glowing pods, and shipyards build only from what they hold. Prices tick in the corner.
+- **Gates, police, relays.** Paired gates queue ships, scan them for the toll, and pass them through a visible throat. Raids bring interceptors scrambling from the nearest defense platform. Messages and distress calls travel the relay network as light.
+- **A camera with a director.** Now and then it leans in on whatever is happening: a raid, an armada, a capture.
 - **Courses.** Each fleet's planned course is drawn ahead of it and its real trail behind, as one continuous line.
 - **Anomalies.** They pulse in their own colors, and scouts go out to survey them.
 - **Chatter.** Radio lines type themselves out next to whatever they're about.
@@ -27,7 +30,7 @@ The map can belong to any world. A *universe pack* is a small JSON file holding 
 3. Paste back what it writes, and the map becomes that world.
 
 Three hand-written packs come with it, and each one plays differently, not just in other colors:
-- **Saltwind Reach** is a poor mining frontier at the end of an old road. Miners work asteroid belts and crack rocks for ore, claim jumpers raid them, and dust fronts roll across the map and turn ships into ghosts.
+- **Saltwind Reach** is a poor mining frontier at the end of an old road. Belts of rock orbit across the map, and stray rocks collide and shatter. Miners cut ore, argue over claims, and haul ore home in their pods. Warden buoys stop and scan ships, and smugglers bolt with cutters behind them. Dust fronts blow through: beams go dark, miners run for the docks, and loose rock drifts on the wind. Now and then a bore blows out.
 - **Choir of Hollow Stars** is a region where every star has been emptied and something sings inside. The stars ring out in waves, flocks of pilgrims turn together, a maw swallows whatever drifts too close, and systems go missing from the chart.
 - **The Long Siege** is a war that has gone on longer than anyone has been alive. A front line moves across the map, systems change hands, squadrons clash where the front is, and bombardments arc over it.
 
