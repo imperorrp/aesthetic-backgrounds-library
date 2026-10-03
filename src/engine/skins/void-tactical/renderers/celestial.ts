@@ -334,13 +334,25 @@ export const renderStarSystem = (
     ctx.restore();
   }
 
-  // Star with a soft corona (cached sprite).
-  const corona = getGlowSprite(starColor, sys.starRadius * 7 * k);
-  ctx.drawImage(corona, sx - corona.width / 2, sy - corona.height / 2);
-  ctx.fillStyle = starColor;
+  // Star with a soft corona (cached sprite). A star that has gone out fades to a dead
+  // disc with a thin cold rim.
+  const out = sys.darkAt === undefined ? 0 : Math.min(1, Math.max(0, (frame.time - sys.darkAt) / 6));
+  if (out < 1) {
+    const corona = getGlowSprite(starColor, sys.starRadius * 7 * k);
+    const a = ctx.globalAlpha;
+    ctx.globalAlpha = a * (1 - out);
+    ctx.drawImage(corona, sx - corona.width / 2, sy - corona.height / 2);
+    ctx.globalAlpha = a;
+  }
+  ctx.fillStyle = out > 0 ? `rgba(${Math.round(255 * (1 - out))},${Math.round(230 * (1 - out))},${Math.round(200 * (1 - out)) + 6},1)` : starColor;
   ctx.beginPath();
   ctx.arc(sx, sy, sys.starRadius * k, 0, Math.PI * 2);
   ctx.fill();
+  if (out > 0) {
+    ctx.strokeStyle = `rgba(167,139,250,${0.55 * out})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
 
   // Orbits in one stroke.
   ctx.strokeStyle = rgba(frame.palette.inkRgb, 0.14);

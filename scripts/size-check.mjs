@@ -104,7 +104,7 @@ for (const [entry, budget] of Object.entries(BUDGETS_KB)) {
 // Plugins register themselves as a side effect of being imported. If a module is not
 // listed in package.json `sideEffects`, the bundler drops it silently, so check the
 // built output really contains every built-in mechanic.
-const MECHANICS = ['skirmish', 'events', 'economy', 'police', 'gates', 'relays', 'asteroids', 'storms', 'wardens', 'song', 'flocks', 'maw', 'cartography', 'warfront'];
+const MECHANICS = ['skirmish', 'events', 'economy', 'police', 'gates', 'relays', 'asteroids', 'storms', 'wardens', 'song', 'flocks', 'maw', 'cartography', 'warfront', 'leviathans', 'echoes', 'cradles', 'restless', 'dread'];
 const dist = allJs.map((f) => readFileSync(f, 'utf8')).join('\n');
 const missing = MECHANICS.filter((id) => !new RegExp(`id:\\s*"${id}"`).test(dist));
 if (missing.length) {

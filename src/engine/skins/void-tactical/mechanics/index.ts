@@ -21,6 +21,11 @@ const BUILT_IN: Record<string, () => Promise<unknown>> = {
   flocks: () => import('./choir'),
   maw: () => import('./choir'),
   cartography: () => import('./choir'),
+  leviathans: () => import('./leviathans'),
+  echoes: () => import('./echoes'),
+  cradles: () => import('./cradles'),
+  restless: () => import('./restless'),
+  dread: () => import('./dread'),
 };
 for (const [id, load] of Object.entries(BUILT_IN)) registerMechanicLoader(id, load);
 

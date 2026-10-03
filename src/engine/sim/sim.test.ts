@@ -8,6 +8,8 @@ import { createSpatialHash } from './spatial';
 import { createLedger } from './economy';
 import { createNetwork } from './signals';
 import { createField } from './fields';
+import { createBody, seek, stepBody } from './bodies';
+import { createHistory } from './history';
 import { createRng } from '../rng';
 import { createNoise2D } from '../noise';
 
@@ -166,6 +168,30 @@ describe('flow field', () => {
     const s = field.sample(100, 0, 0, out);
     expect(s.y).toBeGreaterThan(20); // swirling counter-clockwise in screen space at the radius
     field.remove(v);
+  });
+});
+
+describe('bodies', () => {
+  it('a spine follows its head at a fixed spacing and turns at a limited rate', () => {
+    const b = createBody('worm', 0, 0, 10, 5, 0);
+    for (let i = 0; i < 300; i++) {
+      seek(b, 0, 400, 40, 0.8, 1 / 60);
+      stepBody(b, 1 / 60);
+    }
+    for (let i = 1; i < b.n; i++) expect(Math.hypot(b.seg[i * 2] - b.seg[i * 2 - 2], b.seg[i * 2 + 1] - b.seg[i * 2 - 1])).toBeCloseTo(5, 4);
+    // Heading turned from 0 toward the target, but not instantly (0.8 rad/s for 5 s caps it).
+    expect(b.heading).toBeGreaterThan(0.5);
+    expect(b.y).toBeGreaterThan(0);
+  });
+});
+
+describe('history', () => {
+  it('records at its cadence, forgets the oldest, and finds the nearest past moment', () => {
+    const h = createHistory(4, 0.25);
+    for (let i = 0; i <= 40; i++) h.record(i * 0.1, [{ x: i, y: 0, a: 0, kind: 'fighter', color: '#fff' }]);
+    expect(h.size).toBe(4);
+    expect(h.near(3.2)?.items[0].x).toBe(33);
+    expect(h.near(0.5)).toBeNull();
   });
 });
 

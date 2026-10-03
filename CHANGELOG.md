@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The Choir of Hollow Stars, as cosmic horror.**
+  - Resonance cascades: a song that reaches another hollow star makes it answer, and the chorus chains across the map.
+  - Leviathans: vast segmented creatures with photophores, feelers, and pilot wisps. They migrate through, and ships scatter.
+  - Echoes ("the same hour, twice"): a circle of the map replays its last seconds as split-color ghost film.
+  - The Mouth lives: it reaches for ships with tendrils, grows as it feeds, and exhales wisps or a newborn star.
+  - Cradles beat like hearts and hatch ships that grow to full size as they fly.
+  - Restless words: huge faint lines whose letters drift into anagrams and back. Whispers surface near the pointer.
+  - Dread: an eye opens in the dark and watches the pointer, stars go out one by one, the light is eaten, and the signal tears.
+- **Creature layer and memory.** `sim/bodies.ts` (spines that follow a steering head) and `sim/history.ts` (a ring of past positions for replays).
 - **A living economy.** New `economy` mechanic on a shared ledger (`sim/economy.ts`).
   - Mines, docks, and habitats make goods; docks, shipyards, defenses, and relays use them.
   - When a place runs short, a convoy flies the goods there in glowing pods. Shipyards build only from stock they hold.

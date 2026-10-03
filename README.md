@@ -31,7 +31,7 @@ The map can belong to any world. A *universe pack* is a small JSON file holding 
 
 Three hand-written packs come with it, and each one plays differently, not just in other colors:
 - **Saltwind Reach** is a poor mining frontier at the end of an old road. Belts of rock orbit across the map, and stray rocks collide and shatter. Miners cut ore, argue over claims, and haul ore home in their pods. Warden buoys stop and scan ships, and smugglers bolt with cutters behind them. Dust fronts blow through: beams go dark, miners run for the docks, and loose rock drifts on the wind. Now and then a bore blows out.
-- **Choir of Hollow Stars** is a region where every star has been emptied and something sings inside. The stars ring out in waves, flocks of pilgrims turn together, a maw swallows whatever drifts too close, and systems go missing from the chart.
+- **Choir of Hollow Stars** is a region where every star has been emptied and something sings inside. A song that reaches another hollow star makes it answer, and the chorus spreads. Leviathans migrate through. The Mouth reaches for ships with tendrils, feeds, and exhales new stars. Cradles hatch ships that grow as they fly. A circle of the map sometimes replays its last seconds as ghosts. Words in the background rearrange themselves, an eye opens in the dark and follows your pointer, and now and then a star goes out for good.
 - **The Long Siege** is a war that has gone on longer than anyone has been alive. A front line moves across the map, systems change hands, squadrons clash where the front is, and bombardments arc over it.
 
 | | |

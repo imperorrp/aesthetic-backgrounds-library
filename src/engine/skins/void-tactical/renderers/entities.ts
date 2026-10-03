@@ -126,8 +126,10 @@ export const renderFleets = (
       }
     }
 
-    // Ships: wingmen first, leader on top.
+    // Ships: wingmen first, leader on top. A hatchling is drawn small and grows.
     const thrustBase = f.mode === 'docked' ? 0 : f.mode === 'orbit' ? 0.45 : 1;
+    const g = f.grow ? Math.min(1, Math.max(0, (t - f.grow.at) / f.grow.dur)) : 1;
+    const growth = f.grow ? 0.22 + 0.78 * g * g * (3 - 2 * g) : 1;
     const seed = hash2(f.ships.length, f.id.length + f.callsign.charCodeAt(0));
     for (let i = f.ships.length - 1; i >= 0; i--) {
       const s = f.ships[i];
@@ -135,7 +137,7 @@ export const renderFleets = (
       const sp = Math.hypot(s.vx, s.vy);
       const thrust = thrustBase * Math.max(0.25, Math.min(1, sp / spec.speed));
       const flicker = 0.5 + 0.5 * Math.sin(t * 23 + i * 1.7 + seed * 40);
-      drawShip(ctx, s.cls, v.sx(s.x, z), v.sy(s.y, z), s.heading, frame.color(s.color), a, thrust, flicker, frame.style.shipScale * k);
+      drawShip(ctx, s.cls, v.sx(s.x, z), v.sy(s.y, z), s.heading, frame.color(s.color), a, thrust, flicker, frame.style.shipScale * k * growth);
       board?.reserve(v.sx(s.x, z), v.sy(s.y, z), spec.size * 0.45 * frame.style.shipScale * k);
     }
 

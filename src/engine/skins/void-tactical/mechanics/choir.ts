@@ -13,10 +13,13 @@ import { generateSingleSystem } from '../generators';
 import { allStructures } from '../fleets';
 import { hexRgba } from '../renderers/utils';
 import { registerMechanic, steerOrbit } from './types';
+import { createBody, normalAt, seek, stepBody, type Body } from '../../../sim/bodies';
 import type { MechanicApi } from './types';
 
 /** Gravity wells that other mechanics (flocks) feel. Shared per world. */
 const wells = new WeakMap<object, { x: number; y: number; r: number; k: number }[]>();
+/** Wisps swallowed since the Mouth last looked (flocks count, the Mouth eats). */
+const feedOf = (api: MechanicApi) => api.use('mouth-feed', () => ({ eaten: 0 }));
 const wellsOf = (api: MechanicApi) => {
   let w = wells.get(api.world);
   if (!w) wells.set(api.world, (w = []));
@@ -28,25 +31,39 @@ const wellsOf = (api: MechanicApi) => {
 registerMechanic({
   id: 'song',
   label: 'Singing stars',
-  description: 'Giant structures sing in harmonic rings that ripple across the map; everything the wave passes resonates.',
+  description: 'Hollow stars sing in harmonic rings; when a ring reaches another singer it answers, and the song cascades across the map.',
   schema: {
     period: { type: 'number', min: 3, max: 20, default: 8, label: 'Seconds between songs' },
     harmonics: { type: 'number', min: 2, max: 9, default: 5, step: 1, label: 'Harmonics' },
     reach: { type: 'number', min: 200, max: 1200, default: 700, label: 'How far it carries (px)' },
+    cascade: { type: 'number', min: 0, max: 10, default: 5, step: 1, label: 'Longest chain of answers' },
   },
   create(api, p) {
-    type Song = { x: number; y: number; born: number; color: string; k: number; label: string };
+    type Singer = { id: string; x: number; y: number; color: string; label: string };
+    type Song = Singer & { born: number; k: number; chain: number; heard: Set<string> };
+    /** An answer: a thread of light from the singer that was heard to the one that answers. */
+    type Answer = { ax: number; ay: number; bx: number; by: number; at: number; color: string };
     const songs: Song[] = [];
+    const answers: Answer[] = [];
     const struck = new Map<string, number>();
+    const lastSang = new Map<string, number>();
     let next = api.t + 1.5;
     let count = 0;
     const speed = 70;
     const reach = Number(p.reach) || 700;
+    const maxChain = Math.round(Number(p.cascade ?? 5));
 
-    const singers = () => {
+    /** Who can sing: giants and mysteries, else systems; a star that has gone out is silent. */
+    const singers = (): Singer[] => {
       const giants = allStructures(api.world).filter((s) => !s.z && (s.role === 'giant' || s.role === 'mystery') && api.onScreen(s.x, s.y, 120));
-      if (giants.length) return giants.map((s) => ({ x: s.x, y: s.y, color: s.color ?? api.host.palette.accent, label: s.label }));
-      return api.world.systems.filter((s) => !s.z && api.onScreen(s.x, s.y, 80)).map((s) => ({ x: s.x, y: s.y, color: s.starColor, label: s.name }));
+      const voices: Singer[] = giants.map((s) => ({ id: s.id, x: s.x, y: s.y, color: s.color ?? api.host.palette.accent, label: s.label }));
+      for (const s of api.world.systems) if (!s.z && s.darkAt === undefined && api.onScreen(s.x, s.y, 80)) voices.push({ id: s.id, x: s.x, y: s.y, color: s.starColor, label: s.name });
+      return voices;
+    };
+
+    const sing = (s: Singer, at: number, k: number, chain: number) => {
+      songs.push({ ...s, born: at, k, chain, heard: new Set([s.id]) });
+      lastSang.set(s.id, at);
     };
 
     return {
@@ -55,16 +72,33 @@ registerMechanic({
           const list = singers();
           if (list.length) {
             const s = list[Math.floor(api.rng() * list.length)];
-            songs.push({ ...s, born: api.t, k: Math.max(2, Math.round(Number(p.harmonics) || 5) + Math.floor(api.rng() * 3) - 1) });
+            sing(s, api.t, Math.max(2, Math.round(Number(p.harmonics) || 5) + Math.floor(api.rng() * 3) - 1), 0);
             if (count++ % 3 === 0) api.say(`THE CHOIR SINGS · ${s.label}`, s.x, s.y + 28, s.color, { priority: 'medium', duration: 4200 });
-            // Sometimes a second voice answers.
-            if (list.length > 1 && api.rng() < 0.35) {
-              const o = list.find((x) => x !== s)!;
-              songs.push({ ...o, born: api.t + 0.8, k: songs[songs.length - 1].k + 1 });
-            }
+            api.emit({ type: 'song', x: s.x, y: s.y, weight: 0.35 });
           }
           next = api.t + (Number(p.period) || 8) * (0.7 + api.rng() * 0.6);
         }
+        // Cascades: a ring that reaches another singer makes it answer, one harmonic higher.
+        const voices = singers();
+        for (const s of [...songs]) {
+          const r = (api.t - s.born) * speed;
+          if (r <= 0 || s.chain >= maxChain) continue;
+          for (const v of voices) {
+            if (s.heard.has(v.id)) continue;
+            const d = Math.hypot(v.x - s.x, v.y - s.y);
+            if (d > reach || r < d) continue;
+            s.heard.add(v.id);
+            if (api.t - (lastSang.get(v.id) ?? -99) < 6) continue;
+            const delay = 0.5 + api.rng() * 0.7;
+            sing(v, api.t + delay, s.k + 1, s.chain + 1);
+            answers.push({ ax: s.x, ay: s.y, bx: v.x, by: v.y, at: api.t, color: v.color });
+            if (s.chain + 1 >= 3) {
+              api.say(`THE CHORUS ANSWERS · ${s.chain + 2} VOICES`, v.x, v.y - 30, v.color, { priority: 'high', duration: 4200 });
+            }
+            api.emit({ type: 'cascade', x: v.x, y: v.y, weight: Math.min(0.9, 0.35 + 0.12 * (s.chain + 1)), chain: s.chain + 1 });
+          }
+        }
+        for (let i = answers.length - 1; i >= 0; i--) if (api.t - answers[i].at > 2.5) answers.splice(i, 1);
         for (let i = songs.length - 1; i >= 0; i--) if ((api.t - songs[i].born) * speed > reach + 120) songs.splice(i, 1);
         // Resonance: entities the wave front passes ring for a moment.
         const ents = [
@@ -83,6 +117,23 @@ registerMechanic({
         if (pass !== 'over') return;
         ctx.save();
         ctx.lineWidth = 1;
+        // Answers: a thread of light runs from the voice that was heard to the one answering.
+        for (const a of answers) {
+          const age = frame.time - a.at;
+          const k = Math.min(1, age / 0.6);
+          const fade = Math.max(0, 1 - age / 2.5);
+          const ax = api.screenX(a.ax);
+          const bx = api.screenX(a.bx);
+          const mx = (ax + bx) / 2 - (a.by - a.ay) * 0.15;
+          const my = (a.ay + a.by) / 2 + (bx - ax) * 0.15;
+          ctx.strokeStyle = hexRgba(a.color, 0.5 * fade);
+          ctx.setLineDash([2, 4]);
+          ctx.beginPath();
+          ctx.moveTo(ax, a.ay);
+          ctx.quadraticCurveTo(mx, my, ax + (bx - ax) * k, a.ay + (a.by - a.ay) * k);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
         for (const s of songs) {
           const age = frame.time - s.born;
           if (age < 0) continue;
@@ -162,6 +213,17 @@ registerMechanic({
     };
     for (let i = 0; i < Math.round(Number(p.flocks) || 3); i++) flocks.push(make(i));
     let nextBloom = api.t + 10 + api.rng() * 10;
+    const cap = Math.round(Number(p.size) || 48) * 2;
+    // When the Mouth exhales, new lights burst out of it and join a flock.
+    api.bus.on('exhale', (e) => {
+      if (e.x === undefined || e.y === undefined || !flocks.length) return;
+      const fl = flocks[Math.floor(api.rng() * flocks.length)];
+      for (let i = 0; i < Number(e.count ?? 20) && fl.boids.length < cap; i++) {
+        const a = api.rng() * Math.PI * 2;
+        fl.boids.push({ x: e.x + Math.cos(a) * 8, y: e.y + Math.sin(a) * 8, vx: Math.cos(a) * speed * 1.4, vy: Math.sin(a) * speed * 1.4 });
+      }
+      fl.bloomAt = api.t;
+    });
 
     return {
       update(dt) {
@@ -209,13 +271,16 @@ registerMechanic({
             b.x += b.vx * dt;
             b.y += b.vy * dt;
           }
-          // Lights the maw swallowed come back at the edge, as new ones.
+          // Lights the Mouth swallows feed it, and come back at the edge as new ones.
+          let swallowed = 0;
           for (const b of fl.boids) {
             if (ws.some((w) => Math.hypot(w.x - b.x, w.y - b.y) < 6)) {
               b.x = v.left + api.rng() * api.width;
               b.y = api.rng() < 0.5 ? -10 : api.height + 10;
+              swallowed++;
             }
           }
+          if (swallowed) feedOf(api).eaten += swallowed;
         }
         if (api.t >= nextBloom) {
           const fl = flocks[Math.floor(api.rng() * flocks.length)];
@@ -252,28 +317,54 @@ registerMechanic({
   },
 });
 
-// ---- maw ------------------------------------------------------------------------------------
+// ---- the Mouth ------------------------------------------------------------------------------
+
+/**
+ * Anchor a tendril: its root stays fixed at (rx, ry) and the rest hangs from it toward
+ * the head (one backward pass of FABRIK after the head has moved).
+ */
+function anchor(b: Body, rx: number, ry: number): void {
+  const s = b.seg;
+  const n = b.n;
+  s[(n - 1) * 2] = rx;
+  s[(n - 1) * 2 + 1] = ry;
+  for (let i = n - 2; i >= 0; i--) {
+    const dx = s[i * 2] - s[(i + 1) * 2];
+    const dy = s[i * 2 + 1] - s[(i + 1) * 2 + 1];
+    const d = Math.hypot(dx, dy) || 1;
+    s[i * 2] = s[(i + 1) * 2] + (dx / d) * b.spacing;
+    s[i * 2 + 1] = s[(i + 1) * 2 + 1] + (dy / d) * b.spacing;
+  }
+  b.x = s[0];
+  b.y = s[1];
+}
 
 registerMechanic({
   id: 'maw',
-  label: 'The maw',
-  description: 'A hazard that drags lights into a lensed spiral, and now and then takes a whole ship.',
+  label: 'The Mouth',
+  description: 'A living mouth: it drags lights into a lensed spiral, reaches for ships with tendrils, grows as it feeds, and now and then exhales wisps or a newborn star.',
   schema: {
     radius: { type: 'number', min: 80, max: 400, default: 220, label: 'Reach (px)' },
     strength: { type: 'number', min: 0, max: 1, default: 0.6, label: 'Pull' },
     hunger: { type: 'number', min: 0, max: 2, default: 0.6, label: 'Ships taken per minute' },
+    tendrils: { type: 'number', min: 0, max: 8, default: 4, step: 1, label: 'Tendrils' },
   },
   create(api, p) {
-    const R = Number(p.radius) || 220;
-    const motes: { a: number; r: number; w: number }[] = Array.from({ length: 90 }, () => ({ a: api.rng() * Math.PI * 2, r: api.rng() * R, w: 0.4 + api.rng() * 0.8 }));
+    const R0 = Number(p.radius) || 220;
+    /** How fed it is: grows as it eats, shrinks when it exhales. */
+    let size = 1;
+    const reach = () => R0 * Math.sqrt(size);
+    const motes: { a: number; r: number; w: number }[] = Array.from({ length: 90 }, () => ({ a: api.rng() * Math.PI * 2, r: api.rng() * R0, w: 0.4 + api.rng() * 0.8 }));
     let nextMeal = api.t + 20 + api.rng() * 20;
+    let nextExhale = api.t + 40;
     let meal: { f: Fleet; r: number; a: number; dir: number; until: number } | null = null;
-    // The maw sits on a hazard structure. If none is in view for a while, one opens.
+    const tendrils: Body[] = [];
     let lastSeen = -99;
+
+    // The Mouth sits on a hazard structure. If none is in view for a while, one opens.
     const center = () => {
       const h = allStructures(api.world).filter((s) => !s.z && s.role === 'hazard' && api.onScreen(s.x, s.y, 60))[0];
-      if (h) return { x: h.x, y: h.y, label: h.label };
-      return null;
+      return h ? { x: h.x, y: h.y, label: h.label } : null;
     };
     const ensure = () => {
       const c = center();
@@ -287,22 +378,45 @@ registerMechanic({
         api.addStructure({
           x: v.right - api.width * (0.2 + api.rng() * 0.15),
           y: api.height * (0.3 + api.rng() * 0.4),
-          label: def?.label ?? 'THE MAW',
+          label: def?.label ?? 'THE MOUTH',
           role: 'hazard',
           art: def?.art ?? ['  .-.  ', ' (:@:) ', "  '-'  "],
           color: def?.color ?? '#818cf8',
           rarity: 'rare',
         });
         lastSeen = api.t;
+        tendrils.length = 0;
       }
       return center();
     };
+
+    /** Start pulling a ship in. */
+    const take = (f: Fleet, c: { x: number; y: number; label: string }) => {
+      const L = f.ships[0];
+      const R = reach();
+      meal = { f, r: Math.hypot(L.x - c.x, L.y - c.y), a: Math.atan2(L.y - c.y, L.x - c.x), dir: api.rng() < 0.5 ? 1 : -1, until: api.t + 7 };
+      f.steer = (fl, d) => {
+        if (!meal) return;
+        meal.r = Math.max(2, meal.r - d * (12 + 40 * (1 - meal.r / R)));
+        meal.a += (d * meal.dir * 90) / Math.max(10, meal.r);
+        steerOrbit(fl.ships[0], c.x, c.y, meal.r, 60 + 90 * (1 - meal.r / R), meal.dir, 4, d);
+      };
+      api.say(`${f.callsign} · CAUGHT · ${c.label}`, L.x, L.y, L.color, { priority: 'high', followId: f.id });
+      api.emit({ type: 'caught', x: L.x, y: L.y, weight: 0.8, follow: api.follow(f) });
+    };
+
+
     return {
       update(dt) {
         const c = ensure();
         const ws = wellsOf(api);
         ws.length = 0;
         if (!c) return;
+        // Wisps the flocks lost into it feed it a little.
+        const feed = feedOf(api);
+        size = Math.min(2.2, size + 0.004 * feed.eaten);
+        feed.eaten = 0;
+        const R = reach();
         ws.push({ x: c.x, y: c.y, r: R, k: Number(p.strength ?? 0.6) });
         for (const m of motes) {
           m.a += (dt * m.w * 60) / Math.max(12, m.r);
@@ -312,21 +426,36 @@ registerMechanic({
             m.a = api.rng() * Math.PI * 2;
           }
         }
-        // Now and then a ship strays too close and is taken.
-        if (!meal && api.t >= nextMeal) {
-          const near = api.world.fleets.filter((f) => f.ships.length > 0 && !f.steer && f.mode !== 'docked' && Math.hypot(f.ships[0].x - c.x, f.ships[0].y - c.y) < R * 1.4);
-          const f = near[0];
-          if (f) {
-            const L = f.ships[0];
-            meal = { f, r: Math.hypot(L.x - c.x, L.y - c.y), a: Math.atan2(L.y - c.y, L.x - c.x), dir: api.rng() < 0.5 ? 1 : -1, until: api.t + 7 };
-            f.steer = (fl, d) => {
-              if (!meal) return;
-              meal.r = Math.max(2, meal.r - d * (12 + 40 * (1 - meal.r / R)));
-              meal.a += (d * meal.dir * 90) / Math.max(10, meal.r);
-              steerOrbit(fl.ships[0], c.x, c.y, meal.r, 60 + 90 * (1 - meal.r / R), meal.dir, 4, d);
-            };
-            api.say(`${f.callsign} · CAUGHT · ${c.label}`, L.x, L.y, L.color, { priority: 'high', followId: f.id });
+        // Tendrils: rooted at the Mouth, each reaching for the nearest ship in range.
+        while (tendrils.length < Math.round(Number(p.tendrils ?? 4))) {
+          const a = (tendrils.length / Math.max(1, Number(p.tendrils ?? 4))) * Math.PI * 2;
+          const t = createBody('tendril', c.x + Math.cos(a) * 40, c.y + Math.sin(a) * 40, 14, 9 * Math.sqrt(size), a, tendrils.length + 1);
+          t.data.home = a;
+          tendrils.push(t);
+        }
+        const prey = api.world.fleets.filter((f) => f.ships[0] && !f.z && !f.steer && f.mode !== 'docked' && Math.hypot(f.ships[0].x - c.x, f.ships[0].y - c.y) < R * 1.25);
+        for (const t of tendrils) {
+          t.spacing = 9 * Math.sqrt(size);
+          const target = prey.length ? prey[(t.id + Math.floor(api.t / 6)) % prey.length].ships[0] : null;
+          const home = Number(t.data.home ?? 0) + Math.sin(api.t * 0.3 + t.id) * 0.8;
+          const tx = target ? target.x : c.x + Math.cos(home) * R * 0.55;
+          const ty = target ? target.y : c.y + Math.sin(home) * R * 0.55;
+          seek(t, tx, ty, target ? 70 : 25, 2.2, dt);
+          stepBody(t, dt, 0.4);
+          anchor(t, c.x, c.y);
+          // A tendril that touches a ship takes it, if the Mouth is hungry yet.
+          if (target && !meal && api.t >= nextMeal && Math.hypot(t.x - target.x, t.y - target.y) < 14) {
+            const f = prey.find((fl) => fl.ships[0] === target);
+            if (f) {
+              take(f, c);
+              nextMeal = api.t + (60 / Math.max(0.05, Number(p.hunger ?? 0.6))) * (0.6 + api.rng() * 0.8);
+            }
           }
+        }
+        // Hunger: now and then it takes whatever strays too close, tendril or not.
+        if (!meal && api.t >= nextMeal) {
+          const f = prey[0];
+          if (f) take(f, c);
           nextMeal = api.t + (60 / Math.max(0.05, Number(p.hunger ?? 0.6))) * (0.6 + api.rng() * 0.8);
         }
         if (meal && (meal.r < 6 || api.t > meal.until)) {
@@ -335,15 +464,35 @@ registerMechanic({
             api.fx.flash(c.x, c.y, '#ffffff', 40, 0.5);
             api.fx.ring(c.x, c.y, f.ships[0].color, 90, 1.2, 4, 1.5);
             api.say(`${f.callsign} · TAKEN`, c.x, c.y + 24, f.ships[0].color, { priority: 'high' });
+            size = Math.min(2.2, size + 0.15 + 0.05 * f.ships.length);
           }
           f.mode = 'gone';
           meal = null;
+        }
+        // Fed enough, it exhales: a burst of new wisps, or (more rarely) a newborn star.
+        if (size > 1.3 && api.t >= nextExhale) {
+          size -= 0.35;
+          api.fx.flash(c.x, c.y, '#e9d5ff', 80, 1.2);
+          api.fx.ring(c.x, c.y, '#c4b5fd', R * 1.4, 2.4, 10, 2);
+          if (api.rng() < 0.35) {
+            const a = api.rng() * Math.PI * 2;
+            const ns = generateSingleSystem(c.x + Math.cos(a) * R * 0.9, c.y + Math.sin(a) * R * 0.6, api.rng, api.host.palette, api.pack, Math.floor(api.rng() * 1000));
+            api.world.systems.push(ns);
+            api.fx.ring(ns.x, ns.y, ns.starColor, 120, 2, 4, 2);
+            api.say(`THE MOUTH EXHALES · A STAR IS BORN · ${ns.name}`, ns.x, ns.y + 30, ns.starColor, { priority: 'high', duration: 6000 });
+            api.emit({ type: 'starbirth', x: ns.x, y: ns.y, weight: 0.9 });
+          } else {
+            api.say('THE MOUTH EXHALES', c.x, c.y - R * 0.4, '#e9d5ff', { priority: 'high', duration: 4500 });
+            api.emit({ type: 'exhale', x: c.x, y: c.y, weight: 0.7, count: 30 });
+          }
+          nextExhale = api.t + 45 + api.rng() * 40;
         }
       },
       draw(ctx, pass, frame) {
         const c = center();
         if (!c) return;
         const x = api.screenX(c.x);
+        const R = reach();
         if (pass === 'under') {
           // Lensing: rings that flow inward, slightly squeezed.
           ctx.save();
@@ -359,17 +508,53 @@ registerMechanic({
             ctx.stroke();
           }
           ctx.setLineDash([]);
-          const g = ctx.createRadialGradient(x, c.y, 0, x, c.y, 26);
+          const core = 22 + 10 * size;
+          const g = ctx.createRadialGradient(x, c.y, 0, x, c.y, core);
           g.addColorStop(0, 'rgba(0,0,0,0.95)');
           g.addColorStop(0.7, 'rgba(0,0,0,0.6)');
           g.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.arc(x, c.y, 26, 0, Math.PI * 2);
+          ctx.arc(x, c.y, core, 0, Math.PI * 2);
           ctx.fill();
+          // Teeth: a ring of inward hooks, turning slowly, breathing with its size.
+          ctx.strokeStyle = hexRgba('#e9d5ff', 0.45);
+          ctx.beginPath();
+          const n = 18;
+          const tr = core + 6 + Math.sin(frame.time * 1.3) * 2;
+          for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 - frame.time * 0.15;
+            ctx.moveTo(x + Math.cos(a) * tr, c.y + Math.sin(a) * tr);
+            ctx.lineTo(x + Math.cos(a + 0.12) * (tr - 7), c.y + Math.sin(a + 0.12) * (tr - 7));
+          }
+          ctx.stroke();
           ctx.restore();
         } else if (pass === 'mid') {
           ctx.save();
+          // Tendrils: tapered, dark, outlined, with suckers along the underside.
+          for (const t of tendrils) {
+            for (let i = 0; i < t.n - 1; i++) {
+              const u = i / (t.n - 1);
+              ctx.strokeStyle = `rgba(6,2,14,0.9)`;
+              ctx.lineWidth = 1.5 + u * 7;
+              ctx.beginPath();
+              ctx.moveTo(api.screenX(t.seg[i * 2]), t.seg[i * 2 + 1]);
+              ctx.lineTo(api.screenX(t.seg[(i + 1) * 2]), t.seg[(i + 1) * 2 + 1]);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = hexRgba('#a78bfa', 0.55);
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(api.screenX(t.seg[0]), t.seg[1]);
+            for (let i = 1; i < t.n; i++) ctx.lineTo(api.screenX(t.seg[i * 2]), t.seg[i * 2 + 1]);
+            ctx.stroke();
+            ctx.fillStyle = hexRgba('#f0abfc', 0.6);
+            for (let i = 2; i < t.n - 1; i += 2) {
+              const [nx, ny] = normalAt(t, i);
+              const w = (1.5 + (i / (t.n - 1)) * 7) / 2;
+              ctx.fillRect(api.screenX(t.seg[i * 2] + nx * w) - 0.75, t.seg[i * 2 + 1] + ny * w - 0.75, 1.5, 1.5);
+            }
+          }
           ctx.globalCompositeOperation = 'lighter';
           for (const m of motes) {
             const k = 1 - m.r / R;

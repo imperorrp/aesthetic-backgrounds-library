@@ -107,6 +107,8 @@ export interface Fleet {
   hostile?: boolean;
   /** What it is hauling: drawn as glowing pods behind each hull; delivered when it docks. */
   cargo?: { good: string; amount: number; color: string; to?: string };
+  /** Newly hatched: drawn small and growing to full size over `dur` seconds from `at`. */
+  grow?: { at: number; dur: number };
 }
 
 export interface Planet {
@@ -151,6 +153,8 @@ export interface StarSystem {
   y: number;
   /** Depth (see `Structure.z`). */
   z?: number;
+  /** When the star went out (sim time): drawn as a dead disc with a cold rim from then on. */
+  darkAt?: number;
   starColor: string;
   starRadius: number;
   planets: Planet[];

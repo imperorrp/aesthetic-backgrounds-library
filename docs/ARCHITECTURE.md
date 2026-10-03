@@ -111,6 +111,11 @@ Shared, renderer-agnostic pieces in `engine/sim`, attached to a world on first u
 | `signals.ts` (network) | Nodes, nearest-k links, hop-by-hop packets, ring broadcasts | `relays` (messages, distress) |
 | `fields.ts` (flow field) | Sum of wind, moving bands, vortices, curl noise | `weather` → storms, drifting rock |
 | `spatial.ts` | Uniform grid hash | collisions, neighbour queries |
+| `bodies.ts` | A steering head and a spine that follows at fixed spacing | leviathans, the Mouth's tendrils |
+| `history.ts` | A ring of past positions, nearest-moment lookup | echoes |
+
+Body ids come from the caller, kept per world; a module-level counter would make a
+second mount number its bodies differently and break replays.
 
 Domain bindings live next to their mechanics: `useLedger(api)` (economy.ts), `useNetwork(api)`
 (relays.ts), and `useWeather(api)` (weather.ts). Each one creates its service once per world and
