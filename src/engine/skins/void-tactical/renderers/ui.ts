@@ -9,7 +9,7 @@
  */
 
 import type { SimSettings, SystemState, StarSystem } from '../types';
-import { accentRgba, getArtSprite, hexRgba, SPRITE_BASE_HEIGHT, WORLD_SPEED_MULTIPLIER, type CanvasContext, type RenderFrame } from './utils';
+import { accentRgba, crispPx, getArtSprite, hexRgba, SPRITE_BASE_HEIGHT, WORLD_SPEED_MULTIPLIER, type CanvasContext, type RenderFrame } from './utils';
 import { shouldShowTelemetry } from '../labels';
 import type { LabelBoard } from './board';
 import { allStructures } from '../fleets';
@@ -30,9 +30,22 @@ export const renderSystemConnections = (
   const points = systems
     .map((sys) => ({ x: sys.x - camera.x * frame.parallax, y: sys.y }))
     .filter((p) => p.x > -400 && p.x < viewport.width + 400);
-  if (points.length < 2) return;
+  const lanes = frame.pack.look?.lanes ?? 'straight';
+  if (points.length < 2 || lanes === 'none') return;
   const level = lineLevel(frame);
   const lw = frame.style.lineWeight;
+  // Curved song lines bow to one side; straight lanes are the original data links.
+  const path = (i: number, j: number) => {
+    const a = points[i];
+    const b = points[j];
+    ctx.moveTo(a.x, a.y);
+    if (lanes === 'curved') {
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      const bow = ((i + j) % 2 ? 1 : -1) * 0.28;
+      ctx.quadraticCurveTo(mx - (b.y - a.y) * bow, my + (b.x - a.x) * bow, b.x, b.y);
+    } else ctx.lineTo(b.x, b.y);
+  };
 
   const links: [number, number][] = [];
   for (let i = 0; i < points.length; i++) {
@@ -50,10 +63,7 @@ export const renderSystemConnections = (
   ctx.lineWidth = lw * 1.3;
   ctx.setLineDash([]);
   ctx.beginPath();
-  for (const [i, j] of links) {
-    ctx.moveTo(points[i].x, points[i].y);
-    ctx.lineTo(points[j].x, points[j].y);
-  }
+  for (const [i, j] of links) path(i, j);
   ctx.stroke();
 
   // Packets riding it.
@@ -62,10 +72,7 @@ export const renderSystemConnections = (
   ctx.setLineDash([3, 26]);
   ctx.lineDashOffset = -frame.time * 30;
   ctx.beginPath();
-  for (const [i, j] of links) {
-    ctx.moveTo(points[i].x, points[i].y);
-    ctx.lineTo(points[j].x, points[j].y);
-  }
+  for (const [i, j] of links) path(i, j);
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.lineDashOffset = 0;
@@ -191,7 +198,7 @@ export const renderTargetLock = (
     x = s.x - off;
     y = s.y;
     const boost = s.rarity === 'legendary' ? 1.35 : s.rarity === 'rare' ? 1.15 : 1;
-    r = structureRadius(getArtSprite(s.art, s.kind, s.color ?? '#ffffff', SPRITE_BASE_HEIGHT * frame.style.spriteScale * boost)) + 6;
+    r = structureRadius(getArtSprite(s.art, s.kind, frame.color(s.color ?? '#ffffff'), SPRITE_BASE_HEIGHT * frame.style.spriteScale * boost, frame.dpr)) + 6;
   }
   if (x < -40 || x > viewport.width + 40) return;
 
@@ -258,7 +265,7 @@ export const renderTargetLock = (
       budget -= line.length;
       const cursor = budget < 0 && Math.floor(age * 8) % 2 === 0 ? '█' : '';
       ctx.fillStyle = hexRgba(i === 0 ? accent : ink, (i === 0 ? 0.95 : 0.8) * alpha);
-      ctx.fillText(shown + cursor, bx, by + lh / 2 + i * lh);
+      ctx.fillText(shown + cursor, crispPx(bx, frame.dpr), crispPx(by + lh / 2 + i * lh, frame.dpr));
     });
   }
   ctx.restore();

@@ -136,7 +136,9 @@ export function createBackground<T = any>(
   /** Size the backing store and update `viewport`. Returns true when the CSS size changed. */
   const syncSize = (): boolean => {
     const next = measure();
-    const dpr = Math.max(0.5, Math.min(window.devicePixelRatio || 1, MAX_DPR) * state.dprScale);
+    // Crisp (text-heavy) skins get full device resolution, up to 2x, and keep it.
+    const cap = skin.crisp ? 2 : MAX_DPR;
+    const dpr = Math.max(0.5, Math.min(window.devicePixelRatio || 1, cap) * state.dprScale);
     const backingW = Math.max(1, Math.round(next.width * dpr));
     const backingH = Math.max(1, Math.round(next.height * dpr));
     if (canvas.width !== backingW || canvas.height !== backingH) {
@@ -188,7 +190,7 @@ export function createBackground<T = any>(
   const governor = (costMs: number) => {
     costEma = costEma === 0 ? costMs : costEma * 0.9 + costMs * 0.1;
     if (costEma > budgetMs) {
-      if (state.dprScale > 0.5 && viewport.dpr > 0.75) {
+      if (!skin.crisp && state.dprScale > 0.5 && viewport.dpr > 0.75) {
         state.dprScale = Math.max(0.5, +(state.dprScale - 0.25).toFixed(2));
         syncSize();
       } else if (state.quality > 0.4) {

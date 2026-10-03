@@ -23,9 +23,12 @@ export {
   listUniverses,
   validateUniverse,
   universePrompt,
-  githubUniverse,
-  GithubUniverseError,
+  registerMechanic,
+  getMechanic,
+  listMechanics,
+  steerToward,
+  steerOrbit,
 } from './entries/skins/void-tactical';
-export type { UniversePack, UniverseValidation } from './entries/skins/void-tactical';
+export type { UniversePack, UniverseValidation, Mechanic, MechanicApi, MechanicRef } from './entries/skins/void-tactical';
 export * from './engine/layers';
 export * from './engine/presets';

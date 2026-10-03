@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **Mechanics.** Universes now play differently, not just look different. A mechanic is a plugin (`registerMechanic`) with its own schema, update, and draw passes (under the map, among the ships, over everything), plus an API to spawn, steer, damage, and release fleets, add and remove structures, and fire effects. Built in:
+  - `skirmish`: raiders warp in, strafe, and fight.
+  - `events`: armadas, flares, and gate surges.
+  - `asteroids`: belts, miners, ore, and claims.
+  - `storms`: fronts that ghost ships.
+  - `song`, `flocks`, `maw`, `cartography`.
+  - `warfront`: territory, a moving front, captures, and bombardment.
+  
+  Ships now have hull points, so combat leaves wrecks and debris. Packs list their mechanics and a `look` (lanes, grid, traffic). The studio's **What happens here** panel switches them on and off and tunes them.
+- **The Long Siege.** A fourth built-in universe, about a war along a front.
+- **Faster ships, sharper text.** Ships fly two to three times faster than before. Skins can set `crisp` to render at full device resolution, and the sector map and instruments snap text to device pixels.
+- **Instruments, busier.**
+  - Approach radar: holds, go-arounds, emergencies, VFR and helicopter traffic, and conflict alerts.
+  - Sonar: torpedo attacks with evasive turns and decoys, and active pings with echoes.
+  - Seismograph: aftershocks, quarry blasts, volcanic tremor, teleseisms, and shaking.
+  - Abyssal: alarm cascades, a hunting dragonfish, shrimp clouds, a vent field, and new animals.
+  - Mars: a rover, a helicopter, orbiter relay passes, meteors, a landing, storm watches, and an ops log.
+- **Seeds are back in front.** The seed is in the URL (`?bg=&seed=&u=`) and at the top of the studio, with Shuffle and Link.
+- **Shorter AI prompt.** Three lines plus the config, with a universe.json download for custom packs.
+- **Removed.** The GitHub galaxy.
 - **Sector map overhaul.**
   - **Restored look:** structures sit in soft circles in their own color again, and the network lanes pulse at their original strength.
   - **Ships:** vector silhouettes for six classes that fly in formation (V, column, escort) with engine glow.
@@ -10,9 +30,8 @@
   - **Anomalies:** each kind has animated ASCII art and a pulsing ring in its own color.
   - **HUD:** periodic target lock with typed data. Event chatter tied to what is on screen. Label placement that never overlaps. A slow tension curve.
 - **Universe packs.** Everything a world needs lives in one JSON file: names, factions, ship classes, structures with art and roles, anomalies, chatter, and background words. Built in: The Void Sector, Saltwind Reach, Choir of Hollow Stars. `universePrompt(subject)` writes a prompt any AI can answer with a pack, and `validateUniverse` accepts what comes back.
-- **GitHub galaxy.** `githubUniverse(username)` maps a public account to a pack: repos are systems, languages are factions, recent activity is fleets, and issues are anomalies.
 - **Instruments.** New skins: `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`.
-- **Studio.** "Copy prompt for your AI" is the main export. One Shuffle button replaces Randomize, and Fit shade is gone. The universe and GitHub panels are new. The gallery leads with the featured pieces, with the rest under Basics. Sample text is off by default.
+- **Studio.** "Copy prompt for your AI" is the main export. One Shuffle button replaces Randomize, and Fit shade is gone. The universe panel is new. The gallery leads with the featured pieces, with the rest under Basics. Sample text is off by default.
 - **README.** Rewritten as a short note about the idea; the technical reference moved to `docs/REFERENCE.md`.
 
 ## 0.4.0 — 2026-10-02

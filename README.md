@@ -16,7 +16,7 @@ A living tactical chart of a stretch of space:
 - **Target lock.** Every half minute, brackets close on a contact while its data types out.
 - **Pacing.** A slow tension curve gives the sector quiet stretches and busy ones.
 
-The same seed always plays the same story.
+The same seed always plays the same story. The seed is in the URL (`?seed=orion-harbor-23`), so a link is that exact world.
 
 ## Make it your universe
 
@@ -26,22 +26,54 @@ The map can belong to any world. A *universe pack* is a small JSON file holding 
 2. Click **Copy the prompt** and paste it into any AI.
 3. Paste back what it writes, and the map becomes that world.
 
-Two hand-written packs come with it. **Saltwind Reach** is a poor mining frontier at the end of an old road. **Choir of Hollow Stars** is a region where every star has been emptied and something sings inside.
+Three hand-written packs come with it, and each one plays differently, not just in other colors:
+- **Saltwind Reach** is a poor mining frontier at the end of an old road. Miners work asteroid belts and crack rocks for ore, claim jumpers raid them, and dust fronts roll across the map and turn ships into ghosts.
+- **Choir of Hollow Stars** is a region where every star has been emptied and something sings inside. The stars ring out in waves, flocks of pilgrims turn together, a maw swallows whatever drifts too close, and systems go missing from the chart.
+- **The Long Siege** is a war that has gone on longer than anyone has been alive. A front line moves across the map, systems change hands, squadrons clash where the front is, and bombardments arc over it.
 
 | | |
 | --- | --- |
 | ![Saltwind Reach](e2e/__screenshots__/chromium/void-tactical-saltwind.png) | ![Choir of Hollow Stars](e2e/__screenshots__/chromium/void-tactical-choir.png) |
+| ![The Long Siege](e2e/__screenshots__/chromium/void-tactical-siege.png) | |
 
-## Your GitHub, as a galaxy
+### What happens here
 
-Type a GitHub username in the studio and the map becomes your account:
-- repositories are star systems
-- languages are factions in their GitHub colors
-- your recent pushes, pull requests, branches, and releases are fleets flying between them
-- open issues are anomalies
-- your commit messages are the radio chatter
+What makes a universe play differently is its *mechanics*: small plugins that spawn fleets, steer them, fight, break things, and draw on the map. A pack lists the ones it runs and how they're tuned, and in the studio, under **What happens here**, you can switch any of them on or off and tune them for the world you're looking at. Built in: raids, great events (armadas, flares, gate surges), asteroid mining, storm fronts, singing stars, murmurations, the maw, a living chart, and war along a front.
 
-It uses public data only.
+Writing a new one takes a few dozen lines:
+
+```ts
+import { registerMechanic, steerToward } from 'space-background-engine/skins/void-tactical';
+
+registerMechanic({
+  id: 'patrol',
+  label: 'Patrols',
+  description: 'Fighters warp in at one structure and sweep to another.',
+  schema: { rate: { type: 'number', min: 0.1, max: 2, default: 0.5, label: 'Per minute' } },
+  create(api, p) {
+    let next = api.t + 5;
+    return {
+      update() {
+        const [a, b] = api.structures();
+        if (api.t < next || !a || !b) return;
+        next = api.t + 60 / Number(p.rate);
+        api.spawnFleet({ x: a.x, y: a.y, vx: 0, vy: 0 }, {
+          cls: 'fighter',
+          warpIn: true,
+          steer: (f, dt) => {
+            steerToward(f.ships[0], b.x, b.y, 110, 6, dt);
+            if (Math.hypot(b.x - f.ships[0].x, b.y - f.ships[0].y) < 30) api.release(f);
+          },
+        });
+      },
+    };
+  },
+});
+
+mount(document.body, { skin: 'void-tactical', options: { universe: 'saltwind', mechanics: [{ use: 'asteroids' }, { use: 'patrol' }] } });
+```
+
+`options.mechanics` replaces the pack's own list; leave it out to keep the pack's.
 
 ## Instruments from other worlds
 
@@ -49,9 +81,9 @@ The same idea applied to other screens.
 
 | | |
 | --- | --- |
-| ![Sonar](e2e/__screenshots__/chromium/sonar.png) **Sonar.** A submarine's passive waterfall. Contacts drift across bearings, a whale sings on and off, the stern arc is deaf, and the operator marks a contact while the firing solution types out. | ![Approach radar](e2e/__screenshots__/chromium/atc-radar.png) **Approach radar.** The sweep paints aircraft onto fading phosphor, so each leaves a trail of returns. Arrivals fly the approach and land, departures climb out, and the clearances type themselves. |
-| ![Seismograph](e2e/__screenshots__/chromium/seismograph.png) **Seismograph.** Station pens tremble with microseism until a quake's waves sweep down the stack, arriving later the farther each station is. Big ones clip the pens flat. | ![Abyssal scanner](e2e/__screenshots__/chromium/abyssal.png) **Abyssal scanner.** Marine snow, pulsing medusae, a siphonophore's chain of lights, an anglerfish lure. A sonar fan names whatever it passes, and once in a while something very large crosses the edge of the light. |
-| ![Martian weather radar](e2e/__screenshots__/chromium/mars-radar.png) **Martian weather radar.** Dust storm cells drift over the contours of Jezero and its neighbors, refreshed only where the sweep passes. Wind barbs, dust devils leaving tracks, typed storm advisories. | |
+| ![Sonar](e2e/__screenshots__/chromium/sonar.png) **Sonar.** A submarine's passive waterfall. Contacts drift across bearings and whales sing on and off. Then a torpedo is in the water: the boat turns hard and every trace bends with it, a decoy blooms, and the torpedo veers off to it. Sometimes the boat goes active and the contacts answer. | ![Approach radar](e2e/__screenshots__/chromium/atc-radar.png) **Approach radar.** The sweep paints aircraft onto fading phosphor. Arrivals hold, land, or go around, departures climb out, helicopters and light aircraft wander low, conflict alerts blink, and now and then someone declares an emergency and squawks 7700. |
+| ![Seismograph](e2e/__screenshots__/chromium/seismograph.png) **Seismograph.** Station pens tremble until a quake's waves sweep down the stack. Big ones shake the record and bring aftershock sequences. There are also quarry blasts, a volcano's harmonic tremor, and great quakes from the far side of the planet that reach every station at once. | ![Abyssal scanner](e2e/__screenshots__/chromium/abyssal.png) **Abyssal scanner.** Marine snow and bioluminescent animals. A startled jelly's alarm flash runs through its neighbors, a dragonfish hunts by red light and scatters a school, shrimp spit glowing clouds, and the seafloor rises into view over a vent field. Something very large crosses the edge of the light. |
+| ![Martian weather radar](e2e/__screenshots__/chromium/mars-radar.png) **Martian weather radar.** Dust storm cells drift over Jezero. A rover drives and cores samples while a helicopter scouts ahead, orbiters pass over to relay, meteors leave fresh craters, a lander comes down, and storm watches park everything. All of it goes into the ops log. | |
 
 ## Put one on your site
 

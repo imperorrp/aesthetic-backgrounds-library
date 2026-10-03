@@ -22,6 +22,12 @@ export function mixRgb(a: string, b: string, k: number): [number, number, number
   return [x.r + (y.r - x.r) * k, x.g + (y.g - x.g) * k, x.b + (y.b - x.b) * k];
 }
 
+/** fillText on whole device pixels (reads the canvas scale), so small type stays sharp. */
+export function fillCrisp(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
+  const d = ctx.getTransform?.().a || 1;
+  ctx.fillText(text, Math.round(x * d) / d, Math.round(y * d) / d);
+}
+
 /** Integer hash to [0, 1). */
 export const hash = (a: number, b = 0, c = 0): number => {
   let x = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263) + Math.imul(c | 0, 1274126177)) | 0;

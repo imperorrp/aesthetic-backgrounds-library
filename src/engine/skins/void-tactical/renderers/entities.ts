@@ -8,7 +8,7 @@
  */
 
 import type { SystemState } from '../types';
-import { hexRgba, type CanvasContext, type RenderFrame } from './utils';
+import { crispPx, hexRgba, type CanvasContext, type RenderFrame } from './utils';
 import { shouldShowAnomalyScanline, shouldShowAnomalyText, shouldShowFleetLabel } from '../labels';
 import { classLabel, predictPath } from '../fleets';
 import { drawShip, SHIP_SPECS } from '../ships';
@@ -175,7 +175,7 @@ export const renderAnomalies = (
       ctx.fillStyle = hexRgba(color, 0.035 * fadeIn);
       ctx.fillRect(x, 0, 1, viewport.height);
     }
-    drawAnomaly(ctx, a.style, x, y, frame.time, a.seed, color, alpha, frame.style.lineWeight * 0.8);
+    drawAnomaly(ctx, a.style, crispPx(x, frame.dpr), crispPx(y, frame.dpr), frame.time, a.seed, color, alpha, frame.style.lineWeight * 0.8);
     board?.reserve(x, y, ANOMALY_RING + 3);
     if (board && shouldShowAnomalyText(density)) {
       board.add({

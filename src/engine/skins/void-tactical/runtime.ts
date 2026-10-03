@@ -80,6 +80,7 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
   label: 'Void tactical',
   description: 'A living sci-fi sector map: fleets in formation, working structures, anomalies, and an ambient HUD.',
   tags: ['space', 'sci-fi', 'dark', 'busy'],
+  crisp: true,
   schema,
   /** Dense, detailed, and held back to 45% presence so page content leads. */
   defaults: { palette: 'void-cyan', intensity: 0.45, density: 1.5, detail: 'high' },
@@ -99,7 +100,7 @@ export const voidTacticalSkin: BackgroundSkin<VoidTacticalOptions> = {
         sim.update(info);
         const { width, height } = sim;
         ctx.clearRect(0, 0, width, height);
-        renderSystem(ctx, sim.world, sim.camera, { width, height }, sim.frameFor(info, style));
+        renderSystem(ctx, sim.world, sim.camera, { width, height }, sim.frameFor(info, style), sim.drawPass);
       },
       destroy() {},
     };

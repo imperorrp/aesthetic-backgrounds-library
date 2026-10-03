@@ -103,11 +103,12 @@ export const voidSystemsLayer: Layer = {
         const { world, camera } = sim;
         ctx.font = FONT;
         ctx.textBaseline = 'top';
+        sim.drawPass(ctx, 'under', frame, board);
         renderCelestialBodies(ctx, world.celestialBodies, camera, viewport, frame);
         world.systems.forEach((sys) => renderStarSystem(ctx, sys, camera, viewport, world.settings, frame, board));
         renderSystemConnections(ctx, world.systems, camera, viewport, frame);
         renderStructures(ctx, allStructures(world), camera, viewport, world.settings, frame, board);
-        board.flush(ctx, viewport);
+        board.flush(ctx, viewport, frame.dpr);
       },
     };
   },
@@ -133,8 +134,10 @@ export const voidFleetsLayer: Layer = {
         ctx.font = FONT;
         ctx.textBaseline = 'top';
         renderAnomalies(ctx, sim.world, sim.camera, viewport, frame, board);
+        sim.drawPass(ctx, 'mid', frame, board);
         renderFleets(ctx, sim.world, sim.camera, viewport, frame, board);
-        board.flush(ctx, viewport);
+        sim.drawPass(ctx, 'over', frame, board);
+        board.flush(ctx, viewport, frame.dpr);
       },
     };
   },
@@ -163,7 +166,7 @@ export const voidHudLayer: Layer = {
         renderSectorConnections(ctx, sim.camera, viewport, frame);
         renderTelemetry(ctx, sim.world.telemetry, sim.world.settings, frame);
         renderTacticalOverlays(ctx, sim.world, sim.camera, viewport, frame, board);
-        board.flush(ctx, viewport);
+        board.flush(ctx, viewport, frame.dpr);
         renderTargetLock(ctx, sim.world, sim.camera, viewport, frame);
       },
     };

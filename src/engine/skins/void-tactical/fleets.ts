@@ -34,6 +34,8 @@ const DEFAULT_CLASS_COLORS: Record<ShipClass, string> = {
 };
 const CLASS_WEIGHT: Record<ShipClass, number> = { fighter: 0.3, scout: 0.2, freighter: 0.25, cruiser: 0.14, carrier: 0.07, capital: 0.04 };
 const TRAIL_SAMPLES = 26;
+/** Hull points per class. */
+export const HULL_POINTS: Record<ShipClass, number> = { fighter: 2, scout: 2, freighter: 4, cruiser: 7, carrier: 9, capital: 14 };
 const TRAIL_INTERVAL = 0.2;
 const DOCK_ROLES: readonly StructureRole[] = ['dock', 'shipyard', 'mine'];
 
@@ -150,6 +152,10 @@ function composition(cls: ShipClass, rng: Rng): { formation: Formation; wings: S
 
 export type SpawnOptions = {
   cls?: ShipClass;
+  /** Override the wingmen this class normally brings. */
+  wings?: ShipClass[];
+  /** Paint every hull this color. */
+  color?: string;
   faction?: number;
   purpose?: FleetPurpose;
   callsign?: string;
@@ -174,6 +180,10 @@ export function spawnFleet(world: SystemState, c: FleetCtx, at: { x: number; y: 
   }
 
   const comp = composition(cls, rng);
+  if (opts.wings) {
+    comp.wings = opts.wings;
+    if (comp.formation === 'solo' && opts.wings.length) comp.formation = 'v';
+  }
   const classes: ShipClass[] = [cls, ...comp.wings];
   const spacing = Math.max(...classes.map((k) => SHIP_SPECS[k].size)) * 1.35 + 4;
   const heading = Math.atan2(at.vy, at.vx);
@@ -186,13 +196,14 @@ export function spawnFleet(world: SystemState, c: FleetCtx, at: { x: number; y: 
     const ly = slot[1] * spacing;
     return {
       cls: k,
-      color: shipColor(pack, k, faction!),
+      color: opts.color ?? shipColor(pack, k, faction!),
       x: at.x + lx * cos - ly * sin,
       y: at.y + lx * sin + ly * cos,
       vx: at.vx,
       vy: at.vy,
       heading,
       slot,
+      hp: HULL_POINTS[k],
     };
   });
 
@@ -447,7 +458,10 @@ export function stepFleet(f: Fleet, world: SystemState, c: FleetCtx, dt: number)
   const L = f.ships[0];
   f.fade += (f.fadeTo - f.fade) * Math.min(1, dt * 2.5);
 
-  switch (f.mode) {
+  if (f.steer) {
+    // A mechanic is flying the leader; the formation still follows below.
+    f.steer(f, dt);
+  } else switch (f.mode) {
     case 'transit': {
       const p = f.plan;
       if (!p) {

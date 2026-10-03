@@ -31,7 +31,7 @@ export type LabelBoard = {
   add(req: LabelRequest): void;
   /** Reserve an area (a ship, a ring) so labels avoid covering it. */
   reserve(x: number, y: number, r: number): void;
-  flush(ctx: CanvasRenderingContext2D, viewport: { width: number; height: number }): void;
+  flush(ctx: CanvasRenderingContext2D, viewport: { width: number; height: number }, dpr?: number): void;
 };
 
 export function createLabelBoard(): LabelBoard {
@@ -44,7 +44,8 @@ export function createLabelBoard(): LabelBoard {
     reserve(x, y, r) {
       reserved.push({ x: x - r, y: y - r, w: r * 2, h: r * 2 });
     },
-    flush(ctx, viewport) {
+    flush(ctx, viewport, dpr = 1) {
+      const snap = (v: number) => Math.round(v * dpr) / dpr;
       if (!queue.length) return;
       queue.sort((a, b) => b.priority - a.priority);
       const placed: Rect[] = [];
@@ -93,8 +94,9 @@ export function createLabelBoard(): LabelBoard {
         placed.push(chosen);
         ctx.fillStyle = hexRgba(q.color, q.alpha);
         const tx = chosen.x + pad + (q.tick ? 6 : 0);
-        if (q.tick) ctx.fillRect(chosen.x + pad, chosen.y + pad + h / 2, 3, 1);
-        ctx.fillText(q.text, tx, chosen.y + pad + h / 2);
+        if (q.tick) ctx.fillRect(snap(chosen.x + pad), snap(chosen.y + pad + h / 2), 3, 1);
+        // Text on whole device pixels stays sharp.
+        ctx.fillText(q.text, snap(tx), snap(chosen.y + pad + h / 2));
       }
       ctx.restore();
       queue.length = 0;

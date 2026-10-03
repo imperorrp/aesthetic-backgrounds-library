@@ -52,6 +52,8 @@ export type RenderFrame = {
   pack: UniversePack;
   /** Screen x = world x - camera.x * parallax for the map plane. */
   parallax: number;
+  /** Backing-store pixels per CSS pixel, for snapping text and sprites. */
+  dpr: number;
 };
 
 export function accentRgba(palette: Palette, alpha = 1): string {
@@ -104,43 +106,67 @@ export const SPRITE_BASE_HEIGHT = 30;
 // Helper to snap to grid
 export const snap = (val: number) => Math.floor(val / CHAR_SIZE) * CHAR_SIZE;
 
-// ASCII Sprite Cache (module-level: sprites are pure functions of kind + color + height)
-const asciiCache = new Map<string, HTMLCanvasElement>();
+/** A sprite canvas at device resolution, with its size in CSS pixels. */
+export type Sprite = HTMLCanvasElement & { cssW: number; cssH: number };
+
+// ASCII Sprite Cache (module-level: sprites are pure functions of art + color + height + dpr)
+const asciiCache = new Map<string, Sprite>();
+
+/** Snap a CSS-pixel coordinate to the device pixel grid so text and 1px lines stay sharp. */
+export const crispPx = (v: number, dpr = 1) => Math.round(v * dpr) / dpr;
+
+/** Draw a sprite at its CSS size, snapped to device pixels. */
+export function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, cx: number, cy: number, dpr = 1) {
+  ctx.drawImage(s, crispPx(cx - s.cssW / 2, dpr), crispPx(cy - s.cssH / 2, dpr), s.cssW, s.cssH);
+}
 
 /**
  * Cached canvas sprite for a multi-line ASCII art structure, rendered directly at
  * the font size that yields `targetHeight` so glyphs stay crisp (no downscaling).
  */
-export function getAsciiSprite(kind: string, color: string, targetHeight = SPRITE_BASE_HEIGHT): HTMLCanvasElement {
-  return getArtSprite(ASCII_ART[kind as StructureType] || ['?'], kind, color, targetHeight);
+export function getAsciiSprite(kind: string, color: string, targetHeight = SPRITE_BASE_HEIGHT, dpr = 1): Sprite {
+  return getArtSprite(ASCII_ART[kind as StructureType] || ['?'], kind, color, targetHeight, dpr);
 }
 
-/** Cached sprite for arbitrary ASCII art (a universe pack's own structures). */
-export function getArtSprite(art: readonly string[], id: string, color: string, targetHeight = SPRITE_BASE_HEIGHT): HTMLCanvasElement {
+/**
+ * Cached sprite for arbitrary ASCII art, rendered at device resolution: a soft glow
+ * underneath and a sharp copy of the glyphs on top, so the art reads crisply.
+ */
+export function getArtSprite(art: readonly string[], id: string, color: string, targetHeight = SPRITE_BASE_HEIGHT, dpr = 1): Sprite {
   const lines = Math.max(1, art.length);
   const fontSize = Math.max(5, Math.min(18, Math.round((targetHeight / lines) * 0.92)));
-  const key = `${id}|${art.join('\n')}|${color}|${fontSize}`;
+  const scale = Math.max(1, Math.min(3, dpr));
+  const key = `${id}|${art.join('\n')}|${color}|${fontSize}|${scale}`;
   const hit = asciiCache.get(key);
   if (hit) return hit;
 
   const lineHeight = Math.round(fontSize * 1.12);
-  const c = document.createElement('canvas');
+  const c = document.createElement('canvas') as Sprite;
   const measure = c.getContext('2d')!;
   measure.font = `${fontSize}px "Orbit", "Syne Mono", ui-monospace, monospace`;
   let maxWidth = 0;
   for (const line of art) maxWidth = Math.max(maxWidth, measure.measureText(line).width);
 
   const pad = 4;
-  c.width = Math.max(1, Math.ceil(maxWidth + pad * 2));
-  c.height = Math.max(1, lines * lineHeight + pad * 2);
+  c.cssW = Math.max(1, Math.ceil(maxWidth + pad * 2));
+  c.cssH = Math.max(1, lines * lineHeight + pad * 2);
+  c.width = Math.ceil(c.cssW * scale);
+  c.height = Math.ceil(c.cssH * scale);
   const ctx = c.getContext('2d')!;
+  ctx.scale(scale, scale);
   ctx.font = `${fontSize}px "Orbit", "Syne Mono", ui-monospace, monospace`;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'center';
-  ctx.shadowColor = color;
-  ctx.shadowBlur = Math.max(2, fontSize * 0.5);
   ctx.fillStyle = color;
-  const cx = c.width / 2;
+  const cx = c.cssW / 2;
+  // Glow pass, then a crisp pass with no shadow.
+  ctx.shadowColor = color;
+  ctx.shadowBlur = Math.max(2, fontSize * 0.45) * scale;
+  ctx.globalAlpha = 0.55;
+  art.forEach((line, i) => ctx.fillText(line, cx, pad + i * lineHeight));
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+  ctx.globalAlpha = 1;
   art.forEach((line, i) => ctx.fillText(line, cx, pad + i * lineHeight));
   asciiCache.set(key, c);
   return c;

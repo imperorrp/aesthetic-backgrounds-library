@@ -8,20 +8,24 @@
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import type { Schema } from '../../core/schema';
 import { resolveOptions } from '../../core/schema';
-import { clamp01, createPhosphor, hash, hexA, mixRgb, mono, typed } from './kit';
+import { fillCrisp, clamp01, createPhosphor, hash, hexA, mixRgb, mono, typed } from './kit';
 
 const schema = {
   storms: { type: 'number', min: 1, max: 8, default: 4, step: 1, label: 'Storm cells' },
   sweep: { type: 'number', min: 3, max: 14, default: 6.5, label: 'Sweep period (s)' },
   contours: { type: 'number', min: 0, max: 1, default: 0.6, label: 'Contours' },
   barbs: { type: 'boolean', default: true, label: 'Wind barbs' },
+  activity: { type: 'number', min: 0, max: 3, default: 1, label: 'Surface activity (rover, landings, impacts)' },
 } satisfies Schema;
 
 const CRATERS = ['JEZERO', 'BELVA', 'HOLDEN', 'EBERSWALDE', 'GUSEV', 'SANTA FE', 'NERETVA'];
 const GRID_W = 150;
 const GRID_H = 94;
 
-type Cell = { x: number; y: number; r: number; dbz: number; vx: number; vy: number; born: number; life: number };
+type Cell = { x: number; y: number; r: number; dbz: number; vx: number; vy: number; born: number; life: number; big?: boolean };
+type P = { x: number; y: number };
+const ORBITERS = ['MRO', 'MAVEN', 'TGO', 'ODYSSEY', 'TIANWEN-1'];
+const CARGO = ['CARGO-3', 'HAB-2', 'ASCENT-1', 'CARGO-4', 'PROSPECT-7'];
 type Devil = { x: number; y: number; vx: number; vy: number; born: number; life: number };
 
 export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unknown>>> = {
@@ -29,6 +33,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
   label: 'Martian weather radar',
   description: 'Dust storm radar over Jezero: contours, drifting storm cells, sweep-refreshed reflectivity, dust devils.',
   tags: ['instrument', 'mars', 'dark', 'rust'],
+  crisp: true,
   schema,
   defaults: { palette: { from: '#f97316' }, intensity: 0.6 },
   mount(host: SkinHost) {
@@ -205,6 +210,178 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
     let sweep = 0;
     let advisory: { text: string; at: number } | null = null;
     let nextAdvisory = 6;
+
+    // Surface operations, on their own stream so the weather stays the same per seed:
+    // a rover driving and sampling, a helicopter scouting ahead of it, orbiters passing
+    // over for relay, meteors, the occasional landing, and regional storm watches.
+    const ops = host.fork('mars-ops');
+    const every = (base: number) => (base * (0.7 + ops() * 0.6)) / Math.max(0.15, o.activity);
+    const lmstAt = (t: number) => 14 * 60 + 22 + Math.floor(t * 0.5);
+    const clock = (t: number) => {
+      const m = lmstAt(t);
+      return `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    };
+    const log: { text: string; at: number }[] = [];
+    const note = (text: string, t: number) => {
+      log.push({ text, at: t });
+      if (log.length > 5) log.shift();
+    };
+    const rover = { x: station.x + 0.025, y: station.y + 0.04, hdg: 0, target: null as P | null, until: 0, sampling: false, sample: 24 + Math.floor(ops() * 12), odo: 18.4 + ops() * 6, safed: false };
+    const trail: P[] = [{ x: rover.x, y: rover.y }];
+    const heli = { x: rover.x + 0.01, y: rover.y - 0.01, from: { x: 0, y: 0 }, to: { x: 0, y: 0 }, start: -1, dur: 9, flight: 60 + Math.floor(ops() * 20), next: 10 + ops() * 8 };
+    const impacts: { x: number; y: number; r: number; at: number; m: number }[] = [];
+    let meteor: { a: P; b: P; at: number } | null = null;
+    let nextMeteor = every(45);
+    let pass: { name: string; a: P; b: P; at: number; dur: number; mb: number; aos: number } | null = null;
+    let nextPass = 5 + ops() * 8;
+    const PHASES: [number, string][] = [[0, 'ENTRY INTERFACE'], [0.28, 'PEAK HEATING'], [0.55, 'PARACHUTE DEPLOY'], [0.8, 'POWERED DESCENT']];
+    let edl: { to: P; from: P; at: number; dur: number; name: string; phase: number } | null = null;
+    let nextEdl = every(110);
+    const landers: (P & { name: string })[] = [];
+    let watchEnds = -1;
+    let nextWatch = every(150);
+    const px = (p: P) => ({ x: p.x * W, y: p.y * H });
+
+    const operate = (t: number, dt: number) => {
+      if (dt <= 0) return;
+      // Rover: drive to a nearby waypoint, sometimes stop to abrade and core a sample.
+      if (!rover.safed && t >= rover.until) {
+        if (rover.sampling) {
+          rover.sampling = false;
+          note(`ROVER · SAMPLE ${rover.sample} SEALED`, t);
+        }
+        if (!rover.target) {
+          const a = ops() * Math.PI * 2;
+          const d = 0.03 + ops() * 0.05;
+          rover.target = { x: Math.min(0.9, Math.max(0.1, station.x + Math.cos(a) * d * 1.3)), y: Math.min(0.9, Math.max(0.1, station.y + Math.sin(a) * d * 1.6)) };
+        }
+        const dx = (rover.target.x - rover.x) * W;
+        const dy = (rover.target.y - rover.y) * H;
+        const dist = Math.hypot(dx, dy);
+        const stepPx = Math.min(dist, 5 * dt);
+        if (dist > 0.5) {
+          rover.hdg = Math.atan2(dy, dx);
+          rover.x += (dx / dist) * (stepPx / W);
+          rover.y += (dy / dist) * (stepPx / H);
+          rover.odo += stepPx * 0.004;
+          const last = trail[trail.length - 1];
+          if (Math.hypot((rover.x - last.x) * W, (rover.y - last.y) * H) > 3) {
+            trail.push({ x: rover.x, y: rover.y });
+            if (trail.length > 500) trail.shift();
+          }
+        } else {
+          rover.target = null;
+          if (ops() < 0.45) {
+            rover.sampling = true;
+            rover.sample++;
+            rover.until = t + 9 + ops() * 6;
+            note(`ROVER · ABRADING · CORING SAMPLE ${rover.sample}`, t);
+          } else rover.until = t + 1.5 + ops() * 3;
+        }
+      }
+      // Helicopter: scouts a hop ahead of the rover, then waits for the next window.
+      if (heli.start < 0 && t >= heli.next && !rover.safed) {
+        const a = ops() * Math.PI * 2;
+        heli.from = { x: heli.x, y: heli.y };
+        heli.to = { x: Math.min(0.92, Math.max(0.08, rover.x + Math.cos(a) * 0.05)), y: Math.min(0.92, Math.max(0.08, rover.y + Math.sin(a) * 0.07)) };
+        heli.start = t;
+        heli.flight++;
+        const m = Math.round(Math.hypot((heli.to.x - heli.from.x) * W, (heli.to.y - heli.from.y) * H) * 9);
+        note(`INGENUITY · FLIGHT ${heli.flight} · ${m} M HOP`, t);
+      }
+      if (heli.start >= 0 && t >= heli.start + heli.dur) {
+        heli.x = heli.to.x;
+        heli.y = heli.to.y;
+        heli.start = -1;
+        heli.next = t + every(30);
+      }
+      // Meteors: a streak, a flash, a new crater that stays on the map.
+      if (!meteor && t >= nextMeteor) {
+        const b = { x: 0.08 + ops() * 0.84, y: 0.12 + ops() * 0.76 };
+        const a = ops() * Math.PI * 2;
+        meteor = { a: { x: b.x + Math.cos(a) * 0.3, y: b.y - Math.abs(Math.sin(a)) * 0.35 }, b, at: t };
+        nextMeteor = t + every(55);
+      }
+      if (meteor && t >= meteor.at + 1.3) {
+        const m = Math.round(3 + ops() * 11);
+        impacts.push({ ...meteor.b, r: 2 + m * 0.35, at: t, m });
+        if (impacts.length > 8) impacts.shift();
+        note(`NEW IMPACT · ${m} M CRATER · ORBITAL IMAGING REQUESTED`, t);
+        meteor = null;
+      }
+      // Orbiter passes: a ground track across the map, a relay window when it sees the rover.
+      if (!pass && t >= nextPass) {
+        const tilt = (ops() - 0.5) * 0.7;
+        const cx = Math.min(0.9, Math.max(0.1, rover.x + (ops() - 0.5) * 0.4));
+        const dir = { x: Math.sin(tilt), y: Math.cos(tilt) };
+        const north = ops() < 0.5 ? 1 : -1;
+        pass = {
+          name: ORBITERS[Math.floor(ops() * ORBITERS.length)],
+          a: { x: cx - dir.x * 0.75 * north, y: rover.y - dir.y * 0.75 * north },
+          b: { x: cx + dir.x * 0.75 * north, y: rover.y + dir.y * 0.75 * north },
+          at: t,
+          dur: 28 + ops() * 10,
+          mb: 0,
+          aos: -1,
+        };
+        nextPass = t + every(48);
+      }
+      if (pass) {
+        const k = (t - pass.at) / pass.dur;
+        const o2 = { x: pass.a.x + (pass.b.x - pass.a.x) * k, y: pass.a.y + (pass.b.y - pass.a.y) * k };
+        const seen = Math.hypot((o2.x - rover.x) * W, (o2.y - rover.y) * H) < Math.min(W, H) * 0.16;
+        if (seen) {
+          if (pass.aos < 0) {
+            pass.aos = t;
+            note(`${pass.name} · UHF RELAY · AOS`, t);
+          }
+          pass.mb += dt * (18 + 10 * Math.sin(t));
+        } else if (pass.aos >= 0 && pass.mb > 0) {
+          note(`${pass.name} · LOS · ${Math.round(pass.mb)} MB RELAYED`, t);
+          pass.mb = -1;
+        }
+        if (k >= 1) pass = null;
+      }
+      // Entry, descent and landing: rare, watched start to finish.
+      if (!edl && t >= nextEdl) {
+        const to = { x: 0.15 + ops() * 0.7, y: 0.2 + ops() * 0.6 };
+        const left = ops() < 0.5;
+        edl = { to, from: { x: left ? -0.08 : 1.08, y: to.y - 0.25 - ops() * 0.2 }, at: t, dur: 24, name: CARGO[Math.floor(ops() * CARGO.length)], phase: -1 };
+        nextEdl = t + every(190);
+      }
+      if (edl) {
+        const k = (t - edl.at) / edl.dur;
+        let ph = 0;
+        for (let i = 0; i < PHASES.length; i++) if (k >= PHASES[i][0]) ph = i;
+        if (ph !== edl.phase) {
+          edl.phase = ph;
+          note(`${edl.name} · ${PHASES[ph][1]}`, t);
+        }
+        if (k >= 1) {
+          landers.push({ ...edl.to, name: edl.name });
+          if (landers.length > 3) landers.shift();
+          note(`${edl.name} · TOUCHDOWN CONFIRMED`, t);
+          edl = null;
+        }
+      }
+      // Storm watch: a big cell rolls in on the wind; the rover parks until it passes.
+      if (watchEnds < 0 && t >= nextWatch) {
+        const w = windVec();
+        const sp = 0.012 * (wind.speed / 18);
+        cells.push({ x: station.x - w.x * 0.42, y: station.y - w.y * 0.42, r: 0.2, dbz: 56, vx: w.x * sp, vy: w.y * sp, born: t, life: 90, big: true });
+        rover.safed = true;
+        watchEnds = t + 55;
+        note('REGIONAL DUST STORM WATCH · ROVER SAFED', t);
+        nextWatch = t + every(220);
+      }
+      if (watchEnds >= 0 && t >= watchEnds) {
+        rover.safed = false;
+        watchEnds = -1;
+        note('STORM WATCH LIFTED · DRIVING RESUMES', t);
+      }
+    };
+    note('SOL PLAN UPLINKED · DRIVE + SAMPLE', -90);
+    note(`INGENUITY · FLIGHT ${heli.flight} · NOMINAL`, -50);
     layout();
 
     return {
@@ -223,7 +400,10 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
           const c = cells[i];
           c.x += c.vx * dt;
           c.y += c.vy * dt;
-          if (t > c.born + c.life || c.x < -0.3 || c.x > 1.3 || c.y < -0.3 || c.y > 1.3) cells.splice(i, 1, newCell(t, false));
+          if (t > c.born + c.life || c.x < -0.3 || c.x > 1.3 || c.y < -0.3 || c.y > 1.3) {
+            if (c.big) cells.splice(i, 1);
+            else cells.splice(i, 1, newCell(t, false));
+          }
         }
         if (t >= nextDevil) {
           const ang = rng() * Math.PI * 2;
@@ -236,7 +416,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
           const px0 = d.x * W;
           const py0 = d.y * H;
           d.x += d.vx * dt;
-          d.y += d.vy * dt + Math.sin(t * 0.7 + i) * 0.0008;
+          d.y += (d.vy + Math.sin(t * 0.7 + i) * 0.004) * dt;
           if (dt > 0) {
             tracks.ctx.strokeStyle = hexA('#000000', 0.5);
             tracks.ctx.lineWidth = 2;
@@ -247,6 +427,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
           }
           if (t > d.born + d.life) devils.splice(i, 1);
         }
+        operate(t, dt);
 
         // Sweep: refresh the reflectivity buckets it crossed.
         const prev = sweep;
@@ -273,6 +454,45 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
         ctx.drawImage(disp, 0, 0, W, H);
         ctx.restore();
 
+        // Fresh craters and the rover's tracks, part of the ground.
+        ctx.lineWidth = 1;
+        for (const c of impacts) {
+          const p = px(c);
+          const age = t - c.at;
+          ctx.strokeStyle = hexA(ink, 0.45 * level);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, c.r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = hexA('#fde68a', 0.18 * level);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, c.r * 2.4, 0, Math.PI * 2);
+          ctx.stroke();
+          if (age < 2) {
+            // The flash, and the ring of ejecta going out.
+            const k = age / 2;
+            ctx.fillStyle = hexA('#fff7ed', (1 - k) * 0.8 * level);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3 + k * 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = hexA('#fde68a', (1 - k) * 0.7 * level);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4 + k * 46, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+        if (trail.length > 1) {
+          ctx.strokeStyle = hexA(ink, 0.32 * level);
+          ctx.lineWidth = 2;
+          ctx.setLineDash([1, 2]);
+          ctx.beginPath();
+          ctx.moveTo(trail[0].x * W, trail[0].y * H);
+          for (let i = 1; i < trail.length; i++) ctx.lineTo(trail[i].x * W, trail[i].y * H);
+          ctx.lineTo(rover.x * W, rover.y * H);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.lineWidth = 1;
+        }
+
         // Range rings and the sweep.
         const sx = station.x * W;
         const sy = station.y * H;
@@ -289,7 +509,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
         ctx.font = mono(8);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
-        for (let km = 50; km <= 200; km += 50) ctx.fillText(`${km} KM`, sx + 3, sy - km * kmPx - 2);
+        for (let km = 50; km <= 200; km += 50) fillCrisp(ctx, `${km} KM`, sx + 3, sy - km * kmPx - 2);
         const ang = (sweep * Math.PI) / 180;
         for (let i = 0; i < 12; i++) {
           const a0 = ang - (i + 1) * 0.025;
@@ -316,7 +536,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
         ctx.fill();
         ctx.font = mono(10);
         ctx.textBaseline = 'middle';
-        ctx.fillText('JEZERO WX-2', sx + 10, sy);
+        fillCrisp(ctx, 'JEZERO WX-2', sx + 10, sy);
 
         // Dust devils: a small turning glyph.
         ctx.font = mono(11);
@@ -324,11 +544,193 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
         for (const d of devils) {
           const a = clamp01((t - d.born) / 2) * clamp01((d.born + d.life - t) / 2) * level;
           ctx.fillStyle = hexA('#fde68a', 0.85 * a);
-          ctx.fillText(['@', '6', '@', '9'][Math.floor(t * 8) % 4], d.x * W, d.y * H);
+          fillCrisp(ctx, ['@', '6', '@', '9'][Math.floor(t * 8) % 4], d.x * W, d.y * H);
           ctx.strokeStyle = hexA('#fde68a', 0.3 * a);
           ctx.beginPath();
           ctx.arc(d.x * W, d.y * H, 9 + Math.sin(t * 6) * 1.5, 0, Math.PI * 2);
           ctx.stroke();
+        }
+
+        // Landers on the ground, and one coming down.
+        ctx.font = mono(8);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        for (const l of landers) {
+          const p = px(l);
+          ctx.strokeStyle = hexA(ink, 0.6 * level);
+          ctx.strokeRect(Math.round(p.x) - 2.5, Math.round(p.y) - 2.5, 5, 5);
+          ctx.beginPath();
+          ctx.moveTo(p.x - 2, p.y + 3);
+          ctx.lineTo(p.x - 5, p.y + 6);
+          ctx.moveTo(p.x + 2, p.y + 3);
+          ctx.lineTo(p.x + 5, p.y + 6);
+          ctx.stroke();
+          ctx.fillStyle = hexA(ink, 0.45 * level);
+          fillCrisp(ctx, l.name, p.x + 9, p.y);
+        }
+        if (edl) {
+          const k = clamp01((t - edl.at) / edl.dur);
+          const to = px(edl.to);
+          ctx.strokeStyle = hexA(accent, 0.5 * level);
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.ellipse(to.x, to.y, 34 * (1 - k * 0.6), 14 * (1 - k * 0.6), -0.3, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = hexA(accent, 0.6 * level);
+          fillCrisp(ctx, `${edl.name} · LANDING ELLIPSE`, to.x + 38, to.y - 10);
+          const { from, to: dest } = edl;
+          const at = (q: number) => {
+            const e = 1 - (1 - q) ** 2.4;
+            return { x: (from.x + (dest.x - from.x) * e) * W, y: (from.y + (dest.y - from.y) * e) * H - Math.sin(q * Math.PI) * 30 };
+          };
+          const pos = at(k);
+          // The path so far, hot while it is still hypersonic.
+          ctx.strokeStyle = hexA(k < 0.5 ? '#fde68a' : ink, 0.5 * level);
+          ctx.beginPath();
+          for (let q = Math.max(0, k - 0.3); q <= k; q += 0.01) {
+            const s = at(q);
+            if (q === Math.max(0, k - 0.3)) ctx.moveTo(s.x, s.y);
+            else ctx.lineTo(s.x, s.y);
+          }
+          ctx.stroke();
+          if (k < 0.55) {
+            const g = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 10);
+            g.addColorStop(0, hexA('#fff7ed', 0.9 * level));
+            g.addColorStop(1, hexA('#f97316', 0));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillStyle = hexA(ink, 0.9 * level);
+            ctx.fillRect(Math.round(pos.x) - 2, Math.round(pos.y) - 2, 4, 4);
+            if (k < 0.8) {
+              ctx.strokeStyle = hexA(ink, 0.7 * level);
+              ctx.beginPath();
+              ctx.arc(pos.x, pos.y - 10, 6, Math.PI, 0);
+              ctx.moveTo(pos.x - 6, pos.y - 10);
+              ctx.lineTo(pos.x, pos.y - 2);
+              ctx.lineTo(pos.x + 6, pos.y - 10);
+              ctx.stroke();
+            } else {
+              ctx.fillStyle = hexA('#fde68a', (0.5 + 0.5 * Math.sin(t * 40)) * 0.7 * level);
+              ctx.fillRect(Math.round(pos.x) - 1, Math.round(pos.y) + 3, 2, 4);
+            }
+          }
+          ctx.fillStyle = hexA(accent, 0.85 * level);
+          fillCrisp(ctx, PHASES[Math.max(0, edl.phase)][1], pos.x + 12, pos.y);
+        }
+
+        // Rover and helicopter.
+        {
+          const p = px(rover);
+          ctx.save();
+          ctx.translate(Math.round(p.x), Math.round(p.y));
+          ctx.rotate(rover.hdg);
+          ctx.fillStyle = hexA(ink, 0.95 * level);
+          ctx.fillRect(-4, -2.5, 8, 5);
+          ctx.fillStyle = hexA(accent, 0.9 * level);
+          ctx.fillRect(3, -1, 2, 2);
+          ctx.restore();
+          if (rover.sampling) {
+            ctx.strokeStyle = hexA(accent, (0.4 + 0.4 * Math.sin(t * 5)) * level);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.fillStyle = hexA(ink, 0.6 * level);
+          fillCrisp(ctx, rover.safed ? 'PERSEVERANCE · SAFED' : rover.sampling ? `PERSEVERANCE · CORING ${rover.sample}` : 'PERSEVERANCE', p.x + 9, p.y + 9);
+          let h = { x: heli.x, y: heli.y };
+          let alt = 0;
+          if (heli.start >= 0) {
+            const k = clamp01((t - heli.start) / heli.dur);
+            const e = k * k * (3 - 2 * k);
+            h = { x: heli.from.x + (heli.to.x - heli.from.x) * e, y: heli.from.y + (heli.to.y - heli.from.y) * e };
+            alt = Math.min(1, Math.sin(k * Math.PI) * 1.6);
+          }
+          const hp = px(h);
+          ctx.fillStyle = hexA('#000000', 0.5 * level);
+          ctx.beginPath();
+          ctx.arc(hp.x, hp.y, 2, 0, Math.PI * 2);
+          ctx.fill();
+          const lift = alt * 14;
+          const spin = heli.start >= 0 ? t * 30 : 0.6;
+          ctx.strokeStyle = hexA(ink, 0.9 * level);
+          ctx.beginPath();
+          for (const r of [spin, spin + Math.PI / 2]) {
+            ctx.moveTo(hp.x - Math.cos(r) * 5, hp.y - lift - Math.sin(r) * 2);
+            ctx.lineTo(hp.x + Math.cos(r) * 5, hp.y - lift + Math.sin(r) * 2);
+          }
+          ctx.stroke();
+          if (heli.start >= 0) {
+            ctx.fillStyle = hexA(ink, 0.6 * level);
+            fillCrisp(ctx, `INGENUITY · ALT ${Math.round(alt * 12)} M`, hp.x + 9, hp.y - lift - 6);
+          }
+        }
+
+        // An orbiter crossing: its ground track, footprint, and the relay link while it sees the rover.
+        if (pass) {
+          const k = (t - pass.at) / pass.dur;
+          const a = px(pass.a);
+          const b = px(pass.b);
+          const o2 = { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+          ctx.strokeStyle = hexA(ink, 0.12 * level);
+          ctx.setLineDash([2, 6]);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.strokeStyle = hexA(ink, 0.35 * level);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(o2.x, o2.y);
+          ctx.stroke();
+          const foot = Math.min(W, H) * 0.16;
+          ctx.strokeStyle = hexA(ink, 0.12 * level);
+          ctx.beginPath();
+          ctx.arc(o2.x, o2.y, foot, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = hexA(ink, 0.9 * level);
+          ctx.fillRect(Math.round(o2.x) - 2, Math.round(o2.y) - 2, 4, 4);
+          ctx.fillRect(Math.round(o2.x) - 9, Math.round(o2.y) - 0.5, 5, 1);
+          ctx.fillRect(Math.round(o2.x) + 4, Math.round(o2.y) - 0.5, 5, 1);
+          ctx.fillStyle = hexA(ink, 0.6 * level);
+          const live = pass.aos >= 0 && pass.mb >= 0;
+          fillCrisp(ctx, live ? `${pass.name} · ↓ ${Math.round(pass.mb)} MB` : pass.name, o2.x + 12, o2.y);
+          if (live) {
+            const r = px(rover);
+            ctx.strokeStyle = hexA(accent, (0.35 + 0.3 * Math.sin(t * 9)) * level);
+            ctx.setLineDash([4, 4]);
+            ctx.lineDashOffset = -t * 30;
+            ctx.beginPath();
+            ctx.moveTo(r.x, r.y);
+            ctx.lineTo(o2.x, o2.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.lineDashOffset = 0;
+          }
+        }
+
+        // A meteor on its way in.
+        if (meteor) {
+          const k = clamp01((t - meteor.at) / 1.3);
+          const a = px(meteor.a);
+          const b = px(meteor.b);
+          const hx = a.x + (b.x - a.x) * k;
+          const hy = a.y + (b.y - a.y) * k;
+          const tk = Math.max(0, k - 0.3);
+          const g = ctx.createLinearGradient(a.x + (b.x - a.x) * tk, a.y + (b.y - a.y) * tk, hx, hy);
+          g.addColorStop(0, hexA('#fde68a', 0));
+          g.addColorStop(1, hexA('#fff7ed', 0.95 * level));
+          ctx.strokeStyle = g;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(a.x + (b.x - a.x) * tk, a.y + (b.y - a.y) * tk);
+          ctx.lineTo(hx, hy);
+          ctx.stroke();
+          ctx.lineWidth = 1;
         }
 
         // Wind barbs.
@@ -378,8 +780,8 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
         ctx.font = mono(8);
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
-        for (let z = 10; z <= 50; z += 10) ctx.fillText(String(z), lx - 4, ly + (55 - z) * 2.2);
-        ctx.fillText('DBZ', lx + 12, ly - 10);
+        for (let z = 10; z <= 50; z += 10) fillCrisp(ctx, String(z), lx - 4, ly + (55 - z) * 2.2);
+        fillCrisp(ctx, 'DBZ', lx + 12, ly - 10);
 
         // Readouts.
         const lmst = 14 * 60 + 22 + Math.floor(t * 0.5);
@@ -387,10 +789,11 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         ctx.fillStyle = hexA(ink, 0.6 * level);
-        ctx.fillText(`SOL ${1204 + Math.floor(lmst / 1440)} · LMST ${String(Math.floor(lmst / 60) % 24).padStart(2, '0')}:${String(lmst % 60).padStart(2, '0')}`, 18, 16);
+        fillCrisp(ctx, `SOL ${1204 + Math.floor(lmst / 1440)} · LMST ${String(Math.floor(lmst / 60) % 24).padStart(2, '0')}:${String(lmst % 60).padStart(2, '0')}`, 18, 16);
         ctx.fillStyle = hexA(ink, 0.45 * level);
-        ctx.fillText(`TAU ${(1.6 + cells.reduce((s, c) => s + c.dbz, 0) / 120).toFixed(1)} · 6.1 MBAR · −63°C`, 18, 30);
-        ctx.fillText(`WIND ${Math.round(wind.dir)}° ${Math.round(wind.speed)} M/S`, 18, 44);
+        fillCrisp(ctx, `TAU ${(1.6 + cells.reduce((s, c) => s + c.dbz, 0) / 120).toFixed(1)} · 6.1 MBAR · −63°C`, 18, 30);
+        fillCrisp(ctx, `WIND ${Math.round(wind.dir)}° ${Math.round(wind.speed)} M/S`, 18, 44);
+        fillCrisp(ctx, `ROVER ODO ${rover.odo.toFixed(2)} KM · ${rover.sample} SAMPLES CACHED`, 18, 58);
 
         // Advisory when a strong cell is near the station.
         if (!advisory && t >= nextAdvisory) {
@@ -413,9 +816,23 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
             ctx.textAlign = 'left';
             ctx.textBaseline = 'bottom';
             ctx.fillStyle = hexA(accent, 0.95 * level * clamp01((10 - age) * 2));
-            ctx.fillText(typed(advisory.text, age, 34, t), 18, H - 14);
+            fillCrisp(ctx, typed(advisory.text, age, 34, t), 18, H - 14);
           }
         }
+
+        // Ops log: the shift so far, newest at the bottom, typed in.
+        ctx.font = mono(9);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        const logX = Math.max(W * 0.5, W - 330);
+        ctx.fillStyle = hexA(ink, 0.4 * level);
+        fillCrisp(ctx, 'OPS LOG', logX, 16);
+        log.forEach((e, i) => {
+          const age = t - e.at;
+          const newest = i === log.length - 1;
+          ctx.fillStyle = hexA(newest && age < 6 ? accent : ink, (newest ? 0.85 : 0.35 + 0.1 * i) * level);
+          fillCrisp(ctx, `${clock(e.at)}  ${newest ? typed(e.text, age, 40, t) : e.text}`, logX, 30 + i * 13);
+        });
       },
       destroy() {},
     };

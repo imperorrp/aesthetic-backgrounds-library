@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Ship silhouettes. Each class is a small vector hull pointing along +x in unit
  * space (nose at x = 1), scaled to the class size and rotated to the heading.
  * Drawn as paths every frame so they stay crisp at any angle.
@@ -25,16 +25,16 @@ export const SHIP_SPECS: Record<ShipClass, ShipSpec> = {
   // Swept dart.
   fighter: {
     size: 10.5,
-    speed: 46,
-    agility: 7,
+    speed: 104,
+    agility: 10,
     hull: [[1, 0, -0.7, 0.62, -0.35, 0, -0.7, -0.62]],
     engines: [[-0.42, 0]],
   },
   // Needle with a sensor mast.
   scout: {
     size: 10.5,
-    speed: 56,
-    agility: 8,
+    speed: 124,
+    agility: 11,
     hull: [[1, 0, 0.1, 0.2, -0.85, 0.16, -0.85, -0.16, 0.1, -0.2]],
     detail: [[0.1, 0, -0.2, 0.55], [-0.2, 0.55, -0.45, 0.55]],
     engines: [[-0.85, 0]],
@@ -42,8 +42,8 @@ export const SHIP_SPECS: Record<ShipClass, ShipSpec> = {
   // Spine with container blocks and a cab.
   freighter: {
     size: 15,
-    speed: 20,
-    agility: 3,
+    speed: 48,
+    agility: 5,
     hull: [
       [1, 0, 0.72, 0.2, 0.55, 0.2, 0.55, -0.2, 0.72, -0.2],
       [0.42, 0.34, 0.08, 0.34, 0.08, -0.34, 0.42, -0.34],
@@ -56,8 +56,8 @@ export const SHIP_SPECS: Record<ShipClass, ShipSpec> = {
   // Long hull with an engine block and a dorsal ridge.
   cruiser: {
     size: 20,
-    speed: 26,
-    agility: 3.5,
+    speed: 60,
+    agility: 5.5,
     hull: [[1, 0, 0.55, 0.2, -0.55, 0.24, -0.62, 0.36, -1, 0.36, -1, -0.36, -0.62, -0.36, -0.55, -0.24, 0.55, -0.2]],
     detail: [[0.6, 0, -0.5, 0]],
     engines: [[-1, 0.2], [-1, -0.2]],
@@ -65,8 +65,8 @@ export const SHIP_SPECS: Record<ShipClass, ShipSpec> = {
   // Flat deck with an island.
   carrier: {
     size: 22,
-    speed: 21,
-    agility: 2.5,
+    speed: 50,
+    agility: 4.5,
     hull: [[0.92, 0.3, 1, 0.12, 1, -0.12, 0.92, -0.3, -1, -0.3, -1, 0.3]],
     detail: [[0.8, 0.1, -0.85, 0.1], [0.8, -0.1, -0.85, -0.1], [-0.2, 0.3, -0.2, 0.48, -0.45, 0.48, -0.45, 0.3]],
     engines: [[-1, 0.18], [-1, 0], [-1, -0.18]],
@@ -74,8 +74,8 @@ export const SHIP_SPECS: Record<ShipClass, ShipSpec> = {
   // Hammerhead dreadnought.
   capital: {
     size: 29,
-    speed: 15,
-    agility: 1.8,
+    speed: 36,
+    agility: 3.6,
     hull: [[1, 0.42, 0.78, 0.42, 0.62, 0.16, -0.7, 0.26, -1, 0.14, -1, -0.14, -0.7, -0.26, 0.62, -0.16, 0.78, -0.42, 1, -0.42, 0.9, 0]],
     detail: [[0.62, 0, -0.8, 0], [0.2, 0.18, 0.2, -0.18], [-0.3, 0.22, -0.3, -0.22]],
     engines: [[-1, 0.08], [-1, -0.08]],

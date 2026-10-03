@@ -72,6 +72,21 @@ export type UniversePack = {
   ambient: string[];
   /** Event text templates; `{target}` is replaced by a structure or system name. */
   events?: Partial<Record<'approach' | 'dock' | 'depart' | 'jump' | 'arrive' | 'launch' | 'cargo' | 'survey', string>>;
+  /** What happens here: the mechanics this universe runs, with their tuning. */
+  mechanics?: { use: string; with?: Record<string, unknown>; enabled?: boolean }[];
+  /** How the map itself is drawn. */
+  look?: UniverseLook;
+};
+
+export type UniverseLook = {
+  /** Links between systems: straight data lanes, curved song lines, or none. */
+  lanes?: 'straight' | 'curved' | 'none';
+  /** Background grid: crosshair marks, survey claim squares, or none. */
+  grid?: 'crosses' | 'claims' | 'none';
+  /** Ordinary traffic (fleets coming and going), 0 to 2. */
+  traffic?: number;
+  /** How many anomalies, 0 to 2. */
+  anomalies?: number;
 };
 
 export const ANOMALY_STYLE_COLORS: Record<AnomalyStyle, string> = {
@@ -203,6 +218,11 @@ export const VOID_PACK: UniversePack = {
     'SECTOR 7-GAMMA-9 · QUARANTINE LIFTED',
     'SOMETHING ANSWERED ON CHANNEL 0',
   ],
+  mechanics: [
+    { use: 'skirmish', with: { rate: 0.6, raiders: 4, weapon: 'tracers', name: 'RAIDERS' } },
+    { use: 'events', with: { rate: 0.6 } },
+  ],
+  look: { lanes: 'straight', grid: 'crosses', traffic: 1 },
 };
 
 /** A worked example of a hand-written pack: a hard, poor mining frontier. */
@@ -281,6 +301,12 @@ export const SALTWIND_PACK: UniversePack = {
     'DUST SEASON · KEEP SEALED',
     'FREE HAULERS DRINK AT THE REST',
   ],
+  mechanics: [
+    { use: 'asteroids', with: { density: 1.1, miners: 3, richness: 0.5 } },
+    { use: 'skirmish', with: { rate: 1.1, raiders: 3, weapon: 'tracers', name: 'CLAIM JUMPERS', color: '#f43f5e' } },
+    { use: 'storms', with: { rate: 0.6, color: '#c08457', name: 'DUST FRONT' } },
+  ],
+  look: { lanes: 'none', grid: 'claims', traffic: 0.7, anomalies: 0.6 },
 };
 
 /** A second worked example: something older and stranger. */
@@ -359,6 +385,95 @@ export const CHOIR_PACK: UniversePack = {
     'COUNT THE CREW AT EVERY GATE',
     'IT WAS ALWAYS SINGING',
   ],
+  mechanics: [
+    { use: 'song', with: { period: 7, harmonics: 5 } },
+    { use: 'flocks', with: { flocks: 3, size: 46, name: 'WISPS' } },
+    { use: 'maw', with: { radius: 230, hunger: 0.7 } },
+    { use: 'cartography', with: { linger: 60, scouts: 3, changes: 0.9 } },
+  ],
+  look: { lanes: 'curved', grid: 'none', traffic: 0.35, anomalies: 0.7 },
+};
+
+/** A third worked example: a war that has outlived its reasons. */
+export const SIEGE_PACK: UniversePack = {
+  id: 'siege',
+  name: 'The Long Siege',
+  tagline: 'Forty years on the same front. Neither side remembers why.',
+  palette: '#cbd5e1',
+  warmth: 0.15,
+  colorBy: 'faction',
+  ships: { fighter: 'INTERCEPTOR', scout: 'PICKET', freighter: 'SUPPLY TENDER', cruiser: 'LINE CRUISER', carrier: 'CARRIER', capital: 'SIEGE MONITOR' },
+  factions: [
+    { name: 'THE ASCENDANCY', prefix: 'ASC', color: '#f87171', classes: ['fighter', 'cruiser', 'capital'], weight: 2 },
+    { name: 'FREE WORLDS COMPACT', prefix: 'FWC', color: '#60a5fa', classes: ['fighter', 'cruiser', 'carrier'], weight: 2 },
+    { name: 'NEUTRAL TRADERS', prefix: 'NT', color: '#a3e635', classes: ['freighter', 'scout'], weight: 1 },
+  ],
+  systemPrefix: 'SECTOR',
+  structures: [
+    { kind: 'fire_base', label: 'FIRE BASE', role: 'defense', color: '#fca5a5', rarity: 'common',
+      art: [' _/^\\_ ', '[=====]', ' |# #| ', ' |___| '],
+      chatter: ['GUNS HOT', 'RELOADING', 'TARGETS DESIGNATED', 'SHELLS LOW'] },
+    { kind: 'forward_depot', label: 'FORWARD DEPOT', role: 'dock', color: '#e2e8f0', rarity: 'common',
+      art: [' .---. ', '[|###|]', '[|###|]', " '---' "],
+      chatter: ['DEPOT AT 30%', 'TENDERS QUEUED', 'MEDICAL BAY FULL', 'RATIONS · 9 DAYS'] },
+    { kind: 'orbital_foundry', label: 'ORBITAL FOUNDRY', role: 'shipyard', color: '#fdba74', rarity: 'common',
+      art: ['_|_|_|_', '|#####|', '|# = #|', '\\_____/'],
+      chatter: ['HULL 212 ON THE SLIP', 'WORKING THREE SHIFTS', 'ARMOR PLATE SHORT', 'LAUNCHING AT DAWN'] },
+    { kind: 'fuel_refinery', label: 'FUEL REFINERY', role: 'mine', color: '#fde047', rarity: 'common',
+      art: ['  ||   ', ' [##]  ', ' [##]= ', ' [##]  '],
+      chatter: ['OUTPUT DOWN 40%', 'PIPELINE HIT', 'TANKS FILLING', 'CONVOY DUE'] },
+    { kind: 'long_gate', label: 'LONG GATE', role: 'gate', color: '#c4b5fd', rarity: 'uncommon',
+      art: ['  .--.  ', ' / /\\ \\ ', '| |  | |', ' \\ \\/ / ', "  '--'  "],
+      chatter: ['GATE UNDER GUARD', 'REINFORCEMENTS INBOUND', 'TRANSIT RESTRICTED'] },
+    { kind: 'listening_post', label: 'LISTENING POST', role: 'relay', color: '#93c5fd', rarity: 'common',
+      art: ['   ^   ', '  /|\\  ', ' /_|_\\ ', '   |   '],
+      chatter: ['ENEMY TRAFFIC UP', 'CODES CHANGED', 'JAMMING ON 4', 'SILENT RUNNING'] },
+    { kind: 'wreck_field', label: 'WRECK FIELD', role: 'wreck', color: '#94a3b8', rarity: 'uncommon',
+      art: [' _ /\\ _ ', '/#\\  /#\\', '  \\_/   '],
+      chatter: ['BOTH FLAGS ON THE HULLS', 'SALVAGE FORBIDDEN', 'NO SURVIVORS'] },
+    { kind: 'minefield', label: 'MINEFIELD', role: 'hazard', color: '#f97316', rarity: 'rare',
+      art: ['* . * .', '. * . *', '* . * .'],
+      chatter: ['DO NOT TRANSIT', 'LAID IN YEAR 9', 'STILL LIVE'] },
+    { kind: 'fortress_world', label: 'FORTRESS WORLD', role: 'giant', color: '#fca5a5', rarity: 'legendary',
+      art: ['  .-##-.  ', ' /|####|\\ ', '|=|####|=|', ' \\|####|/ ', "  '-##-'  "],
+      chatter: ['THE WALL HOLDS', 'GARRISON 2 MILLION', 'NEVER FALLEN'] },
+    { kind: 'memorial_beacon', label: 'MEMORIAL BEACON', role: 'mystery', color: '#fef3c7', rarity: 'rare',
+      art: ['   |   ', '  -+-  ', '   |   ', '  /_\\  '],
+      chatter: ['NAMES: 4,112,009', 'BOTH SIDES SALUTE', 'LIGHT KEPT BURNING'] },
+  ],
+  anomalies: [
+    { label: 'ECHO OF A BATTLE', style: 'psionic' },
+    { label: 'GHOST FLEET', style: 'exotic' },
+    { label: 'JAMMING FIELD', style: 'cloud' },
+    { label: 'CHAFF CLOUD', style: 'cloud' },
+    { label: 'RADIATION FRONT', style: 'wave' },
+    { label: 'DEAD SIGNAL', style: 'temporal' },
+    { label: 'REACTOR BREACH', style: 'burst' },
+    { label: 'GRAVITY MINE', style: 'singularity' },
+  ],
+  chatter: {
+    fleet: ['WEAPONS FREE', 'MISSILES AWAY', 'SPLASH ONE', 'TAKING FIRE · DECK 4', 'REARMING', 'HOLD THE LINE', 'COVER THE TENDERS', 'BREAKING LEFT', 'ON YOUR WING', 'DAMAGE CONTROL'],
+    structure: ['SHELLS LOW', 'DEPOT AT 30%', 'GUNS HOT', 'CASUALTIES COUNTED'],
+    science: ['DEBRIS DENSITY RISING', 'FRONT MOVED 2 KM', 'SIGNAL TRAFFIC +40%', 'ORBITAL DECAY · WRECKS'],
+    mystery: ['NOBODY ORDERED THIS', 'FLAGS FROM BOTH SIDES', 'A TRUCE NO ONE SIGNED', 'THE OLD ORDERS STILL RUN'],
+    system: ['COMMAND NET UP', 'CODES ROTATED', 'CASUALTY LIST UPDATED', 'STANDING ORDERS · HOLD'],
+  },
+  ambient: [
+    'DAY 14,601 OF THE SIEGE',
+    'THE LINE HELD AGAIN',
+    'NO ONE CROSSES THE GRAVES',
+    'TRUCE EXPIRED AT 0400',
+    'BOTH SIDES SALUTE THE BEACON',
+    'NEW ORDERS · SAME AS THE OLD',
+    'THE FRONT MOVED TWO KILOMETERS',
+    'REMEMBER THE NAMES',
+  ],
+  mechanics: [
+    { use: 'warfront', with: { battles: 1.8, mobility: 0.55, bombard: true } },
+    { use: 'skirmish', with: { rate: 0.4, raiders: 3, weapon: 'missiles', name: 'COMMANDOS', color: '#f87171' } },
+    { use: 'events', with: { rate: 0.4, flares: false } },
+  ],
+  look: { lanes: 'straight', grid: 'crosses', traffic: 0.45, anomalies: 0.6 },
 };
 
 // ---- registry ------------------------------------------------------------------------------
@@ -370,7 +485,7 @@ export function registerUniverse(pack: UniversePack): UniversePack {
 }
 export const getUniverse = (id: string): UniversePack | undefined => registry.get(id);
 export const listUniverses = (): UniversePack[] => [...registry.values()];
-[VOID_PACK, SALTWIND_PACK, CHOIR_PACK].forEach(registerUniverse);
+[VOID_PACK, SALTWIND_PACK, CHOIR_PACK, SIEGE_PACK].forEach(registerUniverse);
 
 // ---- validation --------------------------------------------------------------------------------
 
@@ -518,6 +633,22 @@ export function validateUniverse(raw: unknown): UniverseValidation {
     events: r.events && typeof r.events === 'object'
       ? Object.fromEntries(Object.entries(r.events).flatMap(([k, v]) => (k in DEFAULT_EVENTS && typeof v === 'string' ? [[k, clean(v, 30)]] : [])))
       : undefined,
+    // Mechanic ids are checked against the registry when the world starts; unknown ones are skipped.
+    mechanics: Array.isArray(r.mechanics)
+      ? r.mechanics.slice(0, 12).flatMap((m: any) => {
+          const use = typeof m === 'string' ? m : m?.use;
+          if (typeof use !== 'string' || !/^[a-z][a-z0-9-]{1,40}$/.test(use)) return [];
+          return [{ use, with: m?.with && typeof m.with === 'object' ? m.with : undefined, enabled: m?.enabled === false ? false : undefined }];
+        })
+      : undefined,
+    look: r.look && typeof r.look === 'object'
+      ? {
+          lanes: oneOf(r.look.lanes, ['straight', 'curved', 'none'] as const, 'straight'),
+          grid: oneOf(r.look.grid, ['crosses', 'claims', 'none'] as const, 'crosses'),
+          traffic: typeof r.look.traffic === 'number' ? Math.max(0, Math.min(2, r.look.traffic)) : undefined,
+          anomalies: typeof r.look.anomalies === 'number' ? Math.max(0, Math.min(2, r.look.anomalies)) : undefined,
+        }
+      : undefined,
   };
   return { pack, errors, warnings };
 }
@@ -535,55 +666,31 @@ export function resolveUniverse(options: { universe?: unknown; pack?: unknown } 
 
 // ---- the prompt ------------------------------------------------------------------------------
 
-const EXAMPLE = {
-  id: 'saltwind',
-  name: 'Saltwind Reach',
-  tagline: 'Ore, dust, and debt at the end of the old road.',
-  palette: '#f59e0b',
-  warmth: 0.5,
-  ships: { fighter: 'CUTTER', scout: 'PROSPECTOR', freighter: 'ORE HAULER', cruiser: 'WARDEN', carrier: 'TENDER', capital: 'COMPANY BARGE' },
-  factions: [{ name: 'REACH MINING COMBINE', prefix: 'RMC', color: '#f59e0b', classes: ['freighter', 'capital'] }],
-  systemPrefix: 'DEPOT',
-  structures: [
-    { label: 'DEEP BORE', role: 'mine', color: '#fbbf24', rarity: 'common', art: ['  _|_  ', ' |###| ', ' |#v#| ', '  \\|/  ', '   V   '], chatter: ['SHAFT 6 AT 4.1KM', 'ORE GRADE FALLING'] },
-  ],
-  anomalies: [{ label: 'DUST FRONT', style: 'cloud' }],
-  chatter: { fleet: ['HOLD 92% · RETURNING'], structure: ['BERTHS FULL'], science: ['DUST DENSITY RISING'], mystery: ['A SHIP WITH NO REGISTRY'], system: ['COMBINE NET UP'] },
-  ambient: ['NO WATER PAST THE SECOND BELT'],
-};
+/** A mechanic as the prompt describes it. */
+export type PromptMechanic = { id: string; description: string; params: string[] };
 
 /**
  * A prompt to paste into any capable AI. It returns a universe pack for `subject`
  * (a book, a film, a game, a TTRPG setting, or a few lines about your own world).
+ * Pass the registered mechanics so the AI can choose what happens there.
  */
-export function universePrompt(subject: string): string {
+export function universePrompt(subject: string, mechanics: PromptMechanic[] = []): string {
   const what = subject.trim() || 'an original setting of your choice';
-  return `You are writing a "universe pack" for a living sci-fi tactical map: a dark, animated star chart where ships fly in formation between structures, dock, jump through gates, and scan anomalies, with terse radio chatter and faint background words. The engine animates everything; you supply the fiction.
+  const menu = mechanics.map((m) => `  ${m.id}: ${m.description} (params: ${m.params.join(', ')})`).join('\n');
+  return `Write a universe pack (JSON) for a living tactical star map of: ${what}.
+Write it as the instrument its inhabitants would use: their names, factions, places, terse radio talk. Specific, never generic. Not space-faring? Translate (kingdoms → factions, cities → docks).
 
-Universe: ${what}
-
-Write it as if the map were a real instrument inside that world: the names, factions, places, and chatter should be ones its inhabitants would actually use. Be specific and evocative; avoid generic sci-fi filler. If the universe is not space-faring, translate it into this form (kingdoms become factions, cities become docks, roads become lanes) without losing its voice.
-
-Return ONLY one JSON object (no commentary, no markdown) with these fields:
-
-- id: short kebab-case id.
-- name: the universe name. tagline: one line.
-- palette: one hex color that suits the world (it tints the whole map; mid-brightness, saturated).
-- warmth: -1 (cold, clinical) to 1 (warm, firelit).
-- ships: display names for the six ship classes: fighter, scout, freighter, cruiser, carrier, capital (each up to 16 chars, uppercase).
-- factions: 2 to 4 objects { name, prefix (2-4 letters, used for call signs like RMC-215), color (hex, readable on near-black), classes (which of the six classes they fly) }.
-- systemPrefix: what star systems are called on the chart, up to 8 chars (e.g. SYS, DEPOT, HOLLOW).
-- structures: 10 to 16 objects { label (up to 24 chars), role, color (hex), rarity (common | uncommon | rare | legendary), art, chatter (4 to 6 status lines) }.
-  role is what it does on the map:
-    dock (ships berth here), shipyard (launches new ships), mine (sends cargo convoys to docks), gate (ships jump in and out),
-    relay (pings the network), defense (fighters patrol it), giant (a megastructure), wreck, hazard, mystery.
-  Include at least one dock, one shipyard, one mine, and one gate. Keep most structures common or uncommon.
-  art: 3 to 6 rows of ASCII art, each row at most 12 characters, all rows the same width, centered, using only characters like / \\ | _ - = + . ' ( ) [ ] < > # o O * ~ :. It is drawn about 30 px tall, so prefer bold, simple silhouettes.
-- anomalies: 10 to 20 objects { label (up to 24 chars), style } where style picks the animation:
-    wave (ripples), rift (a tear), singularity (spiral), cloud (flicker), temporal (hourglass), burst (spikes), psionic (signal), exotic (shifting glyph).
-- chatter: { fleet, structure, science, mystery, system }, each 8 to 14 lines of radio/status text, uppercase, at most 30 characters, terse like real comms (numbers, call signs, status words).
-- ambient: 8 to 12 lines (at most 34 characters) that drift huge and faint in the background: the most evocative fragments of this world, like overheard transmissions or posted notices.
-
-All text uppercase. No real-world logos. Example of the shape (abbreviated, do not copy its content):
-${JSON.stringify(EXAMPLE, null, 2)}`;
+Return only JSON:
+- id, name, tagline, palette (hex), warmth (-1 cold..1 warm)
+- ships: display names for fighter, scout, freighter, cruiser, carrier, capital
+- factions: 2-4 {name, prefix (2-4 letters), color (hex, bright), classes}
+- systemPrefix (≤8 chars)
+- structures: 10-14 {label, role, color, rarity, art, chatter (4-6 lines)}. role: dock|shipyard|mine|gate|relay|defense|giant|wreck|hazard|mystery (include dock, shipyard, mine, gate). art: 3-6 rows of plain ASCII, ≤12 chars, bold silhouette.
+- anomalies: 10-16 {label, style: wave|rift|singularity|cloud|temporal|burst|psionic|exotic}
+- chatter: {fleet, structure, science, mystery, system}, 8-12 lines each, ≤30 chars
+- ambient: 8-12 haunting fragments, ≤34 chars
+- mechanics: 2-4 of what HAPPENS here, as {use, with:{params}}. This is what makes the world feel different, so choose for the story:
+${menu || '  (see the studio for the list)'}
+- look: {lanes: straight|curved|none, grid: crosses|claims|none, traffic 0-2, anomalies 0-2}
+All text uppercase.`;
 }

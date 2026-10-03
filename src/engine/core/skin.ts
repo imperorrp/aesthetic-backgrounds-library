@@ -125,6 +125,11 @@ export type BackgroundSkin<T = any> = {
   schema?: Schema;
   /** Config applied beneath the caller's config when this skin is mounted (palette, intensity, motion...). */
   defaults?: Partial<BackgroundConfig>;
+  /**
+   * Text-heavy skins: render at full device resolution (up to 2x) and never let the
+   * quality governor lower the backing-store scale, so small type stays sharp.
+   */
+  crisp?: boolean;
   mount(host: SkinHost<T>): SkinInstance;
   /**
    * Optional GPU-friendly DOM layers (CSS gradients, SVG textures, grain) that

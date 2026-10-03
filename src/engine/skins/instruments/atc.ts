@@ -8,10 +8,11 @@
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import type { Schema } from '../../core/schema';
 import { resolveOptions } from '../../core/schema';
-import { clamp01, createPhosphor, fixName, hash, hexA, mono, plate, typed } from './kit';
+import { fillCrisp, clamp01, createPhosphor, fixName, hash, hexA, mono, plate, typed } from './kit';
 
 const schema = {
-  traffic: { type: 'number', min: 3, max: 18, default: 10, step: 1, label: 'Traffic' },
+  traffic: { type: 'number', min: 3, max: 24, default: 14, step: 1, label: 'Traffic' },
+  incidents: { type: 'number', min: 0, max: 3, default: 1, label: 'Incidents (holds, go-arounds, emergencies)' },
   sweep: { type: 'number', min: 2, max: 10, default: 4.8, label: 'Sweep period (s)' },
   timeScale: { type: 'number', min: 4, max: 30, default: 14, label: 'Time compression' },
   weather: { type: 'number', min: 0, max: 1, default: 0.5, label: 'Weather returns' },
@@ -20,7 +21,7 @@ const schema = {
 type Pt = { x: number; y: number };
 type Aircraft = {
   call: string;
-  kind: 'arr' | 'dep' | 'ovf';
+  kind: 'arr' | 'dep' | 'ovf' | 'vfr' | 'heli';
   x: number;
   y: number;
   hdg: number;
@@ -32,6 +33,10 @@ type Aircraft = {
   shownAlt: number;
   shownGs: number;
   done: boolean;
+  /** Sim time the emergency was declared. */
+  emergency?: number;
+  held?: boolean;
+  wentAround?: boolean;
 };
 
 const AIRLINES = ['KST', 'NVQ', 'ORB', 'LMX', 'TZR', 'VRX', 'HLY', 'MRD', 'QZA'];
@@ -42,6 +47,7 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
   label: 'Approach radar',
   description: 'An air traffic control scope: sweep, fading returns, arrivals, departures, and typed clearances.',
   tags: ['instrument', 'aviation', 'dark', 'green'],
+  crisp: true,
   schema,
   defaults: { palette: { from: '#34d399' }, intensity: 0.6 },
   mount(host: SkinHost) {
@@ -107,6 +113,18 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
           ],
           wp: 0, shown: null, shownAlt: 200, shownGs: 160, done: false,
         };
+      } else if (kind === 'vfr' || kind === 'heli') {
+        // Low, slow, wandering: sightseers, flight school, a medevac helicopter.
+        const start = toXY(rng() * 360, 30 + rng() * 14);
+        const pts = Array.from({ length: 4 }, () => toXY(rng() * 360, 4 + rng() * 22));
+        const alt = kind === 'heli' ? 800 + Math.floor(rng() * 8) * 100 : 1500 + Math.floor(rng() * 25) * 100;
+        const gs = kind === 'heli' ? 80 + rng() * 30 : 95 + rng() * 45;
+        a = {
+          call: kind === 'heli' ? `MEDIC${1 + Math.floor(rng() * 9)}` : `N${100 + Math.floor(rng() * 900)}${'ABCDEFGHJK'[Math.floor(rng() * 10)]}`,
+          kind, x: start.x, y: start.y, hdg: rng() * 360, gs, alt,
+          route: [...pts.map((p) => ({ x: p.x, y: p.y, alt, gs })), { ...toXY(rng() * 360, 48), alt, gs }],
+          wp: 0, shown: null, shownAlt: alt, shownGs: gs, done: false,
+        };
       } else {
         const b = rng() * 360;
         const from = toXY(b, 46);
@@ -140,13 +158,64 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
         if (w.say && !quiet) say.push({ text: w.say, at: t });
         a.wp++;
         if (a.wp >= a.route.length) a.done = true;
+        else if (!quiet) incident(a, t);
       }
     }
 
+    /** The things that make a controller's shift: holds, go-arounds, emergencies. */
+    function incident(a: Aircraft, t: number) {
+      if (a.kind !== 'arr' || a.emergency !== undefined) return;
+      const k = o.incidents;
+      // Reached the arrival fix: sometimes the approach is full and it holds.
+      if (a.wp === 1 && !a.held && rng() < 0.35 * k) {
+        a.held = true;
+        const f = a.route[0];
+        const leg = 2.6;
+        const loop = [
+          { x: f.x + leg, y: f.y, alt: f.alt, gs: 210 },
+          { x: f.x + leg, y: f.y + leg * 0.8, alt: f.alt, gs: 210 },
+          { x: f.x, y: f.y + leg * 0.8, alt: f.alt, gs: 210 },
+          { x: f.x, y: f.y, alt: f.alt, gs: 210 },
+        ];
+        a.route.splice(1, 0, ...loop, ...loop);
+        say.push({ text: `${a.call}, HOLD AS PUBLISHED, EXPECT FURTHER CLEARANCE`, at: t });
+      }
+      // Crossing the final approach fix: sometimes the runway is not clear.
+      const onFinal = a.route.length - a.wp === 1;
+      if (onFinal && !a.wentAround && rng() < 0.14 * k) {
+        a.wentAround = true;
+        const thr = a.route[a.route.length - 1];
+        const fin = finals.find((fn) => Math.hypot(fn.thr.x - thr.x, fn.thr.y - thr.y) < 0.1) ?? finals[0];
+        const out = toXY(fin.hdg, 5);
+        a.route.splice(a.wp, a.route.length - a.wp,
+          { x: out.x, y: out.y, alt: 3000, gs: 200, say: `${a.call}, GO AROUND, CLIMB 3000` },
+          { x: fin.iaf.x, y: fin.iaf.y, alt: 4000, gs: 210, say: `${a.call}, VECTORS FOR ANOTHER APPROACH` },
+          { x: fin.faf.x, y: fin.faf.y, alt: 1800, gs: 160 },
+          { x: fin.thr.x, y: fin.thr.y, alt: 0, gs: 130 });
+        say.push({ text: `${a.call}, GOING AROUND`, at: t });
+      }
+    }
+
+    let nextEmergency = 25 + rng() * 30;
+    const emergency = (t: number) => {
+      const pool = air.filter((a) => (a.kind === 'arr' || a.kind === 'ovf') && a.emergency === undefined && Math.hypot(a.x, a.y) < 34);
+      if (!pool.length) return;
+      const a = pool[Math.floor(rng() * pool.length)];
+      a.emergency = t;
+      a.kind = 'arr';
+      const fin = finals.reduce((b, f) => (Math.hypot(f.faf.x - a.x, f.faf.y - a.y) < Math.hypot(b.faf.x - a.x, b.faf.y - a.y) ? f : b), finals[0]);
+      a.route = [
+        { x: fin.faf.x, y: fin.faf.y, alt: 2000, gs: 220, say: `${a.call}, CLEARED DIRECT, ANY RUNWAY, EMERGENCY EQUIPMENT ROLLING` },
+        { x: fin.thr.x, y: fin.thr.y, alt: 0, gs: 150 },
+      ];
+      a.wp = 0;
+      say.push({ text: `${a.call} DECLARING EMERGENCY · SQUAWK 7700`, at: t });
+    };
+
     const counts = () => ({ arr: air.filter((a) => a.kind === 'arr').length, dep: air.filter((a) => a.kind === 'dep').length, ovf: air.filter((a) => a.kind === 'ovf').length });
     for (let i = 0; i < o.traffic; i++) {
-      const r = i % 5;
-      spawn(r < 2 ? 'arr' : r < 4 ? 'dep' : 'ovf', 0, 10 + rng() * 140);
+      const r = i % 7;
+      spawn(r < 2 ? 'arr' : r < 4 ? 'dep' : r === 4 ? 'ovf' : r === 5 ? 'vfr' : 'heli', 0, 10 + rng() * 140);
     }
     for (const a of air) a.shown = { x: a.x, y: a.y };
 
@@ -184,9 +253,15 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
         if (t >= nextSpawn) {
           if (air.length < o.traffic) {
             const c = counts();
-            spawn(c.arr <= c.dep ? 'arr' : c.ovf < 2 && hash(Math.floor(t), 5) < 0.4 ? 'ovf' : 'dep', t);
+            const low = air.filter((a) => a.kind === 'vfr' || a.kind === 'heli').length;
+            const r = hash(Math.floor(t), 5);
+            spawn(low < 3 && r < 0.3 ? (r < 0.1 ? 'heli' : 'vfr') : c.arr <= c.dep ? 'arr' : c.ovf < 2 && r < 0.6 ? 'ovf' : 'dep', t);
           }
-          nextSpawn = t + 3 + hash(Math.floor(t * 10), 1) * 5;
+          nextSpawn = t + 2 + hash(Math.floor(t * 10), 1) * 4;
+        }
+        if (o.incidents > 0 && t >= nextEmergency) {
+          emergency(t);
+          nextEmergency = t + (70 + rng() * 80) / o.incidents;
         }
         for (const c of cells) {
           c.x += wind.x * dt * o.timeScale * 0.02;
@@ -253,7 +328,7 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
         ctx.font = mono(9);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        for (let nm = 10; nm <= 40; nm += 10) ctx.fillText(`${nm}`, cx + 3, cy - nm * px - 6);
+        for (let nm = 10; nm <= 40; nm += 10) fillCrisp(ctx, `${nm}`, cx + 3, cy - nm * px - 6);
 
         // Bearing ticks on the 30 NM ring.
         const R = 30 * px;
@@ -270,7 +345,7 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
         ctx.fillStyle = hexA(ink, 0.45 * level);
         for (let b = 0; b < 360; b += 30) {
           const a = (b - 90) * deg;
-          ctx.fillText(String(b).padStart(3, '0'), cx + Math.cos(a) * (R + 20), cy + Math.sin(a) * (R + 20));
+          fillCrisp(ctx, String(b).padStart(3, '0'), cx + Math.cos(a) * (R + 20), cy + Math.sin(a) * (R + 20));
         }
 
         // Airways, fixes, finals, runways.
@@ -295,7 +370,7 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
           ctx.closePath();
           ctx.stroke();
           ctx.fillStyle = hexA(ink, 0.45 * level);
-          ctx.fillText(f.name, sx(f) + 7, sy(f));
+          fillCrisp(ctx, f.name, sx(f) + 7, sy(f));
         }
         for (const fin of finals) {
           ctx.strokeStyle = hexA(accent, 0.28 * level);
@@ -350,6 +425,30 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
         ctx.lineTo(cx + Math.cos(sweep) * L, cy + Math.sin(sweep) * L);
         ctx.stroke();
 
+        // Conflict alerts: two aircraft inside 3 NM and 1,000 ft get a blinking line between them.
+        const alarm = '#f87171';
+        const blink = Math.floor(t * 3) % 2 === 0;
+        ctx.font = mono(9);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let i = 0; i < air.length; i++) {
+          for (let j = i + 1; j < air.length; j++) {
+            const a = air[i];
+            const b = air[j];
+            if (!a.shown || !b.shown || a.shownAlt < 500 || b.shownAlt < 500) continue;
+            if (Math.hypot(a.shown.x - b.shown.x, a.shown.y - b.shown.y) > 3 || Math.abs(a.shownAlt - b.shownAlt) > 1000) continue;
+            ctx.strokeStyle = hexA(alarm, (blink ? 0.9 : 0.4) * level);
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(sx(a.shown), sy(a.shown));
+            ctx.lineTo(sx(b.shown), sy(b.shown));
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = hexA(alarm, (blink ? 1 : 0.5) * level);
+            fillCrisp(ctx, 'CA', (sx(a.shown) + sx(b.shown)) / 2, (sy(a.shown) + sy(b.shown)) / 2 - 8);
+          }
+        }
+
         // Data blocks, anchored to each aircraft's last painted position.
         ctx.font = mono(10);
         ctx.textAlign = 'left';
@@ -359,19 +458,27 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
           const x = sx(a.shown);
           const y = sy(a.shown);
           if (x < -40 || x > W + 40 || y < -40 || y > H + 40) continue;
-          const lx = x + 16;
-          const ly = y - 16;
-          ctx.strokeStyle = hexA(ink, 0.45 * level);
+          const low = a.kind === 'vfr' || a.kind === 'heli';
+          const emerg = a.emergency !== undefined;
+          const lx = x + (low ? 10 : 16);
+          const ly = y - (low ? 10 : 16);
+          ctx.strokeStyle = hexA(emerg ? alarm : ink, 0.45 * level);
           ctx.beginPath();
           ctx.moveTo(x + 3, y - 3);
           ctx.lineTo(lx - 2, ly + 2);
           ctx.stroke();
           const fl = String(Math.round(a.shownAlt / 100)).padStart(3, '0');
           const trend = a.route[a.wp] ? (a.route[a.wp].alt > a.shownAlt + 150 ? '↑' : a.route[a.wp].alt < a.shownAlt - 150 ? '↓' : ' ') : ' ';
-          ctx.fillStyle = hexA(a.kind === 'ovf' ? ink : accent, (a.kind === 'ovf' ? 0.55 : 0.9) * level);
-          ctx.fillText(a.call, lx, ly - 6);
+          if (low) {
+            // Unidentified low traffic: a short block, dimmer.
+            ctx.fillStyle = hexA(ink, 0.45 * level);
+            fillCrisp(ctx, `${a.kind === 'heli' ? 'H ' : 'V '}${fl}`, lx, ly);
+            continue;
+          }
+          ctx.fillStyle = emerg ? hexA(alarm, (blink ? 1 : 0.55) * level) : hexA(a.kind === 'ovf' ? ink : accent, (a.kind === 'ovf' ? 0.55 : 0.9) * level);
+          fillCrisp(ctx, emerg ? `${a.call} 7700` : a.call, lx, ly - 6);
           ctx.fillStyle = hexA(ink, 0.65 * level);
-          ctx.fillText(`${fl}${trend} ${Math.round(a.shownGs / 10)}`, lx, ly + 6);
+          fillCrisp(ctx, `${fl}${trend} ${Math.round(a.shownGs / 10)}${a.held && a.wp <= 8 ? ' H' : ''}`, lx, ly + 6);
         }
 
         // Readouts and the clearance line.
@@ -379,11 +486,11 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
         ctx.fillStyle = hexA(ink, 0.55 * level);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText(`${airport} APPROACH · 119.30`, 18, 16);
-        ctx.fillText(`ALTIMETER 29.92 · WIND 270/12 · ATIS ${String.fromCharCode(65 + (Math.floor(t / 90) % 26))}`, 18, 30);
+        fillCrisp(ctx, `${airport} APPROACH · 119.30`, 18, 16);
+        fillCrisp(ctx, `ALTIMETER 29.92 · WIND 270/12 · ATIS ${String.fromCharCode(65 + (Math.floor(t / 90) % 26))}`, 18, 30);
         ctx.textAlign = 'right';
         const minutes = 14 * 60 + 22 + Math.floor((t * o.timeScale) / 60);
-        ctx.fillText(`${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}${String(minutes % 60).padStart(2, '0')}Z · ${air.length} TRACKS`, W - 18, 16);
+        fillCrisp(ctx, `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}${String(minutes % 60).padStart(2, '0')}Z · ${air.length} TRACKS`, W - 18, 16);
         while (say.length && t - say[0].at > 7) say.shift();
         const msg = say[say.length - 1];
         if (msg) {
@@ -391,7 +498,7 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
           ctx.textBaseline = 'bottom';
           ctx.font = mono(11);
           ctx.fillStyle = hexA(accent, 0.9 * level * clamp01((7 - age) * 2));
-          ctx.fillText(typed(msg.text, age, 30, t), W - 18, H - 14);
+          fillCrisp(ctx, typed(msg.text, age, 30, t), W - 18, H - 14);
         }
       },
       destroy() {},

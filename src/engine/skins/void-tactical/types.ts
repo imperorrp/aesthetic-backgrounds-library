@@ -39,6 +39,8 @@ export interface Ship {
   vy: number;
   heading: number;
   slot: [number, number];
+  /** Hull points; at zero the ship is destroyed. */
+  hp: number;
 }
 
 /** Cubic Hermite path from p0 (velocity v0) to p1 (velocity v1) over T seconds from t0. */
@@ -89,6 +91,11 @@ export interface Fleet {
   maxVisits: number;
   /** Anomaly ids already surveyed, so scouts move on. */
   surveyed: string[];
+  /** Set by a mechanic that is steering this fleet's leader (raids, mining, war). */
+  steer?: ((f: Fleet, dt: number) => void) | null;
+  /** Who spawned it and why (e.g. 'raider', 'miner', 'war'). */
+  tag?: string;
+  hostile?: boolean;
 }
 
 export interface Planet {

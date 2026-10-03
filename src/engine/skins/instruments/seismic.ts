@@ -8,16 +8,24 @@
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import type { Schema } from '../../core/schema';
 import { resolveOptions } from '../../core/schema';
-import { clamp01, fixName, hash, hexA, mono, plate, typed } from './kit';
+import { fillCrisp, clamp01, fixName, hash, hexA, mono, plate, typed } from './kit';
 
 const schema = {
   stations: { type: 'number', min: 6, max: 18, default: 12, step: 1, label: 'Stations' },
   speed: { type: 'number', min: 0.3, max: 3, default: 1, label: 'Paper speed' },
-  activity: { type: 'number', min: 0, max: 1, default: 0.6, label: 'Activity' },
+  activity: { type: 'number', min: 0, max: 1, default: 0.75, label: 'Activity' },
   section: { type: 'boolean', default: true, label: 'Crust section' },
 } satisfies Schema;
 
-type Quake = { t0: number; mag: number; depth: number; x: number; id: number };
+/**
+ * What shook: a local quake, one of its aftershocks, a quarry blast, a volcano's
+ * harmonic tremor, or a great quake on the far side of the planet (a teleseism).
+ */
+type Kind = 'quake' | 'after' | 'blast' | 'tremor' | 'tele';
+type Quake = { t0: number; mag: number; depth: number; x: number; id: number; kind: Kind; seq?: number; n?: number; dur?: number; region?: string; dist?: number };
+const REGIONS = ['KURIL ISLANDS', 'TONGA', 'NORTHERN CHILE', 'SUMATRA', 'ALEUTIAN ISLANDS', 'HINDU KUSH', 'MOLUCCA SEA', 'KERMADEC ISLANDS'];
+const VOLCANO_KM = 118;
+const QUARRY_KM = 14;
 type Station = { code: string; x: number; dist: number; gain: number; phase: number };
 
 const VP = 6.2; // km/s
@@ -29,6 +37,7 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
   label: 'Seismograph',
   description: 'A seismic record: station traces trembling, quakes sweeping across the stack, the crust below.',
   tags: ['instrument', 'science', 'dark', 'amber'],
+  crisp: true,
   schema,
   defaults: { palette: { from: '#f59e0b' }, intensity: 0.6 },
   mount(host: SkinHost) {
@@ -55,11 +64,32 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
     const quakes: Quake[] = [];
     // One struck just before the record starts, so the first screen already shows it.
     let qt = -9;
-    for (let i = 0; i < 400; i++) {
-      const big = i === 0 || rng() < 0.12;
-      quakes.push({ id: 400 + i, t0: qt, mag: big ? 4.5 + rng() * 1.8 : 2 + rng() * 2.4, depth: 4 + rng() * 26, x: 10 + rng() * 120 });
-      qt += (18 + rng() * 40) / (0.4 + o.activity);
+    let id = 400;
+    for (let i = 0; i < 300; i++) {
+      const roll = rng();
+      if (i === 0 || roll < 0.14) {
+        // A big one, then its aftershock sequence close by.
+        const main: Quake = { id: id++, kind: 'quake', t0: qt, mag: i === 0 ? 4.7 + rng() * 0.5 : 4.6 + rng() * 1.7, depth: 6 + rng() * 22, x: 30 + rng() * 80 };
+        quakes.push(main);
+        let at = qt + 10;
+        const n = 3 + Math.floor(rng() * 4);
+        for (let k = 1; k <= n; k++) {
+          at += 5 + rng() * 14 * k;
+          quakes.push({ id: id++, kind: 'after', seq: main.id, n: k, t0: at, mag: main.mag - 1.1 - rng() * 1.6, depth: Math.max(2, main.depth + (rng() - 0.5) * 8), x: main.x + (rng() - 0.5) * 12 });
+        }
+      } else if (roll < 0.22) {
+        quakes.push({ id: id++, kind: 'blast', t0: qt, mag: 1.8 + rng() * 0.8, depth: 0.3, x: QUARRY_KM + (rng() - 0.5) * 3 });
+      } else if (roll < 0.29) {
+        quakes.push({ id: id++, kind: 'tremor', t0: qt, mag: 2.6 + rng() * 0.8, depth: 3 + rng() * 4, x: VOLCANO_KM + (rng() - 0.5) * 4, dur: 26 + rng() * 26 });
+      } else if (roll < 0.36) {
+        quakes.push({ id: id++, kind: 'tele', t0: qt, mag: 6.6 + rng() * 1.6, depth: 30 + rng() * 300, x: 70, region: REGIONS[Math.floor(rng() * REGIONS.length)], dist: 40 + Math.floor(rng() * 50) });
+      } else {
+        quakes.push({ id: id++, kind: 'quake', t0: qt, mag: 2 + rng() * 2.4, depth: 4 + rng() * 26, x: 10 + rng() * 120 });
+      }
+      qt += (14 + rng() * 34) / (0.4 + o.activity);
     }
+    quakes.sort((a, b) => a.t0 - b.t0);
+    const volcano = `MT ${fixName(Math.floor(rng() * 1e6)).slice(0, 5)}`;
 
     const distTo = (s: Station, q: Quake) => Math.hypot(s.x - q.x, q.depth);
 
@@ -73,14 +103,33 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
       for (const q of quakes) {
         if (q.t0 > t) break;
         if (t - q.t0 > 120) continue;
+        if (q.kind === 'tele') {
+          // From the far side of the planet: every station at once, long and slow.
+          const tp = t - q.t0 - s.x * 0.012;
+          const amp = Math.pow(10, (q.mag - 6.5) * 0.4) * s.gain;
+          v += 0.25 * amp * wavelet(tp, 1.4, 3);
+          v += 0.35 * amp * wavelet(tp - 14, 0.7, 5);
+          v += 0.8 * amp * wavelet(tp - 26, 0.16, 26) * clamp01((tp - 26) / 6);
+          continue;
+        }
         const d = distTo(s, q);
-        const amp = Math.pow(10, (q.mag - 3) * 0.55) * s.gain / Math.max(1, d / 18);
+        const amp = Math.pow(10, (q.mag - 3) * 0.34) * s.gain / Math.max(1, d / 18);
+        if (q.kind === 'tremor') {
+          // A volcano humming: emergent, steady, no clear phases.
+          const tau = t - (q.t0 + d / VS);
+          const dur = q.dur ?? 30;
+          const env = clamp01(tau / 8) * clamp01((dur - tau) / 8);
+          if (env > 0) v += 0.45 * amp * env * Math.sin(tau * Math.PI * 2 * (1.6 + 0.2 * Math.sin(tau * 0.3))) * (0.8 + 0.2 * Math.sin(tau * 0.9 + si));
+          continue;
+        }
         const tp = t - (q.t0 + d / VP);
         const ts = t - (q.t0 + d / VS);
         const tr = t - (q.t0 + d / VR + 2);
-        v += 0.18 * amp * wavelet(tp, 7, 1.6);
-        v += 0.55 * amp * wavelet(ts, 3.5, 3.2);
-        v += 0.7 * amp * wavelet(tr, 0.9, 7 + q.mag);
+        // A blast pushes first and shears little; its energy goes into the surface waves.
+        const [kp, ks, kr] = q.kind === 'blast' ? [0.5, 0.15, 1.1] : [0.18, 0.55, 0.7];
+        v += kp * amp * wavelet(tp, 7, 1.6);
+        v += ks * amp * wavelet(ts, 3.5, 3.2);
+        v += kr * amp * wavelet(tr, q.kind === 'blast' ? 1.4 : 0.9, 4 + q.mag * 0.6);
       }
       return v;
     };
@@ -127,6 +176,17 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
         const level = 0.55 + 0.45 * host.intensity;
         plate(ctx, W, H, palette.bg, accent, 0.55, 0.4, 0.06);
 
+        // A big local quake shakes the whole record for a moment as its S waves arrive.
+        let shake = 0;
+        const recent = latest(t);
+        if (host.motion !== 'off' && recent && recent.kind === 'quake' && recent.mag >= 5) {
+          const near = Math.min(...stations.map((s) => distTo(s, recent)));
+          const k = t - (recent.t0 + near / VS);
+          if (k > 0 && k < 2.5) shake = (1 - k / 2.5) * (recent.mag - 4.5) * 3;
+        }
+        ctx.save();
+        if (shake) ctx.translate((hash(Math.floor(t * 30), 1) - 0.5) * shake, (hash(Math.floor(t * 30), 2) - 0.5) * shake);
+
         const sectionH = o.section ? Math.min(150, H * 0.2) : 0;
         const top = 54;
         const bottom = H - sectionH - 34;
@@ -154,7 +214,7 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
         for (let s = first; s <= t; s += 10) {
           if (s % 30 !== 0) continue;
           const abs = Math.abs(s);
-          ctx.fillText(`${s < 0 ? '-' : ''}${Math.floor(abs / 60)}:${String(abs % 60).padStart(2, '0')}`, right - (t - s) * pxPerSec, bottom + 6);
+          fillCrisp(ctx, `${s < 0 ? '-' : ''}${Math.floor(abs / 60)}:${String(abs % 60).padStart(2, '0')}`, right - (t - s) * pxPerSec, bottom + 6);
         }
 
         // Traces.
@@ -168,10 +228,10 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
           ctx.font = mono(10);
           ctx.textAlign = 'right';
           ctx.textBaseline = 'middle';
-          ctx.fillText(`${s.code}`, left - 10, y0 - 5);
+          fillCrisp(ctx, `${s.code}`, left - 10, y0 - 5);
           ctx.fillStyle = hexA(ink, 0.32 * level);
           ctx.font = mono(8);
-          ctx.fillText(`${Math.max(0, Math.round(s.x + 25))} KM`, left - 10, y0 + 6);
+          fillCrisp(ctx, `${Math.max(0, Math.round(s.x + 25))} KM`, left - 10, y0 + 6);
 
           ctx.strokeStyle = hexA(accent, 0.12 * level);
           ctx.beginPath();
@@ -188,7 +248,8 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
           for (let k = kNow - N + 1; k <= kNow; k++) {
             const x = right - (t - k * sp) * pxPerSec;
             if (x < left) continue;
-            const v = Math.max(-1, Math.min(1, buf[((k % N) + N) % N])) * half;
+            // Soft clip: the pen rounds off against its stops instead of drawing flat bars.
+            const v = Math.tanh(buf[((k % N) + N) % N] * 0.9) * half * 1.35;
             if (!started) {
               ctx.moveTo(x, y0 - v);
               started = true;
@@ -200,7 +261,7 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
 
         // Phase picks on the newest event: P and S ticks where they reach each trace.
         const q = latest(t);
-        if (q && t - q.t0 < span) {
+        if (q && q.kind !== 'tremor' && t - q.t0 < span) {
           ctx.font = mono(9);
           ctx.textAlign = 'center';
           ctx.textBaseline = 'bottom';
@@ -208,7 +269,7 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
             const d = distTo(stations[i], q);
             const y0 = top + gap * (i + 0.5);
             for (const [label, v] of [['P', VP], ['S', VS]] as const) {
-              const arr = q.t0 + d / v;
+              const arr = q.kind === 'tele' ? q.t0 + stations[i].x * 0.012 + (label === 'S' ? 14 : 0) : q.t0 + d / v;
               if (arr > t) continue;
               const x = right - (t - arr) * pxPerSec;
               if (x < left) continue;
@@ -219,7 +280,7 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
               ctx.stroke();
               if (i === 0 || i === n - 1) {
                 ctx.fillStyle = hexA(ink, 0.6 * level);
-                ctx.fillText(label, x, y0 - gap * 0.5);
+                fillCrisp(ctx, label, x, y0 - gap * 0.5);
               }
             }
           }
@@ -233,7 +294,7 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
           ctx.rect(0, sy0, W, sectionH + 8);
           ctx.clip();
           const kmToX = (km: number) => left + ((km + 20) / 160) * (right - left);
-          const kmToY = (km: number) => sy0 + 14 + (km / 36) * (sectionH - 24);
+          const kmToY = (km: number) => sy0 + 24 + (km / 36) * (sectionH - 34);
           ctx.strokeStyle = hexA(accent, 0.18 * level);
           ctx.beginPath();
           for (let layer = 0; layer < 6; layer++) {
@@ -264,7 +325,45 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
             ctx.closePath();
             ctx.fill();
           }
-          if (q && t - q.t0 < 60) {
+          // The volcano and its magma body, and the quarry.
+          const vx = kmToX(VOLCANO_KM);
+          const surf = kmToY(0);
+          const humming = q && q.kind === 'tremor' && t - q.t0 < (q.dur ?? 30) + 10;
+          const glow = humming ? 0.35 + 0.25 * Math.sin(t * 6) : 0.12;
+          const mg = ctx.createRadialGradient(vx, kmToY(9), 0, vx, kmToY(9), 34);
+          mg.addColorStop(0, hexA(accent, glow * level));
+          mg.addColorStop(1, hexA(accent, 0));
+          ctx.fillStyle = mg;
+          ctx.fillRect(vx - 40, kmToY(9) - 34, 80, 68);
+          ctx.strokeStyle = hexA(accent, (humming ? 0.6 : 0.3) * level);
+          ctx.beginPath();
+          ctx.moveTo(vx - 22, surf);
+          ctx.lineTo(vx - 4, surf - 12);
+          ctx.lineTo(vx + 4, surf - 12);
+          ctx.lineTo(vx + 22, surf);
+          ctx.moveTo(vx, surf - 12);
+          ctx.lineTo(vx, kmToY(9));
+          ctx.stroke();
+          ctx.fillStyle = hexA(ink, 0.4 * level);
+          ctx.font = mono(8);
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          fillCrisp(ctx, volcano, vx, surf - 15);
+          fillCrisp(ctx, 'QUARRY', kmToX(QUARRY_KM), surf - 9);
+          if (q && q.kind === 'tele' && t - q.t0 < 40) {
+            // Rays from the deep earth, arriving nearly straight up.
+            const k = ((t - q.t0) * 0.5) % 1;
+            ctx.strokeStyle = hexA(accent, 0.4 * level * clamp01(1 - (t - q.t0) / 40));
+            ctx.beginPath();
+            for (let i = 0; i < 9; i++) {
+              const x = left + ((i + 0.5) / 9) * (right - left);
+              const y = sy0 + sectionH + 8 - k * sectionH;
+              ctx.moveTo(x - 8, y + 18);
+              ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+          }
+          if (q && q.kind !== 'tele' && q.kind !== 'tremor' && t - q.t0 < 60) {
             const age = t - q.t0;
             const hx = kmToX(q.x);
             const hy = kmToY(q.depth);
@@ -282,14 +381,14 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
             ctx.font = mono(14);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('✶', hx, hy);
+            fillCrisp(ctx, '✶', hx, hy);
           }
           ctx.fillStyle = hexA(ink, 0.35 * level);
           ctx.font = mono(8);
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
-          ctx.fillText('0 KM', 6, kmToY(0) - 4);
-          ctx.fillText('36 KM', 6, kmToY(36) - 8);
+          fillCrisp(ctx, '0 KM', 6, kmToY(0) - 4);
+          fillCrisp(ctx, '36 KM', 6, kmToY(36) - 8);
           ctx.restore();
         }
 
@@ -297,22 +396,31 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
         ctx.font = mono(11);
         ctx.textAlign = 'right';
         ctx.textBaseline = 'top';
-        if (q && t - q.t0 < 26) {
+        const hold = q ? (q.kind === 'tremor' ? (q.dur ?? 30) + 12 : q.kind === 'tele' ? 40 : 26) : 0;
+        if (q && t - q.t0 < hold) {
           const age = t - q.t0 - 1;
           const az = ['N', 'NNE', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.floor(hash(q.id, 2) * 9)];
-          const lines = [`EVENT ${q.id} · M${q.mag.toFixed(1)}`, `DEPTH ${q.depth.toFixed(0)} KM · ${Math.round(q.x)} KM ${az}`, q.mag >= 4.5 ? 'FELT REPORTS · ALERT SENT' : 'LOCATED · 9 PHASES'];
+          const where = `DEPTH ${q.depth.toFixed(0)} KM · ${Math.round(q.x)} KM ${az}`;
+          const lines =
+            q.kind === 'tele' ? [`TELESEISM · M${q.mag.toFixed(1)} ${q.region}`, `Δ ${q.dist}° · DEPTH ${q.depth.toFixed(0)} KM · BAZ ${Math.floor(hash(q.id, 3) * 360)}°`, 'NO LOCAL THREAT · TSUNAMI CENTER NOTIFIED']
+            : q.kind === 'tremor' ? [`HARMONIC TREMOR · ${volcano}`, `1.6 HZ · ${Math.round(q.dur ?? 30)} S EPISODE · DEPTH ${q.depth.toFixed(0)} KM`, 'ALERT LEVEL YELLOW · OVERFLIGHT REQUESTED']
+            : q.kind === 'blast' ? [`EVENT ${q.id} · M${q.mag.toFixed(1)} · PROBABLE BLAST`, 'DEPTH 0 KM · QUARRY · COMPRESSIONAL FIRST MOTION', 'SCHEDULED SHOT · NO ACTION']
+            : q.kind === 'after' ? [`AFTERSHOCK ${q.n} OF ${q.seq} · M${q.mag.toFixed(1)}`, where, 'SEQUENCE ACTIVE · DECAYING']
+            : [`EVENT ${q.id} · M${q.mag.toFixed(1)}`, where, q.mag >= 4.5 ? 'FELT REPORTS · SHAKEALERT SENT' : 'LOCATED · 9 PHASES'];
           lines.forEach((l, i) => {
-            ctx.fillStyle = hexA(i === 0 ? accent : ink, (i === 0 ? 0.95 : 0.7) * level * clamp01((26 - age) / 2));
-            ctx.fillText(typed(l, age - i * 0.6, 36, t), W - 18, 14 + i * 14);
+            const hot = i === 0 && q.kind === 'quake' && q.mag >= 4.5;
+            ctx.fillStyle = hexA(hot ? '#f87171' : i === 0 ? accent : ink, (i === 0 ? 0.95 : 0.7) * level * clamp01((hold - age) / 2));
+            fillCrisp(ctx, typed(l, age - i * 0.6, 36, t), W - 18, 14 + i * 14);
           });
         } else {
           ctx.fillStyle = hexA(ink, 0.45 * level);
-          ctx.fillText('NETWORK QUIET · MICROSEISM NOMINAL', W - 18, 14);
+          fillCrisp(ctx, 'NETWORK QUIET · MICROSEISM NOMINAL', W - 18, 14);
         }
         ctx.textAlign = 'left';
         ctx.fillStyle = hexA(ink, 0.45 * level);
         ctx.font = mono(10);
-        ctx.fillText(`${stations.length} STATIONS · BHZ · 40 SPS`, 18, 14);
+        fillCrisp(ctx, `${stations.length} STATIONS · BHZ · 40 SPS`, 18, 14);
+        ctx.restore();
       },
       destroy() {},
     };

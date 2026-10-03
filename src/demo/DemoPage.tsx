@@ -34,9 +34,9 @@ import {
 } from '../engine';
 import { History, download, exportImage, exportVideo, type ExportOptions } from './studio-tools';
 import { listUniverses, universePrompt, validateUniverse, type UniversePack } from '../engine/skins/void-tactical/universe';
-import { githubUniverse } from '../engine/skins/void-tactical/github';
+import { listMechanics, type MechanicRef } from '../engine/skins/void-tactical/mechanics';
 import { instrumentSkins } from '../engine/skins/instruments';
-import { aiPrompt } from './ai-prompt';
+import { aiPrompt, compactConfig } from './ai-prompt';
 import './DemoPage.css';
 
 /** The ones with a point of view; everything else is under "Basics". */
@@ -171,7 +171,24 @@ function paletteOf(s: Studio): PaletteSpec {
 export default function DemoPage() {
   const [studio, setStudio] = useState<Studio>(() => {
     if (typeof window === 'undefined') return studioFor('void-tactical');
-    return decodeState(window.location.hash) ?? studioFor('void-tactical');
+    // Readable links (?bg=…&seed=…&u=…) work on their own; the hash, when present,
+    // restores every other setting.
+    const q = new URLSearchParams(window.location.search);
+    const bg = q.get('bg');
+    const fromHash = decodeState(window.location.hash);
+    const base = fromHash ?? studioFor(bg && (getSkin(bg) || presetIds.has(bg)) ? bg : 'void-tactical');
+    const seed = q.get('seed');
+    if (seed) base.seed = seed;
+    const u = q.get('u');
+    if (u && base.source === 'void-tactical' && !fromHash) {
+      const pack = listUniverses().find((p) => p.id === u);
+      if (pack) {
+        base.skinOptions = { ...base.skinOptions, universe: u };
+        if (pack.palette) Object.assign(base, { paletteMode: 'custom', customHex: pack.palette, theme: 'dark' });
+        if (typeof pack.warmth === 'number') base.warmth = pack.warmth;
+      }
+    }
+    return base;
   });
   const [panelOpen, setPanelOpen] = useState(true);
   const [seedDraft, setSeedDraft] = useState(studio.seed);
@@ -221,9 +238,24 @@ export default function DemoPage() {
     };
   }, [showContent, studio]);
 
+  // The URL always says what you are looking at: ?bg=void-tactical&seed=orion-harbor-23.
+  // Anything changed beyond the defaults rides along in the hash.
   useEffect(() => {
     const url = new URL(window.location.href);
-    url.hash = `s=${encodeState(studio)}`;
+    url.search = '';
+    url.searchParams.set('bg', studio.source);
+    url.searchParams.set('seed', studio.seed);
+    const universe = typeof studio.skinOptions.universe === 'string' ? studio.skinOptions.universe : undefined;
+    if (universe && universe !== 'void') url.searchParams.set('u', universe);
+    const plain = studioFor(studio.source, studio);
+    if (universe) {
+      plain.skinOptions = { ...plain.skinOptions, universe };
+      const pack = listUniverses().find((p) => p.id === universe);
+      if (pack?.palette) Object.assign(plain, { paletteMode: 'custom', customHex: pack.palette, theme: 'dark' });
+      if (typeof pack?.warmth === 'number') plain.warmth = pack.warmth;
+    }
+    const strip = (s: Studio) => JSON.stringify({ ...s, seed: '', source: '' });
+    url.hash = strip(plain) === strip(studio) ? '' : `s=${encodeState(studio)}`;
     window.history.replaceState(null, '', url.toString());
   }, [studio]);
 
@@ -302,6 +334,34 @@ export default function DemoPage() {
     const uni = pack?.name ?? listUniverses().find((u) => u.id === studio.skinOptions.universe)?.name;
     return studio.source === 'void-tactical' && uni ? `${base} · ${uni}` : base;
   })();
+
+  /** The prompt for an AI: the shortest configuration that reproduces this exactly. */
+  const promptText = () => {
+    const sk = getSkin(studio.source);
+    const preset = allPresets.find((p) => p.id === studio.source);
+    const pack = studio.skinOptions.pack as UniversePack | undefined;
+    let cfg: Record<string, unknown>;
+    if (preset && JSON.stringify(preset.scene) === JSON.stringify(studio.scene)) {
+      cfg = { ...exportConfig, skin: preset.id, options: undefined };
+    } else if (pack) {
+      cfg = { ...exportConfig, options: { ...(exportConfig.options as Record<string, unknown>), pack: '__PACK__' } };
+    } else {
+      cfg = exportConfig;
+    }
+    const defaults: Record<string, unknown> = {
+      palette: (preset?.defaults ?? sk?.defaults)?.palette ?? 'void-cyan',
+      intensity: (preset?.defaults ?? sk?.defaults)?.intensity ?? 1,
+      density: (sk?.defaults as { density?: number } | undefined)?.density ?? 1,
+      detail: (sk?.defaults as { detail?: string } | undefined)?.detail ?? 'low',
+    };
+    const optionDefaults = sk?.schema ? schemaDefaults(sk.schema) : {};
+    return aiPrompt(compactConfig(cfg, defaults, optionDefaults), !!pack).replace('"__PACK__"', 'universe');
+  };
+
+  const saveUniverse = () => {
+    const pack = studio.skinOptions.pack as UniversePack | undefined;
+    if (pack) download(new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' }), 'universe.json');
+  };
 
   /** Copy text and flash which button did it. */
   const copy = async (what: string, text: string) => {
@@ -426,8 +486,6 @@ export default function DemoPage() {
   const [subject, setSubject] = useState('');
   const [pasted, setPasted] = useState('');
   const [packNote, setPackNote] = useState<{ ok: boolean; text: string } | null>(null);
-  const [githubUser, setGithubUser] = useState('');
-  const [githubBusy, setGithubBusy] = useState(false);
   const activePack = studio.skinOptions.pack as UniversePack | undefined;
 
   const applyPack = (pack: UniversePack, note: string) => {
@@ -456,19 +514,6 @@ export default function DemoPage() {
     }
     applyPack(pack, warnings.length ? `Loaded "${pack.name}". ${warnings.length} gap${warnings.length > 1 ? 's' : ''} filled: ${warnings.slice(0, 2).join(' ')}` : `Loaded "${pack.name}".`);
   };
-  const loadGithub = async () => {
-    setGithubBusy(true);
-    setPackNote(null);
-    try {
-      const pack = await githubUniverse(githubUser);
-      applyPack(pack, `${pack.systems?.length ?? 0} repositories, ${pack.fleets?.length ?? 0} recent events, ${pack.factions.length} languages.`);
-    } catch (err) {
-      setPackNote({ ok: false, text: err instanceof Error ? err.message : 'Could not reach GitHub.' });
-    } finally {
-      setGithubBusy(false);
-    }
-  };
-
   const applySeed = (next: string) => {
     const value = next.trim() || randomSeedString();
     setSeedDraft(value);
@@ -545,14 +590,31 @@ export default function DemoPage() {
             <p className="demo-kicker">{sourceLabel}</p>
 
             <div className="demo-export demo-export-top">
-              <button type="button" className="demo-primary" onClick={() => copy('prompt', aiPrompt(exportConfig, sourceLabel))}>
+              <button type="button" className="demo-primary" onClick={() => copy('prompt', promptText())}>
                 {copied === 'prompt' ? 'Copied. Paste it into your AI.' : 'Copy prompt for your AI'}
               </button>
-              <p className="demo-hint">Paste it into Claude, ChatGPT, Cursor, or v0 and it will add exactly this background to your site.</p>
+              <p className="demo-hint">Three lines. Paste into whatever AI edits your site.{activePack ? ' Attach universe.json too (below).' : ''}</p>
             </div>
 
+            <label className="demo-field demo-seed">
+              <span>Seed · the same seed always plays the same world</span>
+              <span className="demo-text-row">
+                <input
+                  value={seedDraft}
+                  onChange={(e) => setSeedDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') applySeed(seedDraft);
+                  }}
+                  onBlur={() => seedDraft !== studio.seed && applySeed(seedDraft)}
+                  spellCheck={false}
+                  aria-label="Seed"
+                />
+                <button type="button" onClick={() => applySeed(randomSeedString())} title="A new seed: same settings, a different world">Shuffle</button>
+                <button type="button" onClick={() => copy('link', window.location.href)} title="Copy a link to exactly this">{copied === 'link' ? 'Copied' : 'Link'}</button>
+              </span>
+            </label>
+
             <div className="demo-text-row demo-toolbar">
-              <button type="button" onClick={() => applySeed(randomSeedString())} title="A new seed: same settings, a different world">Shuffle</button>
               <button type="button" onClick={undo} disabled={!history.canUndo} title="Ctrl/Cmd+Z">Undo</button>
               <button type="button" onClick={redo} disabled={!history.canRedo} title="Ctrl/Cmd+Shift+Z">Redo</button>
             </div>
@@ -615,13 +677,27 @@ export default function DemoPage() {
                   )}
                 </label>
 
+                <MechanicsPanel
+                  refs={
+                    Array.isArray(studio.skinOptions.mechanics)
+                      ? (studio.skinOptions.mechanics as MechanicRef[])
+                      : (activePack ?? listUniverses().find((u) => u.id === (studio.skinOptions.universe ?? 'void')))?.mechanics ?? []
+                  }
+                  custom={Array.isArray(studio.skinOptions.mechanics)}
+                  onChange={(mechanics) => update({ skinOptions: { ...studio.skinOptions, mechanics } })}
+                  onReset={() => {
+                    const { mechanics: _m, ...rest } = studio.skinOptions;
+                    update({ skinOptions: rest });
+                  }}
+                />
+
                 <details className="demo-details">
                   <summary>Make your own from any book, film, game, or world</summary>
                   <label className="demo-field">
                     <span>1. Name it or describe it</span>
                     <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="The Expanse · Dune · my TTRPG's frontier · a lonely lighthouse planet" spellCheck={false} />
                   </label>
-                  <button type="button" onClick={() => copy('universe', universePrompt(subject))}>
+                  <button type="button" onClick={() => copy('universe', universePrompt(subject, listMechanics().map((m) => ({ id: m.id, description: m.description, params: Object.keys(m.schema) }))))}>
                     {copied === 'universe' ? 'Copied. Paste it into your AI.' : '2. Copy the prompt for your AI'}
                   </button>
                   <label className="demo-field">
@@ -631,44 +707,14 @@ export default function DemoPage() {
                   <button type="button" onClick={applyPasted} disabled={!pasted.trim()}>4. Bring it to life</button>
                 </details>
 
-                <details className="demo-details">
-                  <summary>Your GitHub, as a galaxy</summary>
-                  <p className="demo-hint">Repositories become star systems, languages become factions, your recent pushes, pull requests, and releases fly between them, and open issues become anomalies. Public data only.</p>
-                  <span className="demo-text-row">
-                    <input
-                      value={githubUser}
-                      onChange={(e) => setGithubUser(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && githubUser.trim()) loadGithub();
-                      }}
-                      placeholder="username"
-                      spellCheck={false}
-                      aria-label="GitHub username"
-                    />
-                    <button type="button" onClick={loadGithub} disabled={!githubUser.trim() || githubBusy}>
-                      {githubBusy ? 'Charting…' : 'Chart it'}
-                    </button>
-                  </span>
-                </details>
                 {packNote && <p className={`demo-hint ${packNote.ok ? 'demo-ok' : 'demo-warn'}`}>{packNote.text}</p>}
+                {activePack && (
+                  <button type="button" onClick={saveUniverse} title="The pack as a file, for your site or your AI">
+                    Download universe.json
+                  </button>
+                )}
               </div>
             )}
-
-            <label className="demo-field">
-              <span>Seed</span>
-              <span className="demo-text-row">
-                <input
-                  value={seedDraft}
-                  onChange={(e) => setSeedDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') applySeed(seedDraft);
-                  }}
-                  spellCheck={false}
-                  aria-label="Seed"
-                />
-                <button type="button" onClick={() => applySeed(seedDraft)}>Apply</button>
-              </span>
-            </label>
 
             <label className="demo-field">
               <span>Palette</span>
@@ -821,7 +867,7 @@ export default function DemoPage() {
             <div className="demo-export">
               <p className="demo-kicker demo-kicker-gap">Take it with you</p>
               <div className="demo-text-row">
-                <button type="button" className="demo-primary" onClick={() => copy('prompt', aiPrompt(exportConfig, sourceLabel))}>
+                <button type="button" className="demo-primary" onClick={() => copy('prompt', promptText())}>
                   {copied === 'prompt' ? 'Copied' : 'Copy prompt for your AI'}
                 </button>
                 <button type="button" onClick={() => copy('link', window.location.href)}>{copied === 'link' ? 'Copied' : 'Copy link'}</button>
@@ -1061,6 +1107,44 @@ function LayerStack({ scene, onChange }: { scene: Scene; onChange: (fn: (scene: 
         </select>
         <button type="button" onClick={add}>Add layer</button>
       </div>
+    </div>
+  );
+}
+
+/** The universe's mechanics as switches, each with its own tuning. Editing makes a copy; reset drops it. */
+function MechanicsPanel({ refs, custom, onChange, onReset }: { refs: MechanicRef[]; custom: boolean; onChange: (next: MechanicRef[]) => void; onReset: () => void }) {
+  const live = (id: string) => refs.find((r) => r.use === id && r.enabled !== false);
+  const toggle = (id: string) => {
+    const existing = refs.find((r) => r.use === id);
+    onChange(existing ? refs.map((r) => (r.use === id ? { ...r, enabled: r.enabled === false } : r)) : [...refs, { use: id }]);
+  };
+  const tune = (id: string, key: string, value: unknown) => onChange(refs.map((r) => (r.use === id ? { ...r, with: { ...(r.with ?? {}), [key]: value } } : r)));
+  return (
+    <div className="demo-mechanics">
+      <p className="demo-kicker demo-kicker-gap">What happens here</p>
+      {listMechanics().map((m) => {
+        const ref = live(m.id);
+        return (
+          <div key={m.id}>
+            <label className="demo-toggle-field" title={m.description}>
+              <input type="checkbox" checked={!!ref} onChange={() => toggle(m.id)} />
+              <span className="demo-toggle-label">{m.label}</span>
+            </label>
+            {ref && Object.keys(m.schema).length > 0 && (
+              <details className="demo-details">
+                <summary>Tune {m.label.toLowerCase()}</summary>
+                <em className="demo-hint">{m.description}</em>
+                <SchemaControls schema={m.schema} values={{ ...schemaDefaults(m.schema), ...(ref.with ?? {}) }} onChange={(key, value) => tune(m.id, key, value)} />
+              </details>
+            )}
+          </div>
+        );
+      })}
+      {custom && (
+        <button type="button" onClick={onReset}>
+          Back to this universe&apos;s own
+        </button>
+      )}
     </div>
   );
 }

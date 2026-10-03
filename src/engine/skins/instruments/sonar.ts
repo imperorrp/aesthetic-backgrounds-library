@@ -8,14 +8,27 @@
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import type { Schema } from '../../core/schema';
 import { resolveOptions } from '../../core/schema';
-import { clamp01, hash, hexA, mixRgb, mono, plate, scanlines, typed } from './kit';
+import { fillCrisp, clamp01, hash, hexA, mixRgb, mono, plate, scanlines, typed } from './kit';
 
 const schema = {
-  contacts: { type: 'number', min: 2, max: 9, default: 5, step: 1, label: 'Contacts' },
+  contacts: { type: 'number', min: 2, max: 10, default: 6, step: 1, label: 'Contacts' },
   speed: { type: 'number', min: 0.3, max: 2.5, default: 1, label: 'Scroll speed' },
   grain: { type: 'number', min: 0, max: 1, default: 0.55, label: 'Ocean noise' },
   labels: { type: 'boolean', default: true, label: 'Contact labels' },
+  activity: { type: 'number', min: 0, max: 3, default: 1, label: 'Events (torpedoes, pings, evasions)' },
 } satisfies Schema;
+
+/** Events come in fixed slots of time, decided by hash, so the waterfall's history is the same however it was reached. */
+const SLOT = 80;
+type Ev = { kind: 'torpedo' | 'ping'; t0: number; b: number; turn: number };
+const smooth = (x: number) => {
+  const k = clamp01(x);
+  return k * k * (3 - 2 * k);
+};
+const angDiff = (a: number, b: number) => {
+  let d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+};
 
 type Kind = 'MERCHANT' | 'BIOLOGIC' | 'WARSHIP' | 'TRAWLER' | 'UNKNOWN' | 'SUBMARINE';
 type Contact = {
@@ -40,6 +53,7 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
   label: 'Sonar waterfall',
   description: 'A submarine\'s passive sonar: contacts drifting across a scrolling bearing-time waterfall.',
   tags: ['instrument', 'naval', 'dark', 'green'],
+  crisp: true,
   schema,
   defaults: { palette: { from: '#4ade80' }, intensity: 0.6 },
   mount(host: SkinHost) {
@@ -78,7 +92,38 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
         dies: t + 40 + rng() * 90,
       };
     };
-    const bearingOf = (c: Contact, t: number) => (((c.b0 + c.drift * (t - c.born) + Math.sin(t * 0.07 + c.phase) * c.wobble) % 360) + 360) % 360;
+    // The events: a torpedo and the evasion that follows, or an active ping and its echoes.
+    const evCache = new Map<number, Ev | null>();
+    const eventIn = (slot: number): Ev | null => {
+      let e = evCache.get(slot);
+      if (e !== undefined) return e;
+      const roll = hash(slot, 101);
+      const b = hash(slot, 103) * 360;
+      const turn = hash(slot, 104) < 0.5 ? 55 : -55;
+      if (o.activity <= 0) e = null;
+      else if (slot === 0 || roll < Math.min(0.85, 0.32 * o.activity)) e = { kind: 'torpedo', t0: slot === 0 ? 14 : slot * SLOT + 3 + hash(slot, 102) * 8, b, turn };
+      else if (roll < Math.min(0.95, 0.32 * o.activity + 0.45)) e = { kind: 'ping', t0: slot * SLOT + 4 + hash(slot, 102) * (SLOT - 12), b, turn };
+      else e = null;
+      evCache.set(slot, e);
+      if (evCache.size > 64) evCache.delete(evCache.keys().next().value!);
+      return e;
+    };
+    const eventsNear = (t: number) => {
+      const s = Math.floor(t / SLOT);
+      return [eventIn(s - 1), eventIn(s)].filter((e): e is Ev => !!e);
+    };
+    /** Own ship's heading offset: hard over to evade, then back to base course. */
+    const turnAt = (t: number) => {
+      let off = 0;
+      for (const e of eventsNear(t)) if (e.kind === 'torpedo') off += e.turn * smooth((t - e.t0 - 12) / 9) * (1 - smooth((t - e.t0 - 48) / 12));
+      return off;
+    };
+    const decoyOf = (e: Ev) => e.b + (e.turn > 0 ? -38 : 38);
+    const torpedoTrue = (e: Ev, t: number) => {
+      const b = e.b + 0.25 * (t - e.t0);
+      return b + (decoyOf(e) - b) * smooth((t - e.t0 - 18) / 8);
+    };
+    const bearingOf = (c: Contact, t: number) => (((c.b0 + c.drift * (t - c.born) + Math.sin(t * 0.07 + c.phase) * c.wobble - turnAt(t)) % 360) + 360) % 360;
 
     // Transients: short broadband flares (a hatch, a pump, a torpedo tube flooding).
     const transientAt = (r: number) => {
@@ -96,21 +141,47 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
       for (let i = contacts.length - 1; i >= 0; i--) if (t > contacts[i].dies) contacts.splice(i, 1, spawn(t));
       const tr = transientAt(r);
       const d = rowImg.data;
-      for (let b = 0; b < 360; b++) {
-        let e = 0.07 + o.grain * (0.2 * hash(r, b) + 0.16 * (host.noise.noise2(b * 0.045, r * 0.015) * 0.5 + 0.5));
-        for (const c of contacts) {
-          const life = clamp01((t - c.born) / 6) * clamp01((c.dies - t) / 6);
-          if (life <= 0) continue;
-          let s = c.strength * life;
-          if (c.kind === 'BIOLOGIC') s *= Math.sin(t * 0.9 + c.phase) > 0.2 ? 0.6 + 0.4 * hash(r, c.id) : 0.06;
-          let db = Math.abs(bearingOf(c, t) - b);
-          if (db > 180) db = 360 - db;
-          e += s * Math.exp(-(db * db) / (2 * c.width * c.width));
+      // Everything that sounds this row, as (relative bearing, strength, width) lines.
+      const off = turnAt(t);
+      const lines: { b: number; s: number; w: number }[] = [];
+      for (const c of contacts) {
+        const life = clamp01((t - c.born) / 6) * clamp01((c.dies - t) / 6);
+        if (life <= 0) continue;
+        let s = c.strength * life;
+        if (c.kind === 'BIOLOGIC') s *= Math.sin(t * 0.9 + c.phase) > 0.2 ? 0.6 + 0.4 * hash(r, c.id) : 0.06;
+        lines.push({ b: bearingOf(c, t), s, w: c.width });
+      }
+      let floor = 0;
+      const spans: { b: number; s: number; span: number }[] = [];
+      if (tr) spans.push({ b: tr.bearing, s: 0.45, span: tr.span });
+      for (const ev of eventsNear(t)) {
+        const k = t - ev.t0;
+        if (ev.kind === 'torpedo') {
+          if (k >= 0 && k < 1.2) spans.push({ b: ev.b - off, s: 0.6, span: 5 });
+          if (k >= 3 && k < 28) lines.push({ b: torpedoTrue(ev, t) - off, s: (0.55 + 0.45 * clamp01((k - 3) / 10)) * clamp01(28 - k), w: 0.7 });
+          if (k >= 16 && k < 36) lines.push({ b: decoyOf(ev) - off, s: 0.5 * (0.55 + 0.45 * hash(r, 7)) * clamp01((k - 16) * 2) * clamp01((36 - k) / 4), w: 8 });
+          if (k >= 28 && k < 29.6) {
+            spans.push({ b: decoyOf(ev) - off, s: 1, span: 46 });
+            floor += 0.18;
+          }
+        } else {
+          // One ping across every bearing, then each contact answers after its range delay.
+          if (k >= 0 && k < 0.4) floor += 0.5;
+          for (const c of contacts) {
+            const delay = 1 + hash(c.id, 33) * 5;
+            if (k >= delay && k < delay + 0.4) lines.push({ b: bearingOf(c, t), s: 1, w: 1.6 });
+          }
         }
-        if (tr) {
-          let db = Math.abs(tr.bearing - b);
-          if (db > 180) db = 360 - db;
-          if (db < tr.span) e += 0.45 * (1 - db / tr.span);
+      }
+      for (let b = 0; b < 360; b++) {
+        let e = 0.07 + floor + o.grain * (0.2 * hash(r, b) + 0.16 * (host.noise.noise2(b * 0.045, r * 0.015) * 0.5 + 0.5));
+        for (const l of lines) {
+          const db = angDiff(l.b, b);
+          if (db < l.w * 4) e += l.s * Math.exp(-(db * db) / (2 * l.w * l.w));
+        }
+        for (const sp of spans) {
+          const db = angDiff(sp.b, b);
+          if (db < sp.span) e += sp.s * (1 - db / sp.span);
         }
         // Baffles: the stern arc hears only the boat itself.
         if (b > 165 && b < 195) e = e * 0.25 + 0.04;
@@ -213,7 +284,7 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
           const len = b % 30 === 0 ? 8 : b % 10 === 0 ? 5 : 3;
           ctx.moveTo(x, area.y - 2);
           ctx.lineTo(x, area.y - 2 - len);
-          if (b % 30 === 0 && b < 360) ctx.fillText(String(b).padStart(3, '0'), x, area.y - 12);
+          if (b % 30 === 0 && b < 360) fillCrisp(ctx, String(b).padStart(3, '0'), x, area.y - 12);
         }
         ctx.stroke();
 
@@ -222,7 +293,7 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
         ctx.textBaseline = 'middle';
         for (let s = 0; s * pxPerSec < area.h; s += 30) {
           ctx.fillStyle = hexA(ink, 0.45 * level);
-          ctx.fillText(s === 0 ? 'NOW' : `-${s}S`, area.x - 8, area.y + s * pxPerSec);
+          fillCrisp(ctx, s === 0 ? 'NOW' : `-${s}S`, area.x - 8, area.y + s * pxPerSec);
         }
 
         // Contact labels along the ruler.
@@ -245,7 +316,7 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
             ctx.lineTo(x, y - 5);
             ctx.stroke();
             ctx.fillStyle = hexA(ink, 0.75 * level * life);
-            ctx.fillText(`S${c.id} ${c.kind}`, x + 4, y);
+            fillCrisp(ctx, `S${c.id} ${c.kind}`, x + 4, y);
           }
         }
 
@@ -283,8 +354,61 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
             ctx.textAlign = 'right';
             ctx.textBaseline = 'bottom';
             ctx.fillStyle = hexA(accent, 0.95 * a);
-            ctx.fillText(typed(`MARK · ${mark.text}`, age - 0.3, 34, t), W - 24, H - 12);
+            fillCrisp(ctx, typed(`MARK · ${mark.text}`, age - 0.3, 34, t), W - 24, H - 12);
           }
+        }
+
+        // Events as the watch hears them: tags on the ruler and the call-outs, typed.
+        const alarm = '#f87171';
+        const off = turnAt(now);
+        let call: { text: string; at: number; hot: boolean } | null = null;
+        let flank = 0;
+        for (const ev of eventsNear(now)) {
+          const k = now - ev.t0;
+          const brg = (b: number) => String(Math.round((((b - off) % 360) + 360) % 360)).padStart(3, '0');
+          const steps: [number, string, boolean][] = ev.kind === 'torpedo'
+            ? [
+              [0, `TRANSIENT · BRG ${brg(ev.b)} · LAUNCH TRANSIENT`, true],
+              [3, `TORPEDO IN THE WATER · BRG ${brg(ev.b)} · HIGH-SPEED SCREWS`, true],
+              [12, `OWN SHIP · HARD ${ev.turn > 0 ? 'RIGHT' : 'LEFT'} RUDDER · AHEAD FLANK`, true],
+              [16, `COUNTERMEASURE AWAY · BRG ${brg(decoyOf(ev))}`, false],
+              [22, 'TORPEDO BEARING DRIFT · TRACKING DECOY', false],
+              [28, `DETONATION · BRG ${brg(decoyOf(ev))} · TORPEDO DEFEATED`, true],
+              [48, 'RESUMING BASE COURSE · ALL AHEAD ONE THIRD', false],
+            ]
+            : [
+              [-1.5, 'GOING ACTIVE · SINGLE PING', false],
+              [1, `ECHOES · ${contacts.length} RETURNS · RANGES UPDATED`, false],
+            ];
+          for (const [at, text, hot] of steps) if (k >= at && k < at + 8) call = { text, at: ev.t0 + at, hot };
+          if (ev.kind === 'torpedo') {
+            flank = Math.max(flank, smooth((k - 12) / 6) * (1 - smooth((k - 48) / 10)));
+            if (k >= 3 && k < 28) {
+              const x = bx((((torpedoTrue(ev, now) - off) % 360) + 360) % 360);
+              ctx.font = mono(10);
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'top';
+              ctx.fillStyle = hexA(alarm, (Math.floor(t * 4) % 2 ? 1 : 0.55) * level);
+              fillCrisp(ctx, 'TORP', x, area.y + 3);
+              ctx.strokeStyle = hexA(alarm, 0.7 * level);
+              ctx.beginPath();
+              ctx.moveTo(x - 6, area.y + 1);
+              ctx.lineTo(x, area.y - 5);
+              ctx.lineTo(x + 6, area.y + 1);
+              ctx.stroke();
+            }
+          }
+        }
+        if (call) {
+          const age = now - call.at;
+          ctx.font = mono(12);
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          const a = level * clamp01((8 - age) * 1.5);
+          ctx.fillStyle = hexA(palette.bg, 0.7 * a);
+          ctx.fillRect(area.x + area.w / 2 - 260, area.y + 38, 520, 22);
+          ctx.fillStyle = hexA(call.hot ? alarm : accent, (call.hot && Math.floor(t * 3) % 2 ? 0.7 : 1) * a);
+          fillCrisp(ctx, typed(call.text, age, 40, t), area.x + area.w / 2, area.y + 43);
         }
 
         // Readouts.
@@ -292,10 +416,11 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
         ctx.textBaseline = 'bottom';
         ctx.textAlign = 'left';
         ctx.fillStyle = hexA(ink, 0.5 * level);
-        ctx.fillText(`PASSIVE BB · 50–2000 HZ · ${contacts.length} TRACKS`, area.x, H - 12);
+        fillCrisp(ctx, `PASSIVE BB · 50–2000 HZ · ${contacts.length} TRACKS`, area.x, H - 12);
         ctx.textAlign = 'right';
         ctx.textBaseline = 'bottom';
-        ctx.fillText(`DEPTH ${210 + Math.round(Math.sin(t * 0.05) * 6)} M · CRS 090 · ${6} KT`, W - 24, area.y - 22);
+        const crs = String(Math.round((((90 + off) % 360) + 360) % 360)).padStart(3, '0');
+        fillCrisp(ctx, `DEPTH ${210 + Math.round(Math.sin(t * 0.05) * 6 + flank * 40)} M · CRS ${crs} · ${Math.round(6 + flank * 22)} KT`, W - 24, area.y - 22);
       },
       destroy() {},
     };

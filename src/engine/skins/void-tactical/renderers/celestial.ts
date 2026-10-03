@@ -9,7 +9,7 @@
  */
 
 import type { SimSettings, SystemState, StarSystem, Structure } from '../types';
-import { accentRgba, FONT, getArtSprite, getGlowSprite, hexRgba, SPRITE_BASE_HEIGHT, type CanvasContext, type RenderFrame } from './utils';
+import { accentRgba, drawSprite, FONT, getArtSprite, getGlowSprite, hexRgba, SPRITE_BASE_HEIGHT, type CanvasContext, type RenderFrame } from './utils';
 import { shouldGlitchLabels, shouldShowPlanetLabel, shouldShowStructureLabel, shouldShowSystemLabel } from '../labels';
 import type { Rng } from '../../../rng';
 import { rgba } from '../../../palette';
@@ -54,7 +54,7 @@ export const renderCelestialBodies = (
 };
 
 /** Ring radius for a structure's art at the current sprite scale. */
-export const structureRadius = (img: { width: number; height: number }) => Math.max(img.width, img.height) * 0.5 + 3;
+export const structureRadius = (img: { cssW: number; cssH: number }) => Math.max(img.cssW, img.cssH) * 0.5 + 3;
 
 function roleEffects(ctx: CanvasContext, s: Structure, gx: number, gy: number, R: number, color: string, frame: RenderFrame) {
   const t = frame.time;
@@ -209,7 +209,7 @@ export const renderStructures = (
 
     const color = frame.color(s.color || frame.palette.accent);
     const boost = s.rarity === 'legendary' ? 1.35 : s.rarity === 'rare' ? 1.15 : 1;
-    const img = getArtSprite(s.art, s.kind, color, spriteHeight * boost);
+    const img = getArtSprite(s.art, s.kind, color, spriteHeight * boost, frame.dpr);
     const R = structureRadius(img);
     const flash = s.flashAt !== undefined ? Math.max(0, 1 - (t - s.flashAt) / 1.2) : 0;
 
@@ -238,16 +238,16 @@ export const renderStructures = (
       ctx.save();
       ctx.translate(gx, gy);
       ctx.rotate(Math.sin(t * 0.25 + s.spin) * 0.3);
-      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      ctx.drawImage(img, -img.cssW / 2, -img.cssH / 2, img.cssW, img.cssH);
       ctx.restore();
     } else {
       if (s.role === 'mystery' && hash2(Math.floor(t * 6), s.id.length + Math.floor(s.spin * 100)) < 0.08) {
         // Now and then the object does not sit still.
         ctx.globalAlpha = 0.45;
-        ctx.drawImage(img, gx - img.width / 2 + 2, gy - img.height / 2 - 1);
+        drawSprite(ctx, img, gx + 2, gy - 1, frame.dpr);
         ctx.globalAlpha = 1;
       }
-      ctx.drawImage(img, gx - img.width / 2, gy - img.height / 2);
+      drawSprite(ctx, img, gx, gy, frame.dpr);
     }
 
     board?.reserve(gx, gy, R);

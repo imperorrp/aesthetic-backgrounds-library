@@ -97,6 +97,37 @@ export const renderGrids = (
 ) => {
   // 1. RENDER SECTOR GRID (Background Layer)
   const level = 0.55 + 0.45 * frame.style.hud;
+  const grid = frame.pack.look?.grid ?? 'crosses';
+  if (grid === 'none') return;
+  if (grid === 'claims') {
+    // Survey claims: corner-marked squares with lot numbers, scrolling with the map.
+    const size = 120;
+    const off = (camera.x * frame.parallax) % size;
+    const first = Math.floor((camera.x * frame.parallax) / size);
+    ctx.strokeStyle = accentRgba(frame.palette, 0.13 * level);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i * size - off < viewport.width + size; i++) {
+      for (let y = 0; y < viewport.height + size; y += size) {
+        const x = Math.round(i * size - off) + 0.5;
+        const yy = Math.round(y) + 0.5;
+        ctx.moveTo(x, yy + 7);
+        ctx.lineTo(x, yy);
+        ctx.lineTo(x + 7, yy);
+      }
+    }
+    ctx.stroke();
+    ctx.fillStyle = accentRgba(frame.palette, 0.16 * level);
+    ctx.font = '8px "Syne Mono", ui-monospace, monospace';
+    for (let i = 0; i * size - off < viewport.width + size; i++) {
+      for (let y = 0; y < viewport.height; y += size) {
+        const lot = first + i;
+        if ((lot * 7 + y) % 3 !== 0) continue;
+        ctx.fillText(`LOT ${String(((lot % 900) + 900) % 900 + 100)}-${y / size + 1}`, Math.round(i * size - off + 4), Math.round(y + 12));
+      }
+    }
+    return;
+  }
   ctx.fillStyle = accentRgba(frame.palette, 0.1 * level);
   const parallaxFactorGrid = 0.1;
   const gridOffsetX = (camera.x * parallaxFactorGrid * WORLD_SPEED_MULTIPLIER) % (CHAR_SIZE * 6);

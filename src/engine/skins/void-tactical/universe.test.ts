@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import '../../../lib';
-import { CHOIR_PACK, universePrompt, validateUniverse, VOID_PACK } from './universe';
-import { packFromGithub } from './github';
+import { registerMechanic } from './mechanics';
+import { CHOIR_PACK, SALTWIND_PACK, SIEGE_PACK, universePrompt, validateUniverse, VOID_PACK } from './universe';
 import { createBackground } from '../../core/createBackground';
 import { createManualScheduler } from '../../core/scheduler';
 import { installCanvasStub, recorderFor } from '../../../test/canvas-stub';
@@ -39,58 +39,33 @@ describe('universe packs', () => {
   });
 
   it('round-trips the built-in packs', () => {
-    for (const p of [VOID_PACK, CHOIR_PACK]) {
+    for (const p of [VOID_PACK, SALTWIND_PACK, CHOIR_PACK, SIEGE_PACK]) {
       const { pack, errors } = validateUniverse(JSON.parse(JSON.stringify(p)));
       expect(errors).toEqual([]);
       expect(pack.structures.length).toBe(p.structures.length);
+      expect(pack.mechanics?.map((m) => m.use)).toEqual(p.mechanics?.map((m) => m.use));
+      expect(pack.look).toEqual(p.look);
     }
   });
 
-  it('writes a prompt that names the subject and asks for JSON only', () => {
-    const prompt = universePrompt('The Expanse');
-    expect(prompt).toContain('Universe: The Expanse');
-    expect(prompt).toMatch(/Return ONLY one JSON object/);
-    expect(prompt).toContain('role is what it does on the map');
-  });
-});
-
-describe('github galaxy', () => {
-  it('maps repos to systems and languages to factions', () => {
-    const pack = packFromGithub(
-      { login: 'octo', name: 'Octo Cat', bio: 'builds things', public_repos: 3, followers: 9, created_at: '2015-01-01T00:00:00Z' },
-      [
-        { name: 'alpha', full_name: 'octo/alpha', language: 'Rust', stargazers_count: 40, forks_count: 1, open_issues_count: 0, description: null, fork: false, archived: false, pushed_at: '2026-01-01' },
-        { name: 'beta', full_name: 'octo/beta', language: 'TypeScript', stargazers_count: 2, forks_count: 0, open_issues_count: 1, description: null, fork: false, archived: false, pushed_at: '2026-02-01' },
-        { name: 'gamma', full_name: 'octo/gamma', language: 'Rust', stargazers_count: 0, forks_count: 0, open_issues_count: 0, description: null, fork: true, archived: false, pushed_at: '2026-03-01' },
-      ],
-      [
-        { type: 'PushEvent', repo: { name: 'octo/alpha' }, payload: { commits: [{ message: 'fix the warp core\n\nlong body' }] } },
-        { type: 'IssuesEvent', repo: { name: 'octo/beta' }, payload: { action: 'opened', issue: { number: 7, title: 'Crash on launch' } } },
-      ],
-    );
-    expect(pack.systems?.map((s) => s.name)).toEqual(['ALPHA', 'BETA']);
-    expect(pack.factions.map((f) => f.name)).toEqual(['RUST', 'TYPESCRIPT']);
-    expect(pack.fleets?.map((f) => f.name)).toEqual(['PUSH ALPHA', 'ISSUE #7']);
-    expect(pack.chatter.fleet[0]).toBe('FIX THE WARP CORE');
-    expect(pack.anomalies[0].label).toBe('CRASH ON LAUNCH');
-    expect(pack.ambient[0]).toBe('@OCTO');
-    const checked = validateUniverse(pack);
-    expect(checked.errors).toEqual([]);
-    // Validation keeps the data-driven parts.
-    expect(checked.pack.fleets?.map((f) => f.name)).toEqual(['PUSH ALPHA', 'ISSUE #7']);
-    expect(checked.pack.systems?.length).toBe(2);
+  it('writes a short prompt that names the subject, asks for JSON only, and offers the mechanics', () => {
+    const prompt = universePrompt('The Expanse', [{ id: 'storms', description: 'Fronts roll across the map.', params: ['rate', 'color'] }]);
+    expect(prompt).toContain('star map of: The Expanse');
+    expect(prompt).toMatch(/Return only JSON/);
+    expect(prompt).toContain('storms: Fronts roll across the map. (params: rate, color)');
+    expect(prompt.length).toBeLessThan(2000);
   });
 });
 
 describe('void-tactical with a universe', () => {
-  const run = (options: Record<string, unknown>, seed: string) => {
+  const run = (options: Record<string, unknown>, seed: string, frames = 240) => {
     const wrapper = document.createElement('div');
     const canvas = document.createElement('canvas');
     wrapper.appendChild(canvas);
     document.body.appendChild(wrapper);
     const s = createManualScheduler();
     const h = createBackground(canvas, { skin: 'void-tactical', options, scheduler: s, config: { seed, adaptiveQuality: false, motion: 'full' } });
-    s.step(240);
+    s.step(frames);
     const rec = recorderFor(canvas);
     h.destroy();
     wrapper.remove();
@@ -103,5 +78,56 @@ describe('void-tactical with a universe', () => {
     expect(run({ universe: 'choir' }, 'u-1')).not.toBe(a);
     const inline = run({ pack: CHOIR_PACK }, 'u-1');
     expect(run({ pack: CHOIR_PACK }, 'u-1')).toBe(inline);
+  }, 30_000);
+
+  it('runs every built-in universe through its events without failing', () => {
+    const warn = vi.spyOn(console, 'warn');
+    // 40 s of sim each: raids, belts, storms, songs, the maw, the front, captures, missiles.
+    for (const universe of ['void', 'saltwind', 'choir', 'siege']) run({ universe }, 'long-run', 2400);
+    expect(warn.mock.calls.filter((c) => String(c[0]).includes('mechanic'))).toEqual([]);
+    warn.mockRestore();
+  }, 180_000);
+
+  it('lets options.mechanics replace the pack list, including mechanics registered from outside', () => {
+    const calls = { created: 0, updates: 0, draws: 0 };
+    registerMechanic({
+      id: 'test-probe',
+      label: 'Probe',
+      description: 'Counts its calls.',
+      schema: { rate: { type: 'number', min: 0, max: 1, default: 0.5 } },
+      create(_api, p) {
+        calls.created++;
+        expect(p.rate).toBe(0.5);
+        return { update: () => void calls.updates++, draw: () => void calls.draws++ };
+      },
+    });
+    const base = run({ universe: 'saltwind' }, 'm-1');
+    expect(run({ universe: 'saltwind', mechanics: [{ use: 'test-probe' }] }, 'm-1')).not.toBe(base);
+    expect(calls.created).toBe(1);
+    expect(calls.updates).toBeGreaterThan(100);
+    expect(calls.draws).toBeGreaterThan(100);
+    // Switched off is the same as absent.
+    expect(run({ universe: 'saltwind', mechanics: [{ use: 'storms', enabled: false }] }, 'm-1')).toBe(run({ universe: 'saltwind', mechanics: [] }, 'm-1'));
+  }, 60_000);
+
+  it('switches off a mechanic that throws and keeps the scene running', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    registerMechanic({
+      id: 'test-broken',
+      label: 'Broken',
+      description: 'Throws on its tenth update.',
+      schema: {},
+      create() {
+        let n = 0;
+        return {
+          update() {
+            if (++n === 10) throw new Error('boom');
+          },
+        };
+      },
+    });
+    expect(() => run({ universe: 'void', mechanics: [{ use: 'test-broken' }, { use: 'skirmish' }] }, 'm-2')).not.toThrow();
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
   }, 30_000);
 });

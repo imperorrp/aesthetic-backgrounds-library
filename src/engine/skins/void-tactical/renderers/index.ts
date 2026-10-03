@@ -21,16 +21,20 @@ import { allStructures } from '../fleets';
 
 const board = createLabelBoard();
 
+type DrawPass = (ctx: CanvasRenderingContext2D, pass: 'under' | 'mid' | 'over', frame: RenderFrame, board?: ReturnType<typeof createLabelBoard>) => void;
+
 export const renderSystem = (
   ctx: CanvasRenderingContext2D,
   system: SystemState,
   camera: { x: number; y: number },
   viewport: { width: number; height: number },
   frame: RenderFrame,
+  mechanics?: DrawPass,
 ) => {
   ctx.font = FONT;
   ctx.textBaseline = 'top';
   renderStars(ctx, system.stars, camera, viewport, frame);
+  mechanics?.(ctx, 'under', frame, board);
   renderCelestialBodies(ctx, system.celestialBodies, camera, viewport, frame);
   for (const sys of system.systems) renderStarSystem(ctx, sys, camera, viewport, system.settings, frame, board);
   renderSystemConnections(ctx, system.systems, camera, viewport, frame);
@@ -38,12 +42,14 @@ export const renderSystem = (
   renderGrids(ctx, camera, viewport, frame);
   renderSectorConnections(ctx, camera, viewport, frame);
   renderAnomalies(ctx, system, camera, viewport, frame, board);
+  mechanics?.(ctx, 'mid', frame, board);
   renderFleets(ctx, system, camera, viewport, frame, board);
+  mechanics?.(ctx, 'over', frame, board);
   ctx.font = FONT;
   ctx.textBaseline = 'top';
   renderTelemetry(ctx, system.telemetry, system.settings, frame);
   renderTacticalOverlays(ctx, system, camera, viewport, frame, board);
-  board.flush(ctx, viewport);
+  board.flush(ctx, viewport, frame.dpr);
   renderTargetLock(ctx, system, camera, viewport, frame);
 };
 

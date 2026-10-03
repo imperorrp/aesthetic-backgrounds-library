@@ -39,7 +39,9 @@ export {
   VOID_PACK,
   SALTWIND_PACK,
   CHOIR_PACK,
+  SIEGE_PACK,
 } from '../../engine/skins/void-tactical/universe';
-export type { UniversePack, UniverseValidation, ShipClass, AnomalyStyle, StructureRole } from '../../engine/skins/void-tactical/universe';
-export { githubUniverse, packFromGithub, GithubUniverseError } from '../../engine/skins/void-tactical/github';
+export type { UniversePack, UniverseLook, UniverseValidation, ShipClass, AnomalyStyle, StructureRole } from '../../engine/skins/void-tactical/universe';
+export { registerMechanic, getMechanic, listMechanics, steerToward, steerOrbit } from '../../engine/skins/void-tactical/mechanics';
+export type { Mechanic, MechanicApi, MechanicInstance, MechanicPass, MechanicRef, MechanicSpawn, Fx } from '../../engine/skins/void-tactical/mechanics';
 export type { OverlayFlags, OverlayId } from '../../engine/skins/void-tactical/overlays/flags';

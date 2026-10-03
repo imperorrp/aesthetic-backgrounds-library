@@ -11,8 +11,12 @@
  * Randomness order is load-bearing: everything draws from seeded streams in a fixed
  * sequence, so a seed replays identically across the skin and the layer stack.
  */
-import type { Fleet, Structure, SystemState, LabelDensity, TacticalElement } from './types';
+import type { Fleet, Ship, Structure, SystemState, LabelDensity, TacticalElement } from './types';
 import type { StructureRole } from './universe';
+import { createFx } from './mechanics/fx';
+import { getMechanic, type MechanicApi, type MechanicInstance, type MechanicPass, type MechanicRef, type MechanicSpawn } from './mechanics';
+import { ASCII_ART } from './renderers/art';
+import type { LabelBoard } from './renderers/board';
 import { generateSystem, generateSingleSystem, generateSingleStructure, generateSingleAnomaly } from './generators';
 import { allStructures, chooseTarget, classLabel, goTo, spawnFleet, stepFleet, type FleetCtx, type FleetEvent, type SimView } from './fleets';
 import { createColorMapper, WORLD_SPEED_MULTIPLIER, type RenderFrame, type VoidStyle } from './renderers/utils';
@@ -58,6 +62,8 @@ export type VoidWorld = {
   resize(viewport: Viewport): void;
   /** Per-frame render context for a given style (each layer may calibrate differently). */
   frameFor(info: FrameInfo, style: VoidStyle): RenderFrame;
+  /** Draw the universe's mechanics (and, in the `over` pass, effects) at one depth. */
+  drawPass(ctx: CanvasRenderingContext2D, pass: MechanicPass, frame: RenderFrame, board?: LabelBoard): void;
 };
 
 const fill = (template: string, target?: string) => template.replace(/\{target\}/i, target ?? 'UNKNOWN');
@@ -65,6 +71,7 @@ const fill = (template: string, target?: string) => template.replace(/\{target\}
 export function createVoidWorld(host: SkinHost): VoidWorld {
   const { rng, config, palette } = host;
   const pack: UniversePack = resolveUniverse(host.options as { universe?: unknown; pack?: unknown });
+  const look = { lanes: 'straight', grid: 'crosses', traffic: 1, anomalies: 1, ...pack.look };
   let width = host.viewport.width;
   let height = host.viewport.height;
   const frameRng = host.fork('frame');
@@ -97,8 +104,8 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
     layout.structDist = 300 * scale;
     layout.maxSystems = Math.max(1, Math.round(5 * scale * d));
     layout.maxStructs = Math.max(3, Math.round(12 * scale * d));
-    layout.maxFleets = Math.max(2, Math.round(8 * scale * d));
-    layout.maxAnomalies = Math.max(1, Math.round(5 * scale * d));
+    layout.maxFleets = look.traffic > 0 ? Math.max(2, Math.round(8 * scale * d * look.traffic)) : 0;
+    layout.maxAnomalies = look.anomalies > 0 ? Math.max(1, Math.round(5 * scale * d * look.anomalies)) : 0;
   };
   updateLayout();
 
@@ -285,7 +292,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
         s.nextAction = now + 2;
         continue;
       }
-      const busy = world.fleets.length >= layout.maxFleets + 3;
+      const busy = look.traffic <= 0 || world.fleets.filter((f) => !f.tag).length >= layout.maxFleets + 3;
       switch (s.role) {
         case 'shipyard': {
           if (!busy) {
@@ -389,6 +396,140 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
     }
   };
 
+  // ---- mechanics ----------------------------------------------------------------------------------
+  const fx = createFx(host.fork('fx'));
+  const mechRng = host.fork('mechanics');
+
+  const makeStructure = (s: Pick<Structure, 'x' | 'y' | 'label' | 'role' | 'art' | 'color'> & Partial<Structure>): Structure => ({
+    id: `mech-${nextId()}`,
+    kind: s.kind ?? s.label.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+    rarity: 'uncommon',
+    chatter: [],
+    size: 8,
+    spin: mechRng() * Math.PI * 2,
+    nextAction: now + 9999,
+    ...s,
+  });
+
+  /** Hurt a ship; at zero hull it explodes, and a big enough one leaves a wreck. */
+  const damageShip = (f: Fleet, s: Ship, n: number) => {
+    s.hp -= n;
+    if (s.hp > 0) return;
+    const i = f.ships.indexOf(s);
+    if (i < 0) return;
+    const size = { fighter: 0.7, scout: 0.7, freighter: 1.1, cruiser: 1.5, carrier: 1.7, capital: 2.3 }[s.cls];
+    fx.explode(s.x, s.y, s.color, size);
+    f.ships.splice(i, 1);
+    if (!f.ships.length) {
+      f.mode = 'gone';
+      say({ text: `${f.callsign} LOST`, x: s.x, y: s.y, color: s.color, priority: 'high', duration: 4200, type: 'fleet' });
+      if (size >= 1.1 && world.structures.filter((st) => st.role === 'wreck').length < 6) {
+        world.structures.push(
+          makeStructure({
+            x: s.x,
+            y: s.y,
+            label: `WRECK · ${f.callsign}`,
+            role: 'wreck',
+            art: ASCII_ART.derelict_hulk,
+            color: '#94a3b8',
+            kind: 'derelict_hulk',
+            chatter: ['STILL BURNING', 'NO LIFE SIGNS', 'BLACK BOX PINGING', 'SALVAGE CLAIMED'],
+          }),
+        );
+      }
+    } else if (i === 0) {
+      // The next ship takes the lead and keeps the course.
+      f.ships[0].slot = [0, 0];
+      if (!f.steer && f.target) {
+        const c = ctx();
+        goTo(f, f.target, world, c);
+      }
+    }
+  };
+
+  const mechSpawn = (at: { x: number; y: number; vx: number; vy: number }, o: MechanicSpawn = {}) => {
+    const c = ctx();
+    const f = spawnFleet(world, c, at, o);
+    f.tag = o.tag ?? 'event';
+    f.hostile = o.hostile;
+    if (o.steer) f.steer = o.steer;
+    else goTo(f, chooseTarget(f, world, c), world, c);
+    if (o.warpIn) {
+      fx.warp(at.x, at.y, Math.atan2(at.vy, at.vx) || 0, f.ships[0].color, true);
+      f.fade = 0;
+      f.fadeTo = 1;
+    }
+    world.fleets.push(f);
+    return f;
+  };
+
+  const api: MechanicApi = {
+    world,
+    host,
+    rng: mechRng,
+    pack,
+    fx,
+    get t() {
+      return now;
+    },
+    get tension() {
+      return world.tension;
+    },
+    get width() {
+      return width;
+    },
+    get height() {
+      return height;
+    },
+    view,
+    screenX: (x) => x - camera.x * P,
+    onScreen: (x, y, margin = 0) => visibleOnScreen(x, y, margin),
+    quiet: (x, y) => host.quiet(x - camera.x * P, y),
+    say: (text, x, y, color, o = {}) => say({ text, x, y, color, priority: o.priority ?? 'medium', followId: o.followId, duration: o.duration ?? 4000, type: 'fleet' }),
+    spawnFleet: mechSpawn,
+    release: (f) => {
+      f.steer = null;
+      f.fadeTo = 1;
+      const c = ctx();
+      goTo(f, chooseTarget(f, world, c), world, c);
+    },
+    damage: damageShip,
+    structures: () => allStructures(world),
+    addStructure: (s) => {
+      const st = makeStructure(s);
+      world.structures.push(st);
+      return st;
+    },
+    removeStructure: (id) => {
+      world.structures = world.structures.filter((s) => s.id !== id);
+    },
+  };
+
+  // The studio (or a caller) may override the pack's mechanics.
+  const refs: MechanicRef[] = Array.isArray((host.options as { mechanics?: unknown } | undefined)?.mechanics)
+    ? ((host.options as { mechanics: MechanicRef[] }).mechanics)
+    : pack.mechanics ?? [];
+  let mechs: MechanicInstance[] = [];
+  /** A mechanic that throws is dropped, with one warning, instead of taking the scene down. */
+  const drop = (m: MechanicInstance | string, err: unknown) => {
+    const id = typeof m === 'string' ? m : mechIds.get(m);
+    console.warn(`[void-tactical] mechanic "${id}" failed and was switched off:`, err);
+    if (typeof m !== 'string') mechs = mechs.filter((x) => x !== m);
+  };
+  const mechIds = new Map<MechanicInstance, string>();
+  for (const ref of refs) {
+    if (!ref || ref.enabled === false) continue;
+    const m = getMechanic(ref.use);
+    if (!m) continue;
+    try {
+      const inst = m.create(api, resolveOptions(m.schema, ref.with ?? {}) as Record<string, unknown>);
+      mechIds.set(inst, m.id);
+      mechs.push(inst);
+    } catch (err) {
+      drop(m.id, err);
+    }
+  }
+
   let lastQuality = host.quality;
   let lastFrame = -1;
 
@@ -470,7 +611,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
 
       // Fleets enter from the edges between structure launches; busier when tension is high.
       if (now >= nextEdgeFleet) {
-        if (world.fleets.length < layout.maxFleets) enterFromEdge();
+        if (world.fleets.filter((f) => !f.tag).length < layout.maxFleets) enterFromEdge();
         nextEdgeFleet = now + delay(2.5, 3.5) / rate;
       }
       runStructures(rate);
@@ -479,6 +620,18 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
         const c = ctx();
         for (const f of world.fleets) stepFleet(f, world, c, info.dt);
         world.fleets = world.fleets.filter((f: Fleet) => f.mode !== 'gone');
+        // Drop destroyed fleets after each mechanic, so the next one never sees an empty hull list.
+        for (const m of mechs) {
+          try {
+            m.update?.(info.dt);
+          } catch (err) {
+            drop(m, err);
+          }
+          world.fleets = world.fleets.filter((f: Fleet) => f.mode !== 'gone' && f.ships.length > 0);
+        }
+        // Missiles land during the effects update, so it can destroy fleets too.
+        fx.update(info.dt);
+        world.fleets = world.fleets.filter((f: Fleet) => f.mode !== 'gone' && f.ships.length > 0);
       }
 
       // Overlays age by real elapsed time; fleet-bound lines follow their fleet.
@@ -487,7 +640,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
       for (const o of world.overlays) {
         if (!o.followId) continue;
         const f = world.fleets.find((fl) => fl.id === o.followId);
-        if (f) {
+        if (f?.ships[0]) {
           o.x = f.ships[0].x;
           o.y = f.ships[0].y;
         } else {
@@ -508,6 +661,18 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
         nextLock = now + delay(18, 16) / rate;
       }
     },
+    drawPass(c2d, pass, frame, board) {
+      for (const m of mechs) {
+        c2d.save();
+        try {
+          m.draw?.(c2d, pass, frame, board);
+        } catch (err) {
+          drop(m, err);
+        }
+        c2d.restore();
+      }
+      if (pass === 'over') fx.draw(c2d, camera.x * P, 1);
+    },
     frameFor(info, style) {
       return {
         time: info.t,
@@ -519,6 +684,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
         color: colorFor(style.hueVariety),
         pack,
         parallax: MAP_PARALLAX,
+        dpr: host.viewport.dpr,
       };
     },
   };

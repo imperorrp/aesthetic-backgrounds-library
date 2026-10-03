@@ -67,10 +67,17 @@
         "traffic": {
           "type": "number",
           "min": 3,
-          "max": 18,
-          "default": 10,
+          "max": 24,
+          "default": 14,
           "step": 1,
           "label": "Traffic"
+        },
+        "incidents": {
+          "type": "number",
+          "min": 0,
+          "max": 3,
+          "default": 1,
+          "label": "Incidents (holds, go-arounds, emergencies)"
         },
         "sweep": {
           "type": "number",
@@ -208,6 +215,13 @@
           "type": "boolean",
           "default": true,
           "label": "Wind barbs"
+        },
+        "activity": {
+          "type": "number",
+          "min": 0,
+          "max": 3,
+          "default": 1,
+          "label": "Surface activity (rover, landings, impacts)"
         }
       },
       "defaults": {
@@ -267,7 +281,7 @@
           "type": "number",
           "min": 0,
           "max": 1,
-          "default": 0.6,
+          "default": 0.75,
           "label": "Activity"
         },
         "section": {
@@ -304,8 +318,8 @@
         "contacts": {
           "type": "number",
           "min": 2,
-          "max": 9,
-          "default": 5,
+          "max": 10,
+          "default": 6,
           "step": 1,
           "label": "Contacts"
         },
@@ -327,6 +341,13 @@
           "type": "boolean",
           "default": true,
           "label": "Contact labels"
+        },
+        "activity": {
+          "type": "number",
+          "min": 0,
+          "max": 3,
+          "default": 1,
+          "label": "Events (torpedoes, pings, evasions)"
         }
       },
       "defaults": {
@@ -359,7 +380,8 @@
           "values": [
             "void",
             "saltwind",
-            "choir"
+            "choir",
+            "siege"
           ],
           "default": "void",
           "label": "Universe",
@@ -2248,7 +2270,8 @@
           "values": [
             "void",
             "saltwind",
-            "choir"
+            "choir",
+            "siege"
           ],
           "default": "void",
           "label": "Universe",
@@ -2323,7 +2346,8 @@
           "values": [
             "void",
             "saltwind",
-            "choir"
+            "choir",
+            "siege"
           ],
           "default": "void",
           "label": "Universe",
@@ -2401,7 +2425,8 @@
           "values": [
             "void",
             "saltwind",
-            "choir"
+            "choir",
+            "siege"
           ],
           "default": "void",
           "label": "Universe",
@@ -2460,7 +2485,8 @@
           "values": [
             "void",
             "saltwind",
-            "choir"
+            "choir",
+            "siege"
           ],
           "default": "void",
           "label": "Universe",
@@ -2490,7 +2516,8 @@
           "values": [
             "void",
             "saltwind",
-            "choir"
+            "choir",
+            "siege"
           ],
           "default": "void",
           "label": "Universe",
@@ -2550,7 +2577,8 @@
           "values": [
             "void",
             "saltwind",
-            "choir"
+            "choir",
+            "siege"
           ],
           "default": "void",
           "label": "Universe",
