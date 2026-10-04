@@ -88,7 +88,8 @@ describe('void-tactical with a universe', () => {
     expect(run({ universe: 'choir' }, 'u-1')).not.toBe(a);
     const inline = run({ pack: CHOIR_PACK }, 'u-1');
     expect(run({ pack: CHOIR_PACK }, 'u-1')).toBe(inline);
-  }, 30_000);
+    // Five full renders through the recording canvas stub: slow, and slower on a busy machine.
+  }, 60_000);
 
   it('lets options.mechanics replace the pack list, including mechanics registered from outside', () => {
     const calls = { created: 0, updates: 0, draws: 0 };

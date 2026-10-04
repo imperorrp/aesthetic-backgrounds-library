@@ -30,6 +30,7 @@
     "./src/entries/skins/*.ts",
     "./src/engine/skins/void-tactical/mechanics/*.ts",
     "./src/engine/skins/void-tactical/packs/*.ts",
+    "./src/engine/skins/undercity/city.ts",
     "./src/element.ts",
     "./src/adapters/*.ts",
     "*.css"
@@ -60,6 +61,10 @@
     "./skins/matrix-rain": {
       "types": "./types/entries/skins/matrix-rain.d.ts",
       "import": "./dist/skins/matrix-rain.js"
+    },
+    "./skins/undercity": {
+      "types": "./types/entries/skins/undercity.d.ts",
+      "import": "./dist/skins/undercity.js"
     },
     "./shader": {
       "types": "./types/entries/shader.d.ts",

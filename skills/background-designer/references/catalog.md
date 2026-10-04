@@ -25,7 +25,8 @@ Community presets live in `registry/community/*.json` and in `registry/index.jso
 
 | Id | Look | Key options |
 | --- | --- | --- |
-| `void-tactical` | living sci-fi sector map: fleets in formation between working structures, anomalies, target locks, chatter | `universe` (`void`, `saltwind`, `choir`) or `pack` (a universe pack JSON, e.g. from `universePrompt()`), `hueVariety`, `lineWeight`, `spriteScale`, `shipScale`, `hud`, `paths`, `trails`, `lock`, CSS layer toggles; config `detail`, `density` |
+| `void-tactical` | living sci-fi sector map: fleets in formation between working structures, anomalies, target locks, chatter | `universe` (`void`, `saltwind`, `choir`, `siege`, `hive`, `lastfleet`, `cradle`) or `pack` (a universe pack JSON, e.g. from `universePrompt()`), `mechanics`, `camera`, `hueVariety`, `lineWeight`, `spriteScale`, `shipScale`, `hud`, `paths`, `trails`, `lock`, CSS layer toggles; config `detail`, `density` |
+| `undercity` | 2.5D cyberpunk city at night in the rain: parallax towers, an open megastructure, air traffic, trains, crowds, netrunners breaching corp ICE | `speed`, `rain`, `traffic`, `crowd`, `net`, `overlay`, `hud` |
 | `sonar` | submarine passive sonar waterfall | `contacts`, `speed`, `grain`, `labels` |
 | `atc-radar` | approach radar with phosphor returns, data blocks, clearances | `traffic`, `sweep`, `timeScale`, `weather` |
 | `seismograph` | station traces, quakes sweeping the stack, crust section | `stations`, `speed`, `activity`, `section` |

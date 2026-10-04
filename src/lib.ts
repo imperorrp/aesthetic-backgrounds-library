@@ -11,6 +11,8 @@ export * from './entries/tokens';
 export {
   builtInSkins,
   voidTacticalSkin,
+  undercitySkin,
+  prepareUndercity,
   driftingDustSkin,
   matrixRainSkin,
 } from './engine/skins';

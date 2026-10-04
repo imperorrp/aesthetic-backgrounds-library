@@ -82,6 +82,20 @@ mount(document.body, { skin: 'void-tactical', options: { universe: 'saltwind', m
 
 `options.mechanics` replaces the pack's own list; leave it out to keep the pack's.
 
+## Undercity
+
+![Undercity](e2e/__screenshots__/chromium/undercity.png)
+
+A cyberpunk city at night, in the rain, in 2.5D. Three parallax layers drift past: a far skyline of megatowers with blinking masts and searchlights in the smog, mid towers with corp data fortresses and holo ads, and a near megastructure cut open. Its stacked levels show terraces and markets under lanterns, stairs, cables, and shopfronts above a wet street that reflects the neon. Flying cars stream between the layers in lanes of light. Maglev trains pass. Crowds walk under neon umbrellas, steam rises, and lightning is followed by thunder.
+
+Over all of it runs the net. A netrunner jacks in from an apartment, and a trace runs hop by hop to a corp tower, where the ICE wakes in a ring of glyphs. A breach glitches the tower, hijacks its ads, and sometimes kills the district's grid block by block. A flatline brings the police with searchlights. A terminal readout keeps the log.
+
+```ts
+mount(document.body, { skin: 'undercity', options: { rain: 1, net: 1.5 } });
+```
+
+The city is a lazy chunk (about 14 KB gzip) that loads the first time it mounts. `space-background-engine/skins/undercity` registers it on its own, for a page that wants only this.
+
 ## Instruments from other worlds
 
 The same idea applied to other screens.

@@ -169,6 +169,30 @@ saves up, spends it, and goes quiet. `inTruce()` stops them all. Ships that figh
 side go on the roster (`enlist`), which is how fire bases and artillery choose whom to hit.
 Mines spare their own faction's ships, since they know the safe lanes.
 
+## Undercity (a second world model)
+
+Undercity (`skins/undercity`) is not a star map, but it is built from the same parts:
+
+```mermaid
+flowchart LR
+  shell["index.ts · shell<br/>schema, defaults, deferred mount"] -. "import() on first mount" .-> city["city.ts · mount<br/>step → paint → HUD"]
+  city --> world["world.ts<br/>3 parallax layers, chunks by fork(seed, layer, i)"]
+  city --> paint["paint.ts<br/>building canvases, neon sprites, sky"]
+  city --> life["life.ts<br/>lanes, maglev, crowd, steam, rain, storm, police"]
+  city --> net["net.ts<br/>signals network, runs, ICE, breach, outage"]
+  net --> life
+  world --> bus(("bus")) --> events["host.events → sound"]
+```
+
+- **Streaming.** Each layer is cut into chunks; a chunk's buildings come from a stream forked
+  by `(layer, index)`, so the city is the same whatever order chunks are visited in.
+- **Paint once, stamp often.** The static parts of a building are rasterized once into a small
+  canvas (far layers at lower resolution, since they sit in the smog) and dropped when they
+  scroll away. Only what changes is drawn live.
+- **Screen-space net.** Nodes sit on buildings across different parallax layers, so the net
+  works in screen space: node positions are refreshed in place every frame, and links are
+  rebuilt only when buildings stream in or out.
+
 ## Loading on demand
 
 The sector map's static bundle is the engine and the classic pack's data. Everything else

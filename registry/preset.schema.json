@@ -1447,7 +1447,10 @@
                             "void",
                             "saltwind",
                             "choir",
-                            "siege"
+                            "siege",
+                            "hive",
+                            "lastfleet",
+                            "cradle"
                           ],
                           "default": "void"
                         },
@@ -1524,7 +1527,10 @@
                             "void",
                             "saltwind",
                             "choir",
-                            "siege"
+                            "siege",
+                            "hive",
+                            "lastfleet",
+                            "cradle"
                           ],
                           "default": "void"
                         },
@@ -1600,7 +1606,10 @@
                             "void",
                             "saltwind",
                             "choir",
-                            "siege"
+                            "siege",
+                            "hive",
+                            "lastfleet",
+                            "cradle"
                           ],
                           "default": "void"
                         },
@@ -1658,7 +1667,10 @@
                             "void",
                             "saltwind",
                             "choir",
-                            "siege"
+                            "siege",
+                            "hive",
+                            "lastfleet",
+                            "cradle"
                           ],
                           "default": "void"
                         }
@@ -1690,7 +1702,10 @@
                             "void",
                             "saltwind",
                             "choir",
-                            "siege"
+                            "siege",
+                            "hive",
+                            "lastfleet",
+                            "cradle"
                           ],
                           "default": "void"
                         },
@@ -1750,7 +1765,10 @@
                             "void",
                             "saltwind",
                             "choir",
-                            "siege"
+                            "siege",
+                            "hive",
+                            "lastfleet",
+                            "cradle"
                           ],
                           "default": "void"
                         },

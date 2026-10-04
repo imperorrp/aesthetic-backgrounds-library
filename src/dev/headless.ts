@@ -15,6 +15,7 @@ import '../lib';
 // Every universe, eagerly: the runner works synchronously.
 import '../engine/skins/void-tactical/packs';
 import '../engine/skins/void-tactical/mechanics/all';
+import '../engine/skins/undercity/city';
 import { resolveBackgroundConfig, withConfigDefaults, type BackgroundConfig } from '../engine/config';
 import { createRng, forkRng } from '../engine/rng';
 import { createNoise2D } from '../engine/noise';

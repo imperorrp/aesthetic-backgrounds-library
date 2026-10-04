@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Undercity**, a new skin: a 2.5D cyberpunk city at night in the rain.
+  - Three streamed parallax layers of procedurally generated buildings. Each is rasterized once into a cached canvas: windows that keep office hours, a near megastructure cut open into terraces, markets, stairs, and shopfronts, and roofs with masts, dishes, tanks, and corp crowns.
+  - Live on top: neon sign sprites that flicker, rotating holo ads, aircraft lights, haze between the layers, searchlights, cables, and a wet street that reflects the neon.
+  - Life: flying cars in three lanes of light (cabs, haulers, police), maglev trains, crowds with neon umbrellas, steam vents, rain with splashes, and lightning with delayed thunder.
+  - The net (`sim/signals.ts`): runners jack in, trace to a corp fortress, fight its ICE, and breach it (glitch, hijacked ads, a district outage that cascades and recovers) or flatline (police with searchlights). A terminal HUD keeps the log.
+  - A tiny shell is registered with the built-ins, and the city loads on first mount. New entry `space-background-engine/skins/undercity`, plus `prepareUndercity()`. A sound palette is included.
+  - Budgets: `index.js` 119 KB and the adapters 110 KB (+1 each), for skin events and the Undercity shell.
 - **Three new universes**, each loaded on demand (about 7 KB gzip apiece):
   - **Hive Bloom.** `bloom`: creep is a cellular automaton on a fine hex grid. It spreads from hive nodes along veins of rich ground toward colonies, drawn as a fused organic mass with veins, pustules, and tendrils. Covered structures turn to biomass glyph by glyph, and colonies evacuate. `spores`: flocks burst from nodes, swirl on the flow (boids), seed new creep, and clog intakes. `purge`: flame-cone fleets burn creep to ash, dense creep fights back, and a scourge burns out a node.
   - **The Last Fleet.** `ark`: a generation ark of twelve linked hulls on a flexible spine that keeps pace with the map, with lit windows, farm domes, a reactor, and engine plumes. The fleet counts souls, births, losses, fuel, and days. `flotilla`: hundreds of civilian ships as cheap particles; stragglers fall behind, and tugs go back for them. `pursuit`: contacts at the trailing edge, with escorts breaking to engage. `skimming`: gas giants drift past, and skimmers dive for fuel.

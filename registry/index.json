@@ -361,6 +361,78 @@
     },
     {
       "kind": "skin",
+      "id": "undercity",
+      "label": "Undercity",
+      "description": "A 2.5D cyberpunk city at night: layered towers and an open megastructure, air traffic, trains, crowds, rain, and netrunners breaching corp ICE.",
+      "tags": [
+        "city",
+        "cyberpunk",
+        "neon",
+        "rain",
+        "dark",
+        "busy"
+      ],
+      "themes": [
+        "dark"
+      ],
+      "cost": "medium",
+      "schema": {
+        "speed": {
+          "type": "number",
+          "min": 0,
+          "max": 3,
+          "default": 1,
+          "label": "How fast the city drifts past"
+        },
+        "rain": {
+          "type": "number",
+          "min": 0,
+          "max": 1.5,
+          "default": 0.8,
+          "label": "Rain"
+        },
+        "traffic": {
+          "type": "number",
+          "min": 0,
+          "max": 2,
+          "default": 1,
+          "label": "Air traffic"
+        },
+        "crowd": {
+          "type": "number",
+          "min": 0,
+          "max": 2,
+          "default": 1,
+          "label": "Crowds"
+        },
+        "net": {
+          "type": "number",
+          "min": 0,
+          "max": 3,
+          "default": 1.2,
+          "label": "Netruns per minute"
+        },
+        "overlay": {
+          "type": "boolean",
+          "default": true,
+          "label": "Show the net"
+        },
+        "hud": {
+          "type": "boolean",
+          "default": true,
+          "label": "Terminal readout"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#f472b6"
+        },
+        "intensity": 0.7
+      },
+      "source": "builtin"
+    },
+    {
+      "kind": "skin",
       "id": "void-tactical",
       "label": "Void tactical",
       "description": "A living sci-fi sector map: fleets in formation, working structures, anomalies, and an ambient HUD.",
@@ -381,7 +453,10 @@
             "void",
             "saltwind",
             "choir",
-            "siege"
+            "siege",
+            "hive",
+            "lastfleet",
+            "cradle"
           ],
           "default": "void",
           "label": "Universe",
@@ -2294,7 +2369,10 @@
             "void",
             "saltwind",
             "choir",
-            "siege"
+            "siege",
+            "hive",
+            "lastfleet",
+            "cradle"
           ],
           "default": "void",
           "label": "Universe",
@@ -2370,7 +2448,10 @@
             "void",
             "saltwind",
             "choir",
-            "siege"
+            "siege",
+            "hive",
+            "lastfleet",
+            "cradle"
           ],
           "default": "void",
           "label": "Universe",
@@ -2449,7 +2530,10 @@
             "void",
             "saltwind",
             "choir",
-            "siege"
+            "siege",
+            "hive",
+            "lastfleet",
+            "cradle"
           ],
           "default": "void",
           "label": "Universe",
@@ -2509,7 +2593,10 @@
             "void",
             "saltwind",
             "choir",
-            "siege"
+            "siege",
+            "hive",
+            "lastfleet",
+            "cradle"
           ],
           "default": "void",
           "label": "Universe",
@@ -2540,7 +2627,10 @@
             "void",
             "saltwind",
             "choir",
-            "siege"
+            "siege",
+            "hive",
+            "lastfleet",
+            "cradle"
           ],
           "default": "void",
           "label": "Universe",
@@ -2601,7 +2691,10 @@
             "void",
             "saltwind",
             "choir",
-            "siege"
+            "siege",
+            "hive",
+            "lastfleet",
+            "cradle"
           ],
           "default": "void",
           "label": "Universe",

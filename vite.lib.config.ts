@@ -19,6 +19,7 @@ export default defineConfig({
         'skins/void-tactical': 'src/entries/skins/void-tactical.ts',
         'skins/drifting-dust': 'src/entries/skins/drifting-dust.ts',
         'skins/matrix-rain': 'src/entries/skins/matrix-rain.ts',
+        'skins/undercity': 'src/entries/skins/undercity.ts',
         shader: 'src/entries/shader.ts',
         manifest: 'src/entries/manifest.ts',
         tokens: 'src/entries/tokens.ts',

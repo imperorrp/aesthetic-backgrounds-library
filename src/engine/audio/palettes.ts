@@ -205,6 +205,27 @@ SOUND_PALETTES.cradle = {
   },
 };
 
+/** Undercity: a low synth bed under the rain; trains whoosh, ICE screams, the grid dies with a thud. */
+SOUND_PALETTES.undercity = {
+  id: 'undercity',
+  root: 55,
+  scale: [0, 3, 7, 10, 12, 15],
+  drone: { wave: 'sawtooth', notes: [0, 7, 12], level: 0.022, cutoff: 300, wobble: 0.5 },
+  space: 2.2,
+  wet: 0.35,
+  cues: {
+    train: { cue: { kind: 'whoosh', from: 300, to: 1400, dur: 3 }, gain: 0.12, every: 6 },
+    jackin: { cue: { kind: 'ping', note: 24, wave: 'square', dur: 0.06, then: 31, echoes: 3 }, gain: 0.05, every: 5 },
+    ice: { cue: [{ kind: 'sweep', from: 200, to: 1600, dur: 1.2, q: 6 }, { kind: 'crackle', dur: 2, rate: 24, tone: 3000 }], gain: 0.12, every: 5 },
+    breach: { cue: [{ kind: 'sweep', from: 1800, to: 120, dur: 1.4, wave: 'square', q: 3 }, { kind: 'bell', note: 12, chord: [0, 3, 10], dur: 3 }], gain: 0.14, every: 5 },
+    flatline: { cue: { kind: 'ping', note: 19, wave: 'sine', dur: 2.6 }, gain: 0.1, every: 5 },
+    police: { cue: { kind: 'sweep', from: 650, to: 900, dur: 1.6, wave: 'triangle', q: 5 }, gain: 0.07, every: 8 },
+    outage: { cue: [{ kind: 'thump', pitch: 70, dur: 1.2 }, { kind: 'sweep', from: 120, to: 40, dur: 2, wave: 'sine', q: 1 }], gain: 0.3, every: 10 },
+    lightning: { cue: { kind: 'crackle', dur: 0.3, rate: 60, tone: 2000 }, gain: 0.12, every: 5 },
+    thunder: { cue: { kind: 'boom', dur: 4, tone: 400, sub: 1 }, gain: 0.45, every: 5 },
+  },
+};
+
 export function registerSoundPalette(p: SoundPalette): SoundPalette {
   SOUND_PALETTES[p.id] = p;
   return p;

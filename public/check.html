@@ -30,7 +30,7 @@
       <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.</p>
     </main>
     <script type="module">
-      import { mount, createManualScheduler, probeContrast, resolvePalette, getSkin, loadPresetManifest, getUniverse, loadUniverse, listUniverses, prepareVoidTactical } from '/src/lib.ts';
+      import { mount, createManualScheduler, probeContrast, resolvePalette, getSkin, loadPresetManifest, getUniverse, loadUniverse, listUniverses, prepareVoidTactical, prepareUndercity } from '/src/lib.ts';
 
       const q = new URLSearchParams(location.search);
       const skinId = q.get('skin') ?? 'void-tactical';
@@ -42,6 +42,7 @@
       if (universeId) await loadUniverse(universeId);
       // ...and the mechanics the sector map will run (also for the void-sector preset).
       await prepareVoidTactical(q.has('options') ? JSON.parse(q.get('options')) : undefined);
+      if (skinId === 'undercity') await prepareUndercity();
       // A universe brings its own palette unless one is given explicitly.
       const palette = q.get('palette') ?? (universeId ? getUniverse(universeId)?.palette ?? listUniverses().find((u) => u.id === universeId)?.palette : undefined) ?? undefined;
       const intensity = q.has('intensity') ? Number(q.get('intensity')) : undefined;

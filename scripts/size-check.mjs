@@ -28,6 +28,8 @@ const BUDGETS_KB = {
   'audio.js': 6,
   'skins/drifting-dust.js': 11,
   'skins/matrix-rain.js': 11,
+  // the shell only; the city is a lazy chunk (~14 KB gzip) fetched on first mount
+  'skins/undercity.js': 11,
   // the sector map skin plus its five part layers and the void-sector preset; 52 since the
   // overhaul added universe packs, fleets, and anomaly art; 58 with the mechanics system
   // (nine built-in mechanics, effects, combat) and a fourth pack, less the GitHub galaxy
@@ -40,15 +42,16 @@ const BUDGETS_KB = {
   // M9 (host lighting and legibility, the moments layer, light-aware base layers); 101
   // since the void-tactical overhaul and the five instrument skins; 116 with mechanics and
   // the instruments' events (holds, torpedoes, aftershocks, predation, surface ops); 118 with
-  // the v3 camera (view, bus, director). Lazy universe packs (v3 phase 2) should win this back.
-  'index.js': 118,
+  // the v3 camera (view, bus, director); 119 with skin events and the Undercity shell (the city
+  // itself and every universe beyond the first are lazy chunks).
+  'index.js': 119,
   // framework adapters: core + all built-in skins, layers, and presets (no tooling); 59 since M9,
   // 89 with the overhauled sector map and the instruments, 107 with mechanics and events,
-  // 109 with the v3 camera
-  'element.js': 109,
-  'react.js': 109,
-  'vue.js': 109,
-  'svelte.js': 109,
+  // 109 with the v3 camera, 110 with skin events and the Undercity shell
+  'element.js': 110,
+  'react.js': 110,
+  'vue.js': 110,
+  'svelte.js': 110,
 };
 
 function walk(dir, out = []) {
@@ -106,11 +109,16 @@ for (const [entry, budget] of Object.entries(BUDGETS_KB)) {
 // Plugins register themselves as a side effect of being imported. If a module is not
 // listed in package.json `sideEffects`, the bundler drops it silently, so check the
 // built output really contains every built-in mechanic.
-const MECHANICS = ['skirmish', 'events', 'economy', 'police', 'gates', 'relays', 'asteroids', 'storms', 'wardens', 'song', 'flocks', 'maw', 'cartography', 'warfront', 'front', 'artillery', 'duels', 'truces', 'mines', 'bloom', 'spores', 'purge', 'ark', 'flotilla', 'pursuit', 'skimming', 'nebula', 'stars', 'life', 'epochs','leviathans', 'echoes', 'cradles', 'restless', 'dread'];
+const MECHANICS = ['skirmish', 'events', 'economy', 'police', 'gates', 'relays', 'asteroids', 'storms', 'wardens', 'song', 'flocks', 'maw', 'cartography', 'warfront', 'front', 'artillery', 'duels', 'truces', 'mines', 'bloom', 'spores', 'purge', 'ark', 'flotilla', 'pursuit', 'skimming', 'nebula', 'stars', 'life', 'epochs', 'leviathans', 'echoes', 'cradles', 'restless', 'dread'];
 const dist = allJs.map((f) => readFileSync(f, 'utf8')).join('\n');
 const missing = MECHANICS.filter((id) => !new RegExp(`id:\\s*"${id}"`).test(dist));
 if (missing.length) {
   console.error(`Built output is missing mechanics: ${missing.join(', ')}. Check package.json "sideEffects".`);
+  failed = true;
+}
+// Undercity's city hands itself to the shell on import (a side effect too).
+if (!dist.includes('UNDERCITY // ')) {
+  console.error('Built output is missing the Undercity city chunk. Check package.json "sideEffects".');
   failed = true;
 }
 

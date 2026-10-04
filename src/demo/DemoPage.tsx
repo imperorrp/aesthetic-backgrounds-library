@@ -46,7 +46,7 @@ import './DemoPage.css';
 const DEBUG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug');
 
 /** The ones with a point of view; everything else is under "Basics". */
-const FEATURED_SKINS = ['void-tactical', ...instrumentSkins.map((s) => s.id)];
+const FEATURED_SKINS = ['void-tactical', 'undercity', ...instrumentSkins.map((s) => s.id)];
 
 type PaletteMode = PaletteId | 'custom';
 
@@ -209,7 +209,7 @@ export default function DemoPage() {
   const [transitionKind, setTransitionKind] = useState<TransitionKind>('iris');
   const [soundOn, setSoundOn] = useState(false);
   const [soundVolume, setSoundVolume] = useState(0.6);
-  const soundUniverse = typeof studio.skinOptions.universe === 'string' ? studio.skinOptions.universe : 'void';
+  const soundUniverse = studio.source === 'undercity' ? 'undercity' : typeof studio.skinOptions.universe === 'string' ? studio.skinOptions.universe : 'void';
   useSoundscape(handle, soundOn, soundVolume, soundUniverse);
   const renderedSource = useRef(studio.source);
   const sourceChanged = renderedSource.current !== studio.source;
