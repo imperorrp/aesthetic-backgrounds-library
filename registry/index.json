@@ -301,6 +301,96 @@
     },
     {
       "kind": "skin",
+      "id": "shieldwall",
+      "label": "Shieldwall",
+      "description": "Pitched battles in pixel sprites, side-on: shieldwalls, volleys, cavalry charges, mages, duelling lords, and sometimes a dragon. A war of five battles, then a new one.",
+      "tags": [
+        "fantasy",
+        "battle",
+        "pixel",
+        "medieval",
+        "dark",
+        "busy"
+      ],
+      "themes": [
+        "dark"
+      ],
+      "cost": "medium",
+      "schema": {
+        "view": {
+          "type": "enum",
+          "values": [
+            "side",
+            "above"
+          ],
+          "default": "side",
+          "label": "View"
+        },
+        "troops": {
+          "type": "number",
+          "min": 0.3,
+          "max": 2,
+          "default": 1,
+          "label": "Army size"
+        },
+        "magic": {
+          "type": "number",
+          "min": 0,
+          "max": 2,
+          "default": 1,
+          "label": "Magic"
+        },
+        "dragons": {
+          "type": "number",
+          "min": 0,
+          "max": 3,
+          "default": 1,
+          "label": "Dragons"
+        },
+        "weather": {
+          "type": "enum",
+          "values": [
+            "any",
+            "clear",
+            "rain",
+            "snow",
+            "fog",
+            "night"
+          ],
+          "default": "any",
+          "label": "Weather"
+        },
+        "camera": {
+          "type": "enum",
+          "values": [
+            "follow",
+            "still"
+          ],
+          "default": "follow",
+          "label": "Camera"
+        },
+        "labels": {
+          "type": "boolean",
+          "default": true,
+          "label": "Call-outs"
+        },
+        "hud": {
+          "type": "boolean",
+          "default": true,
+          "label": "Chronicle"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#d6a85c"
+        },
+        "intensity": 0.75
+      },
+      "preview": "gallery/shieldwall.png",
+      "source": "builtin"
+    },
+    {
+      "kind": "skin",
       "id": "sonar",
       "label": "Sonar waterfall",
       "description": "A submarine's passive sonar: contacts drifting across a scrolling bearing-time waterfall.",

@@ -51,14 +51,19 @@ import './DemoPage.css';
 const DEBUG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug');
 
 /** Skins that report events and have a sound palette under their own id. */
-const SOUND_SKINS = new Set(['undercity', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
+const SOUND_SKINS = new Set(['undercity', 'shieldwall', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
 
-/** A world you can pick from a card: a sector map universe, Undercity, or an instrument. */
-type WorldCard = { key: string; source: string; universe?: string; name: string; tagline?: string; thumb: string };
+/**
+ * A world you can pick from a card: a sector map universe, Undercity, a fantasy world (or
+ * one of its views), or an instrument. `options` are set on top of the skin's defaults.
+ */
+type WorldCard = { key: string; source: string; universe?: string; options?: Record<string, unknown>; name: string; tagline?: string; thumb: string };
 
 const WORLD_CARDS: WorldCard[] = [
   ...listUniverses().map((u) => ({ key: `vt-${u.id}`, source: 'void-tactical', universe: u.id, name: u.name, tagline: u.tagline, thumb: u.id === 'void' ? 'void-tactical' : `void-tactical-${u.id}` })),
   { key: 'undercity', source: 'undercity', name: getSkin('undercity')?.label ?? 'Undercity', tagline: getSkin('undercity')?.description, thumb: 'undercity' },
+  { key: 'shieldwall', source: 'shieldwall', name: 'Shieldwall', tagline: getSkin('shieldwall')?.description, thumb: 'shieldwall' },
+  { key: 'shieldwall-above', source: 'shieldwall', options: { view: 'above' }, name: 'Shieldwall, from above', tagline: 'The same wars as a map at dusk: woods, a village, the ford, and the armies in blocks.', thumb: 'shieldwall-view-above' },
 ];
 const INSTRUMENT_CARDS: WorldCard[] = instrumentSkins.map((s) => ({ key: s.id, source: s.id, name: s.label ?? s.id, tagline: s.description, thumb: s.id }));
 const ALL_CARDS = [...WORLD_CARDS, ...INSTRUMENT_CARDS];
@@ -630,8 +635,8 @@ export default function DemoPage() {
     update({ seed: value });
   };
 
-  /** Switch to a source (and universe, for the sector map), keeping the seed unless given one. */
-  const goTo = (source: string, universe?: string, seed?: string) => {
+  /** Switch to a source (and universe, for the sector map; or options, for a view), keeping the seed unless given one. */
+  const goTo = (source: string, universe?: string, seed?: string, options?: Record<string, unknown>) => {
     const next = studioFor(source, studioRef.current);
     if (universe) {
       const pack = listUniverses().find((u) => u.id === universe);
@@ -639,17 +644,26 @@ export default function DemoPage() {
       if (pack?.palette) Object.assign(next, { paletteMode: 'custom', customHex: pack.palette, theme: 'dark' });
       if (typeof pack?.warmth === 'number') next.warmth = pack.warmth;
     }
+    if (options) next.skinOptions = { ...next.skinOptions, ...options };
     if (seed) next.seed = seed;
     commit(() => next);
     setSeedDraft(next.seed);
     setPackNote(null);
   };
+  const goToCard = (c: WorldCard, seed?: string) => goTo(c.source, c.universe, seed, c.options);
 
-  const currentCard = studio.source === 'void-tactical' ? (activePack ? null : `vt-${activeUniverse}`) : studio.source;
+  /** The card for what is on screen: the one whose options all match, the most specific first. */
+  const currentCard =
+    studio.source === 'void-tactical'
+      ? activePack
+        ? null
+        : `vt-${activeUniverse}`
+      : ALL_CARDS.filter((c) => c.source === studio.source && Object.entries(c.options ?? {}).every(([k, v]) => studio.skinOptions[k] === v)).sort(
+          (a, b) => Object.keys(b.options ?? {}).length - Object.keys(a.options ?? {}).length,
+        )[0]?.key ?? studio.source;
   const cycleWorld = (dir: 1 | -1) => {
     const i = ALL_CARDS.findIndex((c) => c.key === currentCard);
-    const next = ALL_CARDS[(i + dir + ALL_CARDS.length) % ALL_CARDS.length];
-    goTo(next.source, next.universe);
+    goToCard(ALL_CARDS[(i + dir + ALL_CARDS.length) % ALL_CARDS.length]);
   };
 
   /** Back to where a sighting first happened: its world and seed, from the start, skipped to just before. */
@@ -658,7 +672,7 @@ export default function DemoPage() {
     if (!card) return;
     pendingSkip.current = Math.max(0, s.t - 8);
     setMountNonce((n) => n + 1);
-    goTo(card.source, card.universe, s.seed);
+    goToCard(card, s.seed);
   };
 
   keys.current = {
@@ -785,7 +799,7 @@ export default function DemoPage() {
     const p = journal.progress(w);
     const active = c.key === currentCard;
     return (
-      <button key={c.key} type="button" className={`demo-world${active ? ' is-active' : ''}`} aria-pressed={active} onClick={() => goTo(c.source, c.universe)} title={c.tagline}>
+      <button key={c.key} type="button" className={`demo-world${active ? ' is-active' : ''}`} aria-pressed={active} onClick={() => goToCard(c)} title={c.tagline}>
         <img src={`thumbs/${c.thumb}.jpg`} alt="" loading="lazy" />
         <span className="demo-world-name">{c.name}</span>
         {p.seen > 0 && (
@@ -837,8 +851,8 @@ export default function DemoPage() {
 
       {galleryOpen && (
         <Gallery
-          onPick={(id, universe) => {
-            goTo(id, universe);
+          onPick={(id, universe, options) => {
+            goTo(id, universe, undefined, options);
             setGalleryOpen(false);
           }}
           onClose={() => setGalleryOpen(false)}
@@ -1168,7 +1182,7 @@ export default function DemoPage() {
 
             {tab === 'journal' && <JournalTab journal={journal} data={journalData} world={world} worldName={worldName} onRevisit={revisit} onGoWorld={(w) => {
               const c = cardForWorld(w);
-              if (c) goTo(c.source, c.universe);
+              if (c) goToCard(c);
             }} />}
 
             {tab === 'share' && (
@@ -1352,7 +1366,7 @@ function Slider({ label, value, text, min, max, step, onChange, title }: { label
  */
 type GalleryEntry = { key: string; image: string; source: string; universe?: string; label: string; description?: string; tags: string[]; community?: boolean };
 
-function Gallery({ onPick, onClose }: { onPick: (source: string, universe?: string) => void; onClose: () => void }) {
+function Gallery({ onPick, onClose }: { onPick: (source: string, universe?: string, options?: Record<string, unknown>) => void; onClose: () => void }) {
   const [available, setAvailable] = useState<string[] | null>(null);
   useEffect(() => {
     fetch('thumbs/index.json')
@@ -1360,19 +1374,16 @@ function Gallery({ onPick, onClose }: { onPick: (source: string, universe?: stri
       .then((list: string[]) => setAvailable(list))
       .catch(() => setAvailable([]));
   }, []);
-  const vt = getSkin('void-tactical');
-  const featured: GalleryEntry[] = [
-    ...listUniverses().map((u) => ({
-      key: `vt-${u.id}`,
-      image: u.id === 'void' ? 'void-tactical' : `void-tactical-${u.id}`,
-      source: 'void-tactical',
-      universe: u.id,
-      label: u.id === 'void' ? vt?.label ?? 'Void tactical' : `${u.name}`,
-      description: u.tagline ?? vt?.description,
-      tags: ['sector map', u.id === 'void' ? 'the original' : 'universe'],
-    })),
-    ...instrumentSkins.map((s) => ({ key: s.id, image: s.id, source: s.id, label: s.label ?? s.id, description: s.description, tags: (s.tags ?? []).filter((t) => t !== 'instrument' && t !== 'dark') })),
-  ];
+  const featured: (GalleryEntry & { card: WorldCard })[] = ALL_CARDS.map((c) => ({
+    key: c.key,
+    image: c.thumb,
+    source: c.source,
+    universe: c.universe,
+    label: c.name,
+    description: c.tagline,
+    tags: c.universe ? ['sector map'] : (getSkin(c.source)?.tags ?? []).filter((t) => t !== 'instrument' && t !== 'dark').slice(0, 3),
+    card: c,
+  }));
   const basics: GalleryEntry[] = allPresets.map((p) => ({
     key: p.id,
     image: p.id,
@@ -1382,8 +1393,8 @@ function Gallery({ onPick, onClose }: { onPick: (source: string, universe?: stri
     tags: (p.tags ?? []).filter((t) => t !== 'community'),
     community: (p.tags ?? []).includes('community'),
   }));
-  const card = (e: GalleryEntry) => (
-    <button type="button" key={e.key} className="demo-card" onClick={() => onPick(e.source, e.universe)}>
+  const card = (e: GalleryEntry & { card?: WorldCard }) => (
+    <button type="button" key={e.key} className="demo-card" onClick={() => onPick(e.source, e.universe, e.card?.options)}>
       {available?.includes(e.image) ? <img src={`thumbs/${e.image}.jpg`} alt="" loading="lazy" /> : <span className="demo-card-placeholder">No preview yet</span>}
       <strong>
         {e.label}

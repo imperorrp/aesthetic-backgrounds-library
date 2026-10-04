@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Shieldwall**, a new skin: pitched battles in pixel sprites, side-on or from above.
+  - Sprites drawn by code (`fantasy/sprites.ts`): spearmen, archers, riders on horses, wolves, elk, or bone horses, mages, lords, trebuchets, dragons, and crows. Each frame is painted at art resolution, snapped to whole pixels, outlined, and mirrored, in an atlas per people.
+  - Four peoples, with their own looks, magic, and mix of troops: a kingdom (wards and sunfire), a horde (fire), a fey host (lightning), and a hollow legion (raising the fallen).
+  - A battle's story (`battle-sim.ts`, no DOM): muster, a standoff (the lords may duel), volleys and trebuchets, the lines advancing in ragged blocks, charges on the flanks, rallies, morale, routs, a victory, and crows. A war is the best of five; then a new war between new peoples. A wild dragon may come down on both armies, burn the ranks, and be shot down (about a third of the time).
+  - `view: 'side'`: a field under a weather sky (dusk, night, storm, snow, fog, dawn) with mountains, a keep, camps, smoke from burning places, sometimes a ford. `view: 'above'`: the same war as a map at dusk, with woods, a village, its fields and mill, a river and bridge, cloud shadows, and the camps' fires.
+  - Call-outs and a chronicle in a serif; a sound palette (horns, drums, arrows, steel, thunder, a dragon's roar); journal sightings from a volley to a slain dragon. Both views pass the e2e gates.
+- **Lazy skins.** `lazySkin(meta, load)` makes a skin whose world is a separate chunk, with `skin.prepare()` to load it ahead (`BackgroundSkin.prepare` is new, and Undercity has it too). The check and lab pages and the headless runner prepare lazy skins before the clock starts.
 - **The studio, redesigned.** One long scroll of about 120 controls became a top bar and four tabs.
   - The top bar: the world's name and tagline, the seed (shuffle, copy link), pause, speed ×1/×4/×16, sound and volume, undo and redo.
   - **World**: the worlds and instruments as cards with thumbnails (and how many of each one's sightings you have seen), calmer presets in one menu, the universe's mechanics as chips with **Borrow from other worlds**, the make-your-own-universe flow, and **Happening now**.

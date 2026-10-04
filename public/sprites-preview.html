@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>sprite atlas preview</title>
+    <style>
+      body { margin: 0; background: #1c1917; color: #e7e5e4; font: 12px ui-monospace, monospace; }
+      canvas { image-rendering: pixelated; display: block; margin: 8px; }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import { createRng } from '/src/engine/rng.ts';
+      import { buildAtlas } from '/src/engine/skins/fantasy/sprites.ts';
+      import { makeFaction, DRAGONS } from '/src/engine/skins/fantasy/names.ts';
+      const scale = Number(new URLSearchParams(location.search).get('scale') ?? 4);
+      for (const people of ['kingdom', 'horde', 'fey', 'hollow']) {
+        const f = makeFaction(people, createRng(people));
+        const atlas = buildAtlas(f.kit, DRAGONS[['kingdom', 'horde', 'fey', 'hollow'].indexOf(people)]);
+        const c = document.createElement('canvas');
+        c.width = atlas.canvas.width * scale;
+        c.height = atlas.canvas.height * scale;
+        const g = c.getContext('2d');
+        g.imageSmoothingEnabled = false;
+        g.drawImage(atlas.canvas, 0, 0, c.width, c.height);
+        const label = document.createElement('div');
+        label.textContent = `${people} · ${f.name}`;
+        document.body.append(label, c);
+      }
+      document.body.dataset.ready = '1';
+    </script>
+  </body>
+</html>

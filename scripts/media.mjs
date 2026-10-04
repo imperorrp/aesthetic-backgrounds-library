@@ -48,6 +48,21 @@ const IMAGES = [
     ['cradle', 140],
   ].map(([u, t]) => ({ file: `worlds/${u}.jpg`, cols: 1, tile: [960, 600], shots: [{ u, t: [t] }] })),
   { file: 'worlds/undercity.jpg', cols: 1, tile: [1280, 800], shots: [{ skin: 'undercity', seed: 'neon-3', t: [24] }] },
+  {
+    file: 'worlds/shieldwall.jpg',
+    cols: 2,
+    tile: [960, 600],
+    shots: [
+      { skin: 'shieldwall', seed: 'a1', t: [38], captions: ['SIDE-ON'] },
+      { skin: 'shieldwall', seed: 'a1', options: { view: 'above' }, t: [45], captions: ['FROM ABOVE'] },
+    ],
+  },
+  {
+    file: 'moments/shieldwall-dragon.jpg',
+    cols: 4,
+    tile: [480, 300],
+    shots: [{ skin: 'shieldwall', seed: 'd2', options: { dragons: 3 }, seek: 'IS FALLING', after: [-3.2, -1.6, 0.4, 3.5], captions: ['dragonfire on the ranks', 'it climbs to turn', 'the bows find it', 'it falls'] }],
+  },
   // Moments: short sequences of things happening.
   {
     file: 'moments/undercity-outage.jpg',

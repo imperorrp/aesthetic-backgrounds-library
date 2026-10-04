@@ -20,7 +20,12 @@ import { resolveBackgroundConfig, withConfigDefaults, type BackgroundConfig } fr
 import { createRng, forkRng } from '../engine/rng';
 import { createNoise2D } from '../engine/noise';
 import { lightState } from '../engine/core/legibility';
-import { resolveSkin } from '../engine/core/registry';
+import { getSkin, listSkins, resolveSkin } from '../engine/core/registry';
+
+/** Load every skin that loads its world on first mount, so `runHeadless` (synchronous) gets the real thing. */
+export async function prepareSkins(): Promise<void> {
+  await Promise.all(listSkins().map((id) => getSkin(id)?.prepare?.()));
+}
 import type { BackgroundSkin, FrameInfo, HostViewport, PointerState, SkinHost, SkinInspection } from '../engine/core/skin';
 
 export type HeadlessOptions = {

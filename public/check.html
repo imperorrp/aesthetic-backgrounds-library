@@ -43,6 +43,8 @@
       // ...and the mechanics the sector map will run (also for the void-sector preset).
       await prepareVoidTactical(q.has('options') ? JSON.parse(q.get('options')) : undefined);
       if (skinId === 'undercity') await prepareUndercity();
+      // Worlds that load on first mount (fantasy worlds, Petri) arrive before the clock starts.
+      await getSkin(skinId)?.prepare?.();
       // A universe brings its own palette unless one is given explicitly.
       const palette = q.get('palette') ?? (universeId ? getUniverse(universeId)?.palette ?? listUniverses().find((u) => u.id === universeId)?.palette : undefined) ?? undefined;
       const intensity = q.has('intensity') ? Number(q.get('intensity')) : undefined;

@@ -34,7 +34,8 @@ const server = await createServer({
 });
 let code = 0;
 try {
-  const { runHeadless } = await server.ssrLoadModule('/src/dev/headless.ts');
+  const { runHeadless, prepareSkins } = await server.ssrLoadModule('/src/dev/headless.ts');
+  await prepareSkins();
   const options = args.u ? { universe: args.u } : undefined;
   const report = runHeadless({ skin: args.skin, seed: args.seed, options, seconds: args.s, width: args.w, height: args.h });
   const label = `${args.skin}${args.u ? ` u=${args.u}` : ''} seed=${args.seed}`;

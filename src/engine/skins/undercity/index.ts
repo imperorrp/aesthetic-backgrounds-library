@@ -51,6 +51,7 @@ export const undercitySkin: BackgroundSkin = {
     if (impl) return impl(host);
     return deferred(host);
   },
+  prepare: prepareUndercity,
 };
 
 /** Show the night plate while the city loads, then hand over. */

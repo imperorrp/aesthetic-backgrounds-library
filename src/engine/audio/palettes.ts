@@ -253,6 +253,48 @@ export const SOUND_PALETTES: Record<string, SoundPalette> = {
     },
   },
 
+  /** Shieldwall: war horns and drums, arrows hissing over, steel, mages' thunder, a dragon's roar. */
+  shieldwall: {
+    id: 'shieldwall',
+    root: 65.4,
+    scale: [0, 3, 5, 7, 10, 12],
+    drone: { wave: 'sawtooth', notes: [-12, -5, 0], level: 0.0085, cutoff: 280, wobble: 0.3 },
+    bed: { noise: 'pink', lo: 180, hi: 1300, level: 0.0165, follow: true },
+    space: 3.2,
+    wet: 0.32,
+    echo: 0.38,
+    cues: {
+      say: { cue: { kind: 'ping', note: 24, dur: 0.06 }, gain: 0.018, every: 1, only: 'high' },
+      horns: { cue: { kind: 'choir', note: -12, chord: [0, 7], dur: 3.5, vowel: 'oo' }, gain: 0.1, every: 8 },
+      advance: { cue: [{ kind: 'thump', pitch: 70, dur: 0.5 }, { kind: 'thump', pitch: 64, dur: 0.6 }], gain: 0.12, every: 4 },
+      volley: { cue: { kind: 'whoosh', from: 2600, to: 900, dur: 1.3 }, gain: 0.07, every: 1.2 },
+      boulder: { cue: { kind: 'thump', pitch: 58, dur: 0.7 }, gain: 0.07, every: 2 },
+      impact: { cue: { kind: 'boom', dur: 1.4, tone: 700, sub: 0.7 }, gain: 0.24, every: 0.8 },
+      clash: { cue: [{ kind: 'crackle', dur: 2.4, rate: 18, tone: 2600 }, { kind: 'choir', note: -12, chord: [0, 7], dur: 2.5, vowel: 'ah' }], gain: 0.12, every: 6 },
+      charge: { cue: [{ kind: 'sweep', from: 220, to: 330, dur: 1.1, wave: 'sawtooth', q: 2 }, { kind: 'crackle', dur: 2.2, rate: 9, tone: 260 }], gain: 0.08, every: 4 },
+      fireball: { cue: { kind: 'whoosh', from: 300, to: 1600, dur: 1 }, gain: 0.08, every: 1.5 },
+      blast: { cue: { kind: 'boom', dur: 1.6, tone: 1100, sub: 0.8 }, gain: 0.3, every: 0.8 },
+      lightning: { cue: [{ kind: 'crackle', dur: 0.3, rate: 60, tone: 2400 }, { kind: 'boom', dur: 3, tone: 420, sub: 1 }], gain: 0.3, every: 2 },
+      thunder: { cue: { kind: 'boom', dur: 4, tone: 380, sub: 1 }, gain: 0.32, every: 5 },
+      ward: { cue: { kind: 'bell', note: 12, chord: [0, 4, 7], dur: 3 }, gain: 0.07, every: 4 },
+      smite: { cue: { kind: 'bell', note: 24, chord: [0, 7, 12], dur: 2 }, gain: 0.08, every: 2 },
+      raise: { cue: { kind: 'choir', chord: [0, 1, 6], dur: 4, vowel: 'ee' }, gain: 0.09, every: 8 },
+      duel: { cue: { kind: 'bell', note: 0, dur: 2.5 }, gain: 0.08, every: 10 },
+      duelwin: { cue: { kind: 'bell', note: 12, chord: [0, 4, 7], dur: 4 }, gain: 0.09, every: 10 },
+      rally: { cue: { kind: 'sweep', from: 260, to: 390, dur: 1, wave: 'sawtooth', q: 2 }, gain: 0.06, every: 6 },
+      lordfall: { cue: { kind: 'choir', note: -12, chord: [0, 3, 7], dur: 5, vowel: 'ah' }, gain: 0.12, every: 6 },
+      rout: { cue: { kind: 'sweep', from: 500, to: 150, dur: 1.5, wave: 'triangle', q: 1 }, gain: 0.05, every: 4 },
+      victory: { cue: [{ kind: 'bell', chord: [0, 4, 7, 12], dur: 5 }, { kind: 'choir', note: 0, chord: [0, 4, 7], dur: 5, vowel: 'ah' }], gain: 0.11, every: 20 },
+      peace: { cue: { kind: 'bell', note: 12, chord: [0, 7, 12], dur: 7 }, gain: 0.1, every: 20 },
+      dragon: { cue: [{ kind: 'sweep', from: 170, to: 60, dur: 3, wave: 'sawtooth', q: 1 }, { kind: 'whoosh', from: 200, to: 900, dur: 3 }], gain: 0.16, every: 10 },
+      dragonfire: { cue: [{ kind: 'whoosh', from: 900, to: 3000, dur: 2 }, { kind: 'crackle', dur: 2.5, rate: 30, tone: 900 }], gain: 0.16, every: 3 },
+      dragonslain: { cue: [{ kind: 'boom', dur: 5, tone: 300, sub: 1 }, { kind: 'choir', note: -12, chord: [0, 1], dur: 6, vowel: 'oo' }], gain: 0.4, every: 10 },
+      dragonleaves: { cue: { kind: 'whoosh', from: 600, to: 150, dur: 3 }, gain: 0.08, every: 10 },
+      newbattle: { cue: { kind: 'bell', note: 0, dur: 3 }, gain: 0.05, every: 10 },
+      newwar: { cue: { kind: 'bell', note: -12, chord: [0, 7], dur: 5 }, gain: 0.07, every: 10 },
+    },
+  },
+
   // ---- the instruments: their own rooms, their own alarms ----------------------------------
 
   /** Sonar: the deep, the hull, a ping into the dark and what comes back. */

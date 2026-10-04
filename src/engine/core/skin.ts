@@ -141,6 +141,11 @@ export type BackgroundSkin<T = any> = {
   crisp?: boolean;
   mount(host: SkinHost<T>): SkinInstance;
   /**
+   * Skins that load their world on first mount: fetch it now, so the first frame is the
+   * real first frame (harnesses, exports, and pages that want no placeholder await this).
+   */
+  prepare?(): Promise<void>;
+  /**
    * Optional GPU-friendly DOM layers (CSS gradients, SVG textures, grain) that
    * `mount()` places behind the canvas inside the engine root. Return a cleanup.
    */

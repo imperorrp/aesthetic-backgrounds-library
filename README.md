@@ -27,7 +27,7 @@ None of them loop. Each one is a small simulation with its own rules, and things
 <summary><b>Contents</b></summary>
 
 - [Things happen](#things-happen)
-- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [instruments](#instruments-from-other-worlds), [basics](#basics)
+- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [instruments](#instruments-from-other-worlds), [basics](#basics)
 - [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
 - [Sound](#sound), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
 - [Put one on your site](#put-one-on-your-site)
@@ -122,6 +122,28 @@ Over all of it runs the net. A netrunner jacks in, and a trace runs hop by hop t
 ```ts
 mount(document.body, { skin: 'undercity', options: { rain: 1, net: 1.5 } });
 ```
+
+### Shieldwall
+
+![Shieldwall from the side and from above: two armies of pixel soldiers meeting at a ford](docs/media/worlds/shieldwall.jpg)
+
+Pitched battles between peoples, in pixel sprites drawn by code. Four peoples, each with its own look, its own magic, and its own way of fighting:
+- **a kingdom** of steel and banners, whose mages raise wards against arrows and call sunfire
+- **a horde** riding wolves, whose shamans throw fire
+- **a fey host** of longbows on elk, whose mages call lightning
+- **a hollow legion** of the dead on bone horses, whose necromancers raise the fallen to fight for them
+
+A battle has a story. The armies muster, and sometimes the two lords ride out to duel between the lines. Archers loose volleys that arc across the sky, and trebuchets throw stones. Then the lines advance in ragged blocks and meet, and the horse charges the flanks. A lord rides to a wavering regiment and rallies it, or falls. Morale breaks, a side routs, and the victors hold the field while the crows come down. Days later there is another battle. A war is the best of five, and then a new war begins between new peoples.
+
+Now and then a dragon descends on both armies. It breathes fire along the ranks, and the bows and mages of both sides turn on it. About a third of the time, it falls.
+
+```ts
+mount(document.body, { skin: 'shieldwall', options: { view: 'above', dragons: 2 } });
+```
+
+Two ways to watch: `view: 'side'`, a field under a moody sky with mountains, a keep, and camps on the ridge; or `view: 'above'`, the same war as a map at dusk, with woods, a village with its fields and mill, a river and its bridge, and the armies in blocks.
+
+![A dragon over the battle, burning the ranks, shot down, and falling](docs/media/moments/shieldwall-dragon.jpg)
 
 ### Instruments from other worlds
 
@@ -412,7 +434,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | Option | Default | Description |
 | --- | --- | --- |
 | `seed` | random | PRNG seed. The same seed replays the same world, frame for frame. |
-| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `drifting-dust`, `matrix-rain`, and every preset id. |
+| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `drifting-dust`, `matrix-rain`, and every preset id. |
 | `options` | `{}` | Skin-specific options; see each skin's section below. |
 | `palette` | `'void-cyan'` | One of: <ul><li>a built-in id (`void-cyan`, `amber`, `violet`)</li><li>a full token object</li><li>a bare hex color</li><li>`{ from: '#hex', theme: 'dark' \| 'light', harmony }`, which derives a palette in OKLCH. `harmony` (`analogous`, `complementary`, `split`, `triadic`, `mono`) sets the secondary hues `accent2` and `accent3`.</li></ul> |
 | `exposeTokens` | `false` | Also write the palette as `--bge-*` variables on `<html>` (or a given element) for your own UI. |
@@ -661,6 +683,21 @@ mount(document.body, {
 | `net` | `1.2` | Netruns per minute. |
 | `overlay` | `true` | Show the net's wireframe and packets. |
 | `hud` | `true` | The terminal readout: district, rain, net load, and the run log. |
+
+## Shieldwall's options
+
+`skin: 'shieldwall'`. The battles are a lazy chunk (about 28 KB gzipped) that loads the first time one mounts; `getSkin('shieldwall').prepare()` loads it ahead.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `view` | `'side'` | `side`: the field under a sky. `above`: the field as a map at dusk. |
+| `troops` | `1` | Army size (`0.3` to `2`), about 150 a side at `1`. Scaled by `density` too. |
+| `magic` | `1` | How often mages cast (`0` for none). |
+| `dragons` | `1` | How likely a dragon is in a battle: about one in four at `1`. |
+| `weather` | `'any'` | `any` (the seed picks per battle), `clear`, `rain`, `snow`, `fog`, or `night`. |
+| `camera` | `'follow'` | `follow` the fighting, or hold `still` over the middle of the field. |
+| `labels` | `true` | Call-outs on the field: charges, volleys, a lord falling. |
+| `hud` | `true` | The field's name, the war's score, and its chronicle. |
 
 ## Using it with an AI agent
 

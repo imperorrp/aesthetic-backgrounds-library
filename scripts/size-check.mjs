@@ -25,8 +25,9 @@ const BUDGETS_KB = {
   'manifest.js': 16,
   'tokens.js': 14,
   // generated sound bound to skin events, opt-in (v3 phase 5); 10 with the v2 engine (mastering
-  // chain, room, echo, beds, formant choirs) and palettes for every world and instrument
-  'audio.js': 10,
+  // chain, room, echo, beds, formant choirs) and palettes for every world and instrument; 10.8
+  // with palettes for the fantasy worlds and Petri
+  'audio.js': 10.8,
   'skins/drifting-dust.js': 11,
   'skins/matrix-rain.js': 11,
   // the shell only; the city is a lazy chunk (~14 KB gzip) fetched on first mount
@@ -44,16 +45,17 @@ const BUDGETS_KB = {
   // since the void-tactical overhaul and the five instrument skins; 116 with mechanics and
   // the instruments' events (holds, torpedoes, aftershocks, predation, surface ops); 118 with
   // the v3 camera (view, bus, director); 119 with skin events and the Undercity shell (the city
-  // itself and every universe beyond the first are lazy chunks).
-  'index.js': 119,
+  // itself and every universe beyond the first are lazy chunks); 121.5 with the lazy-skin helper
+  // and the shells of the fantasy worlds and Petri (each world is a lazy chunk).
+  'index.js': 121.5,
   // framework adapters: core + all built-in skins, layers, and presets (no tooling); 59 since M9,
   // 89 with the overhauled sector map and the instruments, 107 with mechanics and events,
   // 109 with the v3 camera, 110 with skin events and the Undercity shell, 111 with the
-  // instruments reporting their events (for sound)
-  'element.js': 111,
-  'react.js': 111,
-  'vue.js': 111,
-  'svelte.js': 111,
+  // instruments reporting their events (for sound), 113.5 with the fantasy and Petri shells
+  'element.js': 113.5,
+  'react.js': 113.5,
+  'vue.js': 113.5,
+  'svelte.js': 113.5,
 };
 
 function walk(dir, out = []) {

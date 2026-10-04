@@ -13,6 +13,7 @@ export {
   voidTacticalSkin,
   undercitySkin,
   prepareUndercity,
+  shieldwallSkin,
   driftingDustSkin,
   matrixRainSkin,
 } from './engine/skins';

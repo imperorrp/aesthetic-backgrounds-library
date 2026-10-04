@@ -32,10 +32,11 @@ type Probe = {
 const GPU_SUBJECTS = new Set(['nebula-drift', 'ink-wash']);
 const framesFor = (skin: string) => (GPU_SUBJECTS.has(skin) ? '90' : '240');
 
-/** `skin~universe` subjects run void-tactical in another universe pack. */
+/** `skin~universe` runs void-tactical in another universe pack; `skin~key=value` sets one option (a view). */
 const parseSubject = (subject: string) => {
-  const [skin, universe] = subject.split('~');
-  return { skin, options: universe ? JSON.stringify({ universe }) : undefined, file: subject.replace('~', '-') };
+  const [skin, extra] = subject.split('~');
+  const options = !extra ? undefined : extra.includes('=') ? Object.fromEntries([extra.split('=')]) : { universe: extra };
+  return { skin, options: options ? JSON.stringify(options) : undefined, file: subject.replace('~', '-').replace('=', '-') };
 };
 
 async function openCheck(page: Page, subject: string, extra: Record<string, string> = {}) {
