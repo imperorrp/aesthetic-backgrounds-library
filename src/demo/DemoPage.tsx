@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Background, type MountHandle, type TransitionKind } from '../react-entry';
 import {
   COLOR_TOKENS,
@@ -32,7 +32,7 @@ import {
   type Schema,
   voidSectorPreset,
 } from '../engine';
-import { History, download, exportImage, exportVideo, type ExportOptions } from './studio-tools';
+import { History, download, exportImage, exportVideo, videoExt, type ExportOptions } from './studio-tools';
 import { getUniverse, listUniverses, universePrompt, validateUniverse, type UniversePack } from '../engine/skins/void-tactical/universe';
 // The studio shows every universe, so it loads them all up front.
 import '../engine/skins/void-tactical/packs';
@@ -40,15 +40,57 @@ import '../engine/skins/void-tactical/mechanics/all';
 import { listMechanics, type MechanicRef } from '../engine/skins/void-tactical/mechanics';
 import { instrumentSkins } from '../engine/skins/instruments';
 import { aiPrompt, compactConfig } from './ai-prompt';
+import { Icon } from './icons';
+import { HappeningNow, JournalTab, ToastStack, useJournal, useJournalData, useWitness, type FeedItem, type Toast } from './journal-ui';
+import { SIGHTS, clock, type Sighting } from './witness';
+import { offlineWallpaperHtml, wallpaperEngineProject, zip } from './wallpaper-files';
+import { wallpaperQuery, type WallpaperSettings } from '../wallpaper/codec';
 import './DemoPage.css';
 
-/** `?debug` in the URL shows the debug panel: time scale, skip ahead, counts, the event log. */
+/** `?debug` in the URL shows the debug panel: skip ahead, counts, the event log. */
 const DEBUG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug');
 
-/** The ones with a point of view; everything else is under "Basics". */
-const FEATURED_SKINS = ['void-tactical', 'undercity', ...instrumentSkins.map((s) => s.id)];
 /** Skins that report events and have a sound palette under their own id. */
 const SOUND_SKINS = new Set(['undercity', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
+
+/** A world you can pick from a card: a sector map universe, Undercity, or an instrument. */
+type WorldCard = { key: string; source: string; universe?: string; name: string; tagline?: string; thumb: string };
+
+const WORLD_CARDS: WorldCard[] = [
+  ...listUniverses().map((u) => ({ key: `vt-${u.id}`, source: 'void-tactical', universe: u.id, name: u.name, tagline: u.tagline, thumb: u.id === 'void' ? 'void-tactical' : `void-tactical-${u.id}` })),
+  { key: 'undercity', source: 'undercity', name: getSkin('undercity')?.label ?? 'Undercity', tagline: getSkin('undercity')?.description, thumb: 'undercity' },
+];
+const INSTRUMENT_CARDS: WorldCard[] = instrumentSkins.map((s) => ({ key: s.id, source: s.id, name: s.label ?? s.id, tagline: s.description, thumb: s.id }));
+const ALL_CARDS = [...WORLD_CARDS, ...INSTRUMENT_CARDS];
+
+/** A journal world id (a universe, Undercity, an instrument) as its card. */
+const cardForWorld = (world: string) => ALL_CARDS.find((c) => (c.universe ?? c.source) === world);
+const worldName = (world: string) => cardForWorld(world)?.name ?? world;
+
+type Tab = 'world' | 'look' | 'journal' | 'share';
+const TABS: [Tab, string][] = [
+  ['world', 'World'],
+  ['look', 'Look'],
+  ['journal', 'Journal'],
+  ['share', 'Share'],
+];
+const SPEEDS = [1, 4, 16] as const;
+
+/** Phone frame: 390 × 844 CSS pixels (a common modern phone), rendered at 3x. */
+const PHONE = { width: 390, height: 844, pixelRatio: 3 };
+
+const SHORTCUTS: [string, string][] = [
+  ['S', 'New seed'],
+  ['Space', 'Pause or play'],
+  ['← →', 'Previous or next world'],
+  ['1 2 3', 'Speed ×1, ×4, ×16'],
+  ['M', 'Sound on or off'],
+  ['J', 'Journal'],
+  ['G', 'Gallery'],
+  ['H', 'Hide or show the studio'],
+  ['Ctrl Z', 'Undo (Shift for redo)'],
+  ['?', 'This list'],
+];
 
 type PaletteMode = PaletteId | 'custom';
 
@@ -214,6 +256,57 @@ export default function DemoPage() {
   // Skins with a sound palette of their own use it; the sector map uses its universe's.
   const soundUniverse = SOUND_SKINS.has(studio.source) ? studio.source : typeof studio.skinOptions.universe === 'string' ? studio.skinOptions.universe : 'void';
   useSoundscape(handle, soundOn, soundVolume, soundUniverse);
+
+  const [tab, setTab] = useState<Tab>('world');
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bodyRef.current?.scrollTo(0, 0);
+  }, [tab]);
+  const [paused, setPaused] = useState(false);
+  const [speed, setSpeed] = useState<number>(1);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  useEffect(() => {
+    if (!handle) return;
+    if (paused) handle.pause();
+    else handle.resume();
+  }, [handle, paused]);
+  useEffect(() => {
+    handle?.setTimeScale(speed);
+  }, [handle, speed]);
+
+  // ---- the journal: sightings, the chronicle, what is happening now ----------------------
+  const journal = useJournal();
+  const journalData = useJournalData(journal);
+  const activeUniverse = typeof studio.skinOptions.universe === 'string' ? studio.skinOptions.universe : 'void';
+  /** The journal's id for what is on screen; null for backgrounds that keep none (presets, custom packs). */
+  const world = studio.source === 'void-tactical' ? (studio.skinOptions.pack ? null : activeUniverse) : SIGHTS[studio.source] ? studio.source : null;
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const pushFeed = useCallback((item: FeedItem) => setFeed((f) => [item, ...f].slice(0, 6)), []);
+  const pushToast = useCallback((t: Toast) => setToasts((all) => [...all.filter((x) => x.kind !== t.kind), t].slice(-2)), []);
+  const dismissToast = useCallback((key: number) => setToasts((all) => all.filter((x) => x.key !== key)), []);
+  useWitness({ handle, journal, world, source: studio.source, seed: studio.seed, speed, onFeed: pushFeed, onToast: pushToast });
+  useEffect(() => {
+    setFeed([]);
+  }, [handle]);
+
+  // A remount key, so "revisit" can restart the same world and seed from the beginning.
+  const [mountNonce, setMountNonce] = useState(0);
+  /** Seconds to skip once the next mount is ready (revisits and `?t=` links). */
+  const pendingSkip = useRef<number>(Math.max(0, Number(new URLSearchParams(typeof location !== 'undefined' ? location.search : '').get('t')) || 0));
+  const [skipNote, setSkipNote] = useState<string | null>(null);
+  useEffect(() => {
+    const skip = Math.min(1800, pendingSkip.current);
+    if (!handle || skip < 2) return;
+    setSkipNote(`Skipping ahead to ${clock(skip)}…`);
+    // Let the note paint before the sim runs flat out.
+    const id = window.setTimeout(() => {
+      pendingSkip.current = 0;
+      handle.fastForward(skip);
+      setSkipNote(null);
+    }, 60);
+    return () => window.clearTimeout(id);
+  }, [handle]);
   const renderedSource = useRef(studio.source);
   const sourceChanged = renderedSource.current !== studio.source;
   useEffect(() => {
@@ -303,15 +396,28 @@ export default function DemoPage() {
     setSeedDraft(out.seed);
   };
 
+  // Shortcuts read the latest handlers through a ref (assigned once they exist, below).
+  const keys = useRef<Record<string, () => void>>({});
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const typing = e.target instanceof HTMLElement && /input|textarea|select/i.test(e.target.tagName);
-      if (typing || !(e.ctrlKey || e.metaKey)) return;
-      if (e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) redo();
-        else undo();
+      const typing = e.target instanceof HTMLElement && (/input|textarea|select/i.test(e.target.tagName) || e.target.isContentEditable);
+      if (typing) return;
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) redo();
+          else undo();
+        }
+        return;
       }
+      if (e.altKey) return;
+      const name = e.key === ' ' ? 'space' : e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const run = keys.current[name];
+      if (!run) return;
+      // Space on a focused button should press the button, not pause.
+      if (name === 'space' && e.target instanceof HTMLButtonElement) return;
+      e.preventDefault();
+      run();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -396,6 +502,7 @@ export default function DemoPage() {
     density: sceneMode ? undefined : studio.density,
     detail: sceneMode ? undefined : studio.detail,
     options: sceneMode ? undefined : studio.skinOptions,
+    light: studio.lightAngle !== null ? { angle: studio.lightAngle, warmth: studio.warmth } : { warmth: studio.warmth },
     width: window.innerWidth,
     height: window.innerHeight,
   });
@@ -420,7 +527,7 @@ export default function DemoPage() {
         fps: 30,
         onProgress: (p) => setBusy(`Recording ${Math.round(p * 100)}%`),
       });
-      download(blob, `${studio.source}-${studio.seed}.webm`);
+      download(blob, `${studio.source}-${studio.seed}.${videoExt(blob.type)}`);
     } catch (err) {
       setBusy(null);
       alert(err instanceof Error ? err.message : 'Recording failed');
@@ -509,16 +616,6 @@ export default function DemoPage() {
     update(patch);
     setPackNote({ ok: true, text: note });
   };
-  const chooseUniverse = (id: string) => {
-    const pack = listUniverses().find((u) => u.id === id);
-    const { pack: _old, ...rest } = studio.skinOptions;
-    const patch: Partial<Studio> = { skinOptions: { ...rest, universe: id } };
-    if (pack?.palette) Object.assign(patch, { paletteMode: 'custom', customHex: pack.palette, theme: 'dark' });
-    else Object.assign(patch, { paletteMode: 'void-cyan' });
-    patch.warmth = pack?.warmth ?? 0;
-    update(patch);
-    setPackNote(null);
-  };
   const applyPasted = () => {
     const { pack, errors, warnings } = validateUniverse(pasted);
     if (errors.length) {
@@ -533,9 +630,177 @@ export default function DemoPage() {
     update({ seed: value });
   };
 
+  /** Switch to a source (and universe, for the sector map), keeping the seed unless given one. */
+  const goTo = (source: string, universe?: string, seed?: string) => {
+    const next = studioFor(source, studioRef.current);
+    if (universe) {
+      const pack = listUniverses().find((u) => u.id === universe);
+      next.skinOptions = { ...next.skinOptions, universe };
+      if (pack?.palette) Object.assign(next, { paletteMode: 'custom', customHex: pack.palette, theme: 'dark' });
+      if (typeof pack?.warmth === 'number') next.warmth = pack.warmth;
+    }
+    if (seed) next.seed = seed;
+    commit(() => next);
+    setSeedDraft(next.seed);
+    setPackNote(null);
+  };
+
+  const currentCard = studio.source === 'void-tactical' ? (activePack ? null : `vt-${activeUniverse}`) : studio.source;
+  const cycleWorld = (dir: 1 | -1) => {
+    const i = ALL_CARDS.findIndex((c) => c.key === currentCard);
+    const next = ALL_CARDS[(i + dir + ALL_CARDS.length) % ALL_CARDS.length];
+    goTo(next.source, next.universe);
+  };
+
+  /** Back to where a sighting first happened: its world and seed, from the start, skipped to just before. */
+  const revisit = (w: string, s: Sighting) => {
+    const card = cardForWorld(w);
+    if (!card) return;
+    pendingSkip.current = Math.max(0, s.t - 8);
+    setMountNonce((n) => n + 1);
+    goTo(card.source, card.universe, s.seed);
+  };
+
+  keys.current = {
+    s: () => applySeed(randomSeedString()),
+    space: () => setPaused((p) => !p),
+    ArrowRight: () => cycleWorld(1),
+    ArrowLeft: () => cycleWorld(-1),
+    '1': () => setSpeed(1),
+    '2': () => setSpeed(4),
+    '3': () => setSpeed(16),
+    m: () => setSoundOn((on) => !on),
+    h: () => setPanelOpen((o) => !o),
+    j: () => {
+      setPanelOpen(true);
+      setTab('journal');
+    },
+    g: () => setGalleryOpen((o) => !o),
+    '?': () => setShortcutsOpen((o) => !o),
+    '/': () => setShortcutsOpen((o) => !o),
+    Escape: () => {
+      setGalleryOpen(false);
+      setShortcutsOpen(false);
+    },
+  };
+
+  // ---- wallpapers ----------------------------------------------------------------------------
+  /** The mount() config with options at their defaults left out (the link stays short). */
+  const wallpaperSettings = (): WallpaperSettings => {
+    const sk = sceneMode ? null : getSkin(studio.source);
+    return { config: sk?.schema ? compactConfig(exportConfig, {}, schemaDefaults(sk.schema)) : exportConfig, fps: 30 };
+  };
+  const wallpaperUrl = (extra = '') => new URL(`wallpaper.html?${wallpaperQuery(wallpaperSettings())}${extra}`, document.baseURI).href;
+  const fileStem = `${studio.source === 'void-tactical' ? activePack?.name ?? activeUniverse : studio.source}-${studio.seed}`.replace(/[^\w.-]+/g, '-').toLowerCase();
+
+  /** The engine as one script, for files that run with no server. */
+  const fetchRuntime = async () => {
+    const r = await fetch(new URL('wallpaper-runtime.js', document.baseURI));
+    if (!r.ok) throw new Error('The wallpaper runtime is missing from this build. Run `pnpm build`, or use the link instead.');
+    return r.text();
+  };
+
+  const saveOfflineWallpaper = async () => {
+    setBusy('Packing the wallpaper…');
+    try {
+      const html = offlineWallpaperHtml(wallpaperSettings(), await fetchRuntime(), sourceLabel);
+      download(new Blob([html], { type: 'text/html' }), `${fileStem}.html`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not build the file');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const saveWallpaperEngine = async () => {
+    setBusy('Packing for Wallpaper Engine…');
+    try {
+      const [runtime, preview] = await Promise.all([fetchRuntime(), exportImage({ ...exportArgs(), width: 640, height: 360 }, 240, 'image/jpeg')]);
+      const html = offlineWallpaperHtml(wallpaperSettings(), runtime, sourceLabel);
+      const bytes = zip([
+        { name: 'index.html', data: html },
+        { name: 'project.json', data: wallpaperEngineProject(sourceLabel, `A living background. Seed ${studio.seed}. Made with space-background-engine.`) },
+        { name: 'preview.jpg', data: new Uint8Array(await preview.arrayBuffer()) },
+      ]);
+      download(new Blob([bytes], { type: 'application/zip' }), `${fileStem}-wallpaper-engine.zip`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not build the package');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** A still at the screen's own resolution. */
+  const saveDesktopStill = async () => {
+    setBusy('Rendering…');
+    try {
+      const pr = Math.min(3, window.devicePixelRatio || 1);
+      const w = window.screen?.width || window.innerWidth;
+      const h = window.screen?.height || window.innerHeight;
+      download(await exportImage({ ...exportArgs(), width: w, height: h, pixelRatio: pr }), `${fileStem}-${Math.round(w * pr)}x${Math.round(h * pr)}.png`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const savePhoneStill = async () => {
+    setBusy('Rendering for your phone…');
+    try {
+      download(await exportImage({ ...exportArgs(), ...PHONE }), `${fileStem}-phone.png`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** A portrait loop for live-wallpaper apps. 2.5x keeps the encoder within what phones play. */
+  const savePhoneVideo = async () => {
+    setBusy('Recording 0%');
+    try {
+      const blob = await exportVideo({ ...exportArgs(), width: 392, height: 848, pixelRatio: 2.5 }, { seconds: 10, fps: 30, onProgress: (p) => setBusy(`Recording ${Math.round(p * 100)}%`) });
+      download(blob, `${fileStem}-phone.${videoExt(blob.type)}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Recording failed');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** A universe goes by its own name; everything else by its label. */
+  const title = studio.source === 'void-tactical' ? activePack?.name ?? worldName(activeUniverse) : sourceLabel;
+  const description =
+    activePack?.tagline ??
+    (studio.source === 'void-tactical' ? listUniverses().find((u) => u.id === activeUniverse)?.tagline : undefined) ??
+    allPresets.find((p) => p.id === studio.source)?.description ??
+    getSkin(studio.source)?.description;
+  const universeMechanics = (activePack ?? getUniverse(activeUniverse))?.mechanics ?? [];
+  const mechanicRefs = Array.isArray(studio.skinOptions.mechanics) ? (studio.skinOptions.mechanics as MechanicRef[]) : universeMechanics;
+  const onCardSource = ALL_CARDS.some((c) => c.source === studio.source);
+  const openJournal = () => {
+    setPanelOpen(true);
+    setTab('journal');
+  };
+
+  const worldCard = (c: WorldCard) => {
+    const w = c.universe ?? c.source;
+    const p = journal.progress(w);
+    const active = c.key === currentCard;
+    return (
+      <button key={c.key} type="button" className={`demo-world${active ? ' is-active' : ''}`} aria-pressed={active} onClick={() => goTo(c.source, c.universe)} title={c.tagline}>
+        <img src={`thumbs/${c.thumb}.jpg`} alt="" loading="lazy" />
+        <span className="demo-world-name">{c.name}</span>
+        {p.seen > 0 && (
+          <span className="demo-world-seen" title={`${p.seen} of ${p.total} sightings`}>
+            {p.seen}/{p.total}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
     <div className="demo-root">
       <Background
+        key={mountNonce}
         skin={sceneMode ? 'scene' : studio.source}
         options={sceneMode ? studio.scene ?? { layers: [] } : studio.skinOptions}
         seed={studio.seed}
@@ -573,46 +838,33 @@ export default function DemoPage() {
       {galleryOpen && (
         <Gallery
           onPick={(id, universe) => {
-            const next = studioFor(id, studio);
-            if (universe) {
-              const pack = listUniverses().find((u) => u.id === universe);
-              next.skinOptions = { ...next.skinOptions, universe };
-              if (pack?.palette) Object.assign(next, { paletteMode: 'custom', customHex: pack.palette, theme: 'dark' });
-              if (typeof pack?.warmth === 'number') next.warmth = pack.warmth;
-            }
-            commit(() => next);
-            setSeedDraft(next.seed);
-            setPackNote(null);
+            goTo(id, universe);
             setGalleryOpen(false);
           }}
           onClose={() => setGalleryOpen(false)}
         />
       )}
 
-      <header className="demo-hud">
-        <span className="demo-hud-row">
-          <button type="button" className="demo-hud-toggle" onClick={() => setGalleryOpen(true)}>
-            Gallery
-          </button>
-          <button type="button" className="demo-hud-toggle" onClick={() => setPanelOpen((o) => !o)} aria-expanded={panelOpen}>
-            {panelOpen ? 'Hide studio' : 'Show studio'}
-          </button>
-        </span>
+      {skipNote && <div className="demo-skip">{skipNote}</div>}
+      <ToastStack toasts={toasts} onDismiss={dismissToast} onOpenJournal={openJournal} />
+      {shortcutsOpen && <ShortcutsCard onClose={() => setShortcutsOpen(false)} />}
 
-        {panelOpen && (
-          <div className="demo-panel">
-            <p className="demo-kicker">{sourceLabel}</p>
-
-            <div className="demo-export demo-export-top">
-              <button type="button" className="demo-primary" onClick={() => copy('prompt', promptText())}>
-                {copied === 'prompt' ? 'Copied. Paste it into your AI.' : 'Copy prompt for your AI'}
+      {panelOpen ? (
+        <aside className="demo-panel" aria-label="Studio">
+          <header className="demo-top">
+            <div className="demo-title-row">
+              <div className="demo-title">
+                <h2>{title}</h2>
+                {description && <p>{description}</p>}
+              </div>
+              <button type="button" className="demo-icon-btn" onClick={() => setPanelOpen(false)} title="Hide the studio (H)" aria-label="Hide the studio">
+                <Icon name="close" />
               </button>
-              <p className="demo-hint">Three lines. Paste into whatever AI edits your site.{activePack ? ' Attach universe.json too (below).' : ''}</p>
             </div>
 
-            <label className="demo-field demo-seed">
-              <span>Seed · the same seed always plays the same world</span>
-              <span className="demo-text-row">
+            <div className="demo-seed-row">
+              <label className="demo-seed">
+                <span>Seed</span>
                 <input
                   value={seedDraft}
                   onChange={(e) => setSeedDraft(e.target.value)}
@@ -621,330 +873,489 @@ export default function DemoPage() {
                   }}
                   onBlur={() => seedDraft !== studio.seed && applySeed(seedDraft)}
                   spellCheck={false}
-                  aria-label="Seed"
+                  aria-label="Seed. The same seed always plays the same world."
+                  title="The same seed always plays the same world"
                 />
-                <button type="button" onClick={() => applySeed(randomSeedString())} title="A new seed: same settings, a different world">Shuffle</button>
-                <button type="button" onClick={() => copy('link', window.location.href)} title="Copy a link to exactly this">{copied === 'link' ? 'Copied' : 'Link'}</button>
-              </span>
-            </label>
-
-            <div className="demo-text-row demo-toolbar">
-              <button type="button" onClick={undo} disabled={!history.canUndo} title="Ctrl/Cmd+Z">Undo</button>
-              <button type="button" onClick={redo} disabled={!history.canRedo} title="Ctrl/Cmd+Shift+Z">Redo</button>
+              </label>
+              <button type="button" className="demo-icon-btn" onClick={() => applySeed(randomSeedString())} title="New seed: same settings, another world (S)" aria-label="New seed">
+                <Icon name="shuffle" />
+              </button>
+              <button type="button" className="demo-icon-btn" onClick={() => copy('link', window.location.href)} title="Copy a link to exactly this" aria-label="Copy link">
+                {copied === 'link' ? <span className="demo-tick">✓</span> : <Icon name="link" />}
+              </button>
             </div>
 
-            <label className="demo-field">
-              <span>Background</span>
-              <select
-                value={studio.source}
-                onChange={(e) => {
-                  const next = studioFor(e.target.value, studio);
-                  setStudio(next);
-                  setSeedDraft(next.seed);
-                  setPackNote(null);
-                }}
-              >
-                <optgroup label="Featured">
-                  {FEATURED_SKINS.map((id) => (
-                    <option key={id} value={id}>
-                      {getSkin(id)?.label ?? id}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Basics">
-                  {allPresets.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  ))}
-                  {builtInSkins.filter((s) => !FEATURED_SKINS.includes(s.id)).map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label ?? s.id}
-                    </option>
-                  ))}
-                  <option value="scene">Blank scene</option>
-                </optgroup>
-              </select>
-              {(getSkin(studio.source)?.description) && <em className="demo-hint">{getSkin(studio.source)?.description}</em>}
-            </label>
-
-            {studio.source === 'void-tactical' && (
-              <div className="demo-universe">
-                <p className="demo-kicker demo-kicker-gap">Universe</p>
-                <label className="demo-field">
-                  <span>Whose map is this</span>
-                  <select
-                    value={activePack ? '__pack' : String(studio.skinOptions.universe ?? 'void')}
-                    onChange={(e) => {
-                      if (e.target.value !== '__pack') chooseUniverse(e.target.value);
-                    }}
-                  >
-                    {listUniverses().map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                    {activePack && <option value="__pack">{activePack.name}</option>}
-                  </select>
-                  {(activePack?.tagline || listUniverses().find((u) => u.id === (studio.skinOptions.universe ?? 'void'))?.tagline) && (
-                    <em className="demo-hint">{activePack?.tagline ?? listUniverses().find((u) => u.id === (studio.skinOptions.universe ?? 'void'))?.tagline}</em>
-                  )}
-                </label>
-
-                <MechanicsPanel
-                  refs={
-                    Array.isArray(studio.skinOptions.mechanics)
-                      ? (studio.skinOptions.mechanics as MechanicRef[])
-                      : (activePack ?? getUniverse(String(studio.skinOptions.universe ?? 'void')))?.mechanics ?? []
-                  }
-                  custom={Array.isArray(studio.skinOptions.mechanics)}
-                  onChange={(mechanics) => update({ skinOptions: { ...studio.skinOptions, mechanics } })}
-                  onReset={() => {
-                    const { mechanics: _m, ...rest } = studio.skinOptions;
-                    update({ skinOptions: rest });
-                  }}
-                />
-
-                <details className="demo-details">
-                  <summary>Make your own from any book, film, game, or world</summary>
-                  <label className="demo-field">
-                    <span>1. Name it or describe it</span>
-                    <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="The Expanse · Dune · my TTRPG's frontier · a lonely lighthouse planet" spellCheck={false} />
-                  </label>
-                  <button type="button" onClick={() => copy('universe', universePrompt(subject, listMechanics().map((m) => ({ id: m.id, description: m.description, params: Object.keys(m.schema) }))))}>
-                    {copied === 'universe' ? 'Copied. Paste it into your AI.' : '2. Copy the prompt for your AI'}
+            <div className="demo-transport">
+              <button type="button" className="demo-icon-btn" aria-pressed={paused} onClick={() => setPaused((p) => !p)} title={paused ? 'Play (Space)' : 'Pause (Space)'} aria-label={paused ? 'Play' : 'Pause'}>
+                <Icon name={paused ? 'play' : 'pause'} />
+              </button>
+              <span className="demo-segmented" role="group" aria-label="Speed">
+                {SPEEDS.map((k, i) => (
+                  <button key={k} type="button" aria-pressed={speed === k} onClick={() => setSpeed(k)} title={`Time ×${k} (${i + 1})`}>
+                    ×{k}
                   </button>
-                  <label className="demo-field">
-                    <span>3. Paste what it gives back</span>
-                    <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} rows={4} spellCheck={false} placeholder="{ &quot;name&quot;: … }" />
-                  </label>
-                  <button type="button" onClick={applyPasted} disabled={!pasted.trim()}>4. Bring it to life</button>
-                </details>
-
-                {packNote && <p className={`demo-hint ${packNote.ok ? 'demo-ok' : 'demo-warn'}`}>{packNote.text}</p>}
-                {activePack && (
-                  <button type="button" onClick={saveUniverse} title="The pack as a file, for your site or your AI">
-                    Download universe.json
-                  </button>
-                )}
-              </div>
-            )}
-
-            <label className="demo-field">
-              <span>Palette</span>
-              <select value={studio.paletteMode} onChange={(e) => update({ paletteMode: e.target.value as PaletteMode })}>
-                {PALETTE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
-                <option value="custom">Derive from brand color</option>
-              </select>
-            </label>
-            {studio.paletteMode === 'custom' && (
-              <div className="demo-row">
-                <label className="demo-field demo-grow">
-                  <span>Brand color</span>
-                  <span className="demo-text-row">
-                    <input type="color" value={studio.customHex} onChange={(e) => update({ customHex: e.target.value })} aria-label="Brand color" />
-                    <input value={studio.customHex} onChange={(e) => update({ customHex: e.target.value })} spellCheck={false} aria-label="Brand color hex" />
-                  </span>
-                </label>
-                <label className="demo-field">
-                  <span>Theme</span>
-                  <select value={studio.theme} onChange={(e) => update({ theme: e.target.value as 'dark' | 'light' })}>
-                    <option value="dark">Dark</option>
-                    <option value="light">Light</option>
-                  </select>
-                </label>
-                <label className="demo-field">
-                  <span>Harmony</span>
-                  <select value={studio.harmony} onChange={(e) => update({ harmony: e.target.value as Harmony })}>
-                    {HARMONIES.map((h) => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            )}
-            <PaletteSwatches spec={palette} />
-            <div className="demo-text-row demo-tokens">
-              <label className="demo-file-button" title="Derive the palette from a brand token file (DTCG, Style Dictionary, Tokens Studio)">
-                Import tokens
-                <input
-                  type="file"
-                  accept="application/json,.json"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) loadTokens(f);
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-              <button type="button" onClick={saveTokens} title="Export this palette as design tokens (W3C DTCG format)">Export tokens</button>
+              </span>
+              <span className="demo-sound">
+                <button
+                  type="button"
+                  className="demo-icon-btn"
+                  aria-pressed={soundOn}
+                  onClick={() => setSoundOn((on) => !on)}
+                  title="Sound (M): generated live, bound to what happens. Each world sounds different."
+                  aria-label={soundOn ? 'Sound off' : 'Sound on'}
+                >
+                  <Icon name={soundOn ? 'soundOn' : 'soundOff'} />
+                </button>
+                {soundOn && <input type="range" min={0} max={1} step={0.05} value={soundVolume} onChange={(e) => setSoundVolume(Number(e.target.value))} aria-label="Volume" title={`Volume ${Math.round(soundVolume * 100)}%`} />}
+              </span>
+              <span className="demo-spacer" />
+              <button type="button" className="demo-icon-btn" onClick={undo} disabled={!history.canUndo} title="Undo (Ctrl Z)" aria-label="Undo">
+                <Icon name="undo" />
+              </button>
+              <button type="button" className="demo-icon-btn" onClick={redo} disabled={!history.canRedo} title="Redo (Ctrl Shift Z)" aria-label="Redo">
+                <Icon name="redo" />
+              </button>
             </div>
-            {remoteNote && <p className="demo-hint">{remoteNote}</p>}
 
-            <label className="demo-toggle-field">
-              <input type="checkbox" checked={showContent} onChange={(e) => setShowContent(e.target.checked)} />
-              <span className="demo-toggle-label">Show sample text</span>
-            </label>
-            {report && (
-              <div className={`demo-readout${report.meanContrast >= 4.5 && report.failingShare <= 0.12 ? ' is-ok' : ' is-warn'}`}>
-                <span>Legibility behind text</span>
-                <strong>{report.meanContrast.toFixed(1)}:1 mean</strong>
-                <span>{Math.round(report.failingShare * 100)}% of pixels below 4.5:1 · worst {report.worstContrast.toFixed(1)}:1</span>
-              </div>
-            )}
+            <nav className="demo-tabs" role="tablist" aria-label="Studio sections">
+              {TABS.map(([id, label]) => (
+                <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
+                  {label}
+                  {id === 'journal' && world && (
+                    <small>
+                      {journal.progress(world).seen}/{journal.progress(world).total}
+                    </small>
+                  )}
+                </button>
+              ))}
+            </nav>
+          </header>
 
-            <label className="demo-field">
-              <span>Intensity {studio.intensity.toFixed(2)}</span>
-              <input type="range" min={0} max={1} step={0.05} value={studio.intensity} onChange={(e) => update({ intensity: Number(e.target.value) })} />
-            </label>
-
-            <label className="demo-field">
-              <span>Motion</span>
-              <select value={studio.motion} onChange={(e) => update({ motion: e.target.value as MotionPreference })}>
-                <option value="auto">Auto (system preference)</option>
-                <option value="full">Full</option>
-                <option value="reduced">Reduced</option>
-                <option value="off">Off (static frame)</option>
-              </select>
-            </label>
-
-            <label className="demo-toggle-field" title="Generated sound bound to what happens on the map: explosions, raids, songs, volleys. Each universe sounds different.">
-              <input type="checkbox" checked={soundOn} onChange={(e) => setSoundOn(e.target.checked)} />
-              <span className="demo-toggle-label">Sound</span>
-            </label>
-            {soundOn && (
-              <label className="demo-field">
-                <span>Volume {Math.round(soundVolume * 100)}%</span>
-                <input type="range" min={0} max={1} step={0.05} value={soundVolume} onChange={(e) => setSoundVolume(Number(e.target.value))} />
-              </label>
-            )}
-
-            <p className="demo-kicker demo-kicker-gap">Light and composition</p>
-            <label className="demo-toggle-field" title="Let the seed choose the light angle (upper left or upper right)">
-              <input type="checkbox" checked={studio.lightAngle === null} onChange={(e) => update({ lightAngle: e.target.checked ? null : handle?.composition().light.angle ?? 225 })} />
-              <span className="demo-toggle-label">Seeded light angle</span>
-            </label>
-            {studio.lightAngle !== null && (
-              <label className="demo-field">
-                <span>Light angle {Math.round(studio.lightAngle)}°</span>
-                <input type="range" min={0} max={359} step={1} value={studio.lightAngle} onChange={(e) => update({ lightAngle: Number(e.target.value) })} />
-              </label>
-            )}
-            <label className="demo-field">
-              <span>Warmth {studio.warmth > 0 ? '+' : ''}{studio.warmth.toFixed(2)}</span>
-              <input type="range" min={-1} max={1} step={0.05} value={studio.warmth} onChange={(e) => update({ warmth: Number(e.target.value) })} />
-            </label>
-            <label className="demo-field" title="Auto finds page content, makes layers recede there, and shades behind it above intensity 0.55">
-              <span>Legibility</span>
-              <select value={studio.legibility} onChange={(e) => update({ legibility: e.target.value as 'auto' | 'off' })}>
-                <option value="auto">Auto (recede and shade behind content)</option>
-                <option value="off">Off</option>
-              </select>
-            </label>
-            <label className="demo-field">
-              <span>Transition between sources</span>
-              <select value={transitionKind} onChange={(e) => setTransitionKind(e.target.value as TransitionKind)}>
-                <option value="iris">Iris from the key light</option>
-                <option value="wipe">Wipe from the lit side</option>
-                <option value="crossfade">Crossfade</option>
-              </select>
-            </label>
-            <label className="demo-toggle-field">
-              <input type="checkbox" checked={showComposition} onChange={(e) => setShowComposition(e.target.checked)} />
-              <span className="demo-toggle-label">Show composition (thirds, light, content, quiet zones)</span>
-            </label>
-
-            {!sceneMode && (
+          <div className="demo-body" role="tabpanel" ref={bodyRef}>
+            {tab === 'world' && (
               <>
-                <label className="demo-field">
-                  <span>Density {studio.density.toFixed(2)}</span>
-                  <input type="range" min={0.25} max={2} step={0.05} value={studio.density} onChange={(e) => update({ density: Number(e.target.value) })} />
-                </label>
-                {studio.source === 'void-tactical' && (
+                <section className="demo-section">
+                  <h3 className="demo-h">Worlds</h3>
+                  <div className="demo-worlds">{WORLD_CARDS.map(worldCard)}</div>
+                </section>
+                <section className="demo-section">
+                  <h3 className="demo-h">Instruments</h3>
+                  <div className="demo-worlds is-small">{INSTRUMENT_CARDS.map(worldCard)}</div>
+                </section>
+                <section className="demo-section">
                   <label className="demo-field">
-                    <span>Detail level</span>
-                    <select value={studio.detail} onChange={(e) => update({ detail: e.target.value as LabelDensity })}>
-                      {DETAIL_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
+                    <span>Something calmer</span>
+                    <select value={onCardSource ? '' : studio.source === 'void-tactical' ? '' : studio.source} onChange={(e) => e.target.value && goTo(e.target.value)}>
+                      <option value="" disabled>
+                        Presets and simple backgrounds…
+                      </option>
+                      <optgroup label="Presets">
+                        {allPresets.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Simple">
+                        {builtInSkins
+                          .filter((s) => !ALL_CARDS.some((c) => c.source === s.id))
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.label ?? s.id}
+                            </option>
+                          ))}
+                        <option value="scene">Blank scene (build your own)</option>
+                      </optgroup>
                     </select>
                   </label>
+                  {remoteNote && <p className="demo-hint">{remoteNote}</p>}
+                </section>
+
+                {studio.source === 'void-tactical' && (
+                  <section className="demo-section">
+                    <h3 className="demo-h">What happens here</h3>
+                    <MechanicChips
+                      refs={mechanicRefs}
+                      native={universeMechanics.map((m) => m.use)}
+                      custom={Array.isArray(studio.skinOptions.mechanics)}
+                      onChange={(mechanics) => update({ skinOptions: { ...studio.skinOptions, mechanics } })}
+                      onReset={() => {
+                        const { mechanics: _m, ...rest } = studio.skinOptions;
+                        update({ skinOptions: rest });
+                      }}
+                    />
+                    <details className="demo-details">
+                      <summary>Make your own universe from any book, film, or game</summary>
+                      <label className="demo-field">
+                        <span>1. Name it or describe it</span>
+                        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="The Expanse · Dune · my TTRPG's frontier" spellCheck={false} />
+                      </label>
+                      <button type="button" className="demo-btn" onClick={() => copy('universe', universePrompt(subject, listMechanics().map((m) => ({ id: m.id, description: m.description, params: Object.keys(m.schema) }))))}>
+                        {copied === 'universe' ? 'Copied. Paste it into your AI.' : '2. Copy the prompt for your AI'}
+                      </button>
+                      <label className="demo-field">
+                        <span>3. Paste what it gives back</span>
+                        <textarea value={pasted} onChange={(e) => setPasted(e.target.value)} rows={4} spellCheck={false} placeholder="{ &quot;name&quot;: … }" />
+                      </label>
+                      <button type="button" className="demo-btn" onClick={applyPasted} disabled={!pasted.trim()}>
+                        4. Bring it to life
+                      </button>
+                    </details>
+                    {packNote && <p className={`demo-hint ${packNote.ok ? 'demo-ok' : 'demo-warn'}`}>{packNote.text}</p>}
+                    {activePack && (
+                      <button type="button" className="demo-btn" onClick={saveUniverse} title="The pack as a file, for your site or your AI">
+                        Download universe.json
+                      </button>
+                    )}
+                  </section>
                 )}
-                {skin?.schema && Object.keys(skin.schema).length > 0 && (
-                  <div className="demo-toggles">
-                    <p className="demo-kicker demo-kicker-gap">Fine tuning</p>
+
+                {(world || activePack) && <HappeningNow items={feed} quietText="Nothing yet. Give it a minute, or try ×16." />}
+              </>
+            )}
+
+            {tab === 'look' && (
+              <>
+                <section className="demo-section">
+                  <h3 className="demo-h">Color</h3>
+                  <label className="demo-field">
+                    <span>Palette</span>
+                    <select value={studio.paletteMode} onChange={(e) => update({ paletteMode: e.target.value as PaletteMode })}>
+                      {PALETTE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                      <option value="custom">From a brand color</option>
+                    </select>
+                  </label>
+                  {studio.paletteMode === 'custom' && (
+                    <div className="demo-row">
+                      <label className="demo-field demo-grow">
+                        <span>Brand color</span>
+                        <span className="demo-text-row">
+                          <input type="color" value={studio.customHex} onChange={(e) => update({ customHex: e.target.value })} aria-label="Brand color" />
+                          <input value={studio.customHex} onChange={(e) => update({ customHex: e.target.value })} spellCheck={false} aria-label="Brand color hex" />
+                        </span>
+                      </label>
+                      <label className="demo-field">
+                        <span>Theme</span>
+                        <select value={studio.theme} onChange={(e) => update({ theme: e.target.value as 'dark' | 'light' })}>
+                          <option value="dark">Dark</option>
+                          <option value="light">Light</option>
+                        </select>
+                      </label>
+                      <label className="demo-field">
+                        <span>Harmony</span>
+                        <select value={studio.harmony} onChange={(e) => update({ harmony: e.target.value as Harmony })}>
+                          {HARMONIES.map((h) => (
+                            <option key={h} value={h}>
+                              {h}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  )}
+                  <PaletteSwatches spec={palette} />
+                  <div className="demo-btn-row">
+                    <label className="demo-btn demo-file-button" title="Derive the palette from a brand token file (DTCG, Style Dictionary, Tokens Studio)">
+                      Import tokens
+                      <input
+                        type="file"
+                        accept="application/json,.json"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) loadTokens(f);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                    <button type="button" className="demo-btn" onClick={saveTokens} title="This palette as design tokens (W3C DTCG)">
+                      Export tokens
+                    </button>
+                  </div>
+                </section>
+
+                <section className="demo-section">
+                  <h3 className="demo-h">Presence</h3>
+                  <Slider label="Intensity" value={studio.intensity} text={studio.intensity.toFixed(2)} min={0} max={1} step={0.05} onChange={(v) => update({ intensity: v })} />
+                  {!sceneMode && <Slider label="Density" value={studio.density} text={studio.density.toFixed(2)} min={0.25} max={2} step={0.05} onChange={(v) => update({ density: v })} />}
+                  {studio.source === 'void-tactical' && (
+                    <label className="demo-field">
+                      <span>Detail</span>
+                      <select value={studio.detail} onChange={(e) => update({ detail: e.target.value as LabelDensity })}>
+                        {DETAIL_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <label className="demo-field">
+                    <span>Motion</span>
+                    <select value={studio.motion} onChange={(e) => update({ motion: e.target.value as MotionPreference })}>
+                      <option value="auto">Follow the system setting</option>
+                      <option value="full">Full</option>
+                      <option value="reduced">Reduced</option>
+                      <option value="off">Off (a still frame)</option>
+                    </select>
+                  </label>
+                  <label className="demo-field">
+                    <span>Transition between backgrounds</span>
+                    <select value={transitionKind} onChange={(e) => setTransitionKind(e.target.value as TransitionKind)}>
+                      <option value="iris">Iris from the key light</option>
+                      <option value="wipe">Wipe from the lit side</option>
+                      <option value="crossfade">Crossfade</option>
+                    </select>
+                  </label>
+                </section>
+
+                <section className="demo-section">
+                  <h3 className="demo-h">Light</h3>
+                  <label className="demo-check" title="Let the seed choose the light angle (upper left or upper right)">
+                    <input type="checkbox" checked={studio.lightAngle === null} onChange={(e) => update({ lightAngle: e.target.checked ? null : handle?.composition().light.angle ?? 225 })} />
+                    <span>Let the seed choose the angle</span>
+                  </label>
+                  {studio.lightAngle !== null && <Slider label="Angle" value={studio.lightAngle} text={`${Math.round(studio.lightAngle)}°`} min={0} max={359} step={1} onChange={(v) => update({ lightAngle: v })} />}
+                  <Slider label="Warmth" value={studio.warmth} text={`${studio.warmth > 0 ? '+' : ''}${studio.warmth.toFixed(2)}`} min={-1} max={1} step={0.05} onChange={(v) => update({ warmth: v })} />
+                </section>
+
+                <section className="demo-section">
+                  <h3 className="demo-h">Behind your content</h3>
+                  <label className="demo-field" title="Auto finds page content, makes layers recede there, and shades behind it above intensity 0.55">
+                    <span>Legibility</span>
+                    <select value={studio.legibility} onChange={(e) => update({ legibility: e.target.value as 'auto' | 'off' })}>
+                      <option value="auto">Auto: recede and shade behind text</option>
+                      <option value="off">Off</option>
+                    </select>
+                  </label>
+                  <label className="demo-check">
+                    <input type="checkbox" checked={showContent} onChange={(e) => setShowContent(e.target.checked)} />
+                    <span>Show sample text</span>
+                  </label>
+                  {report && (
+                    <div className={`demo-readout${report.meanContrast >= 4.5 && report.failingShare <= 0.12 ? ' is-ok' : ' is-warn'}`}>
+                      <span>Legibility behind the text</span>
+                      <strong>{report.meanContrast.toFixed(1)}:1 on average</strong>
+                      <span>
+                        {Math.round(report.failingShare * 100)}% of pixels below 4.5:1, the worst {report.worstContrast.toFixed(1)}:1
+                      </span>
+                    </div>
+                  )}
+                  <label className="demo-check">
+                    <input type="checkbox" checked={showComposition} onChange={(e) => setShowComposition(e.target.checked)} />
+                    <span>Show composition guides (thirds, light, content, quiet zones)</span>
+                  </label>
+                </section>
+
+                {!sceneMode && skin?.schema && Object.keys(skin.schema).some((k) => k !== 'universe') && (
+                  <details className="demo-details demo-section">
+                    <summary>Fine tuning</summary>
                     <SchemaControls
                       schema={Object.fromEntries(Object.entries(skin.schema).filter(([k]) => k !== 'universe'))}
                       values={studio.skinOptions}
                       onChange={(key, value) => update({ skinOptions: { ...studio.skinOptions, [key]: value } })}
                     />
-                  </div>
+                  </details>
                 )}
+
+                {sceneMode && studio.scene && <LayerStack scene={studio.scene} onChange={setScene} />}
               </>
             )}
 
-            {sceneMode && studio.scene && (
-              <LayerStack scene={studio.scene} onChange={setScene} />
-            )}
+            {tab === 'journal' && <JournalTab journal={journal} data={journalData} world={world} worldName={worldName} onRevisit={revisit} onGoWorld={(w) => {
+              const c = cardForWorld(w);
+              if (c) goTo(c.source, c.universe);
+            }} />}
 
-            <div className="demo-export">
-              <p className="demo-kicker demo-kicker-gap">Take it with you</p>
-              <div className="demo-text-row">
-                <button type="button" className="demo-primary" onClick={() => copy('prompt', promptText())}>
-                  {copied === 'prompt' ? 'Copied' : 'Copy prompt for your AI'}
-                </button>
-                <button type="button" onClick={() => copy('link', window.location.href)}>{copied === 'link' ? 'Copied' : 'Copy link'}</button>
-              </div>
-              <div className="demo-text-row">
-                <button type="button" onClick={() => saveImage('image/png')} disabled={!!busy} title="Still image, wallpaper size">
-                  Wallpaper (PNG)
-                </button>
-                <button type="button" onClick={saveVideo} disabled={!!busy} title="8 second loop at 30 fps">
-                  Video loop
-                </button>
-              </div>
-              {busy && <p className="demo-hint demo-busy">{busy}</p>}
-              <details className="demo-details">
-                <summary>Code</summary>
-                <textarea readOnly value={snippet} rows={8} spellCheck={false} aria-label="mount() snippet" />
-                <div className="demo-text-row">
-                  <button type="button" onClick={() => copy('code', snippet)}>{copied === 'code' ? 'Copied' : 'Copy code'}</button>
-                  <button type="button" onClick={saveJson} title="Download this configuration as JSON">JSON</button>
-                  <label className="demo-file-button" title="Load a configuration JSON">
-                    Load
-                    <input
-                      type="file"
-                      accept="application/json,.json"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) loadJson(f);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-                  <button type="button" onClick={() => saveImage('image/webp')} disabled={!!busy}>WebP</button>
-                </div>
-              </details>
-            </div>
+            {tab === 'share' && (
+              <>
+                <section className="demo-section">
+                  <button type="button" className="demo-primary" onClick={() => copy('prompt', promptText())}>
+                    {copied === 'prompt' ? 'Copied. Paste it into your AI.' : 'Copy prompt for your AI'}
+                  </button>
+                  <p className="demo-hint">Three lines for whatever AI edits your site: Claude, ChatGPT, Cursor, v0.{activePack ? ' Attach universe.json too (World tab).' : ''}</p>
+                  <div className="demo-btn-row">
+                    <button type="button" className="demo-btn" onClick={() => copy('link', window.location.href)}>
+                      {copied === 'link' ? 'Copied' : 'Copy link'}
+                    </button>
+                    <button type="button" className="demo-btn" onClick={() => copy('code', snippet)}>
+                      {copied === 'code' ? 'Copied' : 'Copy code'}
+                    </button>
+                  </div>
+                  <details className="demo-details">
+                    <summary>Code and files</summary>
+                    <textarea readOnly value={snippet} rows={8} spellCheck={false} aria-label="mount() snippet" />
+                    <div className="demo-btn-row">
+                      <button type="button" className="demo-btn" onClick={saveJson} title="Download this configuration as JSON">
+                        JSON
+                      </button>
+                      <label className="demo-btn demo-file-button" title="Load a configuration JSON">
+                        Load JSON
+                        <input
+                          type="file"
+                          accept="application/json,.json"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) loadJson(f);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                      <button type="button" className="demo-btn" onClick={() => saveImage('image/png')} disabled={!!busy} title="This window's size">
+                        PNG
+                      </button>
+                      <button type="button" className="demo-btn" onClick={() => saveImage('image/webp')} disabled={!!busy}>
+                        WebP
+                      </button>
+                    </div>
+                  </details>
+                </section>
+
+                <section className="demo-section">
+                  <h3 className="demo-h">Desktop wallpaper</h3>
+                  <p className="demo-hint">Alive on your desktop, at 30 fps, paused when it is covered.</p>
+                  <div className="demo-btn-row">
+                    <button type="button" className="demo-btn" onClick={() => copy('wallpaper', wallpaperUrl())}>
+                      {copied === 'wallpaper' ? 'Copied' : 'Copy wallpaper link'}
+                    </button>
+                    <a className="demo-btn" href={wallpaperUrl('&hint=1')} target="_blank" rel="noopener noreferrer">
+                      Open full screen
+                    </a>
+                  </div>
+                  <div className="demo-btn-row">
+                    <button type="button" className="demo-btn" onClick={saveOfflineWallpaper} disabled={!!busy} title="One file with the whole engine inside. Runs with no internet, forever.">
+                      Offline file (.html)
+                    </button>
+                    <button type="button" className="demo-btn" onClick={saveWallpaperEngine} disabled={!!busy}>
+                      Wallpaper Engine (.zip)
+                    </button>
+                  </div>
+                  <ul className="demo-howto">
+                    <li>
+                      <b>Windows.</b>{' '}
+                      <a href="https://www.rocksdanister.com/lively/" target="_blank" rel="noopener noreferrer">
+                        Lively Wallpaper
+                      </a>{' '}
+                      (free): add a wallpaper and paste the link. Wallpaper Engine: unzip into <code>projects\myprojects</code>.
+                    </li>
+                    <li>
+                      <b>macOS.</b>{' '}
+                      <a href="https://sindresorhus.com/plash" target="_blank" rel="noopener noreferrer">
+                        Plash
+                      </a>{' '}
+                      (free): add a website and paste the link.
+                    </li>
+                    <li>
+                      <b>Linux.</b> KDE Plasma&apos;s web wallpaper plugins take the link or the offline file.
+                    </li>
+                  </ul>
+                  <div className="demo-btn-row">
+                    <button type="button" className="demo-btn" onClick={saveDesktopStill} disabled={!!busy} title="At your screen's full resolution">
+                      Still at screen size
+                    </button>
+                    <button type="button" className="demo-btn" onClick={saveVideo} disabled={!!busy} title="8 seconds at 30 fps">
+                      Video loop
+                    </button>
+                  </div>
+                </section>
+
+                <section className="demo-section">
+                  <h3 className="demo-h">Phone wallpaper</h3>
+                  <div className="demo-btn-row">
+                    <button type="button" className="demo-btn" onClick={savePhoneStill} disabled={!!busy}>
+                      Still, 1170 × 2532
+                    </button>
+                    <button type="button" className="demo-btn" onClick={savePhoneVideo} disabled={!!busy}>
+                      Live, 10 s video
+                    </button>
+                  </div>
+                  <p className="demo-hint">
+                    The still fits any modern phone. The video works with Android&apos;s video wallpaper apps; on an iPhone, turn it into a Live Photo first. Or open the wallpaper link on
+                    your phone and add it to your home screen: it opens full screen, alive.
+                  </p>
+                </section>
+                {busy && <p className="demo-busy">{busy}</p>}
+              </>
+            )}
           </div>
-        )}
-      </header>
+
+          <footer className="demo-foot">
+            <button type="button" className="demo-link" onClick={() => setShortcutsOpen(true)}>
+              <Icon name="keys" /> Shortcuts
+            </button>
+            <button type="button" className="demo-link" onClick={() => setGalleryOpen(true)}>
+              <Icon name="grid" /> Gallery
+            </button>
+            {world && (
+              <button type="button" className="demo-link" onClick={openJournal}>
+                {journal.progress(world).seen} of {journal.progress(world).total} seen here
+              </button>
+            )}
+          </footer>
+        </aside>
+      ) : (
+        <button type="button" className="demo-pill" onClick={() => setPanelOpen(true)} title="Show the studio (H)">
+          <Icon name="panel" />
+          <span>{title}</span>
+          {paused && <em>paused</em>}
+          {speed > 1 && <em>×{speed}</em>}
+        </button>
+      )}
     </div>
   );
 }
 
+function ShortcutsCard({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="demo-shortcuts" role="dialog" aria-label="Keyboard shortcuts" onClick={onClose}>
+      <div className="demo-shortcuts-card" onClick={(e) => e.stopPropagation()}>
+        <h3 className="demo-h">Keyboard</h3>
+        <dl>
+          {SHORTCUTS.map(([k, v]) => (
+            <div key={k}>
+              <dt>
+                {k.split(' ').map((part) => (
+                  <kbd key={part}>{part}</kbd>
+                ))}
+              </dt>
+              <dd>{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <button type="button" className="demo-btn" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Slider({ label, value, text, min, max, step, onChange, title }: { label: string; value: number; text?: string; min: number; max: number; step: number; onChange: (v: number) => void; title?: string }) {
+  return (
+    <label className="demo-field demo-slider" title={title}>
+      <span className="demo-field-head">
+        <span>{label}</span>
+        <output>{text ?? value}</output>
+      </span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </label>
+  );
+}
+
 /**
- * Preset gallery. Images are the e2e screenshot baselines copied to public/gallery
- * by `pnpm sync-gallery`, so a card shows the exact pixels the tests protect.
+ * Preset gallery. Images are thumbnails of the e2e screenshot baselines (`pnpm thumbs`),
+ * so a card shows the exact pixels the tests protect.
  */
 type GalleryEntry = { key: string; image: string; source: string; universe?: string; label: string; description?: string; tags: string[]; community?: boolean };
 
 function Gallery({ onPick, onClose }: { onPick: (source: string, universe?: string) => void; onClose: () => void }) {
   const [available, setAvailable] = useState<string[] | null>(null);
   useEffect(() => {
-    fetch('/gallery/index.json')
+    fetch('thumbs/index.json')
       .then((r) => (r.ok ? r.json() : []))
       .then((list: string[]) => setAvailable(list))
       .catch(() => setAvailable([]));
@@ -973,7 +1384,7 @@ function Gallery({ onPick, onClose }: { onPick: (source: string, universe?: stri
   }));
   const card = (e: GalleryEntry) => (
     <button type="button" key={e.key} className="demo-card" onClick={() => onPick(e.source, e.universe)}>
-      {available?.includes(e.image) ? <img src={`/gallery/${e.image}.png`} alt="" loading="lazy" /> : <span className="demo-card-placeholder">no preview yet</span>}
+      {available?.includes(e.image) ? <img src={`thumbs/${e.image}.jpg`} alt="" loading="lazy" /> : <span className="demo-card-placeholder">No preview yet</span>}
       <strong>
         {e.label}
         {e.community && <span className="demo-badge">community</span>}
@@ -985,11 +1396,13 @@ function Gallery({ onPick, onClose }: { onPick: (source: string, universe?: stri
   return (
     <div className="demo-gallery" role="dialog" aria-label="Gallery">
       <div className="demo-gallery-head">
-        <p className="demo-kicker">Featured</p>
-        <button type="button" onClick={onClose}>Close</button>
+        <h3 className="demo-h">Worlds and instruments</h3>
+        <button type="button" className="demo-btn" onClick={onClose}>
+          Close
+        </button>
       </div>
       <div className="demo-gallery-grid">{featured.map(card)}</div>
-      <p className="demo-kicker demo-kicker-gap">Basics</p>
+      <h3 className="demo-h demo-gallery-sub">Presets and simple backgrounds</h3>
       <div className="demo-gallery-grid demo-gallery-basics">{basics.map(card)}</div>
     </div>
   );
@@ -1081,8 +1494,8 @@ function LayerStack({ scene, onChange }: { scene: Scene; onChange: (fn: (scene: 
   const add = () => onChange((s) => ({ layers: [...s.layers, { use: adding }] }));
 
   return (
-    <div className="demo-toggles">
-      <p className="demo-kicker demo-kicker-gap">Layers (bottom to top)</p>
+    <section className="demo-section">
+      <h3 className="demo-h">Layers, bottom to top</h3>
       {scene.layers.map((ref, i) => {
         const layer = getLayer(ref.use);
         const values = { ...(layer ? schemaDefaults(layer.schema) : {}), ...(ref.with ?? {}) };
@@ -1103,10 +1516,7 @@ function LayerStack({ scene, onChange }: { scene: Scene; onChange: (fn: (scene: 
             </div>
             {open === i && layer && (
               <div className="demo-layer-body">
-                <label className="demo-field">
-                  <span>Opacity {(ref.opacity ?? 1).toFixed(2)}</span>
-                  <input type="range" min={0} max={1} step={0.05} value={ref.opacity ?? 1} onChange={(e) => patch(i, { opacity: Number(e.target.value) })} />
-                </label>
+                <Slider label="Opacity" value={ref.opacity ?? 1} text={(ref.opacity ?? 1).toFixed(2)} min={0} max={1} step={0.05} onChange={(v) => patch(i, { opacity: v })} />
                 {layer.canvas && (
                   <label className="demo-field">
                     <span>Blend</span>
@@ -1130,9 +1540,11 @@ function LayerStack({ scene, onChange }: { scene: Scene; onChange: (fn: (scene: 
             <option key={l.id} value={l.id}>{l.label}</option>
           ))}
         </select>
-        <button type="button" onClick={add}>Add layer</button>
+        <button type="button" className="demo-btn" onClick={add}>
+          Add layer
+        </button>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -1163,28 +1575,28 @@ function useSoundscape(handle: MountHandle | null, on: boolean, volume: number, 
     else s.stop();
   }, [on, ready]);
   useEffect(() => (handle && sound.current ? sound.current.attach(handle) : undefined), [handle, ready]);
-  useEffect(() => sound.current?.setPalette(universe), [universe, ready]);
-  useEffect(() => sound.current?.setVolume(volume), [volume, ready]);
+  useEffect(() => {
+    sound.current?.setPalette(universe);
+  }, [universe, ready]);
+  useEffect(() => {
+    sound.current?.setVolume(volume);
+  }, [volume, ready]);
   useEffect(() => () => sound.current?.destroy(), []);
 }
 
-/** Developer panel (`?debug`): run the sim faster, skip ahead, and watch counts and the event log. */
+/** Developer panel (`?debug`): skip ahead, and watch counts and the event log. Speed lives in the studio's top bar. */
 function DebugPanel({ handle }: { handle: MountHandle }) {
-  const [scale, setScale] = useState(1);
   const [snap, setSnap] = useState<ReturnType<MountHandle['inspect']>>(undefined);
   useEffect(() => {
     const id = window.setInterval(() => setSnap(handle.inspect()), 400);
     return () => window.clearInterval(id);
   }, [handle]);
-  useEffect(() => handle.setTimeScale(scale), [handle, scale]);
   const events = (snap?.log ?? []).filter((e) => e.kind !== 'low').slice(-8);
   return (
     <aside className="demo-debug" aria-label="Debug">
       <div className="demo-text-row">
-        {[1, 4, 16].map((k) => (
-          <button key={k} type="button" aria-pressed={scale === k} onClick={() => setScale(k)}>×{k}</button>
-        ))}
         <button type="button" onClick={() => handle.fastForward(30)}>+30 s</button>
+        <button type="button" onClick={() => handle.fastForward(300)}>+5 min</button>
         <span>t {snap?.t.toFixed(0) ?? '–'} s</span>
       </div>
       {snap && (
@@ -1204,39 +1616,55 @@ function DebugPanel({ handle }: { handle: MountHandle }) {
   );
 }
 
-/** The universe's mechanics as switches, each with its own tuning. Editing makes a copy; reset drops it. */
-function MechanicsPanel({ refs, custom, onChange, onReset }: { refs: MechanicRef[]; custom: boolean; onChange: (next: MechanicRef[]) => void; onReset: () => void }) {
+/**
+ * The universe's mechanics as chips: its own first, then any borrowed from other worlds.
+ * Editing makes a copy of the universe's list; reset drops it.
+ */
+function MechanicChips({ refs, native, custom, onChange, onReset }: { refs: MechanicRef[]; native: string[]; custom: boolean; onChange: (next: MechanicRef[]) => void; onReset: () => void }) {
+  const [borrowing, setBorrowing] = useState(false);
+  const all = listMechanics();
   const live = (id: string) => refs.find((r) => r.use === id && r.enabled !== false);
   const toggle = (id: string) => {
     const existing = refs.find((r) => r.use === id);
     onChange(existing ? refs.map((r) => (r.use === id ? { ...r, enabled: r.enabled === false } : r)) : [...refs, { use: id }]);
   };
   const tune = (id: string, key: string, value: unknown) => onChange(refs.map((r) => (r.use === id ? { ...r, with: { ...(r.with ?? {}), [key]: value } } : r)));
+  const own = all.filter((m) => native.includes(m.id));
+  const others = all.filter((m) => !native.includes(m.id));
+  const borrowed = others.filter((m) => live(m.id));
+  const tunable = all.filter((m) => live(m.id) && Object.keys(m.schema).length > 0);
+  const chip = (m: (typeof all)[number]) => (
+    <button key={m.id} type="button" className={`demo-chip${live(m.id) ? ' is-on' : ''}`} aria-pressed={!!live(m.id)} onClick={() => toggle(m.id)} title={m.description}>
+      {m.label}
+    </button>
+  );
   return (
     <div className="demo-mechanics">
-      <p className="demo-kicker demo-kicker-gap">What happens here</p>
-      {listMechanics().map((m) => {
-        const ref = live(m.id);
-        return (
-          <div key={m.id}>
-            <label className="demo-toggle-field" title={m.description}>
-              <input type="checkbox" checked={!!ref} onChange={() => toggle(m.id)} />
-              <span className="demo-toggle-label">{m.label}</span>
-            </label>
-            {ref && Object.keys(m.schema).length > 0 && (
-              <details className="demo-details">
-                <summary>Tune {m.label.toLowerCase()}</summary>
-                <em className="demo-hint">{m.description}</em>
-                <SchemaControls schema={m.schema} values={{ ...schemaDefaults(m.schema), ...(ref.with ?? {}) }} onChange={(key, value) => tune(m.id, key, value)} />
-              </details>
-            )}
-          </div>
-        );
-      })}
-      {custom && (
-        <button type="button" onClick={onReset}>
-          Back to this universe&apos;s own
+      <div className="demo-chips">
+        {own.map(chip)}
+        {borrowed.map(chip)}
+      </div>
+      <div className="demo-inline-actions">
+        <button type="button" className="demo-link" onClick={() => setBorrowing((b) => !b)} aria-expanded={borrowing}>
+          {borrowing ? 'Done borrowing' : `+ Borrow from other worlds (${others.length - borrowed.length})`}
         </button>
+        {custom && (
+          <button type="button" className="demo-link" onClick={onReset}>
+            Back to this universe&apos;s own
+          </button>
+        )}
+      </div>
+      {borrowing && <div className="demo-chips is-borrow">{others.filter((m) => !live(m.id)).map(chip)}</div>}
+      {tunable.length > 0 && (
+        <details className="demo-details">
+          <summary>Tune what happens</summary>
+          {tunable.map((m) => (
+            <div key={m.id} className="demo-tune">
+              <h4 title={m.description}>{m.label}</h4>
+              <SchemaControls schema={m.schema} values={{ ...schemaDefaults(m.schema), ...(live(m.id)?.with ?? {}) }} onChange={(key, value) => tune(m.id, key, value)} />
+            </div>
+          ))}
+        </details>
       )}
     </div>
   );
@@ -1266,18 +1694,13 @@ function FieldControl({ name, field, value, onChange }: { name: string; field: F
     case 'number': {
       const v = typeof value === 'number' ? value : field.default;
       const step = field.step ?? (field.max - field.min) / 100;
-      return (
-        <label className="demo-field" title={field.description}>
-          <span>{label} {Number.isInteger(step) ? v : v.toFixed(2)}</span>
-          <input type="range" min={field.min} max={field.max} step={step} value={v} onChange={(e) => onChange(Number(e.target.value))} />
-        </label>
-      );
+      return <Slider label={label} value={v} text={Number.isInteger(step) ? String(v) : v.toFixed(2)} min={field.min} max={field.max} step={step} onChange={onChange} title={field.description} />;
     }
     case 'boolean':
       return (
-        <label className="demo-toggle-field" title={field.description}>
+        <label className="demo-check" title={field.description}>
           <input type="checkbox" checked={typeof value === 'boolean' ? value : field.default} onChange={(e) => onChange(e.target.checked)} />
-          <span className="demo-toggle-label">{label}</span>
+          <span>{label}</span>
         </label>
       );
     case 'enum':

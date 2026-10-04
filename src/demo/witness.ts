@@ -1,0 +1,355 @@
+/**
+ * The studio's journal: what you have witnessed, in which world, and when.
+ *
+ * Sightings: the first time each notable event happens in each world is kept (with the
+ * seed and the moment, so you can go back), and every one after that is counted. Some
+ * come within a minute; some take an afternoon. Unseen ones show as locked, which is
+ * the point.
+ *
+ * The chronicle: the uncommon and rarer events as short lines of history, with the
+ * map's own log line beside them when there is one.
+ *
+ * Worlds are keyed like their sound palettes: a universe id for the sector map, the
+ * skin id for Undercity and the instruments. Storage is optional (tests pass none).
+ */
+
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'legendary';
+export type Sight = { type: string; name: string; rarity: Rarity; line: string };
+
+const s = (type: string, name: string, rarity: Rarity, line: string): Sight => ({ type, name, rarity, line });
+
+/**
+ * What can be seen in each world. Rarity comes from twenty simulated minutes over two
+ * seeds (`scripts/sim.mjs`): common is dozens, uncommon a dozen or more, rare a handful,
+ * legendary three or fewer.
+ */
+export const SIGHTS: Record<string, Sight[]> = {
+  void: [
+    s('jump', 'Gate transit', 'common', 'A fleet went through the gate.'),
+    s('convoy', 'Convoy', 'common', 'A convoy formed up and set out.'),
+    s('delivery', 'Delivery', 'common', 'Cargo reached its port.'),
+    s('launch', 'Commissioning', 'uncommon', 'A new ship was commissioned.'),
+    s('raid', 'Raid', 'uncommon', 'Raiders came out of the dark.'),
+    s('distress', 'Distress call', 'uncommon', 'A distress call went out, and was relayed.'),
+    s('lost', 'Fleet lost', 'uncommon', 'A fleet was lost with all hands.'),
+    s('armada', 'Armada', 'rare', 'An armada came on station.'),
+    s('flare', 'Stellar flare', 'rare', 'The star flared and blinded every sensor.'),
+    s('scramble', 'Scramble', 'rare', 'Interceptors scrambled.'),
+    s('surge', 'Gate surge', 'legendary', 'The jumpgate surged, and traffic poured through.'),
+  ],
+  saltwind: [
+    s('collision', 'Rockfall', 'common', 'Rock met rock in the belt.'),
+    s('checkpoint', 'Checkpoint', 'common', 'A hauler was stopped at the checkpoint.'),
+    s('chase', 'Pursuit', 'common', 'Wardens gave chase.'),
+    s('dispute', 'Claim dispute', 'common', 'Two crews claimed the same rock.'),
+    s('distress', 'Distress call', 'common', 'A hauler called for help.'),
+    s('raid', 'Claim jumpers', 'uncommon', 'Claim jumpers hit a hauler.'),
+    s('storm', 'Dust storm', 'uncommon', 'A dust storm rolled down the old road.'),
+    s('combat', 'Warning shots', 'uncommon', 'Warning shots, then real ones.'),
+    s('blowout', 'Bore blowout', 'rare', 'A bore blew out. They cleared the shaft.'),
+    s('shift', 'Shift change', 'rare', 'The shift changed and the lanes filled.'),
+  ],
+  choir: [
+    s('song', 'Song', 'common', 'The choir sang.'),
+    s('cascade', 'Cascade', 'common', 'The song carried from star to star.'),
+    s('anagram', 'Restless names', 'common', 'The names on the chart rearranged themselves.'),
+    s('echo', 'The same hour, twice', 'uncommon', 'The same hour came twice.'),
+    s('hatch', 'Hatching', 'uncommon', 'Something hatched in a cradle.'),
+    s('leviathan', 'Leviathan', 'uncommon', 'Something vast moved between the stars.'),
+    s('caught', 'Taken', 'uncommon', 'The Mouth took a ship.'),
+    s('eye', 'The eye', 'rare', 'An eye opened in the dark and looked at us.'),
+    s('exhale', 'The Mouth exhales', 'rare', 'The Mouth exhaled.'),
+    s('starbirth', 'Starbirth', 'rare', 'A hollow star was born.'),
+    s('eclipse', 'Eclipse', 'rare', 'The light was eaten.'),
+    s('starout', 'A star goes out', 'rare', 'A star went out.'),
+  ],
+  siege: [
+    s('blast', 'Shelling', 'common', 'Shells walked along the wall.'),
+    s('front', 'The front moves', 'common', 'The front moved a little.'),
+    s('offensive', 'Offensive', 'common', 'An offensive began.'),
+    s('spot', 'Target painted', 'uncommon', 'A spotter painted a target.'),
+    s('bombard', 'Volley', 'uncommon', 'The big guns spoke.'),
+    s('shield', 'Shield holds', 'uncommon', 'A shield took the volley and held.'),
+    s('duel', 'Monitor duel', 'rare', 'Two monitors dueled across the line.'),
+    s('monitor-lost', 'Monitor lost', 'rare', 'A monitor went down.'),
+    s('mines', 'Chain of mines', 'rare', 'A minefield went up in a chain.'),
+    s('truce', 'Truce', 'rare', 'A truce was called. The guns fell silent.'),
+    s('truce-end', 'Truce ends', 'rare', 'The truce ended.'),
+    s('raid', 'Commando raid', 'rare', 'Commandos struck behind the lines.'),
+    s('supplycut', 'Supply cut', 'legendary', 'Interdictors cut the supply line.'),
+    s('capture', 'A system falls', 'legendary', 'A system changed hands.'),
+  ],
+  hive: [
+    s('spores', 'Spore burst', 'common', 'Spores burst from a hive node.'),
+    s('settle', 'Spores settle', 'common', 'Spores settled, and something took root.'),
+    s('bloom', 'A node blooms', 'uncommon', 'A new node bloomed.'),
+    s('purge', 'Purge fleet', 'uncommon', 'The purge fleet lit its torches.'),
+    s('infested', 'Overgrown', 'rare', 'A station was lost to the bloom.'),
+    s('scourge', 'Napalm run', 'rare', 'A scourge made a napalm run on a node.'),
+    s('evac', 'Evacuation', 'rare', 'A colony evacuated before the end.'),
+    s('nodeburn', 'Node burned out', 'legendary', 'The purge burned out a hive node.'),
+  ],
+  lastfleet: [
+    s('birth', 'A birth', 'common', 'A child was born aboard.'),
+    s('skim', 'Fuel skim', 'common', 'Skimmers dove for fuel.'),
+    s('lost', 'Ship lost', 'uncommon', 'A ship was lost, and everyone aboard.'),
+    s('straggler', 'Straggler', 'uncommon', 'A ship fell behind.'),
+    s('rescue', 'Rescue', 'uncommon', 'A tug went back for them, and brought them home.'),
+    s('pursuit', 'They found us', 'rare', 'They found us again.'),
+  ],
+  cradle: [
+    s('collapse', 'Collapse', 'common', 'A cloud of gas fell in on itself.'),
+    s('ignite', 'First light', 'common', 'A star ignited.'),
+    s('planets', 'Planets', 'common', 'Planets formed around a young star.'),
+    s('life', 'Life', 'common', 'Life began.'),
+    s('civilization', 'The first cities', 'common', 'The first cities rose.'),
+    s('firstships', 'First ships', 'common', 'The first ships left a world.'),
+    s('colony', 'Colony', 'uncommon', 'A colony was founded on another world.'),
+    s('contact', 'First contact', 'uncommon', 'Two peoples found each other.'),
+    s('silence', 'The lights go out', 'rare', 'A world went silent.'),
+    s('era', 'A new era', 'rare', 'An era ended, and another began.'),
+    s('supernova', 'Supernova', 'legendary', 'A star died in a supernova.'),
+  ],
+  undercity: [
+    s('train', 'The high line', 'common', 'A train went by on the high line.'),
+    s('jackin', 'Jack in', 'uncommon', 'A runner jacked in.'),
+    s('ice', 'ICE', 'uncommon', 'ICE woke up.'),
+    s('police', 'Units en route', 'uncommon', 'The precinct sent units.'),
+    s('flatline', 'Flatline', 'uncommon', 'A runner flatlined.'),
+    s('breach', 'Breach', 'rare', 'A run broke through, and the data walked.'),
+    s('outage', 'Grid failure', 'rare', 'A district went dark.'),
+    s('lightning', 'Lightning', 'legendary', 'Lightning struck the city.'),
+  ],
+  sonar: [
+    s('contact', 'Contact', 'common', 'A new contact on the scope.'),
+    s('echo', 'Echo', 'common', 'An echo came back.'),
+    s('active', 'Active ping', 'uncommon', 'We pinged, loud.'),
+    s('turn', 'Hard turn', 'uncommon', 'The boat turned hard.'),
+    s('whale', 'Whale song', 'uncommon', 'A whale sang somewhere below.'),
+    s('torpedo', 'Torpedo', 'uncommon', 'Torpedo in the water.'),
+    s('decoy', 'Decoy', 'rare', 'A decoy went out.'),
+    s('detonation', 'Detonation', 'rare', 'A detonation shook the hull.'),
+  ],
+  'atc-radar': [
+    s('transmit', 'Radio call', 'common', 'A pilot called in.'),
+    s('landing', 'Landing', 'common', 'A flight landed.'),
+    s('departure', 'Departure', 'common', 'A flight departed.'),
+    s('hold', 'Holding', 'uncommon', 'A flight entered the hold.'),
+    s('goaround', 'Go-around', 'rare', 'A flight went around.'),
+    s('conflict', 'Conflict alert', 'rare', 'Two flights came too close.'),
+    s('emergency', 'Mayday', 'legendary', 'A flight declared an emergency.'),
+  ],
+  seismograph: [
+    s('quake', 'Earthquake', 'common', 'The ground shook.'),
+    s('blast', 'Quarry blast', 'uncommon', 'The quarry blasted.'),
+    s('tremor', 'Volcanic tremor', 'uncommon', 'The volcano trembled for a while.'),
+    s('aftershock', 'Aftershock', 'uncommon', 'An aftershock.'),
+    s('teleseism', 'Distant great quake', 'rare', 'A great earthquake, half a world away.'),
+  ],
+  abyssal: [
+    s('flash', 'Bioluminescence', 'common', 'Something flashed in the deep.'),
+    s('scatter', 'Scatter', 'common', 'A shoal scattered.'),
+    s('hunt', 'The hunt', 'uncommon', 'A hunter stalked.'),
+    s('strike', 'Strike', 'uncommon', 'A hunter struck.'),
+    s('spit', 'Spitting light', 'uncommon', 'Something spat light to get away.'),
+    s('vent', 'Vent field', 'rare', 'A vent field breathed.'),
+    s('giant', 'Something enormous', 'legendary', 'Something enormous passed the scanner.'),
+  ],
+  'mars-radar': [
+    s('drive', 'Rover drive', 'common', 'The rover drove a little farther.'),
+    s('core', 'Core sample', 'common', 'The rover took a core.'),
+    s('pass', 'Orbiter pass', 'common', 'An orbiter passed over.'),
+    s('devil', 'Dust devil', 'uncommon', 'A dust devil spun up.'),
+    s('flight', 'Helicopter flight', 'uncommon', 'The helicopter flew.'),
+    s('storm', 'Dust storm', 'rare', 'A dust storm came in.'),
+    s('clear', 'Clear skies', 'rare', 'The storm cleared.'),
+    s('meteor', 'Meteor', 'rare', 'A meteor fell.'),
+    s('entry', 'Entry', 'legendary', 'A lander came in through the atmosphere.'),
+    s('landing', 'Touchdown', 'legendary', 'Touchdown.'),
+  ],
+};
+
+export const RARITY_ORDER: Rarity[] = ['common', 'uncommon', 'rare', 'legendary'];
+
+export function sightFor(world: string, type: string): Sight | undefined {
+  return SIGHTS[world]?.find((x) => x.type === type);
+}
+
+export type Sighting = {
+  /** Times seen. */
+  n: number;
+  /** When first seen (epoch ms). */
+  first: number;
+  /** The seed and sim time it was first seen at, to go back. */
+  seed: string;
+  t: number;
+  /** The studio source it happened in (`void-tactical`, `undercity`, an instrument). */
+  source: string;
+};
+
+export type ChronicleEntry = {
+  /** Epoch ms. */
+  at: number;
+  world: string;
+  source: string;
+  type: string;
+  line: string;
+  rarity: Rarity;
+  /** The map's own log line, when it said one. */
+  detail?: string;
+  seed: string;
+  /** Sim seconds. */
+  t: number;
+  /** How many times in a row (repeats within a short window fold in). */
+  n: number;
+  first?: boolean;
+  /** Happened while the tab was hidden (simulated on return). */
+  away?: boolean;
+};
+
+export type JournalData = {
+  v: 1;
+  sightings: Record<string, Record<string, Sighting>>;
+  chronicle: ChronicleEntry[];
+  prefs: { away: boolean; announce: boolean };
+};
+
+export type Witnessed = { sight: Sight; first: boolean; entry?: ChronicleEntry };
+
+const KEY = 'bge.journal.v1';
+const CHRONICLE_CAP = 250;
+/** Repeats of the same thing within this many sim seconds fold into one line. */
+const FOLD_SECONDS = 25;
+
+const empty = (): JournalData => ({ v: 1, sightings: {}, chronicle: [], prefs: { away: true, announce: true } });
+
+function load(storage: Storage | null): JournalData {
+  if (!storage) return empty();
+  try {
+    const raw = JSON.parse(storage.getItem(KEY) ?? 'null') as JournalData | null;
+    if (!raw || raw.v !== 1) return empty();
+    return { ...empty(), ...raw, prefs: { ...empty().prefs, ...raw.prefs } };
+  } catch {
+    return empty();
+  }
+}
+
+export type Journal = ReturnType<typeof createJournal>;
+
+export function createJournal(storage: Storage | null = null, now: () => number = Date.now) {
+  let data = load(storage);
+  const listeners = new Set<() => void>();
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Snapshots are never mutated: each change makes a new one, so React sees it. */
+  const commit = (next: JournalData) => {
+    data = next;
+    for (const fn of listeners) fn();
+    if (!storage || saveTimer) return;
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      try {
+        storage.setItem(KEY, JSON.stringify(data));
+      } catch {
+        /* storage full or blocked */
+      }
+    }, 800);
+  };
+
+  return {
+    get data(): JournalData {
+      return data;
+    },
+    subscribe(fn: () => void): () => void {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+
+    /**
+     * Something happened. Counts it if it is one of this world's sights, and writes it
+     * into the chronicle when it is uncommon or rarer, or the first of its kind.
+     * Returns null for events the world does not keep.
+     */
+    witness(world: string, type: string, at: { source: string; seed: string; t: number; detail?: string; away?: boolean }): Witnessed | null {
+      const sight = sightFor(world, type);
+      if (!sight) return null;
+      const known = data.sightings[world]?.[type];
+      const first = !known;
+      const book = { ...(data.sightings[world] ?? {}), [type]: known ? { ...known, n: known.n + 1 } : { n: 1, first: now(), seed: at.seed, t: at.t, source: at.source } };
+      let chronicle = data.chronicle;
+
+      let entry: ChronicleEntry | undefined;
+      if (first || sight.rarity !== 'common') {
+        const last = chronicle[chronicle.length - 1];
+        if (!first && last && last.world === world && last.type === type && last.seed === at.seed && at.t - last.t < FOLD_SECONDS && !!last.away === !!at.away) {
+          entry = { ...last, n: last.n + 1, t: at.t, detail: at.detail ?? last.detail };
+          chronicle = [...chronicle.slice(0, -1), entry];
+        } else {
+          entry = { at: now(), world, source: at.source, type, line: sight.line, rarity: sight.rarity, detail: at.detail, seed: at.seed, t: at.t, n: 1, first, away: at.away };
+          chronicle = [...chronicle, entry].slice(-CHRONICLE_CAP);
+        }
+      }
+      commit({ ...data, sightings: { ...data.sightings, [world]: book }, chronicle });
+      return { sight, first, entry };
+    },
+
+    /** Seen and total for a world. */
+    progress(world: string): { seen: number; total: number } {
+      const all = SIGHTS[world] ?? [];
+      const book = data.sightings[world] ?? {};
+      return { seen: all.filter((x) => book[x.type]).length, total: all.length };
+    },
+
+    setPref(key: keyof JournalData['prefs'], value: boolean) {
+      commit({ ...data, prefs: { ...data.prefs, [key]: value } });
+    },
+
+    clearChronicle() {
+      commit({ ...data, chronicle: [] });
+    },
+
+    /** Forget everything: sightings, chronicle, preferences. */
+    reset() {
+      commit(empty());
+    },
+  };
+}
+
+/** Sim seconds as m:ss (or h:mm:ss). */
+export function clock(t: number): string {
+  const sec = Math.max(0, Math.floor(t));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const ss = String(sec % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+
+/** The chronicle as plain text, oldest first, for copying. */
+export function chronicleText(entries: readonly ChronicleEntry[], worldName: (id: string) => string): string {
+  return entries
+    .map((e) => {
+      const head = `[${worldName(e.world)} · ${clock(e.t)}${e.away ? ' · while you were away' : ''}]`;
+      const times = e.n > 1 ? ` (×${e.n})` : '';
+      return `${head} ${e.line}${times}${e.detail ? ` — ${e.detail}` : ''}`;
+    })
+    .join('\n');
+}
+
+/**
+ * What happened while you were away, in a sentence: the rarest things first, counted.
+ * `found` is a list of sights in the order they happened.
+ */
+export function awaySummary(found: readonly Sight[], max = 4): string {
+  if (!found.length) return 'Nothing much. It was quiet.';
+  const counts = new Map<string, { sight: Sight; n: number }>();
+  for (const x of found) {
+    const c = counts.get(x.type);
+    if (c) c.n++;
+    else counts.set(x.type, { sight: x, n: 1 });
+  }
+  const ranked = [...counts.values()].sort((a, b) => RARITY_ORDER.indexOf(b.sight.rarity) - RARITY_ORDER.indexOf(a.sight.rarity) || b.n - a.n);
+  const parts = ranked.slice(0, max).map(({ sight, n }) => (n > 1 ? `${sight.name.toLowerCase()} ×${n}` : sight.name.toLowerCase()));
+  const more = ranked.length - max;
+  const text = parts.join(', ') + (more > 0 ? `, and ${more} more` : '');
+  return text.charAt(0).toUpperCase() + text.slice(1) + '.';
+}

@@ -171,6 +171,14 @@ describe('mount()', () => {
     handle.destroy();
   });
 
+  it('renders at a fixed pixel ratio when asked, past the device cap', () => {
+    const { skin, rec } = makeStubSkin();
+    const handle = mount(document.body, { skin, pixelRatio: 3 });
+    expect(handle.canvas.width).toBe(window.innerWidth * 3);
+    expect(rec.hosts[0].viewport.dpr).toBe(3);
+    handle.destroy();
+  });
+
   it('injects the void-tactical overlay stack styles and layers by default', () => {
     const handle = mount(document.body, { seed: 'orion-7' });
     expect(document.getElementById('bg-engine-styles')).not.toBeNull();

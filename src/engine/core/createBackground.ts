@@ -94,8 +94,9 @@ export function createBackground<T = any>(
     return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
   })();
 
-  // Skin events: fanned out to `onEvent` listeners, and silent during sim-only steps
-  // (fast-forward, time scale) so a burst of skipped time never plays as a burst of sound.
+  // Skin events: fanned out to `onEvent` listeners, and silent during fastForward() so a
+  // burst of skipped time never plays as a burst of sound. Time scale is live time running
+  // faster, so its extra steps report (listeners rate-limit; the journal needs every one).
   const eventListeners = new Set<(e: SkinEvent) => void>();
   let simulating = 0;
   const events: SkinEvents = {
@@ -162,9 +163,10 @@ export function createBackground<T = any>(
   /** Size the backing store and update `viewport`. Returns true when the CSS size changed. */
   const syncSize = (): boolean => {
     const next = measure();
-    // Crisp (text-heavy) skins get full device resolution, up to 2x, and keep it.
+    // Crisp (text-heavy) skins get full device resolution, up to 2x, and keep it. A fixed
+    // pixelRatio (exports, wallpapers) wins over both.
     const cap = skin.crisp ? 2 : MAX_DPR;
-    const dpr = Math.max(0.5, Math.min(window.devicePixelRatio || 1, cap) * state.dprScale);
+    const dpr = resolved.pixelRatio || Math.max(0.5, Math.min(window.devicePixelRatio || 1, cap) * state.dprScale);
     const backingW = Math.max(1, Math.round(next.width * dpr));
     const backingH = Math.max(1, Math.round(next.height * dpr));
     if (canvas.width !== backingW || canvas.height !== backingH) {
@@ -214,15 +216,15 @@ export function createBackground<T = any>(
   let lastT = 0;
   let timeScale = 1;
 
-  /** One sim-only step: the skin's `advance`, or a full frame for skins without one. */
-  const simulate = (info: FrameInfo) => {
+  /** One sim-only step: the skin's `advance`, or a full frame for skins without one. Quiet steps report no events. */
+  const simulate = (info: FrameInfo, quiet: boolean) => {
     lastT = info.t;
-    simulating++;
+    if (quiet) simulating++;
     try {
       if (instance!.advance) instance!.advance(info);
       else instance!.frame(info);
     } finally {
-      simulating--;
+      if (quiet) simulating--;
     }
   };
 
@@ -233,7 +235,7 @@ export function createBackground<T = any>(
   const governor = (costMs: number) => {
     costEma = costEma === 0 ? costMs : costEma * 0.9 + costMs * 0.1;
     if (costEma > budgetMs) {
-      if (!skin.crisp && state.dprScale > 0.5 && viewport.dpr > 0.75) {
+      if (!skin.crisp && !resolved.pixelRatio && state.dprScale > 0.5 && viewport.dpr > 0.75) {
         state.dprScale = Math.max(0.5, +(state.dprScale - 0.25).toFixed(2));
         syncSize();
       } else if (state.quality > 0.4) {
@@ -257,7 +259,7 @@ export function createBackground<T = any>(
     const wall = (timestamp - startTime) / 1000;
     // Time scale k: k - 1 sim-only steps of dt, then the drawn frame, all on one timeline.
     for (let i = 1; i < timeScale; i++) {
-      simulate({ t: wall + skipped, dt, frame: frameIndex++, timestamp });
+      simulate({ t: wall + skipped, dt, frame: frameIndex++, timestamp }, false);
       skipped += dt;
     }
     const info: FrameInfo = { t: wall + skipped, dt, frame: frameIndex++, timestamp };
@@ -451,7 +453,7 @@ export function createBackground<T = any>(
       let done = 0;
       for (let i = 1; i <= n; i++) {
         const info: FrameInfo = { t: from + i * step, dt: step, frame: frameIndex++, timestamp: lastTs < 0 ? startTime : lastTs };
-        simulate(info);
+        simulate(info, true);
         done = i * step;
         if (until?.(info)) break;
       }

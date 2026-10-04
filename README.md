@@ -29,7 +29,7 @@ None of them loop. Each one is a small simulation with its own rules, and things
 - [Things happen](#things-happen)
 - [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [instruments](#instruments-from-other-worlds), [basics](#basics)
 - [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
-- [Sound](#sound)
+- [Sound](#sound), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
 - [Put one on your site](#put-one-on-your-site)
 - [Reference](#reference):
   - Setup: [installation](#installation), [presets](#presets), [frameworks](#frameworks), [the CLI](#copy-a-background-into-your-project), [community presets](#community-presets), [palette tokens](#palette-tokens-on-your-page)
@@ -211,7 +211,30 @@ sound.attach(handle);
 playButton.onclick = () => sound.start(); // browsers allow audio only after a click
 ```
 
-Explosions boom where they happen across the screen. A raid brings a siren and a capture rings a bell. In the Choir, the songs are low voices answering each other, and in Undercity the thunder comes a moment late. Every world has its own palette and drone. In the studio, flip **Sound** on.
+Explosions boom where they happen across the screen. A raid brings a siren and a capture rings a bell. In the Choir, the songs are low voices answering each other, and in Undercity the thunder comes a moment late. Every world has its own palette and drone. In the studio, press the speaker (or **M**).
+
+## The journal
+
+Things happen whether you are watching or not, so the studio keeps a journal.
+
+![The studio over the Cradle of Suns, its Journal tab open: ten of eleven sightings found, from common collapses to a legendary supernova, with progress for every world below](docs/media/studio-journal.jpg)
+
+- **Sightings.** Every world has its own list of things that can happen in it, from common to legendary: a supernova in the Cradle, a gate surge in the Void, Mayday on the approach radar. The first time you see one, it is kept with its seed and the moment, and **Revisit** takes you back to that seed, skipped to just before. The everyday ones are named up front; the rare ones stay hidden until you have seen them.
+- **The chronicle.** The uncommon and rarer events, written down as a line of history next to the map's own log line: *A ship fell behind.* `STRAGGLER · LANTERN 153 · ENGINE FAILURE`, then later *A tug went back for them, and brought them home.* `TUG 8 HAS THEM · LANTERN 153`. Copy it out as text.
+- **While you were away.** Leave the tab and come back, and the world catches up on what it missed (up to five minutes), then tells you: *They found us, ship lost ×6, straggler ×3, rescue ×2.*
+
+It all stays in your browser (localStorage). Press **J** in the studio.
+
+## As your wallpaper
+
+Every world can run behind your desktop or on your phone. In the studio's **Share** tab:
+
+- **Desktop, alive.** *Copy wallpaper link* gives a bare full-screen page at 30 fps that pauses when it is covered. On Windows, paste it into [Lively Wallpaper](https://www.rocksdanister.com/lively/) (free). On macOS, [Plash](https://sindresorhus.com/plash) (free). On KDE Plasma, a web wallpaper plugin.
+- **Desktop, offline.** *Offline file* is one HTML file with the whole engine inside (about 450 KB). It needs no internet, now or ever. *Wallpaper Engine* packs the same file with a `project.json` and a preview: unzip it into `projects\myprojects`.
+- **Desktop, still.** A PNG at your screen's full resolution.
+- **Phone.** A still at 1170 × 2532, rendered at the phone's own pixel density so the small text stays sharp. Or a 10 second portrait video (MP4 where the browser can record it) for a video wallpaper app. Or open the wallpaper link on the phone and add it to the home screen: it opens full screen and alive, and remembers its world.
+
+The wallpaper page reads the same configuration as `mount()`, base64url-encoded in `?c=`, plus `fps`, `pr` (pixel ratio), `skip` (seconds to simulate first, so the world starts busy), and `i=1` (wheel zoom and drag pan).
 
 ## Put one on your site
 
@@ -403,6 +426,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | `cameraSpeed` | `0.25` | Base drift speed, in world units per frame at 60 fps. Real speed is time-based. |
 | `interactive` | `false` | Wheel zoom and drag pan on empty parts of the page, for skins with a camera. |
 | `targetFps` | `60` | Frame cap for the render loop. Lowering it does not slow the animation. |
+| `pixelRatio` | device | Backing pixels per CSS pixel, fixed. By default the device's, capped at 1.5 (2 for text-heavy skins) and lowered by the quality governor. Set it for exports and wallpapers: `3` renders a phone-sized viewport at a phone's own resolution. |
 | `adaptiveQuality` | `true` | Lowers `host.quality` when frames run over budget, and raises it back when they recover. |
 | `zIndex` | `0` | z-index of the background root. |
 | `fonts` | `false` | Loads the display fonts used by built-in canvas text (Orbit, Syne Mono) from Google Fonts. Off by default, so the package makes no network requests. |
@@ -539,7 +563,7 @@ bg = transition(bg, { skin: 'aurora-night' }, { kind: 'iris', duration: 1.4 }).h
 - `pan`: -1 to 1, where across the screen it happened
 - `near`: 1 when it is on screen and up front
 
-The sector map, Undercity, and the five instruments report what happens: torpedoes, quakes, emergencies, storms, and more. Skins also send `ambience` (0 to 1: the sector's tension, how hard it is raining), which sound uses for its beds. Events are silent during `fastForward` and time-scale steps, and cost nothing while nobody listens.
+The sector map, Undercity, and the five instruments report what happens: torpedoes, quakes, emergencies, storms, and more. Skins also send `ambience` (0 to 1: the sector's tension, how hard it is raining), which sound uses for its beds. Events are silent during `fastForward` and cost nothing while nobody listens. At a time scale above 1, every step reports, since that is live time running faster.
 
 Sound is a separate, opt-in entry. Every sound is synthesized, so there are no assets to load:
 
@@ -753,7 +777,8 @@ pnpm size         # gzip budget per entry (run after build:lib)
 - `pnpm lab undercity t=5,30,60 crop=500,200,520,340 dsf=2`: zooms in on a region at retina density.
 - `pnpm media`: regenerates every image in this README from fixed seeds.
 - `pnpm sound-check`: renders every sound palette offline and reports its loudness, so levels are measured, not guessed.
-- `?debug` in the studio: time scale ×1/×4/×16, skip 30 s, live counts, and the event log.
+- `pnpm thumbs`: small JPEGs of the screenshot baselines for the studio's world cards and gallery (run after `pnpm test:e2e:update`).
+- In the studio, **1 2 3** run time at ×1, ×4, ×16 and **Space** pauses. `?debug` adds skip-ahead buttons, live counts, and the event log; `?t=300` opens a world five minutes in.
 
 **Browser gates.** `pnpm test:e2e` renders every built-in skin, universe, and preset through `/check.html`. That harness mounts with a manual clock at a fixed seed and steps a fixed number of frames, so each render is reproducible. For each subject it asserts three things:
 - The render matches its stored screenshot in `e2e/__screenshots__`.
@@ -762,15 +787,14 @@ pnpm size         # gzip budget per entry (run after build:lib)
 
 After an intentional visual change, refresh the baselines with `pnpm test:e2e:update`.
 
-**The studio** at `/` is where you choose and tune:
-- Browse the gallery and the worlds.
-- Switch universes and their mechanics, or make your own universe with an AI.
-- Edit a scene's layer stack, with controls generated from each schema.
-- Derive a palette from a brand color, and set the key light.
-- Turn on **Show composition**, which draws the thirds, the light ray, the content boxes, and the quiet zones over the live render.
-- Turn on **Sound**.
-- Export a `mount()` call, a preset JSON, a PNG or WebP, or an 8 second WebM loop rendered on a fixed clock.
+**The studio** at `/` is where you choose and tune. The top bar holds the seed, pause, speed, sound, and undo; below it are four tabs:
+- **World**: the worlds and instruments as cards, calmer presets, the universe's mechanics as chips (borrow more from other worlds), make your own universe with an AI, and what is happening right now.
+- **Look**: palette (or derive one from a brand color), intensity, density, detail, motion, the key light, legibility with a live contrast readout, composition guides (thirds, light ray, content boxes, quiet zones), and a scene's layer stack.
+- **Journal**: sightings, the chronicle, and catching up after you have been away.
+- **Share**: the prompt for your AI, the link, the `mount()` code, JSON, images, a video loop rendered on a fixed clock, and the wallpapers.
 
-The URL holds the whole state, so a link reproduces the exact background.
+Press **?** for every shortcut, and **H** to hide the studio. The URL holds the whole state, so a link reproduces the exact background.
+
+The wallpaper page is `/wallpaper.html`. `vite build` also writes `wallpaper-runtime.js` next to the site: the engine and every world as one script, which the studio inlines into offline wallpaper files (in dev, the server builds it on first request).
 
 **Blind compare.** `pnpm compare` stages every current baseline next to its render from an earlier release. `/compare.html` then shows each pair with the sides shuffled, plus a flip view, and reveals which version you preferred only at the end. An aesthetic change is accepted only when the maintainer prefers the new render without knowing which one it is.

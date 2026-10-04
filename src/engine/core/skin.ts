@@ -181,8 +181,8 @@ export type SkinEvent = {
 };
 
 /**
- * The host's outlet for skin events. `active` is false while nobody listens (or while
- * the host is fast-forwarding), so skins can skip the work of reporting.
+ * The host's outlet for skin events. `active` is false while nobody listens (or during
+ * `fastForward`; time-scaled steps report), so skins can skip the work of reporting.
  */
 export type SkinEvents = { readonly active: boolean; emit(e: SkinEvent): void };
 

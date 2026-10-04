@@ -145,6 +145,7 @@
     "lab": "node scripts/lab.mjs",
     "media": "node scripts/media.mjs",
     "sound-check": "node scripts/sound-check.mjs",
+    "thumbs": "node scripts/thumbs.mjs",
     "test:sim": "vitest run src/**/*.sim.test.ts",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm registry:check && pnpm build:lib && pnpm size && pnpm schema-diff --check"
   },

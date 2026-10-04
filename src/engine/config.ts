@@ -58,6 +58,12 @@ export type BackgroundConfig = {
    * wallpaper-like pages. Default false: the page keeps every gesture.
    */
   interactive?: boolean;
+  /**
+   * Backing pixels per CSS pixel, fixed. Default: the device's, capped at 1.5 (2 for
+   * text-heavy skins) and lowered by the quality governor. Set it for exports and
+   * wallpapers: 3 renders a phone-sized viewport at a phone's native resolution.
+   */
+  pixelRatio?: number;
 };
 
 export type ResolvedLegibility = { mode: 'auto' | 'off' | 'fixed'; selector: string; strength: number };
@@ -79,6 +85,8 @@ export type ResolvedBackgroundConfig = {
   legibility: ResolvedLegibility;
   quiet: NormRect[];
   interactive: boolean;
+  /** 0 when the host picks (the device's, capped). */
+  pixelRatio: number;
 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -138,6 +146,7 @@ export function resolveBackgroundConfig(config: BackgroundConfig = {}): Resolved
       height: clamp(q.height, 0, 1),
     })),
     interactive: config.interactive ?? false,
+    pixelRatio: config.pixelRatio ? clamp(config.pixelRatio, 0.25, 4) : 0,
   };
 }
 

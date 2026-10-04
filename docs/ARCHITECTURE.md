@@ -206,6 +206,9 @@ loads when a scene asks for it:
 - The studio, tests, and the headless runner import `packs` and `mechanics/all` eagerly.
 - Plugins register by side effect, so their modules are listed in `package.json`
   `sideEffects`. `pnpm size` fails if the built output is missing any built-in mechanic.
+- The wallpaper runtime (`src/wallpaper/main.ts`, built as one IIFE by a plugin in
+  `vite.config.ts`) inlines every lazy chunk. A programmatic build does not see the
+  `sideEffects` list, so the entry names the skin, layer, and preset registries outright.
 
 ## Extending
 
@@ -252,7 +255,7 @@ Conventions:
 |---|---|---|
 | `pnpm sim choir 90` | Steps a universe sim-only in node and prints counts, the event log, and problems (NaN, empty fleets, runaway counts, failed mechanics). Exits 1 on problems. | ~1–4 s |
 | `pnpm lab u=siege seek="FALLS TO" after=0.5,3,8` | One browser page: fast-forwards to a moment and saves a contact sheet PNG. Also `t=…`, `every=…`, `crop=…`, `dsf=2`, `opt.camera=cinematic`. | ~2–6 s |
-| `?debug` in the studio | Time scale ×1/×4/×16, skip 30 s, live counts, the event log. | live |
+| The studio's top bar, and `?debug` | Speed ×1/×4/×16 (keys 1 2 3) and pause in the bar; `?debug` adds skip 30 s or 5 min, live counts, the event log. `?t=300` opens five minutes in. | live |
 | `*.sim.test.ts` | Node-environment tests built on the headless runner. | seconds |
 | `pnpm test:e2e` | Screenshot, contrast, and replay gates in a real browser. | minutes |
 

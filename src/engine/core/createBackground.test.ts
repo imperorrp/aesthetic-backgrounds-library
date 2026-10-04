@@ -85,7 +85,7 @@ describe('frame loop', () => {
     handle.destroy();
   });
 
-  it('passes skin events to onEvent listeners, but not during fast-forward', () => {
+  it('passes skin events to onEvent listeners, but not during fast-forward, and every step at a time scale', () => {
     const { skin } = stubSkin((info, host) => {
       if (host.events?.active) host.events.emit({ type: 'tick', weight: 0.5, pan: 0, near: 1, size: info.frame });
     });
@@ -99,9 +99,13 @@ describe('frame loop', () => {
     expect(heard).toHaveLength(3);
     handle.fastForward(1);
     expect(heard).toHaveLength(3);
+    // Time scale is live time, faster: every step reports, not just the drawn one.
+    handle.setTimeScale(4);
+    s.step(1);
+    expect(heard).toHaveLength(7);
     off();
     s.step(3);
-    expect(heard).toHaveLength(3);
+    expect(heard).toHaveLength(7);
     handle.destroy();
   });
 

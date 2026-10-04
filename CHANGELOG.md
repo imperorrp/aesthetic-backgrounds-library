@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **The studio, redesigned.** One long scroll of about 120 controls became a top bar and four tabs.
+  - The top bar: the world's name and tagline, the seed (shuffle, copy link), pause, speed ×1/×4/×16, sound and volume, undo and redo.
+  - **World**: the worlds and instruments as cards with thumbnails (and how many of each one's sightings you have seen), calmer presets in one menu, the universe's mechanics as chips with **Borrow from other worlds**, the make-your-own-universe flow, and **Happening now**.
+  - **Look**, **Journal**, and **Share** hold the rest. Sentence case and the system UI face throughout; the world's name in the display face. On small screens the panel is a bottom sheet.
+  - Hidden, the studio is a pill with the world's name. Keys: **S** seed, **Space** pause, **← →** worlds, **1 2 3** speed, **M** sound, **J** journal, **G** gallery, **H** hide, **?** all of them.
+  - `?t=300` opens a world five minutes in. The debug panel (`?debug`) keeps skip-ahead, counts, and the log; speed moved to the top bar.
+- **The journal.** The studio remembers what you have seen (localStorage).
+  - Sightings: each world and instrument has its own list, from common to legendary, with rarity measured in simulated time. Each first sighting keeps its seed and moment, and **Revisit** replays that seed, skipped to just before. Unseen rare ones stay hidden. Uncommon and rarer firsts are announced.
+  - The chronicle: uncommon and rarer events as lines of history, paired with the map's own log line, quick repeats folded. Copy it out as text.
+  - While you were away: back after twenty seconds or more, the world simulates what it missed (up to five minutes, in chunks that keep the page responsive) and sums it up.
+- **Wallpapers.**
+  - `/wallpaper.html`: one background, full screen, 30 fps, paused when covered. It reads the `mount()` config from `?c=` (base64url JSON) with `fps`, `pr`, `skip`, and `i`, and remembers the last one, so a home-screen shortcut opens the same world. A web manifest makes it full screen on phones. Works with Lively Wallpaper, Plash, and KDE's web wallpapers.
+  - Offline: one HTML file with the whole engine inlined (about 450 KB). `vite build` writes `wallpaper-runtime.js` for it; the dev server builds it on first request. A Wallpaper Engine package wraps the same file with `project.json` and a preview (a small zip writer, no dependencies).
+  - Stills at the screen's full resolution, and phone stills at 1170 × 2532 rendered at 3x so small text stays sharp. A 10 second portrait video for video wallpaper apps.
+- **Events at speed.** Steps run by a time scale above 1 now report events (only `fastForward` stays silent). At ×16 the journal sees everything and the sound gets busier, within each cue's rate limit.
+- **`pixelRatio`**, a new config option: fixed backing pixels per CSS pixel, past the device cap. Exports and wallpapers use it.
+- **Video export, fixed.** Frames went to the recorder far faster than real time, so recordings came out sped up or empty. They are now paced to the video's own clock. MP4 is recorded where the browser can, WebM otherwise.
+- **Thumbnails.** `pnpm thumbs` writes small JPEGs of the screenshot baselines to `public/thumbs` (about 10 KB each, committed). The gallery and the world cards use them, so the deployed studio has images without running the e2e suite.
 - **Sound, v2.**
   - A mastering chain: rumble cut, soft saturation, glue compression, and a limiter.
   - A generated stereo room with pre-delay, early reflections, and a tail that loses its highs first.

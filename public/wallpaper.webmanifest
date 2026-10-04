@@ -1,0 +1,10 @@
+{
+  "name": "Living wallpaper",
+  "short_name": "Wallpaper",
+  "description": "A living background, full screen.",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#030308",
+  "theme_color": "#030308",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
