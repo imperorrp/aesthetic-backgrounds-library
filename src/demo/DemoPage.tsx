@@ -47,6 +47,8 @@ const DEBUG = typeof location !== 'undefined' && new URLSearchParams(location.se
 
 /** The ones with a point of view; everything else is under "Basics". */
 const FEATURED_SKINS = ['void-tactical', 'undercity', ...instrumentSkins.map((s) => s.id)];
+/** Skins that report events and have a sound palette under their own id. */
+const SOUND_SKINS = new Set(['undercity', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
 
 type PaletteMode = PaletteId | 'custom';
 
@@ -209,7 +211,8 @@ export default function DemoPage() {
   const [transitionKind, setTransitionKind] = useState<TransitionKind>('iris');
   const [soundOn, setSoundOn] = useState(false);
   const [soundVolume, setSoundVolume] = useState(0.6);
-  const soundUniverse = studio.source === 'undercity' ? 'undercity' : typeof studio.skinOptions.universe === 'string' ? studio.skinOptions.universe : 'void';
+  // Skins with a sound palette of their own use it; the sector map uses its universe's.
+  const soundUniverse = SOUND_SKINS.has(studio.source) ? studio.source : typeof studio.skinOptions.universe === 'string' ? studio.skinOptions.universe : 'void';
   useSoundscape(handle, soundOn, soundVolume, soundUniverse);
   const renderedSource = useRef(studio.source);
   const sourceChanged = renderedSource.current !== studio.source;

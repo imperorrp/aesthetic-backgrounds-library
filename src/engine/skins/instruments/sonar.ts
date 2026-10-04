@@ -8,7 +8,7 @@
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import type { Schema } from '../../core/schema';
 import { resolveOptions } from '../../core/schema';
-import { fillCrisp, clamp01, hash, hexA, mixRgb, mono, plate, scanlines, typed } from './kit';
+import { fillCrisp, clamp01, hash, hexA, mixRgb, mono, plate, report, scanlines, typed } from './kit';
 
 const schema = {
   contacts: { type: 'number', min: 2, max: 10, default: 6, step: 1, label: 'Contacts' },
@@ -223,6 +223,31 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
 
     const bx = (b: number) => area.x + (b / 360) * area.w;
 
+    // What the watch hears, reported once each as waterfall time passes it (for sound).
+    let heard = 0;
+    let heardId = nextId - 1;
+    const hear = (from: number, now: number) => {
+      const passed = (at: number) => from < at && at <= now;
+      const x01 = (b: number) => bx((((b % 360) + 360) % 360)) / W;
+      for (const c of contacts) {
+        if (c.id > heardId) report(host, 'contact', 0.2, x01(bearingOf(c, now)));
+        // A biologic starting a song.
+        if (c.kind === 'BIOLOGIC' && c.born <= from && Math.sin(from * 0.9 + c.phase) <= 0.2 && Math.sin(now * 0.9 + c.phase) > 0.2) report(host, 'whale', 0.35, x01(bearingOf(c, now)));
+      }
+      const off = turnAt(now);
+      for (const ev of eventsNear(now)) {
+        if (ev.kind === 'torpedo') {
+          if (passed(ev.t0)) report(host, 'torpedo', 0.95, x01(ev.b - off));
+          if (passed(ev.t0 + 12)) report(host, 'turn', 0.5);
+          if (passed(ev.t0 + 16)) report(host, 'decoy', 0.6, x01(decoyOf(ev) - off));
+          if (passed(ev.t0 + 28)) report(host, 'detonation', 0.85, x01(decoyOf(ev) - off));
+        } else {
+          if (passed(ev.t0)) report(host, 'active', 0.75);
+          for (const c of contacts) if (passed(ev.t0 + 1 + hash(c.id, 33) * 5)) report(host, 'echo', 0.4, x01(bearingOf(c, now)));
+        }
+      }
+    };
+
     return {
       resize(v: Viewport) {
         W = v.width;
@@ -241,6 +266,9 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
           }
         }
         const now = row / ROWS_PER_SEC;
+        if (host.events?.active && now > heard) hear(heard, now);
+        heard = now;
+        heardId = nextId - 1;
         const level = 0.55 + 0.45 * host.intensity;
         const ink = palette.ink;
 

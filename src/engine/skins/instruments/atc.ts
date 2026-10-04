@@ -8,7 +8,7 @@
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import type { Schema } from '../../core/schema';
 import { resolveOptions } from '../../core/schema';
-import { fillCrisp, clamp01, createPhosphor, fixName, hash, hexA, mono, plate, typed } from './kit';
+import { fillCrisp, clamp01, createPhosphor, fixName, hash, hexA, mono, plate, report, typed } from './kit';
 
 const schema = {
   traffic: { type: 'number', min: 3, max: 24, default: 14, step: 1, label: 'Traffic' },
@@ -78,6 +78,13 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
 
     const air: Aircraft[] = [];
     const say: { text: string; at: number }[] = [];
+    /** Where a point sits across the screen, 0 left to 1 right (for sound). */
+    const x01 = (p: Pt) => (cx + p.x * px) / W;
+    /** A line on frequency: typed along the bottom, and reported for sound. */
+    const radio = (text: string, t: number, from: Pt) => {
+      say.push({ text, at: t });
+      report(host, 'transmit', 0.12, x01(from), text);
+    };
     const callsign = () => `${AIRLINES[Math.floor(rng() * AIRLINES.length)]}${1 + Math.floor(rng() * (rng() < 0.5 ? 99 : 2999))}`;
 
     const spawn = (kind: Aircraft['kind'], t: number, preRoll = 0) => {
@@ -135,6 +142,7 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
       air.push(a);
       // Advance a freshly seeded aircraft so the scope starts busy, mid-story.
       for (let s = 0; s < preRoll; s += 0.25) step(a, 0.25, t, true);
+      if (kind === 'dep' && !preRoll) report(host, 'departure', 0.25, x01(a));
     };
 
     function step(a: Aircraft, dt: number, t: number, quiet = false) {
@@ -155,10 +163,12 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
       a.x += Math.sin(a.hdg * deg) * nm;
       a.y -= Math.cos(a.hdg * deg) * nm;
       if (Math.hypot(w.x - a.x, w.y - a.y) < Math.max(0.6, nm * 2)) {
-        if (w.say && !quiet) say.push({ text: w.say, at: t });
+        if (w.say && !quiet) radio(w.say, t, a);
         a.wp++;
-        if (a.wp >= a.route.length) a.done = true;
-        else if (!quiet) incident(a, t);
+        if (a.wp >= a.route.length) {
+          a.done = true;
+          if (a.kind === 'arr' && !quiet) report(host, 'landing', 0.25, x01(a));
+        } else if (!quiet) incident(a, t);
       }
     }
 
@@ -178,7 +188,8 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
           { x: f.x, y: f.y, alt: f.alt, gs: 210 },
         ];
         a.route.splice(1, 0, ...loop, ...loop);
-        say.push({ text: `${a.call}, HOLD AS PUBLISHED, EXPECT FURTHER CLEARANCE`, at: t });
+        radio(`${a.call}, HOLD AS PUBLISHED, EXPECT FURTHER CLEARANCE`, t, a);
+        report(host, 'hold', 0.3, x01(a));
       }
       // Crossing the final approach fix: sometimes the runway is not clear.
       const onFinal = a.route.length - a.wp === 1;
@@ -192,7 +203,8 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
           { x: fin.iaf.x, y: fin.iaf.y, alt: 4000, gs: 210, say: `${a.call}, VECTORS FOR ANOTHER APPROACH` },
           { x: fin.faf.x, y: fin.faf.y, alt: 1800, gs: 160 },
           { x: fin.thr.x, y: fin.thr.y, alt: 0, gs: 130 });
-        say.push({ text: `${a.call}, GOING AROUND`, at: t });
+        radio(`${a.call}, GOING AROUND`, t, a);
+        report(host, 'goaround', 0.5, x01(a));
       }
     }
 
@@ -209,7 +221,8 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
         { x: fin.thr.x, y: fin.thr.y, alt: 0, gs: 150 },
       ];
       a.wp = 0;
-      say.push({ text: `${a.call} DECLARING EMERGENCY · SQUAWK 7700`, at: t });
+      radio(`${a.call} DECLARING EMERGENCY · SQUAWK 7700`, t, a);
+      report(host, 'emergency', 0.9, x01(a));
     };
 
     const counts = () => ({ arr: air.filter((a) => a.kind === 'arr').length, dep: air.filter((a) => a.kind === 'dep').length, ovf: air.filter((a) => a.kind === 'ovf').length });
@@ -233,6 +246,11 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
 
     let sweep = -Math.PI / 2;
     let nextSpawn = 2;
+    /**
+     * When each pair was last in conflict, so an alert is reported once as it starts, and
+     * not again each time a pair hovering near 3 NM drops out and back in on the next sweep.
+     */
+    const alerts = new Map<string, number>();
     const sx = (p: Pt) => cx + p.x * px;
     const sy = (p: Pt) => cy + p.y * px;
 
@@ -271,6 +289,9 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
         // Sweep: paint whatever it passed since the last frame onto the phosphor.
         const prev = sweep;
         sweep += (dt / o.sweep) * Math.PI * 2;
+        // Once a revolution, as the line passes north.
+        const rev = (a: number) => Math.floor((a + Math.PI / 2) / (Math.PI * 2));
+        if (rev(sweep) > rev(prev)) report(host, 'sweep', 0.05);
         // Each return outlives a few sweeps, so aircraft trail their own history.
         phos.decay(dt, o.sweep * 0.9);
         const pctx = phos.ctx;
@@ -431,12 +452,16 @@ export const atcRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, un
         ctx.font = mono(9);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        for (const [pair, at] of alerts) if (t - at > o.sweep * 3) alerts.delete(pair);
         for (let i = 0; i < air.length; i++) {
           for (let j = i + 1; j < air.length; j++) {
             const a = air[i];
             const b = air[j];
             if (!a.shown || !b.shown || a.shownAlt < 500 || b.shownAlt < 500) continue;
             if (Math.hypot(a.shown.x - b.shown.x, a.shown.y - b.shown.y) > 3 || Math.abs(a.shownAlt - b.shownAlt) > 1000) continue;
+            const pair = `${a.call}|${b.call}`;
+            if (!alerts.has(pair)) report(host, 'conflict', 0.6, x01({ x: (a.shown.x + b.shown.x) / 2, y: 0 }));
+            alerts.set(pair, t);
             ctx.strokeStyle = hexA(alarm, (blink ? 0.9 : 0.4) * level);
             ctx.setLineDash([3, 3]);
             ctx.beginPath();

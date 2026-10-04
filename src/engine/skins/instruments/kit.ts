@@ -5,6 +5,7 @@
  */
 import { parseHex, toTriplet } from '../../color';
 import { rgba } from '../../palette';
+import type { SkinHost } from '../../core/skin';
 
 export const MONO = '"Syne Mono", "Orbit", ui-monospace, "SFMono-Regular", Menlo, monospace';
 export const mono = (px: number, weight = '') => `${weight ? `${weight} ` : ''}${px}px ${MONO}`;
@@ -43,6 +44,17 @@ export function typed(text: string, age: number, cps = 40, t = age): string {
 }
 
 export const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
+/**
+ * Report something that happened, for sound (`handle.onEvent`). `x01` is where across the
+ * screen it happened (0 left, 1 right). Costs nothing while nobody listens, and never
+ * touches the random streams, so replays stay identical.
+ */
+export function report(host: SkinHost, type: string, weight: number, x01 = 0.5, text?: string): void {
+  const out = host.events;
+  if (!out?.active) return;
+  out.emit({ type, weight: clamp01(weight), pan: Math.max(-1, Math.min(1, x01 * 2 - 1)), near: 1, text });
+}
 export const smooth = (v: number) => {
   const x = clamp01(v);
   return x * x * (3 - 2 * x);

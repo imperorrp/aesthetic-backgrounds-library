@@ -539,7 +539,7 @@ bg = transition(bg, { skin: 'aurora-night' }, { kind: 'iris', duration: 1.4 }).h
 - `pan`: -1 to 1, where across the screen it happened
 - `near`: 1 when it is on screen and up front
 
-The sector map and Undercity report their whole event stream, and other skins report nothing yet. Events are silent during `fastForward` and time-scale steps, and cost nothing while nobody listens.
+The sector map, Undercity, and the five instruments report what happens: torpedoes, quakes, emergencies, storms, and more. Skins also send `ambience` (0 to 1: the sector's tension, how hard it is raining), which sound uses for its beds. Events are silent during `fastForward` and time-scale steps, and cost nothing while nobody listens.
 
 Sound is a separate, opt-in entry. Every sound is synthesized, so there are no assets to load:
 
@@ -553,9 +553,19 @@ sound.attach(bg);
 button.onclick = () => sound.start(); // browsers allow audio only after a click or key press
 ```
 
-A **sound palette** maps event types to cues (boom, ping, bell, sweep, whoosh, thump, choir, crackle) and sets a drone underneath. There is one per world: `void`, `saltwind`, `choir`, `siege`, `hive`, `lastfleet`, `cradle`, and `undercity`. `registerSoundPalette()` adds your own.
+A **sound palette** maps event types to cues (boom, ping, bell, sweep, whoosh, thump, choir, crackle). It also sets a drone and a noise bed underneath: rain in Undercity, wind on Saltwind, the hull's hum in the Last Fleet, the deep in Sonar. There is one per world and instrument:
+- worlds: `void`, `saltwind`, `choir`, `siege`, `hive`, `lastfleet`, `cradle`, `undercity`
+- instruments: `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`
 
-Each cue's loudness follows the event's weight and nearness. A per-cue rate limit keeps a busy map from turning to noise, and the soundscape suspends while the tab is hidden.
+`registerSoundPalette()` adds your own.
+
+Under the hood, everything runs through a mastering chain: rumble cut, soft saturation, glue compression, and a limiter. It plays in a generated stereo room with early reflections and a damped tail, and echoes go through a ping-pong delay.
+- **Distance.** A cue's loudness follows the event's weight and nearness, and far events are darker and deeper in the room.
+- **Space for big hits.** Big hits briefly duck the bed.
+- **Timing.** Notes land on a quiet pulse, so a busy map sounds composed rather than random.
+- **Restraint.** A per-cue rate limit keeps a busy map from turning to noise, and the soundscape suspends while the tab is hidden.
+
+`pnpm sound-check` renders every palette offline and reports its levels.
 
 ## The sector map's options
 
@@ -742,6 +752,7 @@ pnpm size         # gzip budget per entry (run after build:lib)
 - `pnpm lab u=siege seek="FALLS TO" after=0.5,3,8`: jumps to the first matching log line and saves a contact sheet of the moments after it.
 - `pnpm lab undercity t=5,30,60 crop=500,200,520,340 dsf=2`: zooms in on a region at retina density.
 - `pnpm media`: regenerates every image in this README from fixed seeds.
+- `pnpm sound-check`: renders every sound palette offline and reports its loudness, so levels are measured, not guessed.
 - `?debug` in the studio: time scale ×1/×4/×16, skip 30 s, live counts, and the event log.
 
 **Browser gates.** `pnpm test:e2e` renders every built-in skin, universe, and preset through `/check.html`. That harness mounts with a manual clock at a fixed seed and steps a fixed number of frames, so each render is reproducible. For each subject it asserts three things:

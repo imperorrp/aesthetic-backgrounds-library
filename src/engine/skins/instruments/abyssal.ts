@@ -9,7 +9,7 @@
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import type { Schema } from '../../core/schema';
 import { resolveOptions } from '../../core/schema';
-import { fillCrisp, clamp01, hash, hexA, mono, typed } from './kit';
+import { fillCrisp, clamp01, hash, hexA, mono, report, typed } from './kit';
 
 const schema = {
   life: { type: 'number', min: 0.3, max: 2, default: 1, label: 'Life' },
@@ -134,6 +134,7 @@ export const abyssalSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
             else n.flashAt = at;
           }
           say(`STARTLE CASCADE · ${SPECIES[c.kind].name} ALARM DISPLAY`, t);
+          report(host, 'flash', 0.45, c.x / W);
         }
         nextCascade = t + (24 + ev() * 20) / Math.max(0.3, o.life);
       }
@@ -147,6 +148,7 @@ export const abyssalSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
           hunter.vx = fromLeft ? 30 : -30;
           hunter.vy = 0;
           say('DRAGONFISH · RED SEARCHLIGHT · STALKING', t);
+          report(host, 'hunt', 0.5, hunter.x / W);
           nextHunt = t + (45 + ev() * 30) / Math.max(0.3, o.life);
         } else nextHunt = t + 4;
       }
@@ -162,6 +164,7 @@ export const abyssalSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
             hunter.lunged = t;
             prey.scatterAt = t;
             say('PREDATION EVENT · STRIKE · SCHOOL SCATTERS', t);
+            report(host, 'strike', 0.6, hunter.x / W);
           }
         }
         const burst = hunter.lunged >= 0 && t - hunter.lunged < 0.7 ? 5 : 1;
@@ -174,6 +177,10 @@ export const abyssalSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
 
     let fan = 0;
     const depthBase = 1180 + Math.floor(rng() * 600);
+    // What has been reported (for sound): the last frame's time, the last giant and vent field.
+    let lastT = 0;
+    let giantSeen = -1;
+    let ventSeen = -1;
 
     const draw: Record<Kind, (c: Creature, t: number, a: number) => void> = {
       medusa(c, t, a) {
@@ -437,6 +444,10 @@ export const abyssalSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
           ctx.fill();
           ctx.stroke();
           ctx.restore();
+          if (giant.k !== giantSeen) {
+            giantSeen = giant.k;
+            report(host, 'giant', 0.85, gx / W);
+          }
           if (giant.u > 0.25 && giant.u < 0.8) {
             ctx.font = mono(10);
             ctx.textAlign = 'center';
@@ -451,6 +462,10 @@ export const abyssalSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
         if (vent) {
           const floorY = H + 10 - vent.rise * 150;
           const vx = W * vent.x;
+          if (vent.k !== ventSeen) {
+            ventSeen = vent.k;
+            report(host, 'vent', 0.4, vent.x);
+          }
           ctx.fillStyle = '#000000';
           ctx.strokeStyle = hexA(accent, 0.3 * level * vent.rise);
           ctx.beginPath();
@@ -546,7 +561,9 @@ export const abyssalSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
             c.cloudX = c.x;
             c.cloudY = c.y;
             c.vx = -Math.sign(c.vx || 1) * 34;
+            report(host, 'spit', 0.35, c.x / W);
           }
+          if (lastT < c.scatterAt && c.scatterAt <= t) report(host, 'scatter', 0.5, c.x / W);
           if (c.kind === 'shrimp' && Math.abs(c.vx) > 8) c.vx *= 1 - Math.min(1, dt * 0.6);
           cloud(c, t, level);
           c.x += c.vx * dt;
@@ -578,6 +595,8 @@ export const abyssalSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
             fillCrisp(ctx, typed(`${Math.round(depth + ((c.y - H / 2) / H) * 80).toLocaleString('en-US')} M`, age - 0.6, 34, t), c.x + c.size + 18, c.y - 2);
           }
         }
+
+        lastT = t;
 
         if (hunter) {
           draw.dragonfish(hunter, t, level);

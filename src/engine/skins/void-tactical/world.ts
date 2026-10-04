@@ -147,6 +147,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
   const bus = createBus(() => now);
   const opts = (host.options ?? {}) as { camera?: unknown; lean?: unknown; scroll?: unknown };
   let lastScrollY = host.scroll?.y ?? 0;
+  let nextAmbience = 0;
   const cameraMode: CameraMode = opts.camera === 'steady' || opts.camera === 'cinematic' ? opts.camera : 'director';
   const director = createDirector(cam, bus, cameraMode, host.fork('director'));
   // Report what happens to the host (sound binds here): where on screen, and how near.
@@ -705,6 +706,11 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
       }
 
       world.tension = tensionAt(now);
+      // The sector's mood, for sound: busier stretches open the bed and brighten the drone.
+      if (now >= nextAmbience && host.events?.active) {
+        nextAmbience = now + 2;
+        host.events.emit({ type: 'ambience', weight: world.tension, pan: 0, near: 1 });
+      }
       const rate = 0.55 + 1.05 * world.tension;
 
       if (host.motion !== 'off') camera.x += config.cameraSpeed * host.intensity * frames * (look.drift ?? 1);

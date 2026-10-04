@@ -23,6 +23,10 @@ class FakeParam {
   cancelScheduledValues() {
     return this;
   }
+  setTargetAtTime(v: number) {
+    this.value = v;
+    return this;
+  }
 }
 
 class FakeNode {
@@ -33,9 +37,16 @@ class FakeNode {
   pan = new FakeParam();
   threshold = new FakeParam();
   ratio = new FakeParam();
+  knee = new FakeParam();
+  attack = new FakeParam();
+  release = new FakeParam();
+  delayTime = new FakeParam();
   playbackRate = new FakeParam();
   type = '';
   buffer: unknown = null;
+  curve: unknown = null;
+  oversample = 'none';
+  loop = false;
   constructor(private ctx: FakeContext, readonly kind: string) {
     ctx.made[kind] = (ctx.made[kind] ?? 0) + 1;
   }
@@ -63,6 +74,10 @@ class FakeContext {
   createStereoPanner = () => new FakeNode(this, 'pan');
   createConvolver = () => new FakeNode(this, 'reverb');
   createDynamicsCompressor = () => new FakeNode(this, 'comp');
+  createWaveShaper = () => new FakeNode(this, 'shaper');
+  createDelay = () => new FakeNode(this, 'delay');
+  createChannelMerger = () => new FakeNode(this, 'merger');
+  createChannelSplitter = () => new FakeNode(this, 'splitter');
   createBuffer = (channels: number, length: number) => ({ getChannelData: () => new Float32Array(length), numberOfChannels: channels });
   resume = async () => {
     this.state = 'running';
@@ -79,48 +94,51 @@ const setup = async (palette = 'void') => {
   const ctx = new FakeContext();
   const sound = createSoundscape({ palette, context: ctx as unknown as AudioContext });
   await sound.start();
-  return { ctx, sound };
+  // The drone makes panners of its own; count the ones events make from here on.
+  const base = ctx.made.pan ?? 0;
+  const played = () => (ctx.made.pan ?? 0) - base;
+  return { ctx, sound, played };
 };
 
 describe('soundscape', () => {
   it('starts the drone and sounds bound events, panned', async () => {
-    const { ctx, sound } = await setup();
+    const { ctx, sound, played } = await setup();
     const oscBefore = ctx.made.osc ?? 0;
     expect(oscBefore).toBeGreaterThan(0); // the drone
     sound.play(ev('explosion', { size: 2 }));
-    expect(ctx.made.pan).toBe(1);
+    expect(played()).toBe(1);
     expect(ctx.made.noise).toBeGreaterThan(0);
     sound.destroy();
   });
 
   it('ignores events with no binding, low-priority lines, and anything while stopped', async () => {
-    const { ctx, sound } = await setup();
+    const { sound, played } = await setup();
     sound.play(ev('nothing-like-this'));
     sound.play(ev('say', { priority: 'low' }));
     sound.play(ev('say', { priority: 'medium' }));
-    expect(ctx.made.pan ?? 0).toBe(0);
+    expect(played()).toBe(0);
     sound.play(ev('say', { priority: 'high' }));
-    expect(ctx.made.pan).toBe(1);
+    expect(played()).toBe(1);
     sound.stop();
     sound.play(ev('explosion'));
-    expect(ctx.made.pan).toBe(1);
+    expect(played()).toBe(1);
     sound.destroy();
   });
 
   it('rate-limits a busy event type, and lets it through again later', async () => {
-    const { ctx, sound } = await setup();
+    const { ctx, sound, played } = await setup();
     for (let i = 0; i < 10; i++) sound.play(ev('combat'));
-    expect(ctx.made.pan).toBe(1);
+    expect(played()).toBe(1);
     ctx.currentTime += 2;
     sound.play(ev('combat'));
-    expect(ctx.made.pan).toBe(2);
+    expect(played()).toBe(2);
     sound.destroy();
   });
 
   it('skips what is too faint to hear', async () => {
-    const { ctx, sound } = await setup();
-    sound.play(ev('launch', { weight: 0, near: 0.02 }));
-    expect(ctx.made.pan ?? 0).toBe(0);
+    const { sound, played } = await setup();
+    sound.play(ev('depart', { weight: 0, near: 0 }));
+    expect(played()).toBe(0);
     sound.destroy();
   });
 
@@ -140,14 +158,14 @@ describe('soundscape', () => {
   });
 
   it('follows whatever it is attached to, one source at a time', async () => {
-    const { ctx, sound } = await setup();
+    const { sound, played } = await setup();
     const listeners = new Set<(e: SkinEvent) => void>();
     const source = { onEvent: (fn: (e: SkinEvent) => void) => (listeners.add(fn), () => listeners.delete(fn)) };
     sound.attach(source);
     sound.attach(source);
     expect(listeners.size).toBe(1);
     for (const fn of listeners) fn(ev('capture'));
-    expect(ctx.made.pan).toBe(1);
+    expect(played()).toBe(1);
     sound.destroy();
     expect(listeners.size).toBe(0);
   });

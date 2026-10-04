@@ -8,7 +8,7 @@
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import type { Schema } from '../../core/schema';
 import { resolveOptions } from '../../core/schema';
-import { fillCrisp, clamp01, fixName, hash, hexA, mono, plate, typed } from './kit';
+import { fillCrisp, clamp01, fixName, hash, hexA, mono, plate, report, typed } from './kit';
 
 const schema = {
   stations: { type: 'number', min: 6, max: 18, default: 12, step: 1, label: 'Stations' },
@@ -166,6 +166,20 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
       return q;
     };
 
+    // Each event is reported once as it strikes (for sound), panned to its epicenter
+    // in the crust section. The one already ringing when the record starts is not.
+    let heard = quakes.findIndex((q) => q.t0 >= 0);
+    if (heard < 0) heard = quakes.length;
+    const strike = (q: Quake) => {
+      const left = Math.max(78, W * lineX);
+      const x01 = (left + ((q.x + 20) / 160) * (W - 18 - left)) / W;
+      if (q.kind === 'quake') report(host, 'quake', clamp01((q.mag - 2) / 6), x01);
+      else if (q.kind === 'after') report(host, 'aftershock', 0.3 + 0.2 * clamp01((q.mag - 2) / 3), x01);
+      else if (q.kind === 'blast') report(host, 'blast', 0.3, x01);
+      else if (q.kind === 'tremor') report(host, 'tremor', 0.45, x01);
+      else report(host, 'teleseism', 0.8);
+    };
+
     return {
       resize(v: Viewport) {
         W = v.width;
@@ -173,6 +187,7 @@ export const seismicSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unk
       },
       frame(info: FrameInfo) {
         const t = info.t;
+        for (; heard < quakes.length && quakes[heard].t0 <= t; heard++) strike(quakes[heard]);
         const level = 0.55 + 0.45 * host.intensity;
         plate(ctx, W, H, palette.bg, accent, 0.55, 0.4, 0.06);
 

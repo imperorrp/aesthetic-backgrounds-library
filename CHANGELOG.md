@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Sound, v2.**
+  - A mastering chain: rumble cut, soft saturation, glue compression, and a limiter.
+  - A generated stereo room with pre-delay, early reflections, and a tail that loses its highs first.
+  - A ping-pong echo, in place of repeated tones.
+  - Distance shaping: far events are darker and deeper in the room.
+  - Pink and brown noise. Booms get a crack and a sub drop, bells a detuned twin, and choirs real vowel formants with vibrato.
+  - Drones spread across the stereo field and breathe. Noise beds (rain, wind, hull hum, the deep) open with `ambience` events: the sector's tension, Undercity's rain.
+  - Big hits duck the bed, and notes land on a quiet pulse.
+  - The five instruments report their moments (torpedoes, active pings, quakes, emergencies, meteors, giants in the dark) and have palettes of their own.
+  - `pnpm sound-check` renders every palette offline and reports levels. All beds and cues are calibrated with it.
 - **README, whole again.** The technical reference is back in the README, below a new intro, a hero montage, and "Things happen" strips of events frame by frame. `docs/REFERENCE.md` now points there. `pnpm media` regenerates every README image from fixed seeds (the lab page gained a view mode that it screenshots).
 - **Undercity**, a new skin: a 2.5D cyberpunk city at night in the rain.
   - Three streamed parallax layers of procedurally generated buildings. Each is rasterized once into a cached canvas: windows that keep office hours, a near megastructure cut open into terraces, markets, stairs, and shopfronts, and roofs with masts, dishes, tanks, and corp crowns.

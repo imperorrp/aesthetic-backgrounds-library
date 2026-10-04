@@ -8,7 +8,7 @@
 import type { BackgroundSkin, FrameInfo, SkinHost, Viewport } from '../../core/skin';
 import type { Schema } from '../../core/schema';
 import { resolveOptions } from '../../core/schema';
-import { fillCrisp, clamp01, createPhosphor, hash, hexA, mixRgb, mono, typed } from './kit';
+import { fillCrisp, clamp01, createPhosphor, hash, hexA, mixRgb, mono, report, typed } from './kit';
 
 const schema = {
   storms: { type: 'number', min: 1, max: 8, default: 4, step: 1, label: 'Storm cells' },
@@ -254,6 +254,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
           const a = ops() * Math.PI * 2;
           const d = 0.03 + ops() * 0.05;
           rover.target = { x: Math.min(0.9, Math.max(0.1, station.x + Math.cos(a) * d * 1.3)), y: Math.min(0.9, Math.max(0.1, station.y + Math.sin(a) * d * 1.6)) };
+          report(host, 'drive', 0.2, rover.x);
         }
         const dx = (rover.target.x - rover.x) * W;
         const dy = (rover.target.y - rover.y) * H;
@@ -276,6 +277,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
             rover.sample++;
             rover.until = t + 9 + ops() * 6;
             note(`ROVER · ABRADING · CORING SAMPLE ${rover.sample}`, t);
+            report(host, 'core', 0.35, rover.x);
           } else rover.until = t + 1.5 + ops() * 3;
         }
       }
@@ -288,6 +290,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
         heli.flight++;
         const m = Math.round(Math.hypot((heli.to.x - heli.from.x) * W, (heli.to.y - heli.from.y) * H) * 9);
         note(`INGENUITY · FLIGHT ${heli.flight} · ${m} M HOP`, t);
+        report(host, 'flight', 0.35, heli.x);
       }
       if (heli.start >= 0 && t >= heli.start + heli.dur) {
         heli.x = heli.to.x;
@@ -307,6 +310,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
         impacts.push({ ...meteor.b, r: 2 + m * 0.35, at: t, m });
         if (impacts.length > 8) impacts.shift();
         note(`NEW IMPACT · ${m} M CRATER · ORBITAL IMAGING REQUESTED`, t);
+        report(host, 'meteor', 0.7, meteor.b.x);
         meteor = null;
       }
       // Orbiter passes: a ground track across the map, a relay window when it sees the rover.
@@ -334,6 +338,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
           if (pass.aos < 0) {
             pass.aos = t;
             note(`${pass.name} · UHF RELAY · AOS`, t);
+            report(host, 'pass', 0.25, o2.x);
           }
           pass.mb += dt * (18 + 10 * Math.sin(t));
         } else if (pass.aos >= 0 && pass.mb > 0) {
@@ -348,6 +353,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
         const left = ops() < 0.5;
         edl = { to, from: { x: left ? -0.08 : 1.08, y: to.y - 0.25 - ops() * 0.2 }, at: t, dur: 24, name: CARGO[Math.floor(ops() * CARGO.length)], phase: -1 };
         nextEdl = t + every(190);
+        report(host, 'entry', 0.5, edl.from.x);
       }
       if (edl) {
         const k = (t - edl.at) / edl.dur;
@@ -361,6 +367,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
           landers.push({ ...edl.to, name: edl.name });
           if (landers.length > 3) landers.shift();
           note(`${edl.name} · TOUCHDOWN CONFIRMED`, t);
+          report(host, 'landing', 0.7, edl.to.x);
           edl = null;
         }
       }
@@ -372,12 +379,14 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
         rover.safed = true;
         watchEnds = t + 55;
         note('REGIONAL DUST STORM WATCH · ROVER SAFED', t);
+        report(host, 'storm', 0.6, station.x - w.x * 0.42);
         nextWatch = t + every(220);
       }
       if (watchEnds >= 0 && t >= watchEnds) {
         rover.safed = false;
         watchEnds = -1;
         note('STORM WATCH LIFTED · DRIVING RESUMES', t);
+        report(host, 'clear', 0.3);
       }
     };
     note('SOL PLAN UPLINKED · DRIVE + SAMPLE', -90);
@@ -409,6 +418,7 @@ export const marsRadarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, u
           const ang = rng() * Math.PI * 2;
           devils.push({ x: 0.1 + rng() * 0.8, y: 0.15 + rng() * 0.7, vx: Math.cos(ang) * 0.012, vy: Math.sin(ang) * 0.012, born: t, life: 18 + rng() * 14 });
           nextDevil = t + 14 + rng() * 18;
+          report(host, 'devil', 0.2, devils[devils.length - 1].x);
         }
         tracks.decay(dt, 90);
         for (let i = devils.length - 1; i >= 0; i--) {

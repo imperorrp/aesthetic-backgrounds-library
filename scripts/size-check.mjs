@@ -24,8 +24,9 @@ const BUDGETS_KB = {
   // manifest validation/loading and the design-token bridge, opt-in (M8)
   'manifest.js': 16,
   'tokens.js': 14,
-  // generated sound bound to skin events, opt-in (v3 phase 5)
-  'audio.js': 6,
+  // generated sound bound to skin events, opt-in (v3 phase 5); 10 with the v2 engine (mastering
+  // chain, room, echo, beds, formant choirs) and palettes for every world and instrument
+  'audio.js': 10,
   'skins/drifting-dust.js': 11,
   'skins/matrix-rain.js': 11,
   // the shell only; the city is a lazy chunk (~14 KB gzip) fetched on first mount
@@ -47,11 +48,12 @@ const BUDGETS_KB = {
   'index.js': 119,
   // framework adapters: core + all built-in skins, layers, and presets (no tooling); 59 since M9,
   // 89 with the overhauled sector map and the instruments, 107 with mechanics and events,
-  // 109 with the v3 camera, 110 with skin events and the Undercity shell
-  'element.js': 110,
-  'react.js': 110,
-  'vue.js': 110,
-  'svelte.js': 110,
+  // 109 with the v3 camera, 110 with skin events and the Undercity shell, 111 with the
+  // instruments reporting their events (for sound)
+  'element.js': 111,
+  'react.js': 111,
+  'vue.js': 111,
+  'svelte.js': 111,
 };
 
 function walk(dir, out = []) {

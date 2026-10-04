@@ -35,6 +35,7 @@ export function mountCity(host: SkinHost): SkinInstance {
   let painter: Painter | null = null;
   let sky: HTMLCanvasElement | null = null;
   let nextKeep = 0;
+  let nextAmbience = 0;
 
   // What happens, out to the host (sound binds here).
   city.bus.on('*', (e) => {
@@ -52,6 +53,11 @@ export function mountCity(host: SkinHost): SkinInstance {
     const streamed = city.stream();
     life.update(dt);
     net.update(dt, streamed);
+    // How hard it is raining, for sound: the rain bed follows it.
+    if (city.t >= nextAmbience && host.events?.active) {
+      nextAmbience = city.t + 2;
+      host.events.emit({ type: 'ambience', weight: life.wet, pan: 0, near: 1 });
+    }
     for (let i = city.labels.length - 1; i >= 0; i--) if (city.t - city.labels[i].t0 > city.labels[i].dur) city.labels.splice(i, 1);
   };
 
