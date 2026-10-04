@@ -1,51 +1,168 @@
-# Aesthetic Background Engine
+<h1 align="center">Aesthetic Background Engine</h1>
 
-A fun little thing I made to test one idea: what if a website's background wasn't decoration, but a working display from somewhere else?
+<p align="center">
+  <b>Backgrounds that are alive.</b><br>
+  Not wallpaper: working displays from somewhere else, quietly running behind your site.
+</p>
 
-**[Open the studio →](https://aesthetic-backgrounds-library.vercel.app)**
+<p align="center">
+  <a href="https://aesthetic-backgrounds-library.vercel.app"><b>Open the studio →</b></a>
+  &nbsp;·&nbsp; <a href="#put-one-on-your-site">Put one on your site</a>
+  &nbsp;·&nbsp; <a href="#the-worlds">The worlds</a>
+  &nbsp;·&nbsp; <a href="#reference">Reference</a>
+</p>
 
-![The sector map](e2e/__screenshots__/chromium/void-tactical.png)
+![Four of the worlds: a rainy cyberpunk city, a war front held hex by hex, a refugee ark with its flotilla, and a leviathan among hollow stars](docs/media/hero.jpg)
 
-## The sector map
+I made this to test one idea: what if a website's background wasn't decoration, but a window onto somewhere else?
+
+A war room following a front that has held for forty years. A city in the rain where a netrunner is breaking into the corp tower three blocks over. A refugee fleet counting its souls. A sonar room, waiting for a torpedo. A billion years of a galaxy, a minute and a half at a time.
+
+None of them loop. Each one is a small simulation with its own rules, and things happen in it on their own: raids, breaches, truces, supernovae, a district's lights going out block by block. The same seed always plays the same story, so a link is an exact world. And they still behave like backgrounds:
+- They keep the text over them readable.
+- They pause when the tab is hidden and calm down under reduced motion.
+- They stay small. The engine is about 16 KB, and each world loads only when it is shown.
+
+<details>
+<summary><b>Contents</b></summary>
+
+- [Things happen](#things-happen)
+- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [instruments](#instruments-from-other-worlds), [basics](#basics)
+- [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
+- [Sound](#sound)
+- [Put one on your site](#put-one-on-your-site)
+- [Reference](#reference):
+  - Setup: [installation](#installation), [presets](#presets), [frameworks](#frameworks), [the CLI](#copy-a-background-into-your-project), [community presets](#community-presets), [palette tokens](#palette-tokens-on-your-page)
+  - Engine: [configuration](#configuration), [guarantees](#what-the-engine-guarantees), [scenes and layers](#scenes-and-layers), [light and transitions](#light-quiet-zones-moments-transitions), [events and sound](#events-and-sound)
+  - Skins: [the sector map's options](#the-sector-maps-options), [Undercity's options](#undercitys-options)
+  - Building on it: [AI agents](#using-it-with-an-ai-agent), [writing your own skin](#writing-your-own-skin), [local development](#local-development)
+
+</details>
+
+## Things happen
+
+Every world has its own events, not just its own colors. Here are a few, frame by frame.
+
+**Undercity.** A runner breaches a corp tower, and the district's grid fails outward from it, block by block.
+
+![A cyberpunk skyline going dark building by building after a breach](docs/media/moments/undercity-outage.jpg)
+
+**The Long Siege.** Two siege monitors trade broadsides across the front, and hex shields light up where the beams land.
+
+![Two capital ships firing beams at each other across a hex-cell front line, their shields rippling](docs/media/moments/siege-duel.jpg)
+
+**Hive Bloom.** A purge fleet lights its torches and burns the creep back to ash. It will grow back.
+
+![Ships with flame cones burning a green organic mass, leaving ash](docs/media/moments/hive-purge.jpg)
+
+**Cradle of Suns.** A massive star dies, and its shell carries the gas back out to make the next ones.
+
+![A star flaring into a supernova and expanding into a shell](docs/media/moments/cradle-supernova.jpg)
+
+## The worlds
+
+### The sector map
+
+![The sector map: systems, fleets, convoys, gates, and chatter](docs/media/worlds/void.jpg)
 
 A living tactical chart of a stretch of space:
-- **Fleets.** They fly in formation between structures that actually do things, some on the main plane and some deep behind it.
-- **An economy.** Mines dig ore, docks refine fuel and parts, and habitats grow food. When a station runs short, a convoy carries the goods over in glowing pods, and shipyards build only from what they hold. Prices tick in the corner.
-- **Gates, police, relays.** Paired gates queue ships, scan them for the toll, and pass them through a visible throat. Raids bring interceptors scrambling from the nearest defense platform. Messages and distress calls travel the relay network as light.
-- **A camera with a director.** Now and then it leans in on whatever is happening: a raid, an armada, a capture.
-- **Courses.** Each fleet's planned course is drawn ahead of it and its real trail behind, as one continuous line.
-- **Anomalies.** They pulse in their own colors, and scouts go out to survey them.
-- **Chatter.** Radio lines type themselves out next to whatever they're about.
-- **Target lock.** Every half minute, brackets close on a contact while its data types out.
+- **Fleets.** They fly in formation between structures that actually do things. Some fly on the main plane and some deep behind it.
+- **An economy.** Mines dig ore, docks refine fuel and parts, and habitats grow food. A station that runs short gets a convoy, with the goods glowing in its pods. Shipyards build only from what they hold, and prices tick in the corner.
+- **Gates, police, relays.** Paired gates queue ships, scan them for the toll, and pass them through a visible throat. Raids bring interceptors scrambling from the nearest defense platform. Messages and distress calls cross the relay network as light.
+- **A camera with a director.** Now and then it leans in on whatever is happening, such as a raid, an armada, or a capture.
+- **Courses and chatter.** Each fleet's planned course is drawn ahead of it, and its real trail behind. Radio lines type themselves out next to whatever they are about. Every half minute, brackets close on a contact while its data types out.
 - **Pacing.** A slow tension curve gives the sector quiet stretches and busy ones.
 
-The same seed always plays the same story. The seed is in the URL (`?seed=orion-harbor-23`), so a link is that exact world.
+The seed is in the URL (`?seed=orion-harbor-23`), so a link is that exact world.
+
+### Six more universes
+
+The map can belong to any world. A *universe* holds the names, factions, ship classes, structures and their ASCII art, chatter, and the faint words drifting in the background. It also decides **what happens there**. Six hand-written ones come with it, and each plays differently:
+
+<table>
+<tr>
+<td width="48%"><img src="docs/media/worlds/saltwind.jpg" alt="Saltwind Reach: a dusty mining frontier with haulers and warden buoys"></td>
+<td><b>Saltwind Reach</b><br>A poor mining frontier at the end of an old road. Belts of rock orbit across the map, and stray rocks collide and shatter. Miners argue over claims and haul ore home in their pods. Warden buoys scan ships, and smugglers bolt with cutters behind them. When a dust front blows through, beams go dark and everyone runs for the docks.</td>
+</tr>
+<tr>
+<td><img src="docs/media/worlds/choir.jpg" alt="Choir of Hollow Stars: violet space, a leviathan, and the Mouth"></td>
+<td><b>Choir of Hollow Stars</b><br>Every star here has been emptied, and something sings inside. A song that reaches another hollow star makes it answer, and the chorus spreads. Leviathans migrate through, and the Mouth reaches for ships with tendrils. The words in the background rearrange themselves. An eye opens in the dark and follows your pointer, and now and then a star goes out for good.</td>
+</tr>
+<tr>
+<td><img src="docs/media/worlds/siege.jpg" alt="The Long Siege: a front line of hex cells with ASCII walls"></td>
+<td><b>The Long Siege</b><br>A war older than anyone fighting it, held hex by hex along a front the camera travels. Each side saves up and then attacks, and supply convoys run to the line while the enemy hunts them. Spotters paint targets before the artillery arcs in, monitors duel, and minefields go off in chains. Now and then a truce holds, and the memorial beacon counts the names.</td>
+</tr>
+<tr>
+<td><img src="docs/media/worlds/hive.jpg" alt="Hive Bloom: green creep spreading from pulsing hive nodes"></td>
+<td><b>Hive Bloom</b><br>Something is growing over the colonies, and it is beautiful. The creep is a cellular automaton that spreads from pulsing hive nodes, and the structures it covers turn to biomass glyph by glyph. Spore flocks swirl out to seed new growth. Colonies evacuate, and purge fleets answer with fire.</td>
+</tr>
+<tr>
+<td><img src="docs/media/worlds/lastfleet.jpg" alt="The Last Fleet: a long segmented ark surrounded by hundreds of small ships"></td>
+<td><b>The Last Fleet</b><br>Everyone left alive, moving together. A twelve-segment ark crosses the map, with habitat rings whose windows go round, farm domes, and engines trailing plumes. Hundreds of small ships keep station around it. Stragglers fall behind and tugs go back for them, pursuers jump in at the trailing edge, and skimmers dive into gas giants for fuel. Children are born aboard.</td>
+</tr>
+<tr>
+<td><img src="docs/media/worlds/cradle.jpg" alt="Cradle of Suns: young stars with planets, and a supernova"></td>
+<td><b>Cradle of Suns</b><br>A cosmic time-lapse. Gas collapses, and stars ignite with jets and wind bubbles. Disks clump into planets, and planets light up with cities and send out their first ships. Then come colonies and first contact, and sometimes silence. The age of the universe runs along the top, in billions of years.</td>
+</tr>
+</table>
+
+### Undercity
+
+![Undercity: a rainy cyberpunk skyline with neon, corp towers, flying cars, and an open megastructure](docs/media/worlds/undercity.jpg)
+
+A cyberpunk city at night, in the rain, in 2.5D. Three parallax layers drift past:
+- a far skyline of megatowers, with blinking masts and searchlights in the smog
+- mid towers, with corp data fortresses and holo ads
+- a near megastructure cut open: terraces and markets under lanterns, stairs, cables, and shopfronts over a wet street that reflects the neon
+
+Flying cars stream between the layers in lanes of light. Maglev trains pass, crowds walk under neon umbrellas, and the thunder comes a moment after the lightning.
+
+Over all of it runs the net. A netrunner jacks in, and a trace runs hop by hop to a corp tower, where the ICE wakes in a ring of glyphs. A breach glitches the tower, hijacks its ads, and can take the district's grid down. A flatline brings the police with searchlights.
+
+```ts
+mount(document.body, { skin: 'undercity', options: { rain: 1, net: 1.5 } });
+```
+
+### Instruments from other worlds
+
+The same idea, applied to other screens.
+
+| | |
+| --- | --- |
+| ![Sonar](e2e/__screenshots__/chromium/sonar.png) **Sonar.** A submarine's passive waterfall. Contacts drift across bearings, and whales sing on and off. Then a torpedo is in the water: the boat turns hard and every trace bends with it, a decoy blooms, and the torpedo veers off after it. | ![Approach radar](e2e/__screenshots__/chromium/atc-radar.png) **Approach radar.** The sweep paints aircraft onto fading phosphor. Arrivals hold, land, or go around, departures climb out, and conflict alerts blink. Now and then someone declares an emergency and squawks 7700. |
+| ![Seismograph](e2e/__screenshots__/chromium/seismograph.png) **Seismograph.** Station pens tremble until a quake's waves sweep down the stack. Big ones bring aftershock sequences. Quarry blasts, volcanic tremor, and great quakes from the far side of the planet that reach every station at once. | ![Abyssal scanner](e2e/__screenshots__/chromium/abyssal.png) **Abyssal scanner.** Marine snow and bioluminescent animals. A startled jelly's alarm flash runs through its neighbors, and a dragonfish hunts by red light. Something very large crosses the edge of the light. |
+| ![Martian weather radar](e2e/__screenshots__/chromium/mars-radar.png) **Martian weather radar.** Dust storm cells drift over Jezero. A rover drives and cores samples, a helicopter scouts ahead, meteors leave fresh craters, and storm watches park everything. It all goes into the ops log. | |
+
+### Basics
+
+Not every site wants a story. Calm presets for product pages are built from the same layer library, tuned behind real text:
+
+| calm-mesh | aurora-night | terminal-rain | fireflies |
+| --- | --- | --- | --- |
+| ![](e2e/__screenshots__/chromium/calm-mesh.png) | ![](e2e/__screenshots__/chromium/aurora-night.png) | ![](e2e/__screenshots__/chromium/terminal-rain.png) | ![](e2e/__screenshots__/chromium/fireflies.png) |
+| **deep-field** | **flow-lines** | **paper-grid** | **nebula-drift** |
+| ![](e2e/__screenshots__/chromium/deep-field.png) | ![](e2e/__screenshots__/chromium/flow-lines.png) | ![](e2e/__screenshots__/chromium/paper-grid.png) | ![](e2e/__screenshots__/chromium/nebula-drift.png) |
+
+*Every image in this README was rendered by the engine at a fixed seed, so the same seed paints the same pixels on every run.*
 
 ## Make it your universe
 
-The map can belong to any world. A *universe pack* is a small JSON file holding the names, factions, ship classes, structures and their ASCII art, anomalies, radio chatter, and the faint words drifting in the background. You don't write it yourself:
+You don't write a universe by hand:
 
 1. In the studio, open **Universe → Make your own** and type a book, a film, a game, your tabletop setting, or a few lines about a world.
 2. Click **Copy the prompt** and paste it into any AI.
 3. Paste back what it writes, and the map becomes that world.
 
-Six hand-written packs come with it, and each one plays differently, not just in other colors:
-- **Saltwind Reach** is a poor mining frontier at the end of an old road. Belts of rock orbit across the map, and stray rocks collide and shatter. Miners cut ore, argue over claims, and haul ore home in their pods. Warden buoys stop and scan ships, and smugglers bolt with cutters behind them. Dust fronts blow through: beams go dark, miners run for the docks, and loose rock drifts on the wind. Now and then a bore blows out.
-- **Choir of Hollow Stars** is a region where every star has been emptied and something sings inside. A song that reaches another hollow star makes it answer, and the chorus spreads. Leviathans migrate through. The Mouth reaches for ships with tendrils, feeds, and exhales new stars. Cradles hatch ships that grow as they fly. A circle of the map sometimes replays its last seconds as ghosts. Words in the background rearrange themselves, an eye opens in the dark and follows your pointer, and now and then a star goes out for good.
-- **The Long Siege** is a war that has gone on longer than anyone has been alive. The camera travels along the front, which is held hex by hex. Long-held edges have hardened into walls, and a heat map shows where ground keeps changing hands. Each side saves up and then launches offensives. Supply convoys run to the line while the enemy hunts them, and a starved line gives way. Spotters paint targets before artillery arcs in, siege monitors duel across the line, fortress shields ripple and fail, and minefields go off in chains. Now and then a truce holds: medical ships cross no-man's-land, and the memorial beacon counts the names.
-- **Hive Bloom** is a colony world where something is growing over everything, and it is beautiful. The creep is a cellular automaton that spreads from pulsing hive nodes, reaching for colonies with tendrils. Structures it covers turn to biomass glyph by glyph, and colonies evacuate first. Spore flocks swirl out and seed new growth. Purge fleets burn it back with flame cones and leave ash, and now and then a scourge burns out a node.
-- **The Last Fleet** is everyone left alive, moving together. An enormous ark of linked hulls crosses the map: habitat rings with windows going round, farm domes, a reactor, engines trailing plumes. Hundreds of small ships keep station around it. Stragglers fall behind and tugs go back for them. Pursuers jump in at the trailing edge, and escorts break off to meet them. Skimmers dive to gas giants for fuel, children are born aboard, and the fleet counts its souls.
-- **Cradle of Suns** is a cosmic time-lapse, a billion years every minute and a half. Gas collapses and stars ignite with jets and wind bubbles. Disks clump into planets, and planets light up with cities and launch their first ships. Ships found colonies and make first contact. Sometimes the lights go out, and massive stars die as supernovae that give their gas back. The age of the universe and the name of the era run along the top.
-
-| | |
-| --- | --- |
-| ![Saltwind Reach](e2e/__screenshots__/chromium/void-tactical-saltwind.png) | ![Choir of Hollow Stars](e2e/__screenshots__/chromium/void-tactical-choir.png) |
-| ![The Long Siege](e2e/__screenshots__/chromium/void-tactical-siege.png) | ![Hive Bloom](e2e/__screenshots__/chromium/void-tactical-hive.png) |
-| ![The Last Fleet](e2e/__screenshots__/chromium/void-tactical-lastfleet.png) | ![Cradle of Suns](e2e/__screenshots__/chromium/void-tactical-cradle.png) |
-
 ### What happens here
 
-What makes a universe play differently is its *mechanics*: small plugins that spawn fleets, steer them, fight, break things, and draw on the map. A pack lists the ones it runs and how they're tuned, and in the studio, under **What happens here**, you can switch any of them on or off and tune them for the world you're looking at. Built in: raids, great events (armadas, flares, gate surges), an economy, police, gates, relays, asteroid mining, wardens, storm fronts, singing stars, murmurations, the Mouth, leviathans, echoes, cradles, a living chart, a front held cell by cell, spotted artillery, monitor duels, truces, minefields, a creeping bloom with spores and purge fleets, an ark with its flotilla, pursuers and fuel skimmers, and the lives of stars and the civilizations around them.
+What makes a universe play differently is its *mechanics*: small plugins that spawn fleets, steer them, fight, break things, and draw on the map. A universe lists the ones it runs and how they're tuned. In the studio, under **What happens here**, you can switch any of them on or off and tune them. There are more than thirty built in. They include:
+- the economy, raids, police, gates, and relays
+- mining, wardens, and storms
+- songs, leviathans, the Mouth, and echoes
+- a front held cell by cell, spotted artillery, monitor duels, truces, and minefields
+- the bloom, spores, and purges
+- the ark, its flotilla, pursuers, and skimmers
+- the lives of stars and of the civilizations around them
 
 Writing a new one takes a few dozen lines:
 
@@ -80,65 +197,569 @@ registerMechanic({
 mount(document.body, { skin: 'void-tactical', options: { universe: 'saltwind', mechanics: [{ use: 'asteroids' }, { use: 'patrol' }] } });
 ```
 
-`options.mechanics` replaces the pack's own list; leave it out to keep the pack's.
+`options.mechanics` replaces the universe's own list. Leave it out to keep that list. How the pieces fit (the camera, the event bus, shared services like the economy and the war state) is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Undercity
+## Sound
 
-![Undercity](e2e/__screenshots__/chromium/undercity.png)
-
-A cyberpunk city at night, in the rain, in 2.5D. Three parallax layers drift past: a far skyline of megatowers with blinking masts and searchlights in the smog, mid towers with corp data fortresses and holo ads, and a near megastructure cut open. Its stacked levels show terraces and markets under lanterns, stairs, cables, and shopfronts above a wet street that reflects the neon. Flying cars stream between the layers in lanes of light. Maglev trains pass. Crowds walk under neon umbrellas, steam rises, and lightning is followed by thunder.
-
-Over all of it runs the net. A netrunner jacks in from an apartment, and a trace runs hop by hop to a corp tower, where the ICE wakes in a ring of glyphs. A breach glitches the tower, hijacks its ads, and sometimes kills the district's grid block by block. A flatline brings the police with searchlights. A terminal readout keeps the log.
-
-```ts
-mount(document.body, { skin: 'undercity', options: { rain: 1, net: 1.5 } });
-```
-
-The city is a lazy chunk (about 14 KB gzip) that loads the first time it mounts. `space-background-engine/skins/undercity` registers it on its own, for a page that wants only this.
-
-## Instruments from other worlds
-
-The same idea applied to other screens.
-
-| | |
-| --- | --- |
-| ![Sonar](e2e/__screenshots__/chromium/sonar.png) **Sonar.** A submarine's passive waterfall. Contacts drift across bearings and whales sing on and off. Then a torpedo is in the water: the boat turns hard and every trace bends with it, a decoy blooms, and the torpedo veers off to it. Sometimes the boat goes active and the contacts answer. | ![Approach radar](e2e/__screenshots__/chromium/atc-radar.png) **Approach radar.** The sweep paints aircraft onto fading phosphor. Arrivals hold, land, or go around, departures climb out, helicopters and light aircraft wander low, conflict alerts blink, and now and then someone declares an emergency and squawks 7700. |
-| ![Seismograph](e2e/__screenshots__/chromium/seismograph.png) **Seismograph.** Station pens tremble until a quake's waves sweep down the stack. Big ones shake the record and bring aftershock sequences. There are also quarry blasts, a volcano's harmonic tremor, and great quakes from the far side of the planet that reach every station at once. | ![Abyssal scanner](e2e/__screenshots__/chromium/abyssal.png) **Abyssal scanner.** Marine snow and bioluminescent animals. A startled jelly's alarm flash runs through its neighbors, a dragonfish hunts by red light and scatters a school, shrimp spit glowing clouds, and the seafloor rises into view over a vent field. Something very large crosses the edge of the light. |
-| ![Martian weather radar](e2e/__screenshots__/chromium/mars-radar.png) **Martian weather radar.** Dust storm cells drift over Jezero. A rover drives and cores samples while a helicopter scouts ahead, orbiters pass over to relay, meteors leave fresh craters, a lander comes down, and storm watches park everything. All of it goes into the ops log. | |
-
-## Put one on your site
-
-Open the [studio](https://aesthetic-backgrounds-library.vercel.app), pick one, and click **Copy prompt for your AI**. Paste it into Claude, ChatGPT, Cursor, or v0. The prompt carries the exact configuration and the few rules that keep it right.
-
-To do it by hand instead:
-
-```ts
-import { mount } from 'space-background-engine';
-
-mount(document.body, { skin: 'void-tactical', seed: 'orion-7', options: { universe: 'saltwind' } });
-```
-
-Everything is seeded and deterministic. It respects reduced motion, pauses when the tab is hidden, and is dark enough behind a text column to keep body copy readable.
-
-### Sound, if you want it
-
-The sector map can be heard as well as seen. It's opt-in and generated, with no audio files, and adds about 5 KB:
+The worlds can be heard as well as seen. Sound is opt-in and generated, with no audio files, and adds about 6 KB:
 
 ```ts
 import { createSoundscape } from 'space-background-engine/audio';
 
 const sound = createSoundscape({ palette: 'choir' });
 sound.attach(handle);
-playButton.onclick = () => sound.start();
+playButton.onclick = () => sound.start(); // browsers allow audio only after a click
 ```
 
-Explosions boom where they happen across the screen. Raids bring a siren, a captured system rings a bell, and the Choir's songs are low voices answering each other. Each universe has its own palette and drone.
+Explosions boom where they happen across the screen. A raid brings a siren and a capture rings a bell. In the Choir, the songs are low voices answering each other, and in Undercity the thunder comes a moment late. Every world has its own palette and drone. In the studio, flip **Sound** on.
 
-## Running it
+## Put one on your site
+
+The quickest way: open the [studio](https://aesthetic-backgrounds-library.vercel.app), pick one, and click **Copy prompt for your AI**. Paste it into Claude, ChatGPT, Cursor, or v0. The prompt carries the exact configuration and the few rules that keep it right.
+
+Or drop it in yourself.
+
+**As a web component:**
+
+```html
+<script type="module" src="https://unpkg.com/space-background-engine/dist/element.js"></script>
+<bg-engine skin="void-tactical" seed="orion-7"></bg-engine>
+```
+
+Pick a skin, derive a palette from your brand color, and dial the presence down:
+
+```html
+<bg-engine skin="matrix-rain" palette="#ff7a1a" intensity="0.6"></bg-engine>
+```
+
+**From JavaScript:**
+
+```ts
+import { mount } from 'space-background-engine';
+
+// Full-page background behind everything
+mount(document.body, { skin: 'void-tactical', seed: 'orion-7', options: { universe: 'saltwind' } });
+
+// Or inside a positioned container
+mount('#hero', { skin: 'undercity', intensity: 0.6 });
+```
+
+`mount()` returns a handle with `canvas`, `root`, `pause()`, `resume()`, `renderOnce()`, `onEvent()`, and `destroy()`. Page content stays fully clickable, because the whole background stack has `pointer-events: none`.
+
+---
+
+# Reference
+
+Everything about the API, the configuration, and how to extend it. How the internals fit together is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+> **Status:** early. The API below is stable enough to try, but not yet stable enough to depend on. Plans and open items are in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## Installation
+
+```bash
+pnpm add space-background-engine
+```
+
+The bare import (`space-background-engine`) is batteries included: the core, every built-in skin, the standard layer library, and the curated presets. For a smaller bundle, import only what you use. `core` has no skins, and each skin registers itself when it is imported:
+
+```ts
+import { mount } from 'space-background-engine/core';
+import 'space-background-engine/skins/matrix-rain';
+
+mount('#hero', { skin: 'matrix-rain' });
+```
+
+| Entry | What it adds |
+| --- | --- |
+| `space-background-engine` | The core, every skin, the layers and presets, and the shader, manifest, and token tools. |
+| `/core` | The host: mount, sizing, clock, palettes, registries. |
+| `/skins/void-tactical` | The sector map, its universes (loaded on demand), and the mechanics API. |
+| `/skins/undercity` | Undercity's shell. The city itself loads on first mount. |
+| `/skins/drifting-dust`, `/skins/matrix-rain` | The small skins. |
+| `/layers`, `/presets` | The layer library and the curated presets. |
+| `/shader` | `createShaderLayer` for GPU layers. |
+| `/manifest`, `/tokens` | Preset manifests (JSON) and design-token import and export. |
+| `/audio` | Generated sound bound to events. |
+| `/react`, `/vue`, `/svelte`, `/element` | Framework adapters and the `<bg-engine>` element. |
+
+## Presets
+
+Presets are the fastest path to a good result. Each is a tuned scene with its own palette and intensity defaults, registered like a skin:
+
+```ts
+import { mount } from 'space-background-engine/core';
+import 'space-background-engine/presets';
+
+mount(document.body, { skin: 'calm-mesh' });                       // light SaaS plate
+mount('#hero', { skin: 'aurora-night', palette: '#22d3ee' });     // override the palette
+```
+
+| Preset | Niche | Theme |
+| --- | --- | --- |
+| `calm-mesh` | SaaS landing, marketing | light |
+| `aurora-night` | SaaS, events | dark |
+| `terminal-rain` | developer portfolios | dark |
+| `deep-field` | space, sci-fi (no HUD) | dark |
+| `flow-lines` | data, science, analytics | dark |
+| `fireflies` | nature, wellness, quiet portfolios | dark |
+| `nebula-drift` | space, music, events | dark |
+| `ink-wash` | editorial, studios, portfolios | light |
+| `paper-grid` | editorial, brutalist | light |
+| `void-sector` | space, sci-fi, dense | dark |
+
+## Frameworks
+
+**React:**
+
+```tsx
+import { Background } from 'space-background-engine/react';
+
+export function App() {
+  return (
+    <>
+      <Background skin="void-tactical" seed="orion-7" options={{ universe: 'siege' }} />
+      <main>{/* your site content goes here */}</main>
+    </>
+  );
+}
+```
+
+`Background` wraps `mount()`. Any prop change tears the background down and mounts it again with the new settings. The built React entry is marked `'use client'`, so it works as-is in the Next.js App Router.
+
+**Vue, Svelte, Astro, no build step.** Each adapter is a thin layer over `mount()`, with no framework dependency of its own:
+
+```ts
+// Vue 3: a directive
+import { BackgroundPlugin } from 'space-background-engine/vue';
+app.use(BackgroundPlugin);           // <section v-background="{ skin: 'calm-mesh' }" />
+
+// Svelte: an action
+import { background } from 'space-background-engine/svelte';   // <div use:background={{ skin: 'deep-field' }} />
+```
+
+Astro and plain HTML use the `<bg-engine>` element. Without a bundler, an import map pins a version from a CDN. See [examples/importmap.html](examples/importmap.html).
+
+## Copy a background into your project
+
+The CLI reads the registry and writes one editable file. The scene then lives in your repo, where you and your agent can change it, while the engine stays a dependency:
+
+```bash
+npx space-background-engine list --kind preset
+npx space-background-engine info aurora-night
+npx space-background-engine add aurora-night --palette '#ff7a1a' --intensity 0.6
+npx space-background-engine add calm-mesh --tokens ./design/tokens.json
+```
+
+`add` writes `src/backgrounds/<id>.ts` with the manifest inlined and a `mountBackground()` function. `--tokens` derives the palette from a brand token file.
+
+## Community presets
+
+A preset is data: a scene plus config defaults. Anyone can publish one as JSON without shipping code, because every layer validates its options against a schema before anything mounts.
+
+```ts
+import { mount } from 'space-background-engine';
+import { loadPresetManifest } from 'space-background-engine/manifest';
+
+const preset = await loadPresetManifest('https://example.com/ember-nocturne.json');
+mount(document.body, { skin: preset });
+```
+
+`validatePresetManifest()` reports every problem with a path (`scene.layers[1].with.style: "hexagons" is not one of dots, lines, cross`). Point `"$schema"` at `registry/preset.schema.json`, and editors autocomplete layer ids and every option with its range. To list a preset in the gallery, add its JSON to [registry/community](registry/community) in a pull request. CI validates it, and it appears in the studio with no code change. In the studio, `?preset=<url>` loads and selects any manifest.
+
+## Palette tokens on your page
+
+Pass `exposeTokens: true`, and the background's palette is written as `--bge-*` variables on `<html>`, so your own UI can follow it. With Tailwind:
+
+```css
+/* Tailwind v4 */
+@import "tailwindcss";
+@import "space-background-engine/tailwind.css";   /* bg-bge-bg, text-bge-ink, border-bge-accent, ... */
+```
+
+```js
+// Tailwind v3
+import bge from 'space-background-engine/tailwind-preset';
+export default { presets: [bge] };                  // supports opacity: bg-bge-accent/20
+```
+
+To share the palette with design tools, use `space-background-engine/tokens`. `paletteToTokens()` exports W3C DTCG tokens that Figma Variables importers and Tokens Studio read, and `paletteFromTokens()` derives a palette from an existing token file. Both are buttons in the studio.
+
+## Configuration
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `seed` | random | PRNG seed. The same seed replays the same world, frame for frame. |
+| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `drifting-dust`, `matrix-rain`, and every preset id. |
+| `options` | `{}` | Skin-specific options; see each skin's section below. |
+| `palette` | `'void-cyan'` | One of: <ul><li>a built-in id (`void-cyan`, `amber`, `violet`)</li><li>a full token object</li><li>a bare hex color</li><li>`{ from: '#hex', theme: 'dark' \| 'light', harmony }`, which derives a palette in OKLCH. `harmony` (`analogous`, `complementary`, `split`, `triadic`, `mono`) sets the secondary hues `accent2` and `accent3`.</li></ul> |
+| `exposeTokens` | `false` | Also write the palette as `--bge-*` variables on `<html>` (or a given element) for your own UI. |
+| `intensity` | `1` | How much the background asserts itself, `0` to `1`. Skins scale motion, density, and contrast by it. |
+| `motion` | `'auto'` | `auto` honors `prefers-reduced-motion`. `full`, `reduced`, or `off` force a mode, and `off` renders a single frame. |
+| `density` | `1` | Population multiplier for generated entities (clamped 0.25–2). |
+| `light` | seeded | `{ angle, warmth }`: one key light that every layer reads. Omit `angle` and the seed picks an upper corner. `warmth` runs from cool (`-1`) to warm (`1`). |
+| `legibility` | `'auto'` | Measures the page's content boxes (`main, article, [data-bg-content]`) and makes the background recede behind them, adding a feathered shade above `intensity` 0.55. Use `'off'`, or `{ selector, strength }` for a fixed shade. |
+| `quiet` | `[]` | Extra quiet zones as viewport fractions `{ x, y, width, height }`, for content the selector cannot see. |
+| `detail` | `'low'` | Label and HUD budget for the sector map (`none`, `low`, `medium`, `high`). |
+| `cameraSpeed` | `0.25` | Base drift speed, in world units per frame at 60 fps. Real speed is time-based. |
+| `interactive` | `false` | Wheel zoom and drag pan on empty parts of the page, for skins with a camera. |
+| `targetFps` | `60` | Frame cap for the render loop. Lowering it does not slow the animation. |
+| `adaptiveQuality` | `true` | Lowers `host.quality` when frames run over budget, and raises it back when they recover. |
+| `zIndex` | `0` | z-index of the background root. |
+| `fonts` | `false` | Loads the display fonts used by built-in canvas text (Orbit, Syne Mono) from Google Fonts. Off by default, so the package makes no network requests. |
+
+`<bg-engine>` attributes: `seed`, `skin`, `palette`, `intensity`, `motion`, `density`, `detail`, `speed`, `fps`, `fonts`, `z-index`, `light-angle`, `warmth`, `legibility` (`auto` or `off`).
+
+## What the engine guarantees
+
+- **Deterministic replay.** `Math.random`, `Date.now`, and timers are banned from skins. The host hands each frame seeded random streams and a clock. Two instances with the same seed issue identical draw calls, which the test suite checks for every built-in skin, and the browser gates check for pixel-identical PNGs.
+- **Time-based motion.** Skins receive `dt` in seconds (clamped after stalls), so animation speed doesn't depend on frame rate or on `targetFps`.
+- **Motion policy.** `prefers-reduced-motion` is honored by default: skins see `motion: 'reduced'` and a halved `intensity`. `off` renders one static frame and stops the loop.
+- **Pauses when unseen.** The loop stops while the tab is hidden or the canvas is scrolled offscreen, and resumes without a time jump.
+- **Container-aware sizing.** The canvas fills whatever it is mounted in and follows it through a `ResizeObserver`, with a window fallback. The backing store is scaled by `devicePixelRatio`, capped at 1.5x.
+- **Scoped styling.** Palette tokens are written as `--bge-*` custom properties on the engine root only, never on your `:root`.
+- **DOM isolation and clean teardown.** Everything lives in a `.bg-engine-root` with `pointer-events: none`. `destroy()` removes the DOM, disconnects observers and listeners, cancels the loop, and is safe to call twice.
+- **Text stays readable.** By default the host finds your content boxes, and motion layers thin out behind them. Busy scenes also get a feathered shade. Every built-in skin and preset holds a mean 7:1 contrast behind a text column in the browser gates.
+- **Zero dependencies, small by default.** The host is about 16 KB gzipped. Universes beyond the first, mechanics, the Undercity city, and sound all load only when used. Budgets are enforced in CI.
+
+## Scenes and layers
+
+Under the presets sits a composable model:
+- A **layer** is one effect, with a declared option schema.
+- A **scene** is JSON: an ordered stack of layer references, bottom to top, each with options, opacity, and a blend mode.
+
+The `scene` skin runs any scene. A background can be authored, tuned in the studio, and pasted into `mount()` with no code:
+
+```ts
+import { mount } from 'space-background-engine/core';
+import 'space-background-engine/layers';
+
+mount(document.body, {
+  skin: 'scene',
+  palette: { from: '#ff7a1a' },
+  intensity: 0.7,
+  options: {
+    layers: [
+      { use: 'gradient-base', with: { tint: 0.3 } },
+      { use: 'starfield', with: { density: 0.8, bands: 3 } },
+      { use: 'aurora', with: { bands: 2 }, blend: 'lighter', opacity: 0.8 },
+      { use: 'vignette' },
+      { use: 'grain', with: { opacity: 0.08 } },
+    ],
+  },
+});
+```
+
+Standard layers:
+- **Bases and fields:** `gradient-base`, `mesh-gradient`, `aurora`, `starfield`, `grid`
+- **Motion:** `particles-drift`, `plexus`, `flow-field`, `glyph-rain`
+- **Light and finish:** `light-follow`, `vignette`, `grain`, `scanlines`
+- **Legibility:** `content-shade`, a feathered shade behind your text column, so any scene passes a contrast check
+- **Events:** `moments`, rare seeded events (see below)
+
+Any whole skin can also be used as a layer (`fromSkin`), and the sector map registers itself that way. Every layer:
+- reads its colors from the palette, or from tokens like `accent` and `inkDim`
+- scales itself by `intensity` and `quality`
+- draws deterministically from the seeded streams
+
+Options are validated against each layer's schema: numbers are clamped, unknown enum values fall back to defaults, and nothing throws on a typo in a JSON preset. The same schema drives the studio's controls, and it is what an agent fills in when it builds a scene for you.
+
+**Shader layers.** Layers can render on the GPU. `createShaderLayer` takes a GLSL ES 3.00 fragment shader and gives it a private WebGL2 surface, composited like any other layer. Uniforms come from:
+- the frame: `u_time`, `u_dt`
+- the host: `u_resolution`, `u_pointer`, `u_intensity`, `u_quality`, `u_seed`
+- the palette: `u_bg`, `u_accent`, `u_accent2`, `u_accent3`, `u_ink`, `u_hazard`
+- the scene light: `u_lightDir`, `u_lightPos`, `u_warmth`
+- your schema: every numeric, boolean, and color field, as `u_<name>`
+
+A prelude provides `hash21`, `vnoise`, and `fbm`.
+
+```ts
+import { createShaderLayer } from 'space-background-engine/shader';
+import { registerLayer } from 'space-background-engine/core';
+
+registerLayer(createShaderLayer({
+  id: 'haze', label: 'Haze', schema: { scale: { type: 'number', min: 1, max: 6, default: 3 } },
+  fragment: `void main() {
+    float n = fbm(v_uv * u_scale + u_time * 0.05, 4);
+    float a = smoothstep(0.0, 0.8, n) * 0.4 * u_intensity;
+    fragColor = vec4(u_accent * a, a);
+  }`,
+}));
+```
+
+Because every input is a uniform, shader layers stay deterministic: the same seed renders identical pixels. The built-in shader layers are `nebula` and `ink-flow`. Where WebGL2 is unavailable, the layer logs once and is skipped, and the rest of the scene renders normally. If the GPU drops the context, the layer pauses and rebuilds its program when the context is restored. Heavy layers can set `rate: 0.5` to render every other frame.
+
+To publish your own preset, wrap a scene:
+
+```ts
+import { registerPreset } from 'space-background-engine/core';
+
+registerPreset({
+  id: 'ember-field',
+  label: 'Ember field',
+  tags: ['dark', 'warm'],
+  config: { palette: { from: '#f97316' }, intensity: 0.8 },
+  scene: { layers: [{ use: 'gradient-base' }, { use: 'particles-drift', with: { glow: 0.9 } }] },
+});
+```
+
+## Light, quiet zones, moments, transitions
+
+Layers in a scene agree with each other because the host gives them a shared composition.
+
+- **One key light.** `host.light` holds an angle, a unit direction, an in-frame key position, and a warmth. By default the seed places the light in an upper corner, never top center. Set `light: { angle: 225, warmth: 0.4 }` to pin it. Layers use it like this:
+  - `gradient-base` puts its main glow at the key and a fill light opposite.
+  - `vignette` opens toward the light.
+  - The `nebula` shader lights the side of each cloud that faces the key.
+  - `moments` aims comet tails and flare spikes by it.
+  - Shader layers receive `u_lightDir`, `u_lightPos`, and `u_warmth`.
+- **Quiet zones.** With `legibility: 'auto'`, the host measures your content boxes on mount, resize, and scroll. `host.quiet(x, y)` returns 0 to 1 near those boxes, with a soft falloff. Particles, stars, plexus links, glyph-rain heads, and flow lines recede there (each layer's `quiet` option sets how much), so text sits on calm ground instead of under a shade box. At high `intensity`, a feathered shade is added too.
+- **Moments.** The `moments` layer stages rare, seeded events: a meteor every minute or so, a slow comet, a star that flares. Gaps are random and long, and events avoid your text. The same seed stages the same events at the same seconds. Under reduced motion, only flares remain.
+- **Transitions.** `transition(handle, nextOptions, { kind, duration })` mounts the next scene in place and reveals it with one of:
+  - `crossfade`
+  - `wipe`, from the lit side
+  - `iris`, opening from the new scene's key light
+
+  It is driven by the incoming scene's own clock, so it replays deterministically. It is instant with motion off, and a crossfade under reduced motion. In React, pass `transition` to `<Background>`.
+
+```ts
+import { mount, transition } from 'space-background-engine';
+
+let bg = mount(document.body, { skin: 'deep-field', light: { warmth: -0.2 } });
+// later, when the page changes section:
+bg = transition(bg, { skin: 'aurora-night' }, { kind: 'iris', duration: 1.4 }).handle;
+```
+
+`handle.composition()` reports the light, the measured content rects, the quiet zones, and the current shade strength, and `handle.onFrame(fn)` subscribes to frames. The studio's **Show composition** overlay draws all of it over the live background.
+
+## Events and sound
+
+`handle.onEvent(fn)` reports what happens in a background as it happens. Each `SkinEvent` carries:
+- `type`: `explosion`, `raid`, `capture`, `song`, `bombard`, `breach`, `supernova`, ...
+- `weight`: 0 to 1, how much it matters
+- `pan`: -1 to 1, where across the screen it happened
+- `near`: 1 when it is on screen and up front
+
+The sector map and Undercity report their whole event stream, and other skins report nothing yet. Events are silent during `fastForward` and time-scale steps, and cost nothing while nobody listens.
+
+Sound is a separate, opt-in entry. Every sound is synthesized, so there are no assets to load:
+
+```ts
+import { mount } from 'space-background-engine';
+import { createSoundscape } from 'space-background-engine/audio';
+
+const bg = mount(document.body, { skin: 'void-tactical', options: { universe: 'siege' } });
+const sound = createSoundscape({ palette: 'siege', volume: 0.5 });
+sound.attach(bg);
+button.onclick = () => sound.start(); // browsers allow audio only after a click or key press
+```
+
+A **sound palette** maps event types to cues (boom, ping, bell, sweep, whoosh, thump, choir, crackle) and sets a drone underneath. There is one per world: `void`, `saltwind`, `choir`, `siege`, `hive`, `lastfleet`, `cradle`, and `undercity`. `registerSoundPalette()` adds your own.
+
+Each cue's loudness follows the event's weight and nearness. A per-cue rate limit keeps a busy map from turning to noise, and the soundscape suspends while the tab is hidden.
+
+## The sector map's options
+
+`skin: 'void-tactical'`. Every authored color is pulled into the active palette family, so it works with `palette: '#ff7a1a'` as well as with the built-ins.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `universe` | `'void'` | `void`, `saltwind`, `choir`, `siege`, `hive`, `lastfleet`, `cradle`, or your own (`registerUniverse`). Universes beyond the first load on demand. |
+| `pack` | none | An inline universe pack, for example one an AI wrote with `universePrompt()`. Wins over `universe`. |
+| `mechanics` | the universe's | `[{ use, with, enabled }]` replaces the universe's mechanics list. |
+| `camera` | `'director'` | `steady` (fixed framing), `director` (now and then it leans in on something happening), or `cinematic` (it chases the action). |
+| `lean` | `true` | The camera drifts a few percent toward the pointer. |
+| `scroll` | `false` | Scrolling down the page carries the map forward through the sector. |
+| `hueVariety` | `0.94` | `0` pulls every entity into the palette family, and `1` keeps the original rainbow. |
+| `lineWeight` | `1.4` | Multiplier on all strokes. |
+| `spriteScale` | `0.8` | Size of the ASCII structure art. |
+| `shipScale` | `1` | Size of the ships. |
+| `hud` | `0.6` | Opacity of labels, telemetry, and chatter. |
+| `paths` | `'dashed'` | Planned courses: `dashed`, `dots`, or `off`. |
+| `trails` | `0.9` | Fleet trail opacity. |
+| `lock` | `true` | Target lock: brackets close on a contact every half minute. |
+| `gradient`, `mesh`, `asciiGrid`, `ascii1`, `ascii2`, `clouds`, `noise`, `mouseGlow`, `starfield` | all on except `starfield` | Toggles for each CSS atmosphere layer. |
+
+The skin's own config defaults are `intensity: 0.45`, `density: 1.5`, `detail: 'high'`, and `palette: 'void-cyan'`: a dense, fully annotated sector, held back to 45% presence so page content leads. Pass any of them to `mount()` to override.
+
+A universe pack is JSON. Its fields are:
+- names, factions, ships, structures and their ASCII art, anomalies, and chatter
+- its mechanics
+- a `look`:
+  - `lanes`, `grid`, `traffic`, and `anomalies`
+  - `depth`, the share of scenery on far planes
+  - `scenery` (`0` leaves space empty for the mechanics to fill)
+  - `drift`, how fast the map travels
+  - `ground`, the terrain under the map
+- an `economy`
+
+`universePrompt(subject)` writes the prompt that asks an AI for one, and `validateUniverse()` fixes up what comes back.
+
+The same simulation is also available as **layers** that share one world per mount: `void-atmosphere` (the CSS plate), `void-stars`, `void-systems`, `void-fleets`, and `void-hud`. The `void-sector` preset is the skin rebuilt from them. So in a scene you can drop the HUD, dim the fleets to half opacity, or slide `grain` and a `content-shade` between the systems and your text, and the fleets still steer toward the structures the systems layer draws:
+
+```ts
+mount(document.body, {
+  skin: 'scene',
+  intensity: 0.45,
+  density: 1.5,
+  detail: 'high',
+  options: {
+    layers: [
+      { use: 'void-atmosphere' },
+      { use: 'void-stars' },
+      { use: 'void-systems', with: { spriteScale: 1.2 } },
+      { use: 'void-fleets', with: { paths: 'off' }, opacity: 0.6 },
+      { use: 'content-shade', with: { strength: 0.5 } },
+    ],
+  },
+});
+```
+
+## Undercity's options
+
+`skin: 'undercity'`. The city is a lazy chunk (about 14 KB gzipped) that loads the first time it mounts. Call `prepareUndercity()` to load it ahead of time.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `speed` | `1` | How fast the city drifts past (`0` holds still). |
+| `rain` | `0.8` | Rain, from none to a downpour (`0` to `1.5`). Heavy rain brings lightning. |
+| `traffic` | `1` | Air traffic in the lanes between the layers. |
+| `crowd` | `1` | Pedestrians on the street. |
+| `net` | `1.2` | Netruns per minute. |
+| `overlay` | `true` | Show the net's wireframe and packets. |
+| `hud` | `true` | The terminal readout: district, rain, net load, and the run log. |
+
+## Using it with an AI agent
+
+The repository ships a skill, `skills/background-designer/SKILL.md`, that turns a conversation into a background. It contains:
+- an intake questionnaire
+- a decision procedure: preset, then scene, then layer, then skin
+- the conventions the gates enforce
+- a catalog of everything registered
+- taste notes
+
+Claude Code picks it up from `.claude/skills/`. For other tools, paste the skill file and its `references/` into the agent's context. Every option is declared in a schema and every render is deterministic. So an agent can propose a `mount()` call, you can paste it, and the result is exactly what it described.
+
+## Writing your own skin
+
+```bash
+pnpm create-skin ember-drift --label "Ember drift" --tags "warm,calm"
+pnpm skin:check ember-drift --update
+```
+
+The scaffold writes a skin that already follows the conventions (seeded randomness, `dt`-based motion, palette colors, a schema, cleanup). It also registers the skin and adds it to the browser gates. `skin:check` runs:
+- the typecheck
+- unit determinism
+- the screenshot
+- contrast behind a text column
+- pixel-identical replay
+
+It prints the path of the reference render, so you iterate on the picture. `example-motes` in the repo is the scaffold's unedited output. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+The engine separates the **host** (sizing, loop, clock, config, palette, inputs) from the **skin** (world generation and drawing). A skin is a small object:
+
+```ts
+import type { BackgroundSkin } from 'space-background-engine/core';
+import { rgba } from 'space-background-engine/core';
+
+export const ripples: BackgroundSkin<{ rings?: number }> = {
+  id: 'ripples',
+  mount({ ctx, rng, palette, options, viewport, pointer }) {
+    const rings = options?.rings ?? 6;
+    const seeds = Array.from({ length: rings }, () => ({ x: rng(), y: rng(), phase: rng() * 4 }));
+    return {
+      resize() {},
+      frame({ t }) {
+        const { width, height } = viewport;
+        ctx.clearRect(0, 0, width, height);
+        ctx.strokeStyle = rgba(palette.accentRgb, 0.25);
+        for (const s of seeds) {
+          const r = ((t + s.phase) % 4) * 60;
+          ctx.beginPath();
+          ctx.arc(s.x * width, s.y * height, r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        if (pointer.active) {
+          ctx.beginPath();
+          ctx.arc(pointer.x, pointer.y, 40 + Math.sin(t * 3) * 6, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      },
+      destroy() {},
+    };
+  },
+};
+```
+
+What the host gives a skin (`SkinHost`):
+
+| Field | Purpose |
+| --- | --- |
+| `canvas`, `ctx` | The 2D context, already DPR-scaled. |
+| `rng`, `fork(label)`, `noise` | A seeded random stream, independent sub-streams, and seeded 2D simplex noise with fbm. |
+| `config`, `options`, `palette` | The resolved config, the skin's options, and the palette tokens as values (never read CSS variables). |
+| `viewport` | Live `width`, `height`, `dpr`, `isMobile`, `isTouch`. |
+| `pointer` | Live position, velocity, `active`, `down`, and seconds `idle`. |
+| `motion`, `intensity`, `quality` | Live policy and budgets to scale your effect by. |
+| `light` | The scene key light: `angle`, unit `dx`/`dy`, key position `x`/`y` (0 to 1), `warmth`. |
+| `quiet(x, y)` | 0 to 1: how close a CSS-pixel point is to page content. Recede there. |
+| `events` | Where to report what happens (`emit`), for `handle.onEvent` and sound. Check `active` first. |
+
+Each frame receives `{ t, dt, frame, timestamp }`, with times in seconds. A skin can also offer:
+- `advance(info)`: a sim-only step, used for fast-forward
+- `inspect()`: counts and an event log, for the lab and the headless runner
+
+Rules that keep skins portable:
+- no `Math.random`, `Date.now`, `performance.now`, or timers
+- move by `dt`
+- read colors from `host.palette`
+- release everything in `destroy()`
+
+Then either pass the object (`mount(el, { skin: ripples })`), or register it once and use the id everywhere, including `<bg-engine skin="ripples">`:
+
+```ts
+import { registerSkin } from 'space-background-engine/core';
+registerSkin(ripples);
+```
+
+Skins can also add GPU-friendly DOM layers behind the canvas (gradients, SVG textures, grain) by implementing the optional `layers(root, context)` hook. The sector map uses it for its atmosphere stack.
+
+To test a skin, drive the loop by hand with `createManualScheduler()`. A test can then step 240 frames and compare draw-call hashes for two seeds. See `src/engine/skins/determinism.test.ts`.
+
+## Local development
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev          # the studio (localhost:5174)
+pnpm test         # unit, DOM, determinism, and headless sim tests (vitest)
+pnpm test:e2e     # real-browser gates (Playwright): screenshots, contrast, pixel-identical replay
+pnpm typecheck    # tsc -b across the app and tooling configs
+pnpm build:lib    # library bundle + generated type declarations
+pnpm size         # gzip budget per entry (run after build:lib)
 ```
 
-The studio opens at `localhost:5174`. How it all works, the API, and the smaller "basics" backgrounds are in [docs/REFERENCE.md](docs/REFERENCE.md).
+**The fast loop.** Testing an idea doesn't have to mean watching a browser:
+- `pnpm sim siege 300 all`: steps a world in node with no drawing, then prints counts over time, the event log, and any problems (NaN positions, empty fleets, failed mechanics). Minutes of simulation take seconds.
+- `pnpm lab u=siege seek="FALLS TO" after=0.5,3,8`: jumps to the first matching log line and saves a contact sheet of the moments after it.
+- `pnpm lab undercity t=5,30,60 crop=500,200,520,340 dsf=2`: zooms in on a region at retina density.
+- `pnpm media`: regenerates every image in this README from fixed seeds.
+- `?debug` in the studio: time scale ×1/×4/×16, skip 30 s, live counts, and the event log.
+
+**Browser gates.** `pnpm test:e2e` renders every built-in skin, universe, and preset through `/check.html`. That harness mounts with a manual clock at a fixed seed and steps a fixed number of frames, so each render is reproducible. For each subject it asserts three things:
+- The render matches its stored screenshot in `e2e/__screenshots__`.
+- The palette ink reaches a mean WCAG contrast of 7:1 over the canvas behind a 40rem text column, with at most 5% of sampled pixels below AA.
+- Two independent browser contexts produce byte-identical PNGs for the same seed.
+
+After an intentional visual change, refresh the baselines with `pnpm test:e2e:update`.
+
+**The studio** at `/` is where you choose and tune:
+- Browse the gallery and the worlds.
+- Switch universes and their mechanics, or make your own universe with an AI.
+- Edit a scene's layer stack, with controls generated from each schema.
+- Derive a palette from a brand color, and set the key light.
+- Turn on **Show composition**, which draws the thirds, the light ray, the content boxes, and the quiet zones over the live render.
+- Turn on **Sound**.
+- Export a `mount()` call, a preset JSON, a PNG or WebP, or an 8 second WebM loop rendered on a fixed clock.
+
+The URL holds the whole state, so a link reproduces the exact background.
+
+**Blind compare.** `pnpm compare` stages every current baseline next to its render from an earlier release. `/compare.html` then shows each pair with the sides shuffled, plus a flip view, and reveals which version you preferred only at the end. An aesthetic change is accepted only when the maintainer prefers the new render without knowing which one it is.

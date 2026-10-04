@@ -13,6 +13,9 @@
         ?seek=RAID|TAKING%20FIRE&after=0.5,2,5&max=240   first log line matching a regex, then captures after it
         &crop=600,250,500,320                            zoom into a region (CSS px of the w x h stage)
         &w=1280&h=800&tile=0.5&cols=2&seed=orion-7&options={...}&palette=...
+        ?view=1                                          no sheet: the live page (canvas and DOM layers) is
+                                                         shown, and window.__lab.goto(t) / .seek(regex, max)
+                                                         move it; scripts/media.mjs screenshots it
     -->
     <style>
       html, body { margin: 0; background: #05070b; color: #9ca3af; font: 12px ui-monospace, monospace; }
@@ -55,16 +58,24 @@
       const bg = resolvePalette(palette ?? getSkin(skinId)?.defaults?.palette).bg;
       const canvas = handle.canvas;
 
-      // ---- decide the capture times -------------------------------------------------------
+      // ---- moving through time -------------------------------------------------------------
       scheduler.step(1); // frame 0 at t = 0
       let cur = 0;
-      const shots = []; // { t, label }
-      if (q.has('seek')) {
-        const re = new RegExp(q.get('seek'), 'i');
+      /** Fast-forward (sim only) to just before t, then draw one real frame at t. */
+      const goto = (t) => {
+        const ff = t - cur - 1 / 60;
+        if (ff > 0) handle.fastForward(ff);
+        scheduler.step(1);
+        cur = t;
+        return cur;
+      };
+      /** Fast-forward until a log line matches; returns { text, at } or null (then `cur` is wherever it stopped). */
+      const seek = (source, max) => {
+        const re = new RegExp(source, 'i');
         let seen = handle.inspect()?.seq ?? 0;
         let found = null;
         let n = 0;
-        handle.fastForward(num('max', 240), {
+        handle.fastForward(max, {
           until: (info) => {
             if (++n % 6) return false;
             const i = handle.inspect();
@@ -76,8 +87,21 @@
             return !!found;
           },
         });
-        const at = found ? found.at : (handle.inspect()?.t ?? 0);
-        cur = at;
+        cur = found ? found.at : (handle.inspect()?.t ?? cur);
+        return found;
+      };
+
+      if (q.has('view')) {
+        stage.style.visibility = 'visible';
+        document.getElementById('sheet').remove();
+        window.__lab = { goto, seek, t: () => cur, problems: () => handle.inspect()?.problems ?? [] };
+        document.body.dataset.ready = '1';
+      } else {
+      // ---- decide the capture times -------------------------------------------------------
+      const shots = []; // { t, label }
+      if (q.has('seek')) {
+        const found = seek(q.get('seek'), num('max', 240));
+        const at = cur;
         const after = (q.get('after') ?? '0.5,2,5,9').split(',').map(Number);
         for (const a of after) shots.push({ t: at + a, label: found ? `${found.text} +${a}s` : `no match for /${q.get('seek')}/ +${a}s` });
       } else if (q.has('every')) {
@@ -89,7 +113,7 @@
       shots.sort((a, b) => a.t - b.t);
 
       // ---- the sheet ------------------------------------------------------------------------
-      const cols = num('cols', shots.length >= 6 && tileScale <= 0.34 ? 3 : 2);
+      const cols = Math.min(shots.length, num('cols', shots.length >= 6 && tileScale <= 0.34 ? 3 : 2));
       const tw = Math.round(crop[2] * tileScale);
       const th = Math.round(crop[3] * tileScale);
       const cap = 18;
@@ -103,10 +127,7 @@
       const scale = canvas.width / W; // backing pixels per CSS pixel
 
       shots.forEach((s, i) => {
-        const ff = s.t - cur - 1 / 60;
-        if (ff > 0) handle.fastForward(ff);
-        scheduler.step(1);
-        cur = s.t;
+        goto(s.t);
         const x = (i % cols) * (tw + 4);
         const y = Math.floor(i / cols) * (th + cap + 4);
         sx.fillStyle = bg;
@@ -123,6 +144,7 @@
 
       window.__lab = { dataUrl: () => sheet.toDataURL('image/png'), shots, problems: handle.inspect()?.problems ?? [] };
       document.body.dataset.ready = '1';
+      }
     </script>
     <script>
       window.addEventListener('error', (e) => { document.body.dataset.error = String(e.message); document.body.dataset.ready = '1'; });

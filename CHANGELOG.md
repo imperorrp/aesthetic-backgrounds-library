@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **README, whole again.** The technical reference is back in the README, below a new intro, a hero montage, and "Things happen" strips of events frame by frame. `docs/REFERENCE.md` now points there. `pnpm media` regenerates every README image from fixed seeds (the lab page gained a view mode that it screenshots).
 - **Undercity**, a new skin: a 2.5D cyberpunk city at night in the rain.
   - Three streamed parallax layers of procedurally generated buildings. Each is rasterized once into a cached canvas: windows that keep office hours, a near megastructure cut open into terraces, markets, stairs, and shopfronts, and roofs with masts, dishes, tanks, and corp crowns.
   - Live on top: neon sign sprites that flicker, rotating holo ads, aircraft lights, haze between the layers, searchlights, cables, and a wet street that reflects the neon.

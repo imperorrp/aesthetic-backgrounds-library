@@ -143,6 +143,7 @@
     "size": "node scripts/size-check.mjs",
     "sim": "node scripts/sim.mjs",
     "lab": "node scripts/lab.mjs",
+    "media": "node scripts/media.mjs",
     "test:sim": "vitest run src/**/*.sim.test.ts",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm registry:check && pnpm build:lib && pnpm size && pnpm schema-diff --check"
   },
