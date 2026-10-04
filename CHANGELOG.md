@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Ages**, a new skin: a thousand years of a continent, from above, at dusk.
+  - The land (`ages-sim.ts`, no DOM): an island continent on a hex grid with elevation, moisture, fertility, and rivers run downhill to the sea; painted as smooth relief with pixel woods and peaks.
+  - Kingdoms grow from hearths: settlements fed by the land around them (hamlet, village, town, city, capital), settlers walking out to found new towns with roads behind them, and territory as each town's reach.
+  - Tension builds along borders into war, with truces after peace. Armies march the roads, meet in the field, and lay siege for years; towns change hands and kingdoms fall.
+  - Six eras (the Hearth Years to the Lamp Age): walls, ships carrying trade, wonders raised in capitals. Plague along the roads, fires, hordes that settle when they take a town, civil wars, a dragon from the mountains, and sometimes one crown over all. When the last era ends, a new land.
+  - Lights that grow with the people, call-outs, the peoples by the towns they hold, a chronicle; a sound palette and journal sightings. Passes the e2e gates.
 - **Shieldwall**, a new skin: pitched battles in pixel sprites, side-on or from above.
   - Sprites drawn by code (`fantasy/sprites.ts`): spearmen, archers, riders on horses, wolves, elk, or bone horses, mages, lords, trebuchets, dragons, and crows. Each frame is painted at art resolution, snapped to whole pixels, outlined, and mirrored, in an atlas per people.
   - Four peoples, with their own looks, magic, and mix of troops: a kingdom (wards and sunfire), a horde (fire), a fey host (lightning), and a hollow legion (raising the fallen).

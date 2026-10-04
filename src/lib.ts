@@ -14,6 +14,7 @@ export {
   undercitySkin,
   prepareUndercity,
   shieldwallSkin,
+  agesSkin,
   driftingDustSkin,
   matrixRainSkin,
 } from './engine/skins';

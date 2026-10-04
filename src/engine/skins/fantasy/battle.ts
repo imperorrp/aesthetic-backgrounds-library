@@ -16,11 +16,8 @@ import { fillCrisp, hash, hexA, mixRgb, typed } from '../instruments/kit';
 import { SHIELDWALL_SCHEMA } from './index';
 import { createBattleWorld, type Battle, type Effect, type Shot, type Unit } from './battle-sim';
 import { buildAtlas, stamp, SHAPES, type Atlas } from './sprites';
-import { DRAGONS } from './names';
+import { DRAGONS, serif } from './names';
 import { buildScenery, layoutMap, stampProp, type MapLayout, type Placed, type SceneryAtlas } from './scenery';
-
-export const SERIF = '"IM Fell English SC", "Cinzel", Georgia, "Times New Roman", serif';
-const serif = (px: number, italic = false) => `${italic ? 'italic ' : ''}${px}px ${SERIF}`;
 
 type Sky = { top: string; mid: string; low: string; ground: [string, string]; hills: string; far: string; stars: boolean; moon: boolean; sun: string | null };
 const SKIES: Record<Battle['weather'], Sky> = {

@@ -50,6 +50,80 @@
     },
     {
       "kind": "skin",
+      "id": "ages",
+      "label": "Ages",
+      "description": "A thousand years of a continent from above: hearths become cities, roads and borders spread, wars and sieges, plagues and hordes, wonders, and lights in the dark.",
+      "tags": [
+        "fantasy",
+        "empire",
+        "map",
+        "pixel",
+        "dark",
+        "slow"
+      ],
+      "themes": [
+        "dark"
+      ],
+      "cost": "medium",
+      "schema": {
+        "speed": {
+          "type": "number",
+          "min": 0.25,
+          "max": 4,
+          "default": 1,
+          "label": "Pace of history"
+        },
+        "kingdoms": {
+          "type": "number",
+          "min": 2,
+          "max": 8,
+          "step": 1,
+          "default": 5,
+          "label": "Peoples at the start"
+        },
+        "wars": {
+          "type": "number",
+          "min": 0,
+          "max": 2,
+          "default": 1,
+          "label": "How warlike"
+        },
+        "disasters": {
+          "type": "number",
+          "min": 0,
+          "max": 2,
+          "default": 1,
+          "label": "Plagues, fires, hordes"
+        },
+        "dragons": {
+          "type": "number",
+          "min": 0,
+          "max": 2,
+          "default": 1,
+          "label": "Dragons"
+        },
+        "labels": {
+          "type": "boolean",
+          "default": true,
+          "label": "Call-outs"
+        },
+        "hud": {
+          "type": "boolean",
+          "default": true,
+          "label": "Year, peoples, chronicle"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#e2b866"
+        },
+        "intensity": 0.75
+      },
+      "preview": "gallery/ages.png",
+      "source": "builtin"
+    },
+    {
+      "kind": "skin",
       "id": "atc-radar",
       "label": "Approach radar",
       "description": "An air traffic control scope: sweep, fading returns, arrivals, departures, and typed clearances.",

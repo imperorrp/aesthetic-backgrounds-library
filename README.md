@@ -27,7 +27,7 @@ None of them loop. Each one is a small simulation with its own rules, and things
 <summary><b>Contents</b></summary>
 
 - [Things happen](#things-happen)
-- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [instruments](#instruments-from-other-worlds), [basics](#basics)
+- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [instruments](#instruments-from-other-worlds), [basics](#basics)
 - [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
 - [Sound](#sound), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
 - [Put one on your site](#put-one-on-your-site)
@@ -144,6 +144,20 @@ mount(document.body, { skin: 'shieldwall', options: { view: 'above', dragons: 2 
 Two ways to watch: `view: 'side'`, a field under a moody sky with mountains, a keep, and camps on the ridge; or `view: 'above'`, the same war as a map at dusk, with woods, a village with its fields and mill, a river and its bridge, and the armies in blocks.
 
 ![A dragon over the battle, burning the ranks, shot down, and falling](docs/media/moments/shieldwall-dragon.jpg)
+
+### Ages
+
+![Ages: an island continent at year 70, a few villages and roads, and at year 685, walled cities with lights, wonders, and shifting borders](docs/media/worlds/ages.jpg)
+
+A thousand years of a continent, from above, at dusk. A few peoples light their first hearths. Their settlements grow with the food of the land around them, from hamlet to village, town, city, and capital, and send settlers walking out to found new ones, with roads behind them. Each kingdom's land is its towns' reach, washed in its color.
+
+Neighbors grow tense along long borders, and in time there is war: armies march along the roads, meet in the field, and sit down outside walls for years. Towns change hands and kingdoms fall. Eras turn every couple of centuries, from the Hearth Years to the Lamp Age. Walls go up, ships carry trade between ports, and capitals raise wonders. Plague travels the roads. Hordes come out of the wild, and sometimes take a town and settle. Kingdoms grown too big split in civil war, and now and then a dragon wakes in the mountains. When the last era ends, the age ends, and a new land rises.
+
+![Ages up close: walled towns with keeps, a wonder's spire, a siege camp, an army on the march, a ship at sea](docs/media/moments/ages-zoom.jpg)
+
+```ts
+mount(document.body, { skin: 'ages', options: { speed: 1.5, kingdoms: 6 } });
+```
 
 ### Instruments from other worlds
 
@@ -434,7 +448,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | Option | Default | Description |
 | --- | --- | --- |
 | `seed` | random | PRNG seed. The same seed replays the same world, frame for frame. |
-| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `drifting-dust`, `matrix-rain`, and every preset id. |
+| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `drifting-dust`, `matrix-rain`, and every preset id. |
 | `options` | `{}` | Skin-specific options; see each skin's section below. |
 | `palette` | `'void-cyan'` | One of: <ul><li>a built-in id (`void-cyan`, `amber`, `violet`)</li><li>a full token object</li><li>a bare hex color</li><li>`{ from: '#hex', theme: 'dark' \| 'light', harmony }`, which derives a palette in OKLCH. `harmony` (`analogous`, `complementary`, `split`, `triadic`, `mono`) sets the secondary hues `accent2` and `accent3`.</li></ul> |
 | `exposeTokens` | `false` | Also write the palette as `--bge-*` variables on `<html>` (or a given element) for your own UI. |
@@ -698,6 +712,20 @@ mount(document.body, {
 | `camera` | `'follow'` | `follow` the fighting, or hold `still` over the middle of the field. |
 | `labels` | `true` | Call-outs on the field: charges, volleys, a lord falling. |
 | `hud` | `true` | The field's name, the war's score, and its chronicle. |
+
+## Ages' options
+
+`skin: 'ages'`. A lazy chunk, like Shieldwall's.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `speed` | `1` | The pace of history: 2.5 years a second at `1`. |
+| `kingdoms` | `5` | Peoples at the start (2 to 8). |
+| `wars` | `1` | How quickly borders turn to war (`0` for none). |
+| `disasters` | `1` | How often plague, fire, hordes, and civil wars come. |
+| `dragons` | `1` | How likely a dragon is when trouble comes. |
+| `labels` | `true` | Call-outs on the map. |
+| `hud` | `true` | The year and era, the peoples by the towns they hold, and the chronicle. |
 
 ## Using it with an AI agent
 

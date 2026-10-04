@@ -295,6 +295,47 @@ export const SOUND_PALETTES: Record<string, SoundPalette> = {
     },
   },
 
+  /** Ages: a slow, warm map-room; a pluck for each new town, horns for war, bells for peace and wonders. */
+  ages: {
+    id: 'ages',
+    root: 73.4,
+    scale: [0, 2, 4, 7, 9, 12],
+    drone: { wave: 'triangle', notes: [-12, 7], level: 0.008, cutoff: 600, wobble: 0.2 },
+    bed: { noise: 'pink', lo: 300, hi: 1600, level: 0.006, follow: true },
+    space: 3.6,
+    wet: 0.4,
+    echo: 0.45,
+    grid: 0.4,
+    cues: {
+      say: { cue: { kind: 'ping', note: 24, dur: 0.06 }, gain: 0.015, every: 1, only: 'high' },
+      founded: { cue: { kind: 'ping', note: 12, wave: 'triangle', dur: 0.6, then: 19 }, gain: 0.03, every: 2 },
+      trade: { cue: { kind: 'ping', note: 19, dur: 0.3 }, gain: 0.02, every: 3 },
+      city: { cue: { kind: 'bell', note: 12, chord: [0, 4, 7], dur: 2.5 }, gain: 0.05, every: 4 },
+      march: { cue: { kind: 'thump', pitch: 75, dur: 0.4 }, gain: 0.05, every: 3 },
+      battle: { cue: { kind: 'crackle', dur: 1.5, rate: 16, tone: 2200 }, gain: 0.06, every: 3 },
+      victory: { cue: { kind: 'bell', note: 7, dur: 1.5 }, gain: 0.04, every: 4 },
+      siege: { cue: { kind: 'thump', pitch: 60, dur: 0.8 }, gain: 0.06, every: 4 },
+      siegebroken: { cue: { kind: 'ping', note: 7, dur: 0.5, then: 12 }, gain: 0.04, every: 4 },
+      captured: { cue: [{ kind: 'boom', dur: 1.6, tone: 700, sub: 0.6 }, { kind: 'bell', note: 0, chord: [0, 3, 7], dur: 3 }], gain: 0.12, every: 3 },
+      war: { cue: { kind: 'choir', note: -12, chord: [0, 7], dur: 3.5, vowel: 'oo' }, gain: 0.09, every: 6 },
+      peace: { cue: { kind: 'bell', note: 12, chord: [0, 4, 7, 12], dur: 4 }, gain: 0.07, every: 6 },
+      fire: { cue: [{ kind: 'whoosh', from: 300, to: 1200, dur: 2 }, { kind: 'crackle', dur: 2, rate: 22, tone: 900 }], gain: 0.07, every: 4 },
+      razed: { cue: { kind: 'boom', dur: 2, tone: 600, sub: 0.8 }, gain: 0.15, every: 4 },
+      plague: { cue: { kind: 'choir', chord: [0, 1, 6], dur: 5, vowel: 'oo' }, gain: 0.08, every: 10 },
+      era: { cue: { kind: 'bell', note: 0, chord: [0, 7, 12, 16], dur: 6 }, gain: 0.09, every: 10 },
+      wonder: { cue: [{ kind: 'bell', note: 24, chord: [0, 4, 7, 12], dur: 5 }, { kind: 'choir', note: 12, chord: [0, 4, 7], dur: 5, vowel: 'ah' }], gain: 0.1, every: 10 },
+      horde: { cue: [{ kind: 'sweep', from: 220, to: 330, dur: 1.4, wave: 'sawtooth', q: 2 }, { kind: 'thump', pitch: 64, dur: 0.6 }], gain: 0.08, every: 8 },
+      settles: { cue: { kind: 'bell', note: 0, chord: [0, 7], dur: 3 }, gain: 0.06, every: 8 },
+      schism: { cue: { kind: 'choir', note: -12, chord: [0, 6], dur: 4, vowel: 'oo' }, gain: 0.08, every: 8 },
+      fall: { cue: { kind: 'choir', note: -12, chord: [0, 3, 7], dur: 5, vowel: 'ah' }, gain: 0.09, every: 8 },
+      dragon: { cue: [{ kind: 'sweep', from: 170, to: 60, dur: 3, wave: 'sawtooth', q: 1 }, { kind: 'whoosh', from: 200, to: 900, dur: 3 }], gain: 0.12, every: 10 },
+      dragonfire: { cue: [{ kind: 'whoosh', from: 900, to: 3000, dur: 2 }, { kind: 'crackle', dur: 2.5, rate: 30, tone: 900 }], gain: 0.12, every: 6 },
+      unified: { cue: [{ kind: 'bell', chord: [0, 4, 7, 12, 16], dur: 7 }, { kind: 'choir', note: 0, chord: [0, 4, 7], dur: 6, vowel: 'ah' }], gain: 0.12, every: 20 },
+      ageends: { cue: { kind: 'choir', note: -12, chord: [0, 7], dur: 7, vowel: 'oo' }, gain: 0.1, every: 20 },
+      newage: { cue: { kind: 'bell', note: 0, dur: 4 }, gain: 0.06, every: 10 },
+    },
+  },
+
   // ---- the instruments: their own rooms, their own alarms ----------------------------------
 
   /** Sonar: the deep, the hull, a ping into the dark and what comes back. */

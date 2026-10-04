@@ -58,6 +58,21 @@ const IMAGES = [
     ],
   },
   {
+    file: 'worlds/ages.jpg',
+    cols: 2,
+    tile: [960, 600],
+    shots: [
+      { skin: 'ages', t: [4], captions: ['YEAR 70'] },
+      { skin: 'ages', t: [250], captions: ['YEAR 685'] },
+    ],
+  },
+  {
+    file: 'moments/ages-zoom.jpg',
+    cols: 1,
+    tile: [1280, 840],
+    shots: [{ skin: 'ages', t: [250], crop: [300, 150, 640, 420], dsf: 2 }],
+  },
+  {
     file: 'moments/shieldwall-dragon.jpg',
     cols: 4,
     tile: [480, 300],

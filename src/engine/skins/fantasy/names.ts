@@ -5,6 +5,10 @@
 import type { Rng } from '../../rng';
 import type { DragonColors, Kit } from './sprites';
 
+/** The fantasy worlds' lettering: a serif (Georgia wherever no old-style face is loaded). */
+export const SERIF = '"IM Fell English SC", "Cinzel", Georgia, "Times New Roman", serif';
+export const serif = (px: number, italic = false) => `${italic ? 'italic ' : ''}${px}px ${SERIF}`;
+
 export type People = 'kingdom' | 'horde' | 'fey' | 'hollow';
 
 export type Faction = {

@@ -6,9 +6,10 @@
 import type { Rng } from '../../rng';
 import { finish } from './sprites';
 
-export type Prop = 'pine' | 'oak' | 'bush' | 'rock' | 'cottage' | 'keep' | 'tent' | 'mill' | 'well';
+export type Prop = 'pine' | 'oak' | 'bush' | 'rock' | 'cottage' | 'keep' | 'tent' | 'mill' | 'well' | 'ship';
 
 const SIZES: Record<Prop, [number, number]> = {
+  ship: [11, 9],
   pine: [9, 15],
   oak: [12, 12],
   bush: [7, 5],
@@ -20,7 +21,7 @@ const SIZES: Record<Prop, [number, number]> = {
   well: [7, 7],
 };
 /** Variants per prop (tents: one per army color, set by the caller). */
-const VARIANTS: Record<Prop, number> = { pine: 3, oak: 3, bush: 2, rock: 2, cottage: 3, keep: 1, tent: 2, mill: 1, well: 1 };
+const VARIANTS: Record<Prop, number> = { pine: 3, oak: 3, bush: 2, rock: 2, cottage: 3, keep: 1, tent: 2, mill: 1, well: 1, ship: 1 };
 
 type Pen = (x: number, y: number, w: number, h: number, c: string) => void;
 
@@ -110,6 +111,14 @@ function draw(p: Pen, g: CanvasRenderingContext2D, prop: Prop, v: number, tents:
       p(3, 1, 5, 2, '#7c2d12');
       p(4, 10, 3, 5, '#3f2a17');
       p(4, 7, 2, 2, '#fbbf24');
+      break;
+    case 'ship':
+      p(1, 6, 9, 2, '#5b3a1e');
+      p(2, 8, 7, 1, '#3f2a17');
+      p(0, 5, 2, 1, '#5b3a1e');
+      p(5, 0, 1, 6, '#3f2a17');
+      p(2, 1, 3, 4, '#e7e5e4');
+      p(6, 1, 3, 4, '#d6d3d1');
       break;
     case 'well':
       p(1, 3, 5, 4, '#78716c');

@@ -51,7 +51,7 @@ import './DemoPage.css';
 const DEBUG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug');
 
 /** Skins that report events and have a sound palette under their own id. */
-const SOUND_SKINS = new Set(['undercity', 'shieldwall', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
+const SOUND_SKINS = new Set(['undercity', 'shieldwall', 'ages', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
 
 /**
  * A world you can pick from a card: a sector map universe, Undercity, a fantasy world (or
@@ -64,6 +64,7 @@ const WORLD_CARDS: WorldCard[] = [
   { key: 'undercity', source: 'undercity', name: getSkin('undercity')?.label ?? 'Undercity', tagline: getSkin('undercity')?.description, thumb: 'undercity' },
   { key: 'shieldwall', source: 'shieldwall', name: 'Shieldwall', tagline: getSkin('shieldwall')?.description, thumb: 'shieldwall' },
   { key: 'shieldwall-above', source: 'shieldwall', options: { view: 'above' }, name: 'Shieldwall, from above', tagline: 'The same wars as a map at dusk: woods, a village, the ford, and the armies in blocks.', thumb: 'shieldwall-view-above' },
+  { key: 'ages', source: 'ages', name: 'Ages', tagline: getSkin('ages')?.description, thumb: 'ages' },
 ];
 const INSTRUMENT_CARDS: WorldCard[] = instrumentSkins.map((s) => ({ key: s.id, source: s.id, name: s.label ?? s.id, tagline: s.description, thumb: s.id }));
 const ALL_CARDS = [...WORLD_CARDS, ...INSTRUMENT_CARDS];
