@@ -143,6 +143,68 @@ export const SOUND_PALETTES: Record<string, SoundPalette> = {
   },
 };
 
+/** Hive Bloom: wet, organic, too close. Spores hiss, the purge roars, the bloom moans. */
+SOUND_PALETTES.hive = {
+  id: 'hive',
+  root: 82.4,
+  scale: [0, 1, 5, 7, 8, 13],
+  drone: { wave: 'sawtooth', notes: [0, 7, 13], level: 0.02, cutoff: 420, wobble: 0.7 },
+  space: 2.4,
+  wet: 0.4,
+  cues: {
+    ...BASE,
+    bloom: { cue: { kind: 'choir', note: -12, chord: [0, 1], dur: 4, vowel: 'oo' }, gain: 0.1, every: 10 },
+    spores: { cue: [{ kind: 'whoosh', from: 3000, to: 900, dur: 1.6 }, { kind: 'crackle', dur: 1.4, rate: 20, tone: 4000 }], gain: 0.08, every: 4 },
+    settle: { cue: { kind: 'crackle', dur: 0.6, rate: 14, tone: 2500 }, gain: 0.04, every: 4 },
+    purge: { cue: [{ kind: 'sweep', from: 300, to: 700, dur: 1, q: 3 }, { kind: 'whoosh', from: 200, to: 700, dur: 2.5 }], gain: 0.12, every: 6 },
+    scourge: { cue: { kind: 'choir', note: -12, chord: [0, 7], dur: 3, vowel: 'oo' }, gain: 0.12, every: 20 },
+    nodeburn: { cue: [{ kind: 'boom', dur: 3, tone: 800, sub: 1 }, { kind: 'sweep', from: 900, to: 60, dur: 2.5, wave: 'sine', q: 1 }], gain: 0.45, every: 10 },
+    infested: { cue: { kind: 'choir', chord: [0, 1, 6], dur: 4 }, gain: 0.11, every: 8 },
+    evac: { cue: { kind: 'ping', note: 19, wave: 'square', dur: 0.12, then: 14, echoes: 2 }, gain: 0.05, every: 6 },
+  },
+};
+
+/** The Last Fleet: engines humming under everything, a distress call, a bell for every birth. */
+SOUND_PALETTES.lastfleet = {
+  id: 'lastfleet',
+  root: 87.3,
+  scale: [0, 2, 4, 7, 9, 12],
+  drone: { wave: 'triangle', notes: [-12, 0, 7], level: 0.03, cutoff: 500, wobble: 0.25 },
+  space: 3,
+  wet: 0.3,
+  cues: {
+    ...BASE,
+    straggler: { cue: { kind: 'ping', note: 14, dur: 0.4, echoes: 3 }, gain: 0.07, every: 5 },
+    rescue: { cue: { kind: 'bell', note: 7, chord: [0, 4, 7], dur: 2.5 }, gain: 0.08, every: 5 },
+    pursuit: { cue: [{ kind: 'sweep', from: 500, to: 1000, dur: 1.2, q: 4 }, { kind: 'choir', note: -12, chord: [0, 6], dur: 3, vowel: 'oo' }], gain: 0.12, every: 20 },
+    birth: { cue: { kind: 'bell', note: 24, dur: 2 }, gain: 0.04, every: 6 },
+    skim: { cue: { kind: 'whoosh', from: 400, to: 1800, dur: 3 }, gain: 0.08, every: 8 },
+  },
+};
+
+/** Cradle of Suns: a slow choral bed; ignitions ring, contact sings, supernovae roar. */
+SOUND_PALETTES.cradle = {
+  id: 'cradle',
+  root: 65.4,
+  scale: [0, 2, 4, 7, 9, 11, 14],
+  drone: { wave: 'sine', notes: [-12, 7, 16], level: 0.035, cutoff: 1200, wobble: 0.4 },
+  space: 6,
+  wet: 0.6,
+  cues: {
+    collapse: { cue: { kind: 'whoosh', from: 1800, to: 120, dur: 4 }, gain: 0.07, every: 6 },
+    ignite: { cue: [{ kind: 'bell', note: 12, chord: [0, 7, 16], dur: 5, ratio: 2.01 }, { kind: 'whoosh', from: 200, to: 3000, dur: 2 }], gain: 0.12, every: 4 },
+    planets: { cue: { kind: 'bell', note: 19, chord: [0, 5], dur: 3 }, gain: 0.05, every: 4 },
+    life: { cue: { kind: 'ping', note: 24, dur: 0.8 }, gain: 0.04, every: 3 },
+    civilization: { cue: { kind: 'bell', note: 12, chord: [0, 4, 7, 11], dur: 4 }, gain: 0.09, every: 5 },
+    firstships: { cue: { kind: 'ping', note: 12, dur: 0.3, then: 19 }, gain: 0.05, every: 4 },
+    colony: { cue: { kind: 'bell', note: 16, dur: 2 }, gain: 0.05, every: 5 },
+    contact: { cue: { kind: 'choir', note: 12, chord: [0, 4, 7, 11], dur: 5 }, gain: 0.12, every: 10 },
+    supernova: { cue: [{ kind: 'boom', dur: 4.5, tone: 1200, sub: 1 }, { kind: 'whoosh', from: 4000, to: 100, dur: 5 }], gain: 0.5, every: 8 },
+    silence: { cue: { kind: 'sweep', from: 700, to: 90, dur: 3, wave: 'sine', q: 1 }, gain: 0.07, every: 8 },
+    era: { cue: { kind: 'bell', note: 0, chord: [0, 7, 12], dur: 6 }, gain: 0.08, every: 20 },
+  },
+};
+
 export function registerSoundPalette(p: SoundPalette): SoundPalette {
   SOUND_PALETTES[p.id] = p;
   return p;

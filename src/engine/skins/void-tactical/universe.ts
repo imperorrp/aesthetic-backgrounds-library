@@ -117,6 +117,10 @@ export type UniverseLook = {
   anomalies?: number;
   /** Share of systems and structures placed on far planes behind the main one, 0 to 0.8. Default 0.35. */
   depth?: number;
+  /** How many ordinary systems and structures, 0 to 2. 0 leaves space empty for mechanics to fill. Default 1. */
+  scenery?: number;
+  /** How fast the map travels, 0.1 to 2 (a multiplier on the camera's drift). Default 1. */
+  drift?: number;
   /** Terrain under everything: wind-combed dust, nebula clouds, or low mist. Default none. */
   ground?: 'dust' | 'nebula' | 'mist' | 'none';
   /** Color of the ground (hex). Default: the palette accent. */
@@ -324,6 +328,18 @@ registerUniverseLoader(
   { id: 'siege', name: 'The Long Siege', tagline: 'Forty years on the same front. Neither side remembers why.', palette: '#cbd5e1', warmth: 0.15 },
   () => import('./packs/siege'),
 );
+registerUniverseLoader(
+  { id: 'hive', name: 'Hive Bloom', tagline: 'Something is growing over the colonies, and it is beautiful.', palette: '#a3e635', warmth: -0.1 },
+  () => import('./packs/hive'),
+);
+registerUniverseLoader(
+  { id: 'lastfleet', name: 'The Last Fleet', tagline: 'Everyone left alive, moving together, never stopping.', palette: '#93c5fd', warmth: 0.2 },
+  () => import('./packs/lastfleet'),
+);
+registerUniverseLoader(
+  { id: 'cradle', name: 'Cradle of Suns', tagline: 'Watch a billion years an hour: gas, stars, worlds, and the first voices.', palette: '#c4b5fd', warmth: 0.1 },
+  () => import('./packs/cradle'),
+);
 
 // ---- validation --------------------------------------------------------------------------------
 
@@ -486,6 +502,8 @@ export function validateUniverse(raw: unknown): UniverseValidation {
           traffic: typeof r.look.traffic === 'number' ? Math.max(0, Math.min(2, r.look.traffic)) : undefined,
           anomalies: typeof r.look.anomalies === 'number' ? Math.max(0, Math.min(2, r.look.anomalies)) : undefined,
           depth: typeof r.look.depth === 'number' ? Math.max(0, Math.min(0.8, r.look.depth)) : undefined,
+          scenery: typeof r.look.scenery === 'number' ? Math.max(0, Math.min(2, r.look.scenery)) : undefined,
+          drift: typeof r.look.drift === 'number' ? Math.max(0.1, Math.min(2, r.look.drift)) : undefined,
           ground: r.look.ground === undefined ? undefined : oneOf(r.look.ground, ['dust', 'nebula', 'mist', 'none'] as const, 'none'),
           groundColor: typeof r.look.groundColor === 'string' ? color(r.look.groundColor, '#94a3b8') : undefined,
         }
@@ -557,7 +575,7 @@ Return only JSON:
 - ambient: 8-12 haunting fragments, ≤34 chars
 - mechanics: 2-4 of what HAPPENS here, as {use, with:{params}}. This is what makes the world feel different, so choose for the story:
 ${menu || '  (see the studio for the list)'}
-- look: {lanes: straight|curved|none, grid: crosses|claims|none, traffic 0-2, anomalies 0-2, depth 0-0.8, ground: dust|nebula|mist|none, groundColor}
+- look: {lanes: straight|curved|none, grid: crosses|claims|none, traffic 0-2, anomalies 0-2, depth 0-0.8, scenery 0-2, drift 0.1-2, ground: dust|nebula|mist|none, groundColor}
 - economy (if goods move here; for the economy mechanic): {goods: 3-5 {id, label, color}, roles: {mine: {makes: {ore: 1.4}}, dock: {makes: {...}, uses: {...}}, ...}}
 All text uppercase.`;
 }

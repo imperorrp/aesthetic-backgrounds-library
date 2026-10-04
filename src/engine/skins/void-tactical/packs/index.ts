@@ -6,3 +6,6 @@
 export { SALTWIND_PACK } from './saltwind';
 export { CHOIR_PACK } from './choir';
 export { SIEGE_PACK } from './siege';
+export { HIVE_PACK } from './hive';
+export { LASTFLEET_PACK } from './lastfleet';
+export { CRADLE_PACK } from './cradle';

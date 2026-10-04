@@ -127,8 +127,9 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
     const scale = isMobile ? 0.5 : isTablet ? 0.75 : 1;
     layout.systemDist = 480 * scale;
     layout.structDist = 300 * scale;
-    layout.maxSystems = Math.max(1, Math.round(5 * scale * d));
-    layout.maxStructs = Math.max(3, Math.round(12 * scale * d));
+    const scenery = look.scenery ?? 1;
+    layout.maxSystems = scenery > 0 ? Math.max(1, Math.round(5 * scale * d * scenery)) : 0;
+    layout.maxStructs = scenery > 0 ? Math.max(2, Math.round(12 * scale * d * scenery)) : 0;
     layout.maxFleets = look.traffic > 0 ? Math.max(2, Math.round(8 * scale * d * look.traffic)) : 0;
     layout.maxAnomalies = look.anomalies > 0 ? Math.max(1, Math.round(5 * scale * d * look.anomalies)) : 0;
   };
@@ -279,7 +280,12 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
     world.anomalies.push(a);
   };
 
-  const seedCount = width < 768 ? 2 : 3;
+  const seedCount = layout.maxSystems === 0 ? 0 : width < 768 ? 2 : 3;
+  if (layout.maxSystems === 0) {
+    // Empty space: the universe's mechanics fill it.
+    world.systems = [];
+    world.structures = [];
+  }
   for (let i = 0; i < seedCount; i++) placeSystem();
   for (let i = 0; i < layout.maxStructs; i++) placeStructure();
   for (let i = 0; i < layout.maxAnomalies; i++) placeAnomaly(camera.x * P + rng() * width, 30 + rng() * (height - 60));
@@ -330,7 +336,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
 
   // Seed the map mid-story: fleets already underway, run for a few seconds before frame 0.
   {
-    const n = Math.max(2, Math.round(layout.maxFleets * 0.7));
+    const n = layout.maxFleets === 0 ? 0 : Math.max(2, Math.round(layout.maxFleets * 0.7));
     for (let i = 0; i < n; i++) {
       const x = camera.x * P + width * (0.1 + fleetRng() * 0.8);
       const y = height * (0.1 + fleetRng() * 0.8);
@@ -701,7 +707,7 @@ export function createVoidWorld(host: SkinHost): VoidWorld {
       world.tension = tensionAt(now);
       const rate = 0.55 + 1.05 * world.tension;
 
-      if (host.motion !== 'off') camera.x += config.cameraSpeed * host.intensity * frames;
+      if (host.motion !== 'off') camera.x += config.cameraSpeed * host.intensity * frames * (look.drift ?? 1);
       // Scroll-linked travel: scrolling down carries the map forward (never back, since the
       // map only populates ahead).
       const scrollY = host.scroll?.y ?? 0;

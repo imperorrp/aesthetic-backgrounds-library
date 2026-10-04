@@ -49,6 +49,14 @@ export type HexGrid = {
 };
 
 const SQRT3 = Math.sqrt(3);
+
+/** A stable 0..1 per cell (or any integer pair): seeding and jitter that never depend on visiting order. */
+export function cellHash(q: number, r: number): number {
+  let h = Math.imul(q, 374761393) + Math.imul(r, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
 const DIRS: [number, number][] = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
 
 export function createHexGrid(size: number, seed: (q: number, r: number, x: number, y: number) => Partial<Cell>): HexGrid {

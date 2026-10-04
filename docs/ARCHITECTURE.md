@@ -123,11 +123,11 @@ Shared, renderer-agnostic pieces in `engine/sim`, attached to a world on first u
 |---|---|---|
 | `economy.ts` (ledger) | Goods held at places; producers, consumers, shortages, prices | `economy` (convoys, shipyards, manifests, ticker), miners, wardens |
 | `signals.ts` (network) | Nodes, nearest-k links, hop-by-hop packets, ring broadcasts | `relays` (messages, distress) |
-| `fields.ts` (flow field) | Sum of wind, moving bands, vortices, curl noise | `weather` → storms, drifting rock |
+| `fields.ts` (flow field) | Sum of wind, moving bands, vortices, curl noise | `weather` → storms, drifting rock; spore flocks; nebula gas |
 | `spatial.ts` | Uniform grid hash | collisions, neighbour queries |
-| `bodies.ts` | A steering head and a spine that follows at fixed spacing | leviathans, the Mouth's tendrils |
+| `bodies.ts` | A steering head and a spine that follows at fixed spacing | leviathans, the Mouth's tendrils, the Last Fleet's ark |
 | `history.ts` | A ring of past positions, nearest-moment lookup | echoes |
-| `cells.ts` | A lazily seeded hex grid: owner, hold, a free value, and ownership history per cell | the Siege's territory (`front`) |
+| `cells.ts` | A lazily seeded hex grid: owner, hold, a free value, and ownership history per cell; `cellHash` for order-free jitter | the Siege's territory (`front`), the Hive's creep (`bloom`) |
 
 Body ids come from the caller, kept per world; a module-level counter would make a
 second mount number its bodies differently and break replays. Likewise, a cell's starting
@@ -135,8 +135,14 @@ state comes from a hash of its coordinates rather than the rng, so it doesn't ma
 code touches a cell first.
 
 Domain bindings live next to their mechanics: `useLedger(api)` (economy.ts), `useNetwork(api)`
-(relays.ts), `useWeather(api)` (weather.ts), and `useWar(api)` (war.ts). Each one creates its
-service once per world and registers that service's update and draw hooks.
+(relays.ts), `useWeather(api)` (weather.ts), `useWar(api)` (war.ts), `useBloom(api)` (hive.ts),
+`useArk(api)` (lastfleet.ts), and `useCosmos(api)` (cradle.ts). Each one creates its service once
+per world and registers that service's update and draw hooks.
+
+**Many cheap things.** When a universe needs hundreds of moving things (the flotilla, spores,
+nebula gas), they are plain particles owned by a mechanic, not fleets: no labels, no AI, no
+trails, batched into a few paths per frame. Only the things that fight, dock, or speak are
+fleets. Gas updates half its particles per frame at twice the step.
 
 ### The Siege's war
 

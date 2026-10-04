@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Three new universes**, each loaded on demand (about 7 KB gzip apiece):
+  - **Hive Bloom.** `bloom`: creep is a cellular automaton on a fine hex grid. It spreads from hive nodes along veins of rich ground toward colonies, drawn as a fused organic mass with veins, pustules, and tendrils. Covered structures turn to biomass glyph by glyph, and colonies evacuate. `spores`: flocks burst from nodes, swirl on the flow (boids), seed new creep, and clog intakes. `purge`: flame-cone fleets burn creep to ash, dense creep fights back, and a scourge burns out a node.
+  - **The Last Fleet.** `ark`: a generation ark of twelve linked hulls on a flexible spine that keeps pace with the map, with lit windows, farm domes, a reactor, and engine plumes. The fleet counts souls, births, losses, fuel, and days. `flotilla`: hundreds of civilian ships as cheap particles; stragglers fall behind, and tugs go back for them. `pursuit`: contacts at the trailing edge, with escorts breaking to engage. `skimming`: gas giants drift past, and skimmers dive for fuel.
+  - **Cradle of Suns.** `nebula`: hundreds of gas particles on curl noise, pulled into collapsing clouds and pushed by stellar wind. `stars`: ignition with jets and wind bubbles, disks clumping into planets, supernovae returning gas. `life`: life, cities on the night side, first ships, colonies, first contact, and sometimes silence. `epochs`: the age in Gyr and the era's name.
+  - A sound palette for each.
+- **Universe looks.** `look.scenery` (0 leaves space empty for mechanics to fill) and `look.drift` (how fast the map travels). A universe with no traffic no longer seeds starting fleets.
 - **Sound.** New opt-in entry `space-background-engine/audio` (4.9 KB gzip): generated sound bound to what happens.
   - `createSoundscape({ palette, volume })`, then `attach(handle)` and `start()` (from a click or key press).
   - Synthesized cues only, no assets: boom, ping, bell, sweep, whoosh, thump, choir, and crackle, with a drone, generated reverb, and stereo position from where things happen on screen.

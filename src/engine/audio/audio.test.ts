@@ -125,7 +125,7 @@ describe('soundscape', () => {
   });
 
   it('has a palette per universe and falls back to the sector map', () => {
-    for (const id of ['void', 'saltwind', 'choir', 'siege']) expect(soundPaletteFor(id).id).toBe(id);
+    for (const id of ['void', 'saltwind', 'choir', 'siege', 'hive', 'lastfleet', 'cradle']) expect(soundPaletteFor(id).id).toBe(id);
     expect(soundPaletteFor('nowhere')).toBe(SOUND_PALETTES.void);
     expect(SOUND_PALETTES.siege.cues.bombard).toBeTruthy();
     expect(SOUND_PALETTES.choir.cues.song).toBeTruthy();

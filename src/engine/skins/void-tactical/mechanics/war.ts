@@ -22,7 +22,7 @@
  * The other siege mechanics (artillery, duels, truces, mines) live in siege.ts.
  */
 import type { Fleet } from '../types';
-import { createHexGrid, type Cell, type HexGrid } from '../../../sim/cells';
+import { cellHash, createHexGrid, type Cell, type HexGrid } from '../../../sim/cells';
 import { SHIP_SPECS } from '../ships';
 import { hexRgba } from '../renderers/utils';
 import { createCombat } from './combat';
@@ -101,12 +101,6 @@ const RIPPLE = 1.4;
 const LATTICE = 7;
 const SQRT3 = Math.sqrt(3);
 
-/** A stable 0..1 per cell, so the war's starting state never depends on the order cells are seen in. */
-const cellHash = (q: number, r: number) => {
-  let h = Math.imul(q, 374761393) + Math.imul(r, 668265263);
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-};
 const idHash = (s: string) => {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);

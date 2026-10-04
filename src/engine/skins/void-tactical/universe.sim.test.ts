@@ -13,7 +13,7 @@ const run = (universe: string, seconds: number, seed = 'long-run') =>
 
 // Minutes of simulation per test: fine alone, but slower when the whole suite runs in parallel.
 describe('universes, long runs (headless)', { timeout: 30_000 }, () => {
-  for (const universe of ['void', 'saltwind', 'choir', 'siege']) {
+  for (const universe of ['void', 'saltwind', 'choir', 'siege', 'hive', 'lastfleet', 'cradle']) {
     it(`${universe}: 90 s without problems`, () => {
       const r = run(universe, 90);
       expect(r.threw).toBeUndefined();
@@ -33,6 +33,18 @@ describe('universes, long runs (headless)', { timeout: 30_000 }, () => {
     expect(said('saltwind')).toMatch(/CLAIM|ORE|DUST/);
     expect(said('siege')).toMatch(/OFFENSIVE|TARGET PAINTED|VOLLEY|FALLS TO/);
     expect(said('choir')).toMatch(/CHOIR SINGS|WISPS/);
+    expect(said('hive')).toMatch(/SPORE BURST|PURGE FLEET/);
+    expect(said('lastfleet')).toMatch(/STRAGGLER|BIRTH ABOARD|FUEL SKIM/);
+    expect(said('cradle')).toMatch(/IGNITES|PLANETS FORMED/);
+  });
+
+  it('the new universes play out: the bloom spreads and is burned, the fleet is chased, stars live and die', () => {
+    const hive = new Set(run('hive', 200).log.map((e) => e.type));
+    for (const t of ['spores', 'purge', 'bloom']) expect(hive, t).toContain(t);
+    const fleet = new Set(run('lastfleet', 200).log.map((e) => e.type));
+    for (const t of ['straggler', 'pursuit', 'birth', 'skim']) expect(fleet, t).toContain(t);
+    const cradle = new Set(run('cradle', 200).log.map((e) => e.type));
+    for (const t of ['collapse', 'ignite', 'planets', 'life', 'civilization']) expect(cradle, t).toContain(t);
   });
 
   it('the siege fights over ground: offensives, spotting, a duel, a truce, cells changing hands', () => {
