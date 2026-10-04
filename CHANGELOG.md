@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The War Table**, a new skin: one war's campaign on a parchment map.
+  - The map, in ink (`table.ts`): parchment with fibres, stains, a crease, and burnt edges; a coast traced by marching squares with contour ripples; hatched hills, woods, dotted roads, castle towns named in an italic hand, a compass rose, a sea serpent and a ship; realms washed in watercolor around their towns.
+  - The campaign (`table-sim.ts`, no DOM): towns joined by roads; two or three realms; each month, orders drawn in ink, then painted wooden tokens (stacked by strength, carved with a sword, a horseshoe, or a crown) slide along them. Battles and ambushes, sieges counted in ticks, towns that fall or burn or turn their coat, levies at the seats, sickness, winter quarters with frost, a king taken, a realm that yields, a dragon now and then. The peace is sealed in red wax, and the next campaign is unrolled.
+  - The one light-themed world: dark ink on parchment. A sound palette (a quill, wooden pieces, a seal pressed) and journal sightings. Passes the e2e gates.
 - **Ages**, a new skin: a thousand years of a continent, from above, at dusk.
   - The land (`ages-sim.ts`, no DOM): an island continent on a hex grid with elevation, moisture, fertility, and rivers run downhill to the sea; painted as smooth relief with pixel woods and peaks.
   - Kingdoms grow from hearths: settlements fed by the land around them (hamlet, village, town, city, capital), settlers walking out to found new towns with roads behind them, and territory as each town's reach.

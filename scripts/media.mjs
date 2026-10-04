@@ -73,6 +73,15 @@ const IMAGES = [
     shots: [{ skin: 'ages', t: [250], crop: [300, 150, 640, 420], dsf: 2 }],
   },
   {
+    file: 'worlds/war-table.jpg',
+    cols: 2,
+    tile: [960, 600],
+    shots: [
+      { skin: 'war-table', t: [40], captions: ['THE CAMPAIGN'] },
+      { skin: 'war-table', seek: 'The Peace of', after: [2.5], captions: ['THE PEACE'] },
+    ],
+  },
+  {
     file: 'moments/shieldwall-dragon.jpg',
     cols: 4,
     tile: [480, 300],

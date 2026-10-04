@@ -336,6 +336,39 @@ export const SOUND_PALETTES: Record<string, SoundPalette> = {
     },
   },
 
+  /** The War Table: a quiet room by candlelight; a quill, wooden pieces set down, a seal pressed. */
+  'war-table': {
+    id: 'war-table',
+    root: 82.4,
+    scale: [0, 2, 3, 7, 9, 12],
+    drone: { wave: 'sine', notes: [-12, 0], level: 0.006, cutoff: 500, wobble: 0.15 },
+    bed: { noise: 'pink', lo: 1800, hi: 6000, level: 0.0035 },
+    space: 1.4,
+    wet: 0.22,
+    echo: 0.3,
+    cues: {
+      say: { cue: { kind: 'ping', note: 24, dur: 0.05 }, gain: 0.012, every: 1, only: 'high' },
+      campaign: { cue: [{ kind: 'crackle', dur: 1.5, rate: 30, tone: 1800 }, { kind: 'bell', note: 0, dur: 3 }], gain: 0.05, every: 10 },
+      order: { cue: { kind: 'crackle', dur: 0.5, rate: 40, tone: 3500 }, gain: 0.03, every: 1.5 },
+      levy: { cue: { kind: 'thump', pitch: 110, dur: 0.15 }, gain: 0.04, every: 2 },
+      battle: { cue: [{ kind: 'thump', pitch: 90, dur: 0.3 }, { kind: 'crackle', dur: 1, rate: 14, tone: 2000 }], gain: 0.07, every: 3 },
+      ambush: { cue: { kind: 'sweep', from: 600, to: 300, dur: 0.6, wave: 'triangle', q: 2 }, gain: 0.04, every: 3 },
+      lost: { cue: { kind: 'thump', pitch: 60, dur: 0.4 }, gain: 0.04, every: 2 },
+      siege: { cue: { kind: 'thump', pitch: 70, dur: 0.5 }, gain: 0.04, every: 4 },
+      captured: { cue: [{ kind: 'bell', note: 0, chord: [0, 3, 7], dur: 3 }, { kind: 'thump', pitch: 80, dur: 0.3 }], gain: 0.08, every: 3 },
+      burned: { cue: [{ kind: 'whoosh', from: 300, to: 1200, dur: 2 }, { kind: 'crackle', dur: 2, rate: 22, tone: 900 }], gain: 0.06, every: 4 },
+      winter: { cue: { kind: 'whoosh', from: 1200, to: 400, dur: 3 }, gain: 0.04, every: 20 },
+      spring: { cue: { kind: 'bell', note: 19, dur: 2 }, gain: 0.03, every: 20 },
+      sickness: { cue: { kind: 'choir', chord: [0, 1], dur: 3, vowel: 'oo' }, gain: 0.05, every: 10 },
+      betrayal: { cue: { kind: 'ping', note: 6, wave: 'square', dur: 0.3, then: 0 }, gain: 0.04, every: 6 },
+      kingtaken: { cue: { kind: 'choir', note: -12, chord: [0, 3, 7], dur: 4, vowel: 'ah' }, gain: 0.08, every: 8 },
+      yields: { cue: { kind: 'bell', note: -12, chord: [0, 7], dur: 4 }, gain: 0.07, every: 8 },
+      peace: { cue: [{ kind: 'bell', note: 12, chord: [0, 4, 7, 12], dur: 5 }, { kind: 'thump', pitch: 50, dur: 0.8 }], gain: 0.1, every: 10 },
+      dragon: { cue: [{ kind: 'sweep', from: 170, to: 60, dur: 3, wave: 'sawtooth', q: 1 }, { kind: 'whoosh', from: 200, to: 900, dur: 3 }], gain: 0.1, every: 10 },
+      dragonfire: { cue: [{ kind: 'whoosh', from: 900, to: 3000, dur: 2 }, { kind: 'crackle', dur: 2.5, rate: 30, tone: 900 }], gain: 0.1, every: 6 },
+    },
+  },
+
   // ---- the instruments: their own rooms, their own alarms ----------------------------------
 
   /** Sonar: the deep, the hull, a ping into the dark and what comes back. */

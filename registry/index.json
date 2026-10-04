@@ -768,6 +768,67 @@
       "source": "builtin"
     },
     {
+      "kind": "skin",
+      "id": "war-table",
+      "label": "War table",
+      "description": "A campaign on a parchment map: orders drawn in ink, painted tokens moved by an unseen hand, sieges counted in ticks, battles and burnings, winter quarters, and the wax seal of a peace.",
+      "tags": [
+        "fantasy",
+        "map",
+        "parchment",
+        "light",
+        "medieval",
+        "calm"
+      ],
+      "themes": [
+        "light"
+      ],
+      "cost": "medium",
+      "schema": {
+        "realms": {
+          "type": "number",
+          "min": 2,
+          "max": 3,
+          "step": 1,
+          "default": 2,
+          "label": "Realms at war"
+        },
+        "pace": {
+          "type": "number",
+          "min": 0.3,
+          "max": 3,
+          "default": 1,
+          "label": "Pace of the campaign"
+        },
+        "dragons": {
+          "type": "number",
+          "min": 0,
+          "max": 3,
+          "default": 1,
+          "label": "Dragons"
+        },
+        "candle": {
+          "type": "boolean",
+          "default": true,
+          "label": "Candlelight"
+        },
+        "notes": {
+          "type": "boolean",
+          "default": true,
+          "label": "Notes in the margin"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#7a4b23",
+          "theme": "light"
+        },
+        "intensity": 0.7
+      },
+      "preview": "gallery/war-table.png",
+      "source": "builtin"
+    },
+    {
       "kind": "preset",
       "id": "aurora-night",
       "label": "Aurora night",

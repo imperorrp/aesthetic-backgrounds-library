@@ -27,7 +27,7 @@ None of them loop. Each one is a small simulation with its own rules, and things
 <summary><b>Contents</b></summary>
 
 - [Things happen](#things-happen)
-- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [instruments](#instruments-from-other-worlds), [basics](#basics)
+- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [instruments](#instruments-from-other-worlds), [basics](#basics)
 - [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
 - [Sound](#sound), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
 - [Put one on your site](#put-one-on-your-site)
@@ -157,6 +157,20 @@ Neighbors grow tense along long borders, and in time there is war: armies march 
 
 ```ts
 mount(document.body, { skin: 'ages', options: { speed: 1.5, kingdoms: 6 } });
+```
+
+### War table
+
+![The War Table: a parchment map with an inked coast, towns, painted tokens, orders in ink, and a wax seal on the peace](docs/media/worlds/war-table.jpg)
+
+One war's campaign, played out on a parchment map by a hand you never see. The map is drawn in ink: a coast with contour ripples, hatched hills, little woods, dotted roads, castle towns with their names in an italic hand, a compass rose, and a serpent noted in the margin. Two or three realms wash their towns in watercolor.
+
+Each month the orders go out. An arrow is drawn in ink, and then a painted wooden token, stacked by strength and carved with a sword, a horseshoe, or a crown, slides along it. Tokens that meet fight, and the loser falls back or is tipped over. A token left at an enemy town lays siege, and the days are counted in ticks around it until the town falls and its pennant changes color. Battles leave crossed swords and a note with the date, and some towns burn. In winter, frost creeps in from the edges and the armies go into winter quarters. When a realm loses its seat, or everyone is worn out, the peace is sealed in red wax, and the next campaign is unrolled.
+
+It is the one light-themed world: dark ink on parchment, legible under dark text.
+
+```ts
+mount(document.body, { skin: 'war-table', options: { realms: 3 } });
 ```
 
 ### Instruments from other worlds
@@ -448,7 +462,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | Option | Default | Description |
 | --- | --- | --- |
 | `seed` | random | PRNG seed. The same seed replays the same world, frame for frame. |
-| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `drifting-dust`, `matrix-rain`, and every preset id. |
+| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `drifting-dust`, `matrix-rain`, and every preset id. |
 | `options` | `{}` | Skin-specific options; see each skin's section below. |
 | `palette` | `'void-cyan'` | One of: <ul><li>a built-in id (`void-cyan`, `amber`, `violet`)</li><li>a full token object</li><li>a bare hex color</li><li>`{ from: '#hex', theme: 'dark' \| 'light', harmony }`, which derives a palette in OKLCH. `harmony` (`analogous`, `complementary`, `split`, `triadic`, `mono`) sets the secondary hues `accent2` and `accent3`.</li></ul> |
 | `exposeTokens` | `false` | Also write the palette as `--bge-*` variables on `<html>` (or a given element) for your own UI. |
@@ -726,6 +740,18 @@ mount(document.body, {
 | `dragons` | `1` | How likely a dragon is when trouble comes. |
 | `labels` | `true` | Call-outs on the map. |
 | `hud` | `true` | The year and era, the peoples by the towns they hold, and the chronicle. |
+
+## The War Table's options
+
+`skin: 'war-table'`. A lazy chunk, like the other fantasy worlds. Its default palette is light (dark ink), for pages with dark text.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `realms` | `2` | Realms at war: `2` or `3`. |
+| `pace` | `1` | The pace of the campaign: a month every 3.2 seconds at `1`. |
+| `dragons` | `1` | How likely a dragon is in a month. |
+| `candle` | `true` | Candlelight from one side. |
+| `notes` | `true` | Notes in the margin: battles, sieges, falls, the peace. |
 
 ## Using it with an AI agent
 

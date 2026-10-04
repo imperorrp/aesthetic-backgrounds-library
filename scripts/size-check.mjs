@@ -25,9 +25,9 @@ const BUDGETS_KB = {
   'manifest.js': 16,
   'tokens.js': 14,
   // generated sound bound to skin events, opt-in (v3 phase 5); 10 with the v2 engine (mastering
-  // chain, room, echo, beds, formant choirs) and palettes for every world and instrument; 10.8
-  // with palettes for the fantasy worlds and Petri
-  'audio.js': 10.8,
+  // chain, room, echo, beds, formant choirs) and palettes for every world and instrument; 11.5
+  // with palettes for the three fantasy worlds and Petri (palettes are data: ~0.3 KB each)
+  'audio.js': 11.5,
   'skins/drifting-dust.js': 11,
   'skins/matrix-rain.js': 11,
   // the shell only; the city is a lazy chunk (~14 KB gzip) fetched on first mount
