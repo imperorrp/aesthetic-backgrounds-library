@@ -34,6 +34,16 @@ describe('shieldwall (headless)', { timeout: 60_000 }, () => {
     expect(seen.has('dragonslain') || seen.has('dragonleaves')).toBe(true);
   }, 150_000);
 
+  it('lays sieges: engines at the wall, a way over it, and the town taken or held', () => {
+    const r = run(260, 's1', { battles: 'siege' });
+    expect(r.threw).toBeUndefined();
+    expect(r.problems).toEqual([]);
+    const types = new Set(r.log.map((e) => e.type));
+    for (const t of ['siege', 'breach', 'victory']) expect(types, t).toContain(t);
+    expect(types.has('tower') || types.has('ladders')).toBe(true);
+    expect(types.has('stormed') || types.has('lifted') || types.has('victory')).toBe(true);
+  });
+
   it('replays identically for the same seed, from either view', () => {
     for (const view of ['side', 'above']) {
       const a = run(70, 'replay', { view });

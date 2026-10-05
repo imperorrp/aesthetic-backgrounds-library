@@ -137,8 +137,23 @@ A battle has a story. The armies muster, and sometimes the two lords ride out to
 
 Now and then a dragon descends on both armies. It breathes fire along the ranks, and the bows and mages of both sides turn on it. About a third of the time, it falls.
 
+![A siege: towers and a ram at a leaning wall, a tower docking; a night battle by torchlight, and the grass on fire](docs/media/moments/shieldwall-siege.jpg)
+
+Some battles are sieges. One side holds a walled town, with bows and mages on the wall and a keep behind it. The other side rolls up siege towers and a ram and throws stones until a stretch of wall comes down. Men can cross only where there is a way over: a broken gate, a breach, a tower's bridge, or a ladder (ladders get thrown down). The defenders' foot go to whichever gap opens and hold it. A siege that drags on is given up.
+
+The ground matters too:
+- **A hill** gives its holders range for their bows and the downhill blow.
+- **A ford** slows whoever is in the water.
+- **A wood** at the far edge can hide horsemen, who come out on the flank in the middle of the fight.
+- **Dry grass** catches from fire magic and dragonfire, and the fire runs with the wind.
+
+Each side has a standard. Where it flies, the line holds better. If it falls, the wing near it wavers, and sometimes someone takes it up again. The lord's guard goes in when the fight has gone on, or when the line gives.
+
+At night the field is dark but for torches in the ranks, spells, fires, and magelight hung over the enemy. Afterwards the field remembers: the earth is worn where the fighting was, banners lie in the mud, the victors plant theirs, and people come out of the woods to walk among the fallen.
+
 ```ts
 mount(document.body, { skin: 'shieldwall', options: { view: 'above', dragons: 2 } });
+mount(document.body, { skin: 'shieldwall', options: { battles: 'siege', weather: 'night' } });
 ```
 
 Two ways to watch: `view: 'side'`, a field under a moody sky with mountains, a keep, and camps on the ridge; or `view: 'above'`, the same war as a map at dusk, with woods, a village with its fields and mill, a river and its bridge, and the armies in blocks.
@@ -721,6 +736,7 @@ mount(document.body, {
 | Option | Default | Effect |
 | --- | --- | --- |
 | `view` | `'side'` | `side`: the field under a sky. `above`: the field as a map at dusk. |
+| `battles` | `'any'` | `any` (about three in ten are sieges), only `field` battles, or only `siege`s. |
 | `troops` | `1` | Army size (`0.3` to `2`), about 150 a side at `1`. Scaled by `density` too. |
 | `magic` | `1` | How often mages cast (`0` for none). |
 | `dragons` | `1` | How likely a dragon is in a battle: about one in four at `1`. |

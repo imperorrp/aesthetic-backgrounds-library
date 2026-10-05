@@ -446,7 +446,7 @@
       "kind": "skin",
       "id": "shieldwall",
       "label": "Shieldwall",
-      "description": "Pitched battles in pixel sprites, side-on: shieldwalls, volleys, cavalry charges, mages, duelling lords, and sometimes a dragon. A war of five battles, then a new one.",
+      "description": "Pitched battles and sieges in pixel sprites: shieldwalls, volleys, cavalry charges, towers at the walls, mages, standards, night fighting by torchlight, and sometimes a dragon. A war of five battles, then a new one.",
       "tags": [
         "fantasy",
         "battle",
@@ -468,6 +468,16 @@
           ],
           "default": "side",
           "label": "View"
+        },
+        "battles": {
+          "type": "enum",
+          "values": [
+            "any",
+            "field",
+            "siege"
+          ],
+          "default": "any",
+          "label": "Battles"
         },
         "troops": {
           "type": "number",

@@ -91,10 +91,19 @@ const IMAGES = [
     ],
   },
   {
+    file: 'moments/shieldwall-siege.jpg',
+    cols: 2,
+    tile: [960, 600],
+    shots: [
+      { skin: 'shieldwall', options: { battles: 'siege' }, t: [50, 80], captions: ['THE ENGINES AT THE WALL', 'A TOWER DOCKS'] },
+      { skin: 'shieldwall', seed: 'f2', t: [40, 64], captions: ['A BATTLE BY TORCHLIGHT', 'THE GRASS BURNS'] },
+    ],
+  },
+  {
     file: 'moments/shieldwall-dragon.jpg',
     cols: 4,
     tile: [480, 300],
-    shots: [{ skin: 'shieldwall', seed: 'd2', options: { dragons: 3 }, seek: 'IS FALLING', after: [-3.2, -1.6, 0.4, 3.5], captions: ['dragonfire on the ranks', 'it climbs to turn', 'the bows find it', 'it falls'] }],
+    shots: [{ skin: 'shieldwall', seed: 'd2', options: { dragons: 3, battles: 'field' }, seek: 'IS FALLING', after: [-3.2, -1.6, 0.4, 3.5], captions: ['dragonfire on the ranks', 'it climbs to turn', 'the bows find it', 'it falls'] }],
   },
   // Moments: short sequences of things happening.
   {

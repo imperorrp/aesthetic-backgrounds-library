@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Shieldwall: sieges, ground that matters, standards, night, aftermath.**
+  - Sieges (`battles: 'any' | 'field' | 'siege'`, about three in ten): a walled town with bows and mages on the wall, gate towers, and a keep. Siege towers and a covered ram (new sprites) roll up; engines batter one stretch until it breaches; ladders go up where foot stand at the wall with no way over, and get thrown down. Men cross only at a broken gate, a breach, a docked tower, or a ladder; the defenders' foot go to each gap and hold it. Towers and rams burn. A town is taken, held, or the siege is given up. Drawn side-on as a leaning wall in depth slices (so men sort in front of and behind it), and from above as a stone band around a town.
+  - Terrain: a hill (range for its bows, the downhill blow; painted as a lit mound side-on and in relief with contours from above), a ford (the battle's own river: slow going and poor footing), a wood that hides an ambush on the flank.
+  - Blocks wheel as they advance (each has a heading; men keep their places in the turned block). Horse kicks up dust at the charge; mud and snow slow it.
+  - Grass fire: fire magic, lightning, dragonfire, and burning towers set dry grass alight; it spreads downwind, hurts and shakes those in it, and leaves the ground burnt.
+  - Standards: each side's standard-bearer walks in the lord's guard. Near it, losses are borne better and morale returns faster; when it falls, the wing near it wavers and the banner lies in the mud, and sometimes someone takes it up. The guard goes in late, or when the line gives.
+  - Night: the field goes dark but for torches carried in the ranks, the camps, spells, fires, the dragon's breath, and magelight a mage hangs over the enemy. Range drops in the dark and the fog.
+  - Aftermath: the field remembers (worn earth where men fought and fell, burnt grass), banners in the mud, the victors' banner planted, and people walking out of the woods among the fallen.
+  - Fixed: a dragon that flew away came straight back, over and over, for the rest of the battle.
+  - Thirteen new sounds and journal sightings (a siege, the breach, the gate, a tower at the wall or burning, ambush, the standard falling, grass fire, magelight, a town taken, a siege lifted). A new e2e subject, `shieldwall~battles=siege`.
 - **Petri dish**, a new instrument: artificial life under a fluorescence microscope.
   - Particle life (`petri/dish.ts`): several strains pull on and push each other by a seeded matrix, with a hard core and a wide personal space, a slow current through the medium, and a little Brownian jostle. Cells form, crawl, chase, and swallow each other; past about seventy cells an organism divides along its long axis.
   - The instrument finds organisms every half second (union-find over a typed-array grid), matches them to the last look, and logs new organisms, divisions, engulfings, dissolutions, colonies, and symbioses of three strains. Specimens get brackets and a readout; organisms get membranes (their hull, eased and smoothed).

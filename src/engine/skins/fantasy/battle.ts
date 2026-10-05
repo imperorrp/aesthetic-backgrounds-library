@@ -1,11 +1,12 @@
 /**
- * Shieldwall's mount: the battle simulation (battle-sim.ts), painted side-on.
+ * Shieldwall's mount: the battle simulation (battle-sim.ts), painted side-on or from above.
  *
- * One frame, back to front:
+ * Side-on, back to front:
  *   sky (weather, moon, stars) → mountains → hills with a keep → the treeline → the field
- *   (craters, scorch, spent arrows, the fallen) → the armies by depth, banners with their
- *   bearers → shots in flight → spells and fire → the dragon → crows → haze over the far
- *   ranks → rain or snow → call-outs → the chronicle
+ *   (a hill, a ford, worn earth, burnt grass, craters, spent arrows, the fallen) → the armies,
+ *   a siege's wall and towers, banners and walkers, all sorted by depth → shots in flight →
+ *   spells and fire → the dragon → crows → haze → rain or snow → the dark, with its lights
+ *   → call-outs → the chronicle
  *
  * The backdrop for each field is painted once into canvases and scrolled with parallax.
  */
@@ -14,7 +15,7 @@ import { resolveOptions } from '../../core/schema';
 import { forkRng } from '../../rng';
 import { fillCrisp, hash, hexA, mixRgb, typed } from '../instruments/kit';
 import { SHIELDWALL_SCHEMA } from './index';
-import { createBattleWorld, type Battle, type Effect, type Shot, type Unit } from './battle-sim';
+import { createBattleWorld, FIRE_CELL, FIRE_ROWS, isEngine, WEAR_CELL, WEAR_ROWS, type Battle, type Effect, type Shot, type Siege, type Unit } from './battle-sim';
 import { buildAtlas, stamp, SHAPES, type Atlas } from './sprites';
 import { DRAGONS, serif } from './names';
 import { buildScenery, layoutMap, stampProp, type MapLayout, type Placed, type SceneryAtlas } from './scenery';
@@ -30,13 +31,15 @@ const SKIES: Record<Battle['weather'], Sky> = {
   dawn: { top: '#05070f', mid: '#141a30', low: '#3b2a3c', ground: ['#11140e', '#1a1e14'], hills: '#08090b', far: '#232038', stars: true, moon: false, sun: '#c2410c' },
 };
 
+const STONE = { face: '#4b4844', faceLit: '#5f5a54', top: '#6f6a63', course: '#36332f', dark: '#262422', merlon: '#7a746c' };
+
 export function mount(host: SkinHost): SkinInstance {
-  const o = resolveOptions(SHIELDWALL_SCHEMA, host.options) as { view: 'side' | 'above'; troops: number; magic: number; dragons: number; weather: string; camera: string; labels: boolean; hud: boolean };
+  const o = resolveOptions(SHIELDWALL_SCHEMA, host.options) as { view: 'side' | 'above'; battles: string; troops: number; magic: number; dragons: number; weather: string; camera: string; labels: boolean; hud: boolean };
   const { ctx } = host;
   let W = host.viewport.width;
   let H = host.viewport.height;
   const above = o.view === 'above';
-  const world = createBattleWorld(host.config.seed, W, H, { troops: o.troops * host.config.density, magic: o.magic, dragons: o.dragons, weather: o.weather, view: o.view });
+  const world = createBattleWorld(host.config.seed, W, H, { troops: o.troops * host.config.density, magic: o.magic, dragons: o.dragons, weather: o.weather, view: o.view, battles: o.battles });
   let camX = world.battle.focusX - W / 2;
   let nextAmbience = 0;
 
@@ -86,6 +89,8 @@ export function mount(host: SkinHost): SkinInstance {
     /** Campfires along the treeline (trees-layer coordinates), and smoke from burning places in the hills (hills-layer coordinates). */
     fires: { x: number; y: number }[];
     smoke: { x: number; y: number; seed: number }[];
+    /** The ambush's wood at the field's far edge: trees in battle coordinates. */
+    wood: { x: number; h: number; w: number; pine: boolean }[];
   };
   let backdrop: Backdrop | null = null;
 
@@ -126,6 +131,8 @@ export function mount(host: SkinHost): SkinInstance {
     g.closePath();
     g.fill();
   };
+
+  const rgb = (c: [number, number, number]) => `rgb(${c.map(Math.round).join(',')})`;
 
   function paintBackdrop(b: Battle) {
     const sky = SKIES[b.weather];
@@ -184,7 +191,7 @@ export function mount(host: SkinHost): SkinInstance {
     const farW = W + b.BW * 0.15 + 120;
     const far = canvas(farW, gt + 4);
     ridge(far.g, farW, gt * 0.78, gt * 0.32, 0.0021, r() * 100, sky.far, gt + 4);
-    ridge(far.g, farW, gt * 0.9, gt * 0.22, 0.0035, r() * 100, `rgb(${mixRgb(sky.far, sky.hills, 0.45).map(Math.round).join(',')})`, gt + 4);
+    ridge(far.g, farW, gt * 0.9, gt * 0.22, 0.0035, r() * 100, rgb(mixRgb(sky.far, sky.hills, 0.45)), gt + 4);
     // Hills: rolling, wooded, with a keep on one and a village's roofs below another.
     const hillW = W + b.BW * 0.45 + 120;
     const hills = canvas(hillW, gt + 4);
@@ -200,18 +207,20 @@ export function mount(host: SkinHost): SkinInstance {
       hills.g.lineTo(x + 4, base + 3);
       hills.g.fill();
     }
-    const keepX = hillW * (0.3 + r() * 0.4);
-    const keepY = gt * 0.86;
-    const kw = 46;
-    hills.g.fillRect(keepX, keepY - 40, kw, 46);
-    hills.g.fillRect(keepX - 10, keepY - 26, 10, 32);
-    hills.g.fillRect(keepX + kw, keepY - 26, 12, 32);
-    hills.g.fillRect(keepX + 14, keepY - 60, 16, 24);
-    for (let i = 0; i < 6; i++) hills.g.fillRect(keepX + i * 8, keepY - 44, 5, 5);
-    for (let i = 0; i < 3; i++) hills.g.fillRect(keepX + 14 + i * 6, keepY - 64, 4, 5);
-    // Lit windows in the keep, if night falls.
-    hills.g.fillStyle = hexA('#fbbf24', 0.55);
-    for (let i = 0; i < 4; i++) hills.g.fillRect(keepX + 6 + i * 10, keepY - 24 + (i % 2) * 10, 2, 3);
+    if (!b.siege) {
+      const keepX = hillW * (0.3 + r() * 0.4);
+      const keepY = gt * 0.86;
+      const kw = 46;
+      hills.g.fillRect(keepX, keepY - 40, kw, 46);
+      hills.g.fillRect(keepX - 10, keepY - 26, 10, 32);
+      hills.g.fillRect(keepX + kw, keepY - 26, 12, 32);
+      hills.g.fillRect(keepX + 14, keepY - 60, 16, 24);
+      for (let i = 0; i < 6; i++) hills.g.fillRect(keepX + i * 8, keepY - 44, 5, 5);
+      for (let i = 0; i < 3; i++) hills.g.fillRect(keepX + 14 + i * 6, keepY - 64, 4, 5);
+      // Lit windows in the keep, if night falls.
+      hills.g.fillStyle = hexA('#fbbf24', 0.55);
+      for (let i = 0; i < 4; i++) hills.g.fillRect(keepX + 6 + i * 10, keepY - 24 + (i % 2) * 10, 2, 3);
+    }
     // Places burning in the hills: their smoke is drawn live.
     const smoke: Backdrop['smoke'] = [];
     for (let i = 0; i < 2 + Math.floor(r() * 2); i++) {
@@ -221,7 +230,7 @@ export function mount(host: SkinHost): SkinInstance {
     // The treeline at the back of the field.
     const treeW = W + b.BW * 0.8 + 120;
     const trees = canvas(treeW, 60);
-    trees.g.fillStyle = `rgb(${mixRgb(sky.hills, sky.ground[0], 0.4).map(Math.round).join(',')})`;
+    trees.g.fillStyle = rgb(mixRgb(sky.hills, sky.ground[0], 0.4));
     trees.g.fillRect(0, 44, treeW, 16);
     for (let x = 0; x < treeW; x += 4 + r() * 7) {
       if (host.noise.noise2(x * 0.006, 21) < -0.25) continue;
@@ -238,6 +247,7 @@ export function mount(host: SkinHost): SkinInstance {
     // Each army's camp on the ridge behind it: tents in its colors, fires between them.
     const fires: Backdrop['fires'] = [];
     for (const s of [0, 1] as const) {
+      if (s === 1 && b.siege) continue;
       const f = world.war.factions[s];
       const center = (s === 0 ? b.BW * 0.12 : b.BW * 0.88) * 0.8 + 60;
       for (let i = 0; i < 9; i++) {
@@ -277,23 +287,21 @@ export function mount(host: SkinHost): SkinInstance {
       ground.g.ellipse(r() * gw, r() * gh, 40 + r() * 120, 4 + r() * 10, 0, 0, Math.PI * 2);
       ground.g.fill();
     }
-    // Some fields are fords: a stream between the armies, catching the sky.
-    if (r() < 0.45) {
-      const cx = 200 + b.BW * (0.46 + r() * 0.08);
-      const bend = (r() - 0.5) * 160;
-      const path = (side: number) => {
-        for (let i = 0; i <= 20; i++) {
-          const k = i / 20;
-          const x = cx + bend * Math.sin(k * Math.PI) + (k - 0.5) * 60 + side * (10 + k * 26);
-          if (i === 0 && side < 0) ground.g.moveTo(x, k * gh);
-          else ground.g.lineTo(x, k * gh);
-        }
-      };
+    const D = world.depth;
+    const zy = (z: number) => z * D;
+    // A ford: the battle's river between the armies, catching the sky.
+    const rv = b.terrain.river;
+    if (rv) {
       ground.g.beginPath();
-      path(-1);
-      for (let i = 20; i >= 0; i--) {
-        const k = i / 20;
-        ground.g.lineTo(cx + bend * Math.sin(k * Math.PI) + (k - 0.5) * 60 + (10 + k * 26), k * gh);
+      for (let i = 0; i <= 30; i++) {
+        const z = -0.02 + (i / 30) * 1.1;
+        const x = world.riverX(z) + 200 - rv.w - z * 8;
+        if (i === 0) ground.g.moveTo(x, zy(z));
+        else ground.g.lineTo(x, zy(z));
+      }
+      for (let i = 30; i >= 0; i--) {
+        const z = -0.02 + (i / 30) * 1.1;
+        ground.g.lineTo(world.riverX(z) + 200 + rv.w + z * 8, zy(z));
       }
       ground.g.closePath();
       const water = ground.g.createLinearGradient(0, 0, 0, gh);
@@ -301,17 +309,92 @@ export function mount(host: SkinHost): SkinInstance {
       water.addColorStop(1, sky.mid);
       ground.g.fillStyle = water;
       ground.g.fill();
+      ground.g.strokeStyle = hexA('#0a0a08', 0.5);
+      ground.g.lineWidth = 2;
+      ground.g.stroke();
       ground.g.strokeStyle = hexA('#e2e8f0', 0.12);
-      for (let i = 0; i < 40; i++) {
-        const k = r();
-        const x = cx + bend * Math.sin(k * Math.PI) + (k - 0.5) * 60 + (r() - 0.5) * (14 + k * 30);
+      ground.g.lineWidth = 1;
+      for (let i = 0; i < 50; i++) {
+        const z = r() * 1.05;
+        const x = world.riverX(z) + 200 + (r() - 0.5) * (rv.w * 1.4);
         ground.g.beginPath();
-        ground.g.moveTo(x - 3 - k * 4, k * gh);
-        ground.g.lineTo(x + 3 + k * 4, k * gh);
+        ground.g.moveTo(x - 3 - z * 4, zy(z));
+        ground.g.lineTo(x + 3 + z * 4, zy(z));
         ground.g.stroke();
       }
     }
-    backdrop = { battle: b, W, H, sky: s.c, far: far.c, hills: hills.c, trees: trees.c, ground: ground.c, fires, smoke };
+    // A hill: the ground rises; lit from the upper left, darker on its near and far faces.
+    const hl = b.terrain.hill;
+    if (hl) {
+      // The ground's own color at its foot, grassier toward the crest; slopes toward the light
+      // lighter, the others in shade; speckled like the rest of the field.
+      const grass = mixRgb(b.weather === 'snow' ? '#94a3b8' : '#46552a', '#000000', 0);
+      for (let x = Math.floor(hl.x - hl.rx); x <= hl.x + hl.rx; x += 2) {
+        let top = Infinity;
+        for (let z = Math.max(0, hl.z - hl.rz); z <= Math.min(1.08, hl.z + hl.rz); z += 1 / D) {
+          const e = world.elev(x, z);
+          if (e <= 0.3) continue;
+          const foot = mixRgb(sky.ground[0], sky.ground[1], Math.min(1, zy(z) / gh));
+          const tint = Math.min(1, e / hl.h) * 0.45;
+          const lit = (world.elev(x - 4, z) - world.elev(x + 4, z)) * 0.045 + (world.elev(x, z - 0.03) - world.elev(x, z + 0.03)) * 0.025;
+          const k = 1 + Math.max(-0.35, Math.min(0.35, lit)) + (hash(x, Math.floor(z * 300)) - 0.5) * 0.12;
+          const [cr, cg, cb] = foot.map((c, i) => c + (grass[i] - c) * tint);
+          ground.g.fillStyle = `rgb(${Math.min(255, cr * k) | 0},${Math.min(255, cg * k) | 0},${Math.min(255, cb * k) | 0})`;
+          ground.g.fillRect(x + 200, zy(z) - e, 2, 2);
+          if (e > 3) top = Math.min(top, zy(z) - e);
+        }
+        // The hill's skyline, faintly lit.
+        if (top < Infinity) {
+          ground.g.fillStyle = hexA(b.weather === 'snow' ? '#e2e8f0' : '#8a9a52', 0.18);
+          ground.g.fillRect(x + 200, top, 2, 1);
+        }
+      }
+      // Grass tufts on the crest.
+      for (let i = 0; i < 120; i++) {
+        const x = hl.x + (r() - 0.5) * hl.rx * 1.6;
+        const z = hl.z + (r() - 0.5) * hl.rz * 1.4;
+        const e = world.elev(x, z);
+        if (e < 4) continue;
+        ground.g.fillStyle = hexA('#4d5a2e', 0.5);
+        ground.g.fillRect(x + 200, zy(z) - e - 1, 1, 2);
+      }
+    }
+    // Behind a wall, the town's cobbled ground.
+    const sg = b.siege;
+    if (sg) {
+      ground.g.save();
+      ground.g.beginPath();
+      ground.g.moveTo(world.wx(-0.1) + 200, zy(-0.1));
+      ground.g.lineTo(world.wx(1.2) + 200, zy(1.2));
+      ground.g.lineTo(gw, zy(1.2));
+      ground.g.lineTo(gw, zy(-0.1));
+      ground.g.closePath();
+      ground.g.clip();
+      ground.g.fillStyle = '#1d1a16';
+      ground.g.fillRect(0, 0, gw, gh);
+      for (let i = 0; i < 2600; i++) {
+        const x = world.wx(0) + 200 + r() * (gw - world.wx(0) - 200);
+        const y = r() * gh;
+        ground.g.fillStyle = hexA(r() < 0.5 ? '#3a352e' : '#141210', 0.6);
+        ground.g.fillRect(x, y, 2 + Math.floor(r() * 3), 1);
+      }
+      ground.g.restore();
+      // The road up to the gate.
+      ground.g.fillStyle = hexA('#2b2418', 0.7);
+      ground.g.beginPath();
+      ground.g.moveTo(0, zy(0.46));
+      ground.g.lineTo(world.wx(0.5) + 200, zy(0.47));
+      ground.g.lineTo(world.wx(0.5) + 200, zy(0.53));
+      ground.g.lineTo(0, zy(0.56));
+      ground.g.fill();
+    }
+    // The ambush's wood: trees standing at the field's far edge.
+    const wood: Backdrop['wood'] = [];
+    if (b.terrain.wood) {
+      for (let i = 0; i < 46; i++) wood.push({ x: b.terrain.wood.x + (r() - 0.5) * b.terrain.wood.w * 1.3, h: 26 + r() * 30, w: 7 + r() * 7, pine: r() < 0.65 });
+      wood.sort((a, c) => a.h - c.h);
+    }
+    backdrop = { battle: b, W, H, sky: s.c, far: far.c, hills: hills.c, trees: trees.c, ground: ground.c, fires, smoke, wood };
   }
 
   /** Smoke rising from the hills, leaning with the wind, lit from below by what burns. */
@@ -350,14 +433,124 @@ export function mount(host: SkinHost): SkinInstance {
     ctx.restore();
   }
 
+  /** The ambush's wood, standing on the far edge of the field (side-on). */
+  function woodSide(bd: Backdrop, b: Battle) {
+    if (!bd.wood.length) return;
+    const y = world.sy(0) + 3;
+    const c = rgb(mixRgb(SKIES[b.weather].hills, SKIES[b.weather].ground[0], 0.25));
+    ctx.fillStyle = c;
+    for (const tr of bd.wood) {
+      const x = sx(tr.x);
+      if (x < -40 || x > W + 40) continue;
+      ctx.beginPath();
+      if (tr.pine) {
+        ctx.moveTo(x - tr.w, y);
+        ctx.lineTo(x, y - tr.h);
+        ctx.lineTo(x + tr.w, y);
+      } else ctx.ellipse(x, y - tr.h * 0.55, tr.w * 1.2, tr.h * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ---- worn earth, burnt grass ----------------------------------------------------------------
+
+  type Wear = { battle: Battle; seq: number; burnt: number; at: number; c: HTMLCanvasElement };
+  let wear: Wear | null = null;
+
+  /** The field's memory, painted into its own layer: redrawn when it changes, at most twice a second. */
+  function wearLayer(b: Battle, t: number): HTMLCanvasElement | null {
+    const fresh = !wear || wear.battle !== b;
+    if (!fresh && (wear!.seq === b.wearSeq && wear!.burnt === b.fire.burnt.size)) return wear!.c;
+    if (!fresh && t - wear!.at < 0.5) return wear!.c;
+    const gw = b.BW + 400;
+    const h = above ? H : world.depth + 30;
+    const c = fresh ? canvas(gw, h) : { c: wear!.c, g: wear!.c.getContext('2d')! };
+    c.g.clearRect(0, 0, gw, h);
+    const D = world.depth;
+    const y0 = above ? world.groundTop : 0;
+    const cols = Math.ceil(gw / WEAR_CELL);
+    const rowH = D / WEAR_ROWS;
+    for (let j = 0; j < WEAR_ROWS; j++) {
+      for (let i = 0; i < cols; i++) {
+        const v = b.wear[j * cols + i];
+        if (v < 0.15) continue;
+        const x = i * WEAR_CELL + WEAR_CELL / 2;
+        const y = y0 + j * rowH + rowH / 2;
+        const e = above ? 0 : world.elev(x - 200, (j + 0.5) / WEAR_ROWS);
+        c.g.fillStyle = hexA('#120d08', Math.min(0.42, v * 0.07));
+        c.g.beginPath();
+        c.g.ellipse(x + (hash(i, j) - 0.5) * 6, y - e, WEAR_CELL * 0.85, rowH * 0.75, 0, 0, Math.PI * 2);
+        c.g.fill();
+      }
+    }
+    const fh = D / FIRE_ROWS;
+    for (const key of b.fire.burnt) {
+      const i = Math.floor(key / 32);
+      const j = key % 32;
+      const x = i * FIRE_CELL + FIRE_CELL / 2;
+      const y = y0 + j * fh + fh / 2;
+      c.g.fillStyle = hexA('#080605', 0.55);
+      c.g.beginPath();
+      c.g.ellipse(x + (hash(i, j, 3) - 0.5) * 8, y, FIRE_CELL * 0.62, fh * 0.6, 0, 0, Math.PI * 2);
+      c.g.fill();
+      for (let k = 0; k < 3; k++) {
+        c.g.fillStyle = hexA('#2a2521', 0.6);
+        c.g.fillRect(x + (hash(i, j, k) - 0.5) * FIRE_CELL, y + (hash(j, i, k) - 0.5) * fh, 2, 1);
+      }
+    }
+    wear = { battle: b, seq: b.wearSeq, burnt: b.fire.burnt.size, at: t, c: c.c };
+    return c.c;
+  }
+
+  /** Grass burning: flames leaning downwind, smoke. */
+  function grassFire(b: Battle, t: number, p: number) {
+    if (!b.fire.cells.size) return;
+    const fh = world.depth / FIRE_ROWS;
+    ctx.save();
+    for (const c of b.fire.cells.values()) {
+      const x = sx(c.i * FIRE_CELL - 200 + FIRE_CELL / 2);
+      if (x < -60 || x > W + 60) continue;
+      const z = (c.j + 0.5) / FIRE_ROWS;
+      const y = world.sy(z) - (above ? 0 : world.elev(c.i * FIRE_CELL - 200, z));
+      const life = Math.min(1, (t - c.t0) * 1.5, (c.until - t) / 2);
+      // Smoke, drifting downwind.
+      for (let k = 0; k < (above ? 2 : 3); k++) {
+        const a = (t * 0.4 + k / 3 + hash(c.i, c.j, k)) % 1;
+        ctx.fillStyle = `rgba(40,36,34,${(0.22 * (1 - a) * life).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(x + b.wind * a * 50, y - (above ? a * 18 : a * 70) - 6, 5 + a * 14, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      glow(x, y - 4, FIRE_CELL * 1.1, '#f97316', 0.3 * life);
+      for (let k = 0; k < 6; k++) {
+        const fl = hash(c.i * 7 + k, Math.floor(t * 9 + k));
+        const fx = x + (hash(c.i, c.j, k) - 0.5) * FIRE_CELL;
+        const fy = y + (hash(c.j, c.i, k) - 0.5) * fh * (above ? 1 : 0.6);
+        ctx.fillStyle = hexA(fl < 0.4 ? '#fde68a' : fl < 0.75 ? '#fb923c' : '#ef4444', 0.85 * life);
+        const hgt = (above ? 2 : 4 + fl * 6) * p;
+        ctx.fillRect(Math.round(fx + b.wind * fl * 2), Math.round(fy - hgt), Math.max(1, p), hgt);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.restore();
+  }
+
   // ---- the view from above --------------------------------------------------------------------
 
   type MapArt = { battle: Battle; W: number; H: number; war: number; terrain: HTMLCanvasElement; shade: HTMLCanvasElement; layout: MapLayout; scenery: SceneryAtlas };
   let map: MapArt | null = null;
 
+  /** Depth on the field from a screen-height share (for the map's site functions). */
+  const zOf = (ys: number) => (ys * H - world.groundTop) / world.depth;
+
   function paintMap(b: Battle) {
     const r = forkRng(host.config.seed, `map-${world.war.n}-${b.n}`);
-    const layout = layoutMap(r, b.BW, world.groundTop / H, world.groundBottom / H);
+    const layout = layoutMap(r, b.BW, world.groundTop / H, world.groundBottom / H, {
+      river: b.terrain.river ? (y) => world.riverX(zOf(y)) : null,
+      wall: b.siege ? (y) => world.wx(zOf(y)) : null,
+      wood: b.terrain.wood ? b.terrain.wood.x : null,
+    });
     const snow = b.weather === 'snow';
     const base = snow ? '#2c3442' : '#1a2414';
     const light = snow ? '#3d4757' : '#2b3a1e';
@@ -388,6 +581,28 @@ export function mount(host: SkinHost): SkinInstance {
     }
     g.imageSmoothingEnabled = true;
     g.drawImage(patch.c, 0, 0, pw * cell, ph * cell);
+    // A hill in relief: lit from the upper left, contour lines every few paces of height.
+    const hl = b.terrain.hill;
+    if (hl) {
+      const step = 3;
+      for (let y = world.groundTop - 60; y < world.groundBottom + 60; y += step) {
+        const z = (y - world.groundTop) / world.depth;
+        for (let x = hl.x - hl.rx; x <= hl.x + hl.rx; x += step) {
+          const e = world.elev(x, z);
+          if (e <= 0.3) continue;
+          const dx = world.elev(x - 4, z) - world.elev(x + 4, z);
+          const dy = world.elev(x, z - 4 / world.depth) - world.elev(x, z + 4 / world.depth);
+          const lit = (dx + dy) * 0.12;
+          g.fillStyle = lit > 0 ? hexA(snow ? '#e2e8f0' : '#6b7f3a', Math.min(0.45, lit)) : hexA('#05070a', Math.min(0.5, -lit));
+          g.fillRect(x + 200, y, step, step);
+          // A contour where the height crosses a step of 8.
+          if (Math.floor(e / 8) !== Math.floor(world.elev(x + step, z) / 8) || Math.floor(e / 8) !== Math.floor(world.elev(x, z + step / world.depth) / 8)) {
+            g.fillStyle = hexA('#0a0d07', 0.45);
+            g.fillRect(x + 200, y, 1, 1);
+          }
+        }
+      }
+    }
     // Ground worn bare where the armies stand and fight.
     const worn = g.createLinearGradient(0, world.groundTop, 0, world.groundBottom);
     worn.addColorStop(0, hexA(earth, 0));
@@ -418,6 +633,26 @@ export function mount(host: SkinHost): SkinInstance {
       for (let k = -fh / 2; k < fh / 2; k += 3) g.fillRect(-fw / 2, k, fw, 1);
       g.restore();
     }
+    // A town's ground behind the wall: cobbles and lanes.
+    const sg = b.siege;
+    if (sg) {
+      g.save();
+      g.beginPath();
+      const yOf = (z: number) => world.groundTop + z * world.depth;
+      g.moveTo(world.wx(-0.6) + 200, yOf(-0.6));
+      g.lineTo(world.wx(1.6) + 200, yOf(1.6));
+      g.lineTo(gw, yOf(1.6));
+      g.lineTo(gw, yOf(-0.6));
+      g.closePath();
+      g.clip();
+      g.fillStyle = snow ? '#3a3f4a' : '#24201a';
+      g.fillRect(0, 0, gw, H);
+      for (let i = 0; i < 5000; i++) {
+        g.fillStyle = hexA(r() < 0.5 ? '#3a352e' : '#16130f', 0.5);
+        g.fillRect(world.wx(0.5) + 200 + r() * (gw - world.wx(0.5)), r() * H, 2, 1);
+      }
+      g.restore();
+    }
     // The road from camp to camp.
     const roadPath = () => {
       g.beginPath();
@@ -437,9 +672,9 @@ export function mount(host: SkinHost): SkinInstance {
     if (layout.river) {
       const river = layout.river;
       for (const [w, col] of [
-        [40, snow ? '#1f2633' : '#0a0e10'],
-        [28, snow ? '#3a4a5c' : '#16222e'],
-        [12, snow ? '#4a5d72' : '#1e3040'],
+        [48, snow ? '#1f2633' : '#0a0e10'],
+        [36, snow ? '#3a4a5c' : '#16222e'],
+        [16, snow ? '#4a5d72' : '#1e3040'],
       ] as const) {
         g.beginPath();
         for (let y = -10; y <= H + 10; y += 6) {
@@ -455,7 +690,7 @@ export function mount(host: SkinHost): SkinInstance {
       g.lineWidth = 1;
       for (let i = 0; i < 70; i++) {
         const y = r() * H;
-        const x = river(y / H) + 200 + (r() - 0.5) * 16;
+        const x = river(y / H) + 200 + (r() - 0.5) * 20;
         g.beginPath();
         g.moveTo(x - 3, y);
         g.lineTo(x + 3, y);
@@ -466,12 +701,12 @@ export function mount(host: SkinHost): SkinInstance {
       const bx = river(best[1]) + 200;
       const by = best[1] * H;
       g.fillStyle = '#4a3423';
-      g.fillRect(bx - 24, by - 6, 48, 12);
+      g.fillRect(bx - 28, by - 6, 56, 12);
       g.fillStyle = '#6b4c33';
-      for (let k = -22; k < 22; k += 4) g.fillRect(bx + k, by - 5, 2, 10);
+      for (let k = -26; k < 26; k += 4) g.fillRect(bx + k, by - 5, 2, 10);
       g.fillStyle = '#2a1c12';
-      g.fillRect(bx - 24, by - 7, 48, 2);
-      g.fillRect(bx - 24, by + 5, 48, 2);
+      g.fillRect(bx - 28, by - 7, 56, 2);
+      g.fillRect(bx - 28, by + 5, 56, 2);
     }
     // A shade over the map: dusk light from one side, the edges falling away.
     const sh = canvas(W, H);
@@ -491,7 +726,100 @@ export function mount(host: SkinHost): SkinInstance {
     map = { battle: b, W, H, war: world.war.n, terrain: c, shade: sh.c, layout, scenery: buildScenery([[fa[0].color, fa[0].dark], [fa[1].color, fa[1].dark]]) };
   }
 
-  /** Soldiers and scenery together, back to front, with shadows under the soldiers. */
+  /** The wall from above: a stone band with merlons, towers at the gate and the corners. */
+  function wallAbove(sg: Siege, p: number) {
+    const yOf = world.sy;
+    const X = (z: number) => sx(world.wx(z));
+    const T = sg.T;
+    const band = (z0: number, z1: number, fill: string, inset = 0) => {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.moveTo(X(z0) + inset, yOf(z0));
+      ctx.lineTo(X(z1) + inset, yOf(z1));
+      ctx.lineTo(X(z1) + T - inset, yOf(z1));
+      ctx.lineTo(X(z0) + T - inset, yOf(z0));
+      ctx.closePath();
+      ctx.fill();
+    };
+    const n = sg.segs.length;
+    // Shadow on the outer side, then the stone.
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(X(-0.6) + T, yOf(-0.6) + 4);
+    ctx.lineTo(X(1.6) + T, yOf(1.6) + 4);
+    ctx.lineTo(X(1.6) + T + 10, yOf(1.6) + 8);
+    ctx.lineTo(X(-0.6) + T + 10, yOf(-0.6) + 8);
+    ctx.fill();
+    const stretches: [number, number][] = [[-0.6, 0]];
+    for (let i = 0; i < n; i++) stretches.push([i / n, (i + 1) / n]);
+    stretches.push([1, 1.6]);
+    for (const [z0, z1] of stretches) {
+      const seg = z0 >= 0 && z0 < 1 ? Math.floor(z0 * n) : -1;
+      if (seg >= 0 && sg.segs[seg] <= 0) {
+        // Breached: a gap full of rubble.
+        for (let k = 0; k < 12; k++) {
+          const z = z0 + hash(seg, k) * (z1 - z0);
+          ctx.fillStyle = k % 2 ? STONE.top : STONE.course;
+          ctx.fillRect(X(z) + hash(k, seg) * T - 2, yOf(z) - 1, 3 * p + 1, 2 * p + 1);
+        }
+        continue;
+      }
+      band(z0, z1, STONE.face);
+      band(z0, z1, STONE.top, 3);
+    }
+    // Merlons along the outer edge.
+    ctx.fillStyle = STONE.merlon;
+    for (let z = -0.6; z < 1.6; z += 0.022) {
+      const seg = z >= 0 && z < 1 ? Math.floor(z * n) : -1;
+      if (seg >= 0 && sg.segs[seg] <= 0) continue;
+      ctx.fillRect(Math.round(X(z)), Math.round(yOf(z)), 3, 3);
+    }
+    // The gate: oak doors, or a dark gap.
+    const gz = [0.445, 0.555] as const;
+    ctx.fillStyle = sg.gate.broken ? '#0c0a09' : '#5b3a1e';
+    ctx.beginPath();
+    ctx.moveTo(X(gz[0]) - 1, yOf(gz[0]));
+    ctx.lineTo(X(gz[1]) - 1, yOf(gz[1]));
+    ctx.lineTo(X(gz[1]) + T + 1, yOf(gz[1]));
+    ctx.lineTo(X(gz[0]) + T + 1, yOf(gz[0]));
+    ctx.fill();
+    // Towers: square, darker roofs.
+    for (const z of [-0.3, 0.02, 0.4, 0.6, 0.98, 1.3]) {
+      const x = X(z) + T / 2;
+      const y = yOf(z);
+      const s = z === 0.4 || z === 0.6 ? 17 : 14;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(x - s / 2 + 4, y - s / 2 + 4, s, s);
+      ctx.fillStyle = STONE.face;
+      ctx.fillRect(x - s / 2, y - s / 2, s, s);
+      ctx.fillStyle = STONE.top;
+      ctx.fillRect(x - s / 2 + 2, y - s / 2 + 2, s - 4, s - 4);
+      ctx.fillStyle = STONE.merlon;
+      for (let k = 0; k < 4; k++) {
+        ctx.fillRect(x - s / 2 + k * (s / 4), y - s / 2, 2, 2);
+        ctx.fillRect(x - s / 2 + k * (s / 4), y + s / 2 - 2, 2, 2);
+      }
+    }
+    // Ladders against the wall.
+    ctx.strokeStyle = '#8b6b4a';
+    ctx.lineWidth = 1;
+    for (const l of sg.ladders) {
+      const x = X(l.z);
+      const y = yOf(l.z);
+      ctx.beginPath();
+      ctx.moveTo(x - 14, y - 2);
+      ctx.lineTo(x + 3, y - 2);
+      ctx.moveTo(x - 14, y + 2);
+      ctx.lineTo(x + 3, y + 2);
+      for (let k = -12; k < 2; k += 3) {
+        ctx.moveTo(x + k, y - 2);
+        ctx.lineTo(x + k, y + 2);
+      }
+      ctx.stroke();
+    }
+  }
+
+  /** Soldiers, scenery, walkers, and banners together, back to front, with shadows under them. */
   function fieldAbove(b: Battle, t: number, p: number, m: MapArt) {
     // The fallen, subdued.
     ctx.globalAlpha = 0.5;
@@ -499,10 +827,11 @@ export function mount(host: SkinHost): SkinInstance {
       if (u.alive || u.fled || u.risenAt === 0) continue;
       const x = sx(u.x);
       if (x < -40 || x > W + 40) continue;
-      stamp(ctx, atlasFor(u.side), u.kind, deadFrame(u), u.facing < 0, x, world.sy(u.z), p, u.variant);
+      stamp(ctx, atlasFor(u.side), u.kind, deadFrame(u), u.facing < 0, x, uy(u), p, u.variant);
     }
     ctx.globalAlpha = 1;
-    type D = { y: number; u?: Unit; prop?: Placed };
+    droppedBanners(b, p);
+    type D = { y: number; u?: Unit; prop?: Placed; walker?: number };
     const list: D[] = [];
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
@@ -520,26 +849,27 @@ export function mount(host: SkinHost): SkinInstance {
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
     for (const u of b.units) {
-      if (!u.alive || u.fled) continue;
+      if (!u.alive || u.fled || u.reg.hidden) continue;
       const x = sx(u.x);
       if (x < -40 || x > W + 40) continue;
-      const y = world.sy(u.z);
+      const y = uy(u);
       list.push({ y, u });
-      const r = (u.kind === 'cav' || u.kind === 'lord' ? 7 : u.kind === 'treb' ? 10 : 4) * p;
+      const r = (u.kind === 'cav' || u.kind === 'lord' ? 7 : u.kind === 'treb' || u.kind === 'tower' ? 11 : u.kind === 'ram' ? 9 : 4) * p;
       ctx.moveTo(x + r, y);
       ctx.ellipse(x, y, r, r * 0.35, 0, 0, Math.PI * 2);
     }
     ctx.fill();
+    b.walkers.forEach((w, i) => list.push({ y: world.sy(w.z), walker: i }));
     list.sort((a, c) => a.y - c.y);
-    const bearers = new Set<Unit>();
-    for (const g of b.regs) {
-      if (g.routed || g.kind === 'arch' || g.kind === 'mage' || g.kind === 'treb') continue;
-      const front = g.units.filter((u) => u.alive && !u.fled && u.rank === 0);
-      if (front.length) bearers.add(front[Math.floor(front.length / 2)]);
-    }
+    const bearers = bearersOf(b);
     for (const d of list) {
       if (d.prop) {
         stampProp(ctx, m.scenery, d.prop.prop, d.prop.variant, sx(d.prop.x), d.y, p);
+        continue;
+      }
+      if (d.walker !== undefined) {
+        const w = b.walkers[d.walker];
+        stamp(ctx, atlasFor(0), 'peasant', w.wait > 0 ? 0 : Math.floor(w.anim) % 2, w.facing < 0, sx(w.x), d.y, p, w.seed % 3);
         continue;
       }
       const u = d.u!;
@@ -551,9 +881,11 @@ export function mount(host: SkinHost): SkinInstance {
         continue;
       }
       stamp(ctx, atlasFor(u.side), u.kind, frameOf(u, t), u.facing < 0, x, d.y, p, u.variant);
-      if (bearers.has(u)) banner(u, x, d.y, p, t);
+      if (u.std) standard(u, x, d.y, p, t);
+      else if (bearers.has(u)) banner(u, x, d.y, p, t);
       if (u.kind === 'mage' && u.swingUntil > t) glow(x, d.y - 18 * p, 18 * p, world.war.factions[u.side].kit.magic, 0.5);
     }
+    planted(b, p, t);
   }
 
   /** Night lights: hearths, camp fires, the keep's windows; and the mill's sails turning. */
@@ -605,6 +937,9 @@ export function mount(host: SkinHost): SkinInstance {
   // ---- drawing the field ------------------------------------------------------------------
 
   const sx = (x: number) => x - camX;
+  /** Where a man's feet are on screen: on the hill, up the wall. From above, height barely shows. */
+  const uy = (u: Unit) => world.sy(u.z) - (world.elev(u.x, u.z) + u.h) * (above ? 0.18 : 1);
+  const groundY = (x: number, z: number) => world.sy(z) - world.elev(x, z) * (above ? 0.18 : 1);
 
   function frameOf(u: Unit, t: number): number {
     const moving = u.anim % 1000;
@@ -622,19 +957,31 @@ export function mount(host: SkinHost): SkinInstance {
         return u.swingUntil > t ? 0 : Math.floor(moving) % 2;
       case 'treb':
         return u.swingUntil > t ? 1 : 0;
+      case 'tower':
+        return world.battle.siege?.towers.find((tw) => tw.u === u)?.docked ? 2 : walk;
+      case 'ram':
+        return u.swingUntil > t ? 1 : 0;
     }
   }
   const deadFrame = (u: Unit) => SHAPES[u.kind].frames - 1;
 
   function marks(b: Battle) {
     for (const e of b.effects) {
-      if (e.kind !== 'crater' && e.kind !== 'scorch') continue;
+      if (e.kind !== 'crater' && e.kind !== 'scorch' && e.kind !== 'rubble') continue;
       const x = sx(e.x);
       if (x < -80 || x > W + 80) continue;
+      const y = groundY(e.x, e.z);
+      if (e.kind === 'rubble') {
+        ctx.fillStyle = e.color;
+        ctx.fillRect(Math.round(x), Math.round(y - e.r * 0.6), Math.round(e.r * 1.4), Math.max(1, Math.round(e.r * 0.7)));
+        ctx.fillStyle = STONE.top;
+        ctx.fillRect(Math.round(x + 1), Math.round(y - e.r * 0.6), Math.round(e.r * 0.6), 1);
+        continue;
+      }
       const fade = Math.min(1, (e.t0 + e.dur - world.t) / 4);
       ctx.fillStyle = hexA(e.color, (e.kind === 'crater' ? 0.55 : 0.4) * fade);
       ctx.beginPath();
-      ctx.ellipse(x, world.sy(e.z), e.r, e.r * 0.28, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y, e.r, e.r * 0.28, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     // Spent arrows in the turf.
@@ -642,9 +989,9 @@ export function mount(host: SkinHost): SkinInstance {
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (const s of b.shots) {
-      if (!s.landed || s.kind !== 'arrow' || s.air) continue;
+      if (!s.landed || s.kind !== 'arrow' || s.air || s.h1 > 4) continue;
       const x = sx(s.x1);
-      const y = world.sy(s.z1);
+      const y = groundY(s.x1, s.z1);
       const lean = s.x1 > s.x0 ? 3 : -3;
       ctx.moveTo(x, y);
       ctx.lineTo(x - lean, y - 6);
@@ -652,31 +999,80 @@ export function mount(host: SkinHost): SkinInstance {
     ctx.stroke();
   }
 
+  /** The middle man of each block's front rank carries its banner. */
+  function bearersOf(b: Battle) {
+    const bearers = new Set<Unit>();
+    for (const g of b.regs) {
+      if (g.routed || g.hidden || g.kind === 'arch' || g.kind === 'mage' || isEngine(g.kind) || g.name.endsWith('GUARD')) continue;
+      const front = g.units.filter((u) => u.alive && !u.fled && u.rank === 0);
+      if (front.length) bearers.add(front[Math.floor(front.length / 2)]);
+    }
+    return bearers;
+  }
+
+  type Item = { z: number; x: number; u?: Unit; slice?: [number, number]; walker?: number; ladder?: number; keep?: true };
+
   function armies(b: Battle, t: number, p: number) {
-    const live: Unit[] = [];
+    const sg = b.siege;
     // The fallen first, flat on the field and subdued, so the living stand out.
     ctx.globalAlpha = 0.5;
     for (const u of b.units) {
-      if (u.fled) continue;
+      if (u.fled || u.alive || u.risenAt === 0) continue;
       const x = sx(u.x);
       if (x < -60 || x > W + 60) continue;
-      if (!u.alive) {
-        if (u.risenAt === 0) continue;
-        stamp(ctx, atlasFor(u.side), u.kind, deadFrame(u), u.facing < 0, x, world.sy(u.z), p, u.variant);
-      } else live.push(u);
+      // Engines leave their wrecks at full strength (drawn with the living).
+      if (isEngine(u.kind)) continue;
+      stamp(ctx, atlasFor(u.side), u.kind, deadFrame(u), u.facing < 0, x, uy(u), p, u.variant);
     }
     ctx.globalAlpha = 1;
-    live.sort((a, c) => a.z - c.z || a.id - c.id);
-    const bearers = new Set<Unit>();
-    for (const g of b.regs) {
-      if (g.routed || g.kind === 'arch' || g.kind === 'mage' || g.kind === 'treb') continue;
-      const mid = g.units.filter((u) => u.alive && !u.fled && u.rank === 0);
-      if (mid.length) bearers.add(mid[Math.floor(mid.length / 2)]);
-    }
-    for (const u of live) {
+    droppedBanners(b, p);
+    const items: Item[] = [];
+    for (const u of b.units) {
+      if (u.fled || u.reg.hidden) continue;
+      if (!u.alive && !isEngine(u.kind)) continue;
       const x = sx(u.x);
-      const y = world.sy(u.z);
+      if (x < -80 || x > W + 80) continue;
+      items.push({ z: u.z, x: u.x, u });
+    }
+    b.walkers.forEach((w, i) => items.push({ z: w.z, x: w.x, walker: i }));
+    if (sg) {
+      // The wall in slices, so men on both sides of it sort in front of and behind it.
+      const n = 40;
+      for (let i = 0; i < n; i++) {
+        const za = -0.05 + (i / n) * 1.15;
+        items.push({ z: za, x: world.wx(za), slice: [za, za + 1.15 / n] });
+      }
+      sg.ladders.forEach((l, i) => items.push({ z: l.z + 0.012, x: world.wx(l.z), ladder: i }));
+      items.push({ z: -0.06, x: world.wx(0) + 180, keep: true });
+    }
+    items.sort((a, c) => a.z - c.z || a.x - c.x);
+    const bearers = bearersOf(b);
+    for (const it of items) {
+      if (it.slice) {
+        wallSlice(sg!, it.slice[0], it.slice[1], t, p);
+        continue;
+      }
+      if (it.ladder !== undefined) {
+        ladder(sg!, sg!.ladders[it.ladder].z);
+        continue;
+      }
+      if (it.keep) {
+        keep(sg!, p, t);
+        continue;
+      }
+      if (it.walker !== undefined) {
+        const w = b.walkers[it.walker];
+        stamp(ctx, atlasFor(0), 'peasant', w.wait > 0 ? 0 : Math.floor(w.anim) % 2, w.facing < 0, sx(w.x), groundY(w.x, w.z), p, w.seed % 3);
+        continue;
+      }
+      const u = it.u!;
+      const x = sx(u.x);
+      const y = uy(u);
       const atlas = atlasFor(u.side);
+      if (!u.alive) {
+        stamp(ctx, atlas, u.kind, deadFrame(u), u.facing < 0, x, y, p);
+        continue;
+      }
       if (u.risenAt > 0 && t - u.risenAt < 1.2) {
         // Clawing up out of the ground.
         const k = (t - u.risenAt) / 1.2;
@@ -689,10 +1085,221 @@ export function mount(host: SkinHost): SkinInstance {
         continue;
       }
       stamp(ctx, atlas, u.kind, frameOf(u, t), u.facing < 0, x, y, p, u.variant);
-      if (bearers.has(u)) banner(u, x, y, p, t);
+      if (u.std) standard(u, x, y, p, t);
+      else if (bearers.has(u)) banner(u, x, y, p, t);
       if (u.kind === 'mage' && u.swingUntil > t) glow(x, y - 18 * p, 18 * p, world.war.factions[u.side].kit.magic, 0.5);
     }
+    planted(b, p, t);
   }
+
+  // ---- the wall, side-on ------------------------------------------------------------------------
+
+  /**
+   * One slice of the wall, from depth za to zb: its face toward the attackers (a leaning
+   * parallelogram), the walkway on top, merlons; the gate, breaches, and towers where they fall.
+   */
+  function wallSlice(sg: Siege, za: number, zb: number, t: number, p: number) {
+    const X = (z: number) => sx(world.wx(z));
+    const Y = world.sy;
+    if (X(za) > W + 60 || X(zb) + sg.T < -60) return;
+    const n = sg.segs.length;
+    const zm = (za + zb) / 2;
+    const seg = zm >= 0 && zm < 1 ? Math.floor(zm * n) : -1;
+    const breached = seg >= 0 && sg.segs[seg] <= 0;
+    // How high this stretch stands: breaches are stumps; the ends run on off the field.
+    const Hs = breached ? 12 : sg.H;
+    const face = (h0: number, h1: number, fill: string) => {
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.moveTo(X(za), Y(za) - h1);
+      ctx.lineTo(X(zb), Y(zb) - h1);
+      ctx.lineTo(X(zb), Y(zb) - h0);
+      ctx.lineTo(X(za), Y(za) - h0);
+      ctx.closePath();
+      ctx.fill();
+    };
+    // Lit a little along its length, as the light rakes it.
+    const lit = 0.5 + 0.5 * Math.sin(zm * 9 + 1);
+    face(0, Hs, rgb(mixRgb(STONE.face, STONE.faceLit, lit * 0.6)));
+    // Courses of stone, and the odd joint.
+    ctx.strokeStyle = STONE.course;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let h = 7; h < Hs; h += 7) {
+      ctx.moveTo(X(za), Y(za) - h);
+      ctx.lineTo(X(zb), Y(zb) - h);
+    }
+    for (let h = 0; h < Hs - 3; h += 7) {
+      const k = hash(Math.floor(za * 400), h);
+      if (k > 0.55) continue;
+      const z = za + k * (zb - za);
+      ctx.moveTo(X(z), Y(z) - h);
+      ctx.lineTo(X(z), Y(z) - h - 7);
+    }
+    ctx.stroke();
+    // Damage: dark patches where the stones have struck.
+    if (seg >= 0 && !breached && sg.segs[seg] < 9) {
+      ctx.fillStyle = 'rgba(12,10,9,0.45)';
+      for (let k = 0; k < 9 - sg.segs[seg]; k++) {
+        const z = za + hash(seg, k) * (zb - za);
+        const h = Hs * (0.3 + hash(k, seg) * 0.6);
+        ctx.fillRect(X(z) - 2, Y(z) - h, 6, 4);
+      }
+    }
+    if (breached) {
+      // Rubble heaped where it came down.
+      ctx.fillStyle = STONE.course;
+      for (let k = 0; k < 6; k++) {
+        const z = za + hash(seg, k, 5) * (zb - za);
+        ctx.fillRect(X(z) - 6 + hash(k, 2) * 10, Y(z) - Hs - 3 - hash(k, seg) * 5, 4 + hash(seg, k) * 5, 4);
+      }
+    }
+    // The gate: an arch in the face, oak doors or a dark mouth.
+    if (zm > 0.445 && zm < 0.555) {
+      const gh = sg.H * 0.58;
+      ctx.fillStyle = sg.gate.broken ? '#0a0908' : '#4a2f18';
+      ctx.beginPath();
+      ctx.moveTo(X(za), Y(za));
+      ctx.lineTo(X(za), Y(za) - gh + Math.abs(zm - 0.5) * 140);
+      ctx.lineTo(X(zb), Y(zb) - gh + Math.abs(zm - 0.5) * 140);
+      ctx.lineTo(X(zb), Y(zb));
+      ctx.closePath();
+      ctx.fill();
+      if (!sg.gate.broken) {
+        ctx.fillStyle = '#2a1a0e';
+        ctx.fillRect(X(za), Y(za) - gh * 0.5, Math.max(1, X(zb) - X(za)), 2);
+        // Iron studs; it shudders when the ram strikes.
+        const shake = sg.ram?.swingUntil && sg.ram.swingUntil > t ? 1 : 0;
+        ctx.fillStyle = '#57534e';
+        ctx.fillRect(X(zm) + shake, Y(zm) - gh * 0.3, 2, 2);
+      }
+    }
+    // The walkway on top.
+    if (!breached) {
+      ctx.fillStyle = STONE.top;
+      ctx.beginPath();
+      ctx.moveTo(X(za), Y(za) - Hs);
+      ctx.lineTo(X(zb), Y(zb) - Hs);
+      ctx.lineTo(X(zb) + sg.T, Y(zb) - Hs);
+      ctx.lineTo(X(za) + sg.T, Y(za) - Hs);
+      ctx.closePath();
+      ctx.fill();
+      // Merlons on the outer edge.
+      ctx.fillStyle = STONE.merlon;
+      for (let z = Math.ceil(za / 0.024) * 0.024; z < zb; z += 0.048) {
+        ctx.fillRect(Math.round(X(z)), Math.round(Y(z) - Hs - 7), 6, 7);
+        ctx.fillStyle = STONE.dark;
+        ctx.fillRect(Math.round(X(z)) + 5, Math.round(Y(z) - Hs - 7), 1, 7);
+        ctx.fillStyle = STONE.merlon;
+      }
+    }
+    // Towers: two flanking the gate, one at each end.
+    for (const tz of [0.02, 0.4, 0.6, 0.98]) {
+      if (tz < za || tz >= zb) continue;
+      const big = tz === 0.4 || tz === 0.6;
+      const th = sg.H * (big ? 1.45 : 1.3);
+      const tw = big ? 40 : 34;
+      const x = X(tz) - 7;
+      const y = Y(tz);
+      const g = ctx.createLinearGradient(x, 0, x + tw, 0);
+      g.addColorStop(0, STONE.dark);
+      g.addColorStop(0.35, STONE.faceLit);
+      g.addColorStop(1, STONE.face);
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y - th, tw, th);
+      ctx.strokeStyle = STONE.course;
+      ctx.beginPath();
+      for (let h = 8; h < th; h += 8) {
+        ctx.moveTo(x, y - h);
+        ctx.lineTo(x + tw, y - h);
+      }
+      ctx.stroke();
+      ctx.fillStyle = STONE.merlon;
+      for (let k = 0; k < tw; k += 9) ctx.fillRect(x + k, y - th - 7, 6, 7);
+      // An arrow slit, lit.
+      ctx.fillStyle = hexA('#fbbf24', 0.6);
+      ctx.fillRect(x + tw / 2, y - th * 0.6, 2, 6);
+      if (big) {
+        // The defenders' colors over the gate.
+        const f = world.war.factions[sg.side];
+        ctx.fillStyle = '#3f2a17';
+        ctx.fillRect(x + tw / 2, y - th - 30, 2, 24);
+        ctx.fillStyle = f.color;
+        ctx.beginPath();
+        ctx.moveTo(x + tw / 2 + 2, y - th - 30);
+        for (let i = 0; i <= 5; i++) ctx.lineTo(x + tw / 2 + 2 + i * 3, y - th - 30 + Math.sin(t * 4 + i + tz * 9) * 1.5);
+        for (let i = 5; i >= 0; i--) ctx.lineTo(x + tw / 2 + 2 + i * 3, y - th - 22 + Math.sin(t * 4 + i + tz * 9) * 1.5);
+        ctx.fill();
+      }
+    }
+    void p;
+  }
+
+  function ladder(sg: Siege, z: number) {
+    const x = sx(world.wx(z));
+    const y = world.sy(z);
+    ctx.strokeStyle = '#8b6b4a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x - 16, y);
+    ctx.lineTo(x - 1, y - sg.H - 4);
+    ctx.moveTo(x - 10, y);
+    ctx.lineTo(x + 5, y - sg.H - 4);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let k = 0.08; k < 1; k += 0.1) {
+      ctx.moveTo(x - 16 + 15 * k, y - (sg.H + 4) * k);
+      ctx.lineTo(x - 10 + 15 * k, y - (sg.H + 4) * k);
+    }
+    ctx.stroke();
+  }
+
+  /** The keep inside the walls, standing over the town. */
+  function keep(sg: Siege, p: number, t: number) {
+    const x = sx(world.wx(0.05) + sg.T + 150);
+    if (x < -200 || x > W + 200) return;
+    const y = world.sy(0.04);
+    const kh = sg.H * 2.4;
+    const kw = 110;
+    ctx.fillStyle = STONE.dark;
+    ctx.fillRect(x, y - kh, kw, kh);
+    const g = ctx.createLinearGradient(x, 0, x + kw, 0);
+    g.addColorStop(0, '#2c2a27');
+    g.addColorStop(0.4, STONE.face);
+    g.addColorStop(1, '#2c2a27');
+    ctx.fillStyle = g;
+    ctx.fillRect(x + 4, y - kh, kw - 8, kh);
+    // Corner turrets and a high tower.
+    ctx.fillStyle = STONE.face;
+    ctx.fillRect(x - 8, y - kh - 22, 22, kh + 22);
+    ctx.fillRect(x + kw - 14, y - kh - 22, 22, kh + 22);
+    ctx.fillRect(x + kw / 2 - 16, y - kh - 50, 32, 50);
+    ctx.fillStyle = STONE.merlon;
+    for (const [tx, tw, ty] of [
+      [x - 8, 22, y - kh - 22],
+      [x + kw - 14, 22, y - kh - 22],
+      [x + kw / 2 - 16, 32, y - kh - 50],
+    ] as const) for (let k = 0; k < tw; k += 7) ctx.fillRect(tx + k, ty - 6, 5, 6);
+    // Windows: lit.
+    for (let i = 0; i < 6; i++) {
+      const on = 0.45 + 0.25 * Math.sin(t * 0.7 + i * 2.1);
+      ctx.fillStyle = hexA('#fbbf24', on);
+      ctx.fillRect(x + 16 + (i % 3) * 32, y - kh * 0.35 - Math.floor(i / 3) * kh * 0.3, 3, 6);
+    }
+    const f = world.war.factions[sg.side];
+    ctx.fillStyle = '#3f2a17';
+    ctx.fillRect(x + kw / 2, y - kh - 86, 2, 36);
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    ctx.moveTo(x + kw / 2 + 2, y - kh - 86);
+    for (let i = 0; i <= 6; i++) ctx.lineTo(x + kw / 2 + 2 + i * 4, y - kh - 86 + Math.sin(t * 3 + i) * 2);
+    for (let i = 6; i >= 0; i--) ctx.lineTo(x + kw / 2 + 2 + i * 4, y - kh - 74 + Math.sin(t * 3 + i) * 2);
+    ctx.fill();
+    void p;
+  }
+
+  // ---- banners ------------------------------------------------------------------------------
 
   function banner(u: Unit, x: number, y: number, p: number, t: number) {
     const f = world.war.factions[u.side];
@@ -719,6 +1326,84 @@ export function mount(host: SkinHost): SkinInstance {
     ctx.fillRect(Math.round(px - u.facing * w * 0.45 - p), top + h * 0.35, p * 2, p * 2);
   }
 
+  /** The side's standard: tall, square, with a device on it, a cross-bar, and a finial. */
+  function standard(u: Unit, x: number, y: number, p: number, t: number) {
+    const f = world.war.factions[u.side];
+    const top = y - 46 * p;
+    const px = Math.round(x - u.facing * 3 * p);
+    ctx.fillStyle = '#3f2a17';
+    ctx.fillRect(px, top, Math.max(1, p), 40 * p);
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(px - p, top - 2 * p, p * 3, p * 2);
+    const w = 16 * p;
+    const h = 13 * p;
+    ctx.fillRect(px - u.facing * w, top + p, w, Math.max(1, p * 0.6));
+    const wave = (k: number, i: number) => Math.sin(t * 3.5 + k * 3 + u.id) * 1.8 * p * k + i;
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    for (let i = 0; i <= 6; i++) ctx.lineTo(px - u.facing * w * (i / 6), top + 2 * p + wave(i / 6, 0));
+    for (let i = 6; i >= 0; i--) ctx.lineTo(px - u.facing * w * (i / 6), top + 2 * p + h + wave(i / 6, 0) - (i % 2 ? 2 * p : 0));
+    ctx.closePath();
+    ctx.fill();
+    // A device: a light diamond on the field.
+    const cx = px - u.facing * w * 0.5;
+    const cy = top + 2 * p + h * 0.5 + wave(0.5, 0);
+    ctx.fillStyle = mixRgbHex(f.color, '#fef3c7', 0.65);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 4 * p);
+    ctx.lineTo(cx + 3 * p, cy);
+    ctx.lineTo(cx, cy + 4 * p);
+    ctx.lineTo(cx - 3 * p, cy);
+    ctx.fill();
+  }
+
+  /** Banners lying in the mud where they fell. */
+  function droppedBanners(b: Battle, p: number) {
+    for (const d of b.dropped) {
+      const x = sx(d.x);
+      if (x < -40 || x > W + 40) continue;
+      const y = groundY(d.x, d.z);
+      const f = world.war.factions[d.side];
+      const dir = hash(d.seed, 1) < 0.5 ? -1 : 1;
+      ctx.strokeStyle = '#3f2a17';
+      ctx.lineWidth = Math.max(1, p * 0.75);
+      ctx.beginPath();
+      ctx.moveTo(x - dir * 12 * p, y);
+      ctx.lineTo(x + dir * 12 * p, y - 3 * p);
+      ctx.stroke();
+      ctx.fillStyle = mixRgbHex(f.color, '#1c1917', 0.35);
+      ctx.beginPath();
+      ctx.moveTo(x + dir * 10 * p, y - 3 * p);
+      ctx.lineTo(x + dir * 2 * p, y - 1 * p);
+      ctx.lineTo(x + dir * 3 * p, y + 3 * p);
+      ctx.lineTo(x + dir * 11 * p, y + 1 * p);
+      ctx.fill();
+    }
+  }
+
+  /** The victors' banner, planted where the fighting was. */
+  function planted(b: Battle, p: number, t: number) {
+    const pl = b.planted;
+    if (!pl) return;
+    const x = sx(pl.x);
+    if (x < -60 || x > W + 60) return;
+    const y = groundY(pl.x, pl.z);
+    const f = world.war.factions[pl.side];
+    const age = Math.min(1, (t - b.phaseAt) * 0.8);
+    const tall = 58 * p * (b.phase === 'aftermath' ? age : 1);
+    ctx.fillStyle = '#3f2a17';
+    ctx.fillRect(Math.round(x), y - tall, Math.max(1, p), tall);
+    if (tall < 30 * p) return;
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    const w = 18 * p;
+    for (let i = 0; i <= 6; i++) ctx.lineTo(x + 1 + w * (i / 6), y - tall + Math.sin(t * 3 + i) * 1.6 * p * (i / 6));
+    for (let i = 6; i >= 0; i--) ctx.lineTo(x + 1 + w * (i / 6), y - tall + 12 * p + Math.sin(t * 3 + i) * 1.6 * p * (i / 6));
+    ctx.fill();
+  }
+
+  const mixRgbHex = (a: string, c: string, k: number) => rgb(mixRgb(a, c, k));
+
   function glow(x: number, y: number, r: number, color: string, a: number) {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, hexA(color, a));
@@ -731,9 +1416,10 @@ export function mount(host: SkinHost): SkinInstance {
     const k = Math.max(0, Math.min(1, (t - s.t0) / s.dur));
     const x = s.x0 + (s.x1 - s.x0) * k;
     const z = s.z0 + (s.z1 - s.z0) * k;
-    const h = s.h0 * (1 - k) + 4 * s.peak * k * (1 - k);
+    const h = s.h0 * (1 - k) + s.h1 * k + 4 * s.peak * k * (1 - k);
     return { x, z, h, k };
   }
+  const shotY = (q: { z: number; h: number }) => world.sy(q.z) - q.h * (above ? 0.5 : 1);
 
   function shots(b: Battle, t: number, p: number) {
     ctx.save();
@@ -747,9 +1433,9 @@ export function mount(host: SkinHost): SkinInstance {
       const c = shotPos(s, t - 0.03);
       const x = sx(a.x);
       if (x < -20 || x > W + 20) continue;
-      const y = world.sy(a.z) - a.h;
+      const y = shotY(a);
       const dx = x - sx(c.x);
-      const dy = y - (world.sy(c.z) - c.h);
+      const dy = y - shotY(c);
       const len = Math.hypot(dx, dy) || 1;
       ctx.moveTo(x, y);
       ctx.lineTo(x - (dx / len) * 5 * p, y - (dy / len) * 5 * p);
@@ -759,7 +1445,7 @@ export function mount(host: SkinHost): SkinInstance {
       if (s.landed || t < s.t0 || s.kind === 'arrow') continue;
       const a = shotPos(s, t);
       const x = sx(a.x);
-      const y = world.sy(a.z) - a.h;
+      const y = shotY(a);
       if (s.kind === 'boulder') {
         ctx.fillStyle = '#57534e';
         ctx.beginPath();
@@ -767,14 +1453,14 @@ export function mount(host: SkinHost): SkinInstance {
         ctx.fill();
         ctx.fillStyle = 'rgba(0,0,0,0.25)';
         ctx.beginPath();
-        ctx.ellipse(x, world.sy(a.z), 4 * p * (1 - a.h / 400), p, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, world.sy(a.z), 4 * p * Math.max(0.2, 1 - a.h / 400), p, 0, 0, Math.PI * 2);
         ctx.fill();
       } else {
         const color = world.war.factions[s.side].kit.magic;
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 6; i >= 0; i--) {
           const q = shotPos(s, t - i * 0.035);
-          glow(sx(q.x), world.sy(q.z) - q.h, (8 - i) * p * 1.2, color, 0.35 * (1 - i / 7));
+          glow(sx(q.x), shotY(q), (8 - i) * p * 1.2, color, 0.35 * (1 - i / 7));
         }
         glow(x, y, 6 * p, '#ffffff', 0.8);
         ctx.globalCompositeOperation = 'source-over';
@@ -785,6 +1471,7 @@ export function mount(host: SkinHost): SkinInstance {
 
   function effects(b: Battle, t: number, p: number) {
     ctx.save();
+    const hk = above ? 0.5 : 1;
     for (const e of b.effects) {
       const age = t - e.t0;
       const k = age / e.dur;
@@ -797,8 +1484,9 @@ export function mount(host: SkinHost): SkinInstance {
           z = live.reduce((s, u) => s + u.z, 0) / live.length;
         }
       }
-      if (x < -150 || x > W + 150) continue;
-      const y = world.sy(z) - e.h;
+      if (x < -400 || x > W + 400) continue;
+      const ground = groundY(e.x, z);
+      const y = ground - e.h * hk;
       switch (e.kind) {
         case 'blast': {
           ctx.globalCompositeOperation = 'lighter';
@@ -858,14 +1546,34 @@ export function mount(host: SkinHost): SkinInstance {
           ctx.strokeStyle = hexA(e.color, (0.35 + 0.15 * Math.sin(t * 6)) * fade);
           ctx.lineWidth = 1.2;
           ctx.beginPath();
-          ctx.ellipse(x, world.sy(z) + 4, rx, ry, 0, Math.PI, Math.PI * 2);
+          ctx.ellipse(x, ground + 4, rx, ry, 0, Math.PI, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
           // Runes turning around the rim.
           for (let i = 0; i < 6; i++) {
             const a = Math.PI + ((i + t * 0.3) % 6) / 6 * Math.PI;
             ctx.fillStyle = hexA(e.color, 0.8 * fade);
-            ctx.fillRect(x + Math.cos(a) * rx - 1, world.sy(z) + 4 + Math.sin(a) * ry - 1, 2, 2);
+            ctx.fillRect(x + Math.cos(a) * rx - 1, ground + 4 + Math.sin(a) * ry - 1, 2, 2);
+          }
+          ctx.globalCompositeOperation = 'source-over';
+          break;
+        }
+        case 'flare': {
+          // Magelight: a slow star sinking over the field, its light pooled on the ground.
+          const fade = Math.min(1, age * 1.5, (e.dur - age) / 1.5);
+          const fy = ground - (e.h - age * 11) * hk;
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.fillStyle = hexA(e.color, 0.07 * fade);
+          ctx.beginPath();
+          ctx.ellipse(x, ground, e.r * 0.8, e.r * 0.8 * (above ? 0.8 : 0.22), 0, 0, Math.PI * 2);
+          ctx.fill();
+          glow(x, fy, 60 * fade, e.color, 0.5 * fade);
+          glow(x, fy, 10, '#ffffff', 0.95 * fade);
+          // Sparks falling from it.
+          for (let i = 0; i < 6; i++) {
+            const a = (t * 0.8 + hash(e.seed, i)) % 1;
+            ctx.fillStyle = hexA(e.color, (1 - a) * fade);
+            ctx.fillRect(x + (hash(e.seed, i, 2) - 0.5) * 18, fy + a * 40, 1, 2);
           }
           ctx.globalCompositeOperation = 'source-over';
           break;
@@ -885,7 +1593,7 @@ export function mount(host: SkinHost): SkinInstance {
             const d = e.r * (0.3 + k) * hash(e.seed, i);
             ctx.fillStyle = hexA(e.color, 0.22 * (1 - k));
             ctx.beginPath();
-            ctx.ellipse(x + (hash(e.seed, i, 3) - 0.5) * e.r, y - d * 0.4, d * 0.7, d * 0.35, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + (hash(e.seed, i, 3) - 0.5) * e.r, y - d * (above ? 0.1 : 0.4), d * 0.7, d * (above ? 0.6 : 0.35), 0, 0, Math.PI * 2);
             ctx.fill();
           }
           break;
@@ -918,7 +1626,7 @@ export function mount(host: SkinHost): SkinInstance {
     if (!d) return;
     const x = sx(d.x);
     const ground = world.sy(d.z);
-    const y = ground - d.h;
+    const y = ground - d.h * (above ? 0.6 : 1);
     if (x < -200 || x > W + 200) return;
     // Its shadow on the field.
     ctx.fillStyle = `rgba(0,0,0,${(0.35 * Math.max(0, 1 - d.h / 400)).toFixed(3)})`;
@@ -967,7 +1675,7 @@ export function mount(host: SkinHost): SkinInstance {
       const x = sx(c.x);
       if (x < -20 || x > W + 20) continue;
       const fly = c.h > 0;
-      stamp(ctx, atlas, 'crow', fly ? Math.floor(t * 6 + c.seed) % 2 : 1, c.vx < 0, x, world.sy(c.z) - c.h, p);
+      stamp(ctx, atlas, 'crow', fly ? Math.floor(t * 6 + c.seed) % 2 : 1, c.vx < 0, x, world.sy(c.z) - c.h * (above ? 0.5 : 1), p);
     }
   }
 
@@ -1004,6 +1712,106 @@ export function mount(host: SkinHost): SkinInstance {
     }
   }
 
+  // ---- the dark -------------------------------------------------------------------------------
+
+  let lightSprite: HTMLCanvasElement | null = null;
+  let darkness: { c: HTMLCanvasElement; g: CanvasRenderingContext2D; W: number; H: number; dpr: number } | null = null;
+
+  const torchOf = (u: Unit) => u.alive && !u.fled && !u.reg.hidden && (u.std || u.kind === 'lord' || (u.id % 5 === 0 && (u.kind === 'inf' || u.kind === 'cav' || u.kind === 'arch')));
+
+  /**
+   * Night: the field goes dark but for its lights. Torches carried in the ranks, the camps,
+   * fires, spells, the dragon's breath, and magelight hanging over everything for a while.
+   */
+  function night(b: Battle, t: number, p: number) {
+    if (b.weather !== 'night') return;
+    const dpr = host.viewport.dpr || 1;
+    if (!lightSprite) {
+      lightSprite = document.createElement('canvas');
+      lightSprite.width = lightSprite.height = 128;
+      const g = lightSprite.getContext('2d')!;
+      const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.45, 'rgba(255,255,255,0.6)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 128, 128);
+    }
+    if (!darkness || darkness.W !== W || darkness.H !== H || darkness.dpr !== dpr) {
+      const c = document.createElement('canvas');
+      c.width = Math.ceil(W * dpr);
+      c.height = Math.ceil(H * dpr);
+      darkness = { c, g: c.getContext('2d')!, W, H, dpr };
+    }
+    const g = darkness.g;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    g.clearRect(0, 0, W, H);
+    const shade = g.createLinearGradient(0, 0, 0, H);
+    shade.addColorStop(0, 'rgba(2,4,12,0.35)');
+    shade.addColorStop(above ? 0.2 : world.groundTop / H, 'rgba(2,4,12,0.7)');
+    shade.addColorStop(1, 'rgba(2,4,12,0.8)');
+    g.fillStyle = shade;
+    g.fillRect(0, 0, W, H);
+    // Lightning and smiting light the whole field for a breath.
+    if (b.flash > 0) {
+      g.globalCompositeOperation = 'destination-out';
+      g.fillStyle = `rgba(0,0,0,${Math.min(0.8, b.flash * 2.5).toFixed(3)})`;
+      g.fillRect(0, 0, W, H);
+    }
+    g.globalCompositeOperation = 'destination-out';
+    const hole = (x: number, y: number, r: number, a: number) => {
+      if (x < -r || x > W + r || y < -r || y > H + r) return;
+      g.globalAlpha = Math.min(1, a);
+      g.drawImage(lightSprite!, x - r, y - r * (above ? 1 : 0.6), r * 2, r * 2 * (above ? 1 : 0.6));
+    };
+    const torches: [number, number][] = [];
+    for (const u of b.units) {
+      if (!torchOf(u)) continue;
+      const x = sx(u.x);
+      if (x < -60 || x > W + 60) continue;
+      const y = uy(u) - 13 * p;
+      const fl = 0.85 + 0.15 * Math.sin(t * 11 + u.id);
+      hole(x, y + 10 * p, 46 * fl, 0.85);
+      torches.push([x + u.facing * 5 * p, y]);
+    }
+    for (const e of b.effects) {
+      const x = sx(e.x);
+      const y = groundY(e.x, e.z) - e.h * (above ? 0.5 : 1);
+      const k = (t - e.t0) / e.dur;
+      if (e.kind === 'flare') {
+        const fade = Math.min(1, (t - e.t0) * 1.5, (e.dur - (t - e.t0)) / 1.5);
+        hole(x, groundY(e.x, e.z), e.r, fade);
+        hole(x, y - (t - e.t0) * 11, 90, fade);
+      } else if (e.kind === 'blast') hole(x, y, 150, 1 - k);
+      else if (e.kind === 'fire') hole(x, y, 80, 0.8 * (1 - k));
+      else if (e.kind === 'bolt' || e.kind === 'smite') hole(x, y, 240, 1 - k);
+      else if (e.kind === 'ward') hole(x, groundY(e.x, e.z), 90, 0.5);
+    }
+    for (const s of b.shots) {
+      if (s.kind !== 'fireball' || s.landed || t < s.t0) continue;
+      const q = shotPos(s, t);
+      hole(sx(q.x), shotY(q), 70, 0.9);
+    }
+    for (const c of b.fire.cells.values()) hole(sx(c.i * FIRE_CELL - 200 + FIRE_CELL / 2), world.sy((c.j + 0.5) / FIRE_ROWS), 70, 0.9);
+    const d = b.dragon;
+    if (d?.breathing) hole(sx(d.x), world.sy(d.z), 160, 0.9);
+    if (!above && backdrop) for (const f of backdrop.fires) hole(f.x - camX * 0.8 - 60, world.groundTop - 50 + f.y, 30, 0.8);
+    if (above && map) for (const l of map.layout.lights) hole(sx(l.x), l.y * H, l.r * 2.2, 0.7);
+    g.globalAlpha = 1;
+    ctx.drawImage(darkness.c, 0, 0, W, H);
+    // The torches' flames, over the dark.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [i, [x, y]] of torches.entries()) {
+      const fl = 0.7 + 0.3 * Math.sin(t * 13 + i * 1.9);
+      glow(x, y, 9 * p * fl, '#fb923c', 0.5);
+      ctx.fillStyle = hexA('#fde68a', 0.9 * fl);
+      ctx.fillRect(Math.round(x), Math.round(y - p), Math.max(1, p), Math.max(1, p * 2));
+    }
+    ctx.restore();
+  }
+
   function labels(b: Battle, t: number, level: number) {
     if (!o.labels) return;
     ctx.save();
@@ -1017,7 +1825,7 @@ export function mount(host: SkinHost): SkinInstance {
       if (a <= 0) continue;
       const w = ctx.measureText(l.text).width;
       const x = Math.max(w / 2 + 12, Math.min(W - w / 2 - 12, sx(l.x)));
-      let y = Math.max(28, world.sy(l.z) - l.h);
+      let y = Math.max(28, world.sy(l.z) - l.h * (above ? 0.6 : 1));
       // Step up past any call-out already there.
       for (let tries = 0; tries < 6 && placed.some(([px, py, pw]) => Math.abs(px - x) < (pw + w) / 2 + 8 && Math.abs(py - y) < 18); tries++) y -= 19;
       placed.push([x, y, w]);
@@ -1045,7 +1853,7 @@ export function mount(host: SkinHost): SkinInstance {
     ctx.font = serif(13);
     ctx.textAlign = 'left';
     ctx.fillStyle = hexA('#e7dcc4', 0.82 * level);
-    fillCrisp(ctx, `THE FIELD OF ${b.name} · DAY ${b.day}`, 16, 26);
+    fillCrisp(ctx, `THE ${b.siege ? 'SIEGE' : 'FIELD'} OF ${b.name} · DAY ${b.day}${b.weather === 'night' ? ' · NIGHT' : ''}`, 16, 26);
     ctx.font = serif(11);
     ctx.fillStyle = hexA('#a8a29e', 0.8 * level);
     fillCrisp(ctx, `THE WAR OF ${world.war.name} · BATTLE ${b.n + 1}`, 16, 42);
@@ -1054,12 +1862,10 @@ export function mount(host: SkinHost): SkinInstance {
     const score = `${fa.name}  ${world.war.wins[0]} · ${world.war.wins[1]}  ${fb.name}`;
     ctx.fillStyle = hexA('#e7dcc4', 0.8 * level);
     fillCrisp(ctx, score, W - 16, 26);
-    const wa = ctx.measureText(`${world.war.wins[1]}  ${fb.name}`).width;
     ctx.fillStyle = fa.color;
     ctx.fillRect(W - 16 - ctx.measureText(score).width - 10, 18, 6, 6);
     ctx.fillStyle = fb.color;
     ctx.fillRect(W - 12, 18, 6, 6);
-    void wa;
     // The chronicle, in the lower left.
     ctx.textAlign = 'left';
     ctx.font = serif(12, true);
@@ -1080,6 +1886,7 @@ export function mount(host: SkinHost): SkinInstance {
       world.resize(W, H);
       backdrop = null;
       map = null;
+      wear = null;
     },
     frame(info: FrameInfo) {
       step(info);
@@ -1092,10 +1899,14 @@ export function mount(host: SkinHost): SkinInstance {
         const m = map!;
         ctx.imageSmoothingEnabled = true;
         ctx.drawImage(m.terrain, Math.round(-camX - 200), 0);
+        const wl = wearLayer(b, t);
+        if (wl) ctx.drawImage(wl, Math.round(-camX - 200), 0);
         ctx.imageSmoothingEnabled = false;
         marks(b);
+        if (b.siege) wallAbove(b.siege, p);
         fieldAbove(b, t, p, m);
         ctx.imageSmoothingEnabled = true;
+        grassFire(b, t, p);
         mapLights(m, t, p);
         shots(b, t, p);
         effects(b, t, p);
@@ -1106,6 +1917,7 @@ export function mount(host: SkinHost): SkinInstance {
         ctx.imageSmoothingEnabled = true;
         ctx.drawImage(m.shade, 0, 0, W, H);
         weather(b, t);
+        night(b, t, p);
         if (b.flash > 0) {
           ctx.fillStyle = `rgba(226,232,240,${(Math.min(1, b.flash * 3) * 0.08).toFixed(3)})`;
           ctx.fillRect(0, 0, W, H);
@@ -1129,11 +1941,15 @@ export function mount(host: SkinHost): SkinInstance {
       ctx.drawImage(bd.trees, Math.round(-camX * 0.8 - 60), world.groundTop - 50);
       campfires(bd, t);
       ctx.drawImage(bd.ground, Math.round(-camX - 200), world.groundTop);
+      const wl = wearLayer(b, t);
+      if (wl) ctx.drawImage(wl, Math.round(-camX - 200), world.groundTop);
+      woodSide(bd, b);
       ctx.imageSmoothingEnabled = false;
       marks(b);
       armies(b, t, p);
       dragon(b, t, p);
       ctx.imageSmoothingEnabled = true;
+      grassFire(b, t, p);
       shots(b, t, p);
       effects(b, t, p);
       ctx.imageSmoothingEnabled = false;
@@ -1147,6 +1963,7 @@ export function mount(host: SkinHost): SkinInstance {
       ctx.fillStyle = haze;
       ctx.fillRect(0, world.groundTop - 10, W, world.depth * 0.45 + 10);
       weather(b, t);
+      night(b, t, p);
       // Lightning lights the sky.
       if (b.flash > 0) {
         ctx.fillStyle = `rgba(226,232,240,${(Math.min(1, b.flash * 3) * 0.12).toFixed(3)})`;
@@ -1175,7 +1992,9 @@ export function mount(host: SkinHost): SkinInstance {
     destroy() {
       backdrop = null;
       map = null;
+      wear = null;
       atlases = null;
+      darkness = null;
       dragonAtlases.clear();
     },
   };

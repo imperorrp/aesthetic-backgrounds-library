@@ -208,14 +208,28 @@ export type MapLayout = {
 };
 
 /**
+ * What the battle puts on the map: its river, a siege's wall, an ambush's wood, a hill
+ * (each as battle x at a screen-height share). The layout keeps out of their way.
+ */
+export type MapSite = {
+  river: ((y: number) => number) | null;
+  wall: ((y: number) => number) | null;
+  wood: number | null;
+};
+
+/**
  * Lay out a battlefield map: the armies' band is `top`..`bottom` (screen shares); forests,
  * a village with its fields and a mill, a keep, rocks, and each army's camp go around it.
+ * Behind a siege's wall, a town instead.
  */
-export function layoutMap(r: Rng, BW: number, top: number, bottom: number): MapLayout {
+export function layoutMap(r: Rng, BW: number, top: number, bottom: number, site: MapSite): MapLayout {
   const props: Placed[] = [];
   const lights: MapLayout['lights'] = [];
   const pick = <T>(a: readonly T[]) => a[Math.floor(r() * a.length)];
   const margin = (): number => (r() < 0.5 ? r() * (top - 0.03) + 0.02 : bottom + 0.03 + r() * (0.97 - bottom - 0.03));
+  const inside = (x: number, y: number) => !!site.wall && x > site.wall(y) - 24;
+  const wet = (x: number, y: number) => !!site.river && Math.abs(x - site.river(y)) < 34;
+  const free = (x: number, y: number) => !inside(x, y) && !wet(x, y);
   // Forests: clumps along the top and bottom margins and at the far ends.
   for (let i = 0; i < 16; i++) {
     const cx = r() * BW;
@@ -229,36 +243,73 @@ export function layoutMap(r: Rng, BW: number, top: number, bottom: number): MapL
       const x = cx + Math.cos(a) * d * spread;
       const y = Math.max(0.01, Math.min(0.99, cy + Math.sin(a) * d * spread * 0.0011));
       if (y > top + 0.02 && y < bottom - 0.02) continue;
+      if (!free(x, y)) continue;
       props.push({ prop: r() < 0.65 ? 'pine' : 'oak', x, y, variant: Math.floor(r() * 3) });
     }
   }
+  // The ambush's wood: thick, at the band's far edge.
+  if (site.wood !== null) {
+    for (let k = 0; k < 90; k++) {
+      const x = site.wood + (r() - 0.5) * 320;
+      const y = top - 0.07 + r() * 0.08;
+      if (free(x, y)) props.push({ prop: r() < 0.7 ? 'pine' : 'oak', x, y, variant: Math.floor(r() * 3) });
+    }
+  }
   for (const end of [0, 1]) {
-    for (let k = 0; k < 70; k++) props.push({ prop: r() < 0.6 ? 'pine' : 'oak', x: end ? BW - r() * 180 : r() * 180, y: 0.02 + r() * 0.96, variant: Math.floor(r() * 3) });
+    for (let k = 0; k < 70; k++) {
+      const x = end ? BW - r() * 180 : r() * 180;
+      const y = 0.02 + r() * 0.96;
+      if (free(x, y)) props.push({ prop: r() < 0.6 ? 'pine' : 'oak', x, y, variant: Math.floor(r() * 3) });
+    }
   }
   // Scattered single trees, bushes, and rocks, even on the field.
-  for (let k = 0; k < 60; k++) props.push({ prop: pick(['bush', 'rock', 'oak', 'bush'] as const), x: r() * BW, y: 0.03 + r() * 0.94, variant: Math.floor(r() * 3) });
-  // A village in one margin, with fields, a well, a mill.
+  for (let k = 0; k < 60; k++) {
+    const x = r() * BW;
+    const y = 0.03 + r() * 0.94;
+    if (free(x, y)) props.push({ prop: pick(['bush', 'rock', 'oak', 'bush'] as const), x, y, variant: Math.floor(r() * 3) });
+  }
+  const fields: MapLayout['fields'] = [];
+  let mill: MapLayout['mill'] = null;
   const vTop = r() < 0.5;
+  // Where the village is (the road bends through it).
   const vx = BW * (0.3 + r() * 0.4);
   const vy = vTop ? top * 0.55 : bottom + (1 - bottom) * 0.45;
-  const fields: MapLayout['fields'] = [];
-  for (let k = 0; k < 7; k++) {
-    const x = vx + (r() - 0.5) * 220;
-    const y = vy + (r() - 0.5) * 0.06;
-    props.push({ prop: 'cottage', x, y, variant: Math.floor(r() * 3) });
-    lights.push({ x, y: y - 0.006, r: 16, color: '#fbbf24' });
+  if (site.wall) {
+    // A walled town: roofs packed inside, a keep at its heart, lights in the windows.
+    const wall = site.wall;
+    for (let k = 0; k < 46; k++) {
+      const y = 0.02 + r() * 0.96;
+      const x = wall(y) + 50 + r() * 420;
+      props.push({ prop: 'cottage', x, y, variant: Math.floor(r() * 3) });
+      if (k % 3 === 0) lights.push({ x, y: y - 0.006, r: 14, color: '#fbbf24' });
+    }
+    const ky = top + (bottom - top) * 0.25;
+    const kx = wall(ky) + 230;
+    props.push({ prop: 'keep', x: kx, y: ky, variant: 0 });
+    lights.push({ x: kx, y: ky - 0.03, r: 28, color: '#fbbf24' });
+    props.push({ prop: 'well', x: wall(0.5) + 120, y: 0.55, variant: 0 });
+  } else {
+    // A village in one margin, with fields, a well, a mill.
+    for (let k = 0; k < 7; k++) {
+      const x = vx + (r() - 0.5) * 220;
+      const y = vy + (r() - 0.5) * 0.06;
+      if (wet(x, y)) continue;
+      props.push({ prop: 'cottage', x, y, variant: Math.floor(r() * 3) });
+      lights.push({ x, y: y - 0.006, r: 16, color: '#fbbf24' });
+    }
+    props.push({ prop: 'well', x: vx + 10, y: vy + 0.01, variant: 0 });
+    for (let k = 0; k < 6; k++) fields.push([vx + (r() - 0.5) * 420, vy + (r() - 0.5) * 0.1, 50 + r() * 70, 18 + r() * 22, (r() - 0.5) * 0.4]);
+    mill = { x: vx + (r() < 0.5 ? -1 : 1) * (150 + r() * 60), y: vy + (r() - 0.5) * 0.04 };
+    props.push({ prop: 'mill', x: mill.x, y: mill.y, variant: 0 });
+    // A keep on the other margin.
+    const kx = BW * (0.2 + r() * 0.6);
+    const ky = vTop ? bottom + (1 - bottom) * 0.5 : top * 0.5;
+    props.push({ prop: 'keep', x: kx, y: ky, variant: 0 });
+    lights.push({ x: kx, y: ky - 0.03, r: 26, color: '#fbbf24' });
   }
-  props.push({ prop: 'well', x: vx + 10, y: vy + 0.01, variant: 0 });
-  for (let k = 0; k < 6; k++) fields.push([vx + (r() - 0.5) * 420, vy + (r() - 0.5) * 0.1, 50 + r() * 70, 18 + r() * 22, (r() - 0.5) * 0.4]);
-  const mill = { x: vx + (r() < 0.5 ? -1 : 1) * (150 + r() * 60), y: vy + (r() - 0.5) * 0.04 };
-  props.push({ prop: 'mill', x: mill.x, y: mill.y, variant: 0 });
-  // A keep on the other margin.
-  const kx = BW * (0.2 + r() * 0.6);
-  const ky = vTop ? bottom + (1 - bottom) * 0.5 : top * 0.5;
-  props.push({ prop: 'keep', x: kx, y: ky, variant: 0 });
-  lights.push({ x: kx, y: ky - 0.03, r: 26, color: '#fbbf24' });
-  // The camps behind each army.
+  // The camps behind each army (none for the defenders of a wall: they are home).
   for (const s of [0, 1] as const) {
+    if (s === 1 && site.wall) continue;
     const cx = s === 0 ? BW * 0.355 - 360 : BW * 0.645 + 360;
     for (let row = 0; row < 4; row++) {
       for (let k = 0; k < 4; k++) {
@@ -269,16 +320,19 @@ export function layoutMap(r: Rng, BW: number, top: number, bottom: number): MapL
       lights.push({ x: cx + (row % 2 ? 40 : -40), y: top + (bottom - top) * (0.3 + row * 0.13), r: 20, color: '#fb923c' });
     }
   }
-  // A river, half the time, crossing the map between the armies; a road from camp to camp.
-  const hasRiver = r() < 0.55;
-  const rx = BW * (0.47 + r() * 0.06);
-  const bend = (r() - 0.5) * 220;
+  // The river is the battle's (a ford); a road runs from camp to camp.
+  const river = site.river;
   const phase = r() * 3;
-  const river = hasRiver ? (y: number) => rx + bend * Math.sin(y * Math.PI * 1.3 + phase) : null;
   const road: [number, number][] = [];
-  const roadY = top + (bottom - top) * (0.35 + r() * 0.3);
+  const roadY = top + (bottom - top) * (site.wall ? 0.5 : 0.35 + r() * 0.3);
   for (let i = 0; i <= 24; i++) {
     const x = (i / 24) * BW;
+    if (site.wall) {
+      // To the gate, and on into the town.
+      if (x > site.wall(roadY) + 260) break;
+      road.push([x, roadY + Math.sin(i * 0.7 + phase) * 0.02 * Math.max(0, 1 - x / site.wall(roadY))]);
+      continue;
+    }
     road.push([x, roadY + Math.sin(i * 0.7 + phase) * 0.03 + (Math.abs(x - vx) < 300 ? (vy - roadY) * Math.cos(((x - vx) / 300) * Math.PI * 0.5) : 0)]);
   }
   props.sort((a, b) => a.y - b.y);

@@ -64,6 +64,7 @@ const WORLD_CARDS: WorldCard[] = [
   { key: 'undercity', source: 'undercity', name: getSkin('undercity')?.label ?? 'Undercity', tagline: getSkin('undercity')?.description, thumb: 'undercity' },
   { key: 'shieldwall', source: 'shieldwall', name: 'Shieldwall', tagline: getSkin('shieldwall')?.description, thumb: 'shieldwall' },
   { key: 'shieldwall-above', source: 'shieldwall', options: { view: 'above' }, name: 'Shieldwall, from above', tagline: 'The same wars as a map at dusk: woods, a village, the ford, and the armies in blocks.', thumb: 'shieldwall-view-above' },
+  { key: 'shieldwall-siege', source: 'shieldwall', options: { battles: 'siege' }, name: 'Shieldwall, a siege', tagline: 'Towers and a ram at a walled town; ladders, breaches, the gate, and the defenders holding each gap.', thumb: 'shieldwall-battles-siege' },
   { key: 'ages', source: 'ages', name: 'Ages', tagline: getSkin('ages')?.description, thumb: 'ages' },
   { key: 'war-table', source: 'war-table', name: 'War table', tagline: getSkin('war-table')?.description, thumb: 'war-table' },
 ];

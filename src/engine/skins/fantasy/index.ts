@@ -11,7 +11,8 @@ import { lazySkin } from '../lazy';
 
 export const SHIELDWALL_SCHEMA = {
   view: { type: 'enum', values: ['side', 'above'], default: 'side', label: 'View' },
-  troops:{ type: 'number', min: 0.3, max: 2, default: 1, label: 'Army size' },
+  battles: { type: 'enum', values: ['any', 'field', 'siege'], default: 'any', label: 'Battles' },
+  troops: { type: 'number', min: 0.3, max: 2, default: 1, label: 'Army size' },
   magic: { type: 'number', min: 0, max: 2, default: 1, label: 'Magic' },
   dragons: { type: 'number', min: 0, max: 3, default: 1, label: 'Dragons' },
   weather: { type: 'enum', values: ['any', 'clear', 'rain', 'snow', 'fog', 'night'], default: 'any', label: 'Weather' },
@@ -24,7 +25,7 @@ export const shieldwallSkin = lazySkin(
   {
     id: 'shieldwall',
     label: 'Shieldwall',
-    description: 'Pitched battles in pixel sprites, side-on: shieldwalls, volleys, cavalry charges, mages, duelling lords, and sometimes a dragon. A war of five battles, then a new one.',
+    description: 'Pitched battles and sieges in pixel sprites: shieldwalls, volleys, cavalry charges, towers at the walls, mages, standards, night fighting by torchlight, and sometimes a dragon. A war of five battles, then a new one.',
     tags: ['fantasy', 'battle', 'pixel', 'medieval', 'dark', 'busy'],
     crisp: true,
     schema: SHIELDWALL_SCHEMA,

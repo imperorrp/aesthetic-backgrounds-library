@@ -13,6 +13,8 @@
  *   mage    staff and robe      idle cast dead
  *   lord    caped rider, crown  run0 run1 idle dead
  *   treb    trebuchet           idle throw
+ *   tower   siege tower         roll0 roll1 docked wreck
+ *   ram     covered ram         idle swing wreck
  *   dragon  (own colors)        fly0 fly1 fly2 fly3
  *   crow                        up down
  *   peasant                     walk0 walk1
@@ -44,7 +46,7 @@ type Pen = {
   g: CanvasRenderingContext2D;
 };
 
-export type Kind = 'inf' | 'arch' | 'cav' | 'mage' | 'lord' | 'treb' | 'dragon' | 'crow' | 'peasant';
+export type Kind = 'inf' | 'arch' | 'cav' | 'mage' | 'lord' | 'treb' | 'tower' | 'ram' | 'dragon' | 'crow' | 'peasant';
 
 /** Cell size (art pixels), frame count, and the anchor (feet) within the cell. */
 export const SHAPES: Record<Kind, { w: number; h: number; frames: number; ax: number; ay: number }> = {
@@ -54,6 +56,8 @@ export const SHAPES: Record<Kind, { w: number; h: number; frames: number; ax: nu
   mage: { w: 15, h: 19, frames: 3, ax: 6, ay: 18 },
   lord: { w: 24, h: 21, frames: 4, ax: 11, ay: 20 },
   treb: { w: 26, h: 26, frames: 2, ax: 12, ay: 25 },
+  tower: { w: 32, h: 52, frames: 4, ax: 10, ay: 50 },
+  ram: { w: 28, h: 15, frames: 3, ax: 13, ay: 14 },
   dragon: { w: 56, h: 36, frames: 4, ax: 28, ay: 22 },
   crow: { w: 7, h: 5, frames: 2, ax: 3, ay: 4 },
   peasant: { w: 12, h: 15, frames: 2, ax: 5, ay: 14 },
@@ -387,6 +391,82 @@ function trebuchet(d: Pen, k: Kit, frame: number) {
   p(12, 10, 1, 1, '#a8a29e');
 }
 
+/** A siege tower: planked, hung with hides, the side's banner on top, its bridge up (or down, docked). */
+function tower(d: Pen, k: Kit, frame: number) {
+  // Drawn from 8 above its top (the banner) down: shift into the cell.
+  const p = (x: number, y: number, w?: number, h?: number, c?: string) => d.p(x, y + 8, w, h, c);
+  const w = k.wood;
+  const dk = '#3f2a17';
+  if (frame === 3) {
+    // Burnt out: a charred stump and a fallen beam.
+    p(2, 26, 17, 15, '#1c1917');
+    for (let i = 0; i < 5; i++) p(3 + i * 3, 22 + (i % 2) * 3, 2, 6, '#292524');
+    p(2, 38, 26, 2, '#292524');
+    p(5, 30, 2, 2, '#7c2d12');
+    p(12, 34, 2, 1, '#9a3412');
+    return;
+  }
+  // Wheels and the base.
+  for (const wx of [4, 15]) {
+    p(wx - 1, 39, 4, 4, '#2a1c10');
+    p(wx, 40 + ((frame + wx) % 2), 2, 1, '#8b6b4a');
+  }
+  p(1, 37, 19, 2, dk);
+  // The body: planks, with hides over the front.
+  p(2, 6, 17, 31, w);
+  for (let y = 9; y < 37; y += 4) p(2, y, 17, 1, dk);
+  p(2, 6, 1, 31, dk);
+  p(14, 8, 5, 29, k.leather);
+  for (let y = 10; y < 36; y += 6) p(14, y, 5, 1, '#3b2a1f');
+  // Loopholes, a ladder inside glimpsed through them.
+  p(7, 14, 3, 2, '#0c0a09');
+  p(7, 24, 3, 2, '#0c0a09');
+  // The top: railing, men's heads, the banner.
+  p(1, 4, 19, 2, dk);
+  for (let x = 1; x < 20; x += 3) p(x, 1, 1, 3, dk);
+  p(6, 1, 2, 2, k.metal);
+  p(11, 1, 2, 2, k.metal);
+  p(4, -8, 1, 10, dk);
+  p(5, -8, 6, 4, k.cloth);
+  p(5, -4, 4, 1, k.cloth2);
+  if (frame === 2) {
+    // Docked: the bridge down across the gap.
+    p(19, 5, 13, 2, w);
+    p(19, 4, 13, 1, dk);
+  } else {
+    p(19, -6, 2, 12, w);
+    p(19, -6, 1, 12, dk);
+  }
+}
+
+/** A ram under a hide-covered shed on wheels; its iron head swings out. */
+function ram(d: Pen, k: Kit, frame: number) {
+  const { p } = d;
+  const w = k.wood;
+  const dk = '#3f2a17';
+  if (frame === 2) {
+    p(2, 10, 22, 3, '#1c1917');
+    p(5, 8, 3, 2, '#292524');
+    p(15, 7, 2, 3, '#292524');
+    p(10, 11, 2, 1, '#9a3412');
+    return;
+  }
+  for (const wx of [5, 18]) {
+    p(wx - 1, 10, 4, 4, '#2a1c10');
+    p(wx, 11, 2, 1, '#8b6b4a');
+  }
+  // The shed: a sloped roof of hides on posts.
+  for (let i = 0; i < 6; i++) p(2 + i, 6 - i, 18 - i * 2 + i, 1, k.leather);
+  p(2, 6, 20, 1, '#3b2a1f');
+  p(3, 6, 1, 5, dk);
+  p(19, 6, 1, 5, dk);
+  // The ram beam and its head.
+  const out = frame === 1 ? 5 : 0;
+  p(4 + out, 8, 18, 2, w);
+  p(22 + out, 7, 3, 4, k.metalDark);
+  p(24 + out, 8, 1, 2, k.metal);
+}
+
 function peasant(d: Pen, k: Kit, frame: number, skin: string) {
   const { p } = d;
   p(4, 1, 3, 1, '#a16207');
@@ -520,7 +600,9 @@ export function finish(g: CanvasRenderingContext2D, w: number, h: number) {
   g.putImageData(img, 0, 0);
 }
 
-const KINDS: Kind[] = ['inf', 'arch', 'cav', 'mage', 'lord', 'treb', 'crow', 'peasant'];
+const KINDS: Kind[] = ['inf', 'arch', 'cav', 'mage', 'lord', 'treb', 'tower', 'ram', 'crow', 'peasant'];
+/** Kinds drawn once, not in three skin tones. */
+const SINGLE = new Set<Kind>(['treb', 'tower', 'ram', 'dragon', 'crow']);
 /** Skin-tone variants baked per kind, so a crowd is not all one face. */
 const VARIANTS = 3;
 
@@ -537,7 +619,7 @@ export function buildAtlas(k: Kit, dragonColors?: DragonColors, only?: Kind[]): 
   const kinds: Kind[] = only ?? (dragonColors ? [...KINDS, 'dragon'] : KINDS);
   for (const kind of kinds) {
     const s = SHAPES[kind];
-    const variants = kind === 'treb' || kind === 'dragon' || kind === 'crow' ? 1 : VARIANTS;
+    const variants = SINGLE.has(kind) ? 1 : VARIANTS;
     for (let v = 0; v < variants; v++) {
       rows.push({ kind, variant: v, y });
       y += s.h + pad;
@@ -585,6 +667,12 @@ export function buildAtlas(k: Kit, dragonColors?: DragonColors, only?: Kind[]): 
         case 'treb':
           trebuchet(pen, k, f);
           break;
+        case 'tower':
+          tower(pen, k, f);
+          break;
+        case 'ram':
+          ram(pen, k, f);
+          break;
         case 'dragon':
           dragon(pen, dragonColors!, f);
           break;
@@ -610,7 +698,7 @@ export function buildAtlas(k: Kit, dragonColors?: DragonColors, only?: Kind[]): 
     canvas,
     rect(kind, frame, flip, variant = 0) {
       const s = SHAPES[kind];
-      const v = kind === 'treb' || kind === 'dragon' || kind === 'crow' ? 0 : variant % VARIANTS;
+      const v = SINGLE.has(kind) ? 0 : variant % VARIANTS;
       const ry = index.get(`${kind}:${v}`) ?? 0;
       const f = Math.max(0, Math.min(s.frames - 1, frame));
       return [((flip ? s.frames : 0) + f) * (s.w + pad), ry, s.w, s.h];
