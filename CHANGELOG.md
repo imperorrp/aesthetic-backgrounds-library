@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Ages: a real map, and history you can see.**
+  - No more hexes on screen. The sim keeps its grid; the painting does not: relief from the land's own height and wetness at 2 px (hillshade, shelves, a coastline traced by marching squares, `fantasy/iso.ts`), rivers as meandering curves that widen as streams join, woods and peaks placed by the land, territory from each town's reach on a fine grid with a wobble, washed and outlined along a traced border, roads curving through nudged tile middles and wearing wider with traffic.
+  - Eras rebuild the towns: huts and palisades, timber, stone houses, spires, palaces, star forts with moats; galleys, cogs, tall ships (new pixel props: hut, stone house, spire, palace, galley, galleon, cart).
+  - Dynasties: houses and rulers with regnal numbers; reigns end, heirs crown, houses die out (sometimes into a war of succession). The ruler of the greatest realm is in the HUD.
+  - Trade: caravans on the roads between friendly towns, ships from the second era; trade raises what a town can grow to, and wears its roads.
+  - Wonders take decades: begun in great cities, raised under scaffolding and a crane, seven designs, at most one of each per age.
+  - The land changes: woods cleared around growing towns, volcanoes (fire, ash, a plume, smoke for a century, richer fields after), floods along a river's stretch.
+  - A ribbon of the age's history along the bottom: era bands, marks for wars, plagues, wonders, fallen houses and kingdoms, volcanoes, and a cursor at now.
+  - Faster: borders repaint only when a town changes hands or size or the roads change; glows are cached sprites (in Shieldwall too, whose night overlay now works at a quarter size and its worn earth at half, about ten times cheaper at night).
+  - New sounds and journal sightings: succession, work begun on a wonder, a house ending, a flood, a volcano.
 - **Shieldwall: sieges, ground that matters, standards, night, aftermath.**
   - Sieges (`battles: 'any' | 'field' | 'siege'`, about three in ten): a walled town with bows and mages on the wall, gate towers, and a keep. Siege towers and a covered ram (new sprites) roll up; engines batter one stretch until it breaches; ladders go up where foot stand at the wall with no way over, and get thrown down. Men cross only at a broken gate, a breach, a docked tower, or a ladder; the defenders' foot go to each gap and hold it. Towers and rams burn. A town is taken, held, or the siege is given up. Drawn side-on as a leaning wall in depth slices (so men sort in front of and behind it), and from above as a stone band around a town.
   - Terrain: a hill (range for its bows, the downhill blow; painted as a lit mound side-on and in relief with contours from above), a ford (the battle's own river: slow going and poor footing), a wood that hides an ambush on the flank.

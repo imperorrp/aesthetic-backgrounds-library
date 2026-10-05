@@ -11,6 +11,16 @@
  * Big kingdoms split in civil war; small ones fall. A dragon may come down from the
  * mountains. When the last era ends, the age ends, and a new land rises.
  *
+ * Each kingdom has a ruling house and a ruler; reigns end, heirs take the crown, and now
+ * and then a house dies out (sometimes into a war of succession). Caravans walk the roads
+ * between friendly towns and ships sail between ports; trade feeds growth, and the busy
+ * roads wear wider. Wonders take decades to raise. The land changes under the people:
+ * woods near towns are cleared for fields, volcanoes wake, rivers flood. What happens is
+ * kept as history, year by year, for the ribbon along the bottom of the map.
+ *
+ * The hex grid is the sim's alone: the painter draws the land, borders, roads, and rivers
+ * as smooth shapes over it.
+ *
  * Time: `year` advances `speed` years per second.
  */
 import { forkRng, type Rng } from '../../rng';
@@ -32,7 +42,18 @@ export type Tile = Cell & {
   town: Town | null;
   /** Ownership by reach (recomputed every few years). */
   kingdom: Kingdom | null;
+  /** Caravans that have passed (roads wear wider with use). */
+  traffic: number;
+  /** A wood cleared for fields. */
+  cleared: boolean;
+  /** A volcano that has woken: the year it erupted. */
+  erupted: number;
+  /** A river's next tile downstream, and how many streams have joined it here. */
+  down: Tile | null;
+  flow: number;
 };
+
+export type Ruler = { name: string; title: string; n: number; since: number };
 
 export type Kingdom = {
   id: number;
@@ -52,6 +73,12 @@ export type Kingdom = {
   wars: Map<number, number>;
   tension: Map<number, number>;
   unrest: number;
+  /** The ruling house, the one on the throne, and when the reign ends. */
+  house: string;
+  ruler: Ruler;
+  reignEnds: number;
+  /** How many rulers have had each name (for regnal numbers). */
+  names: Map<string, number>;
 };
 
 export type Tier = 0 | 1 | 2 | 3 | 4;
@@ -67,7 +94,12 @@ export type Town = {
   founded: number;
   walls: boolean;
   wonder: string | null;
+  /** The year it will stand (negative once it does), when work began, and which design. */
   wonderAt: number;
+  wonderStart: number;
+  wonderKind: number;
+  /** Trade lately (caravans and ships in): it feeds growth. */
+  trade: number;
   plague: number;
   burning: number;
   ruined: boolean;
@@ -79,7 +111,7 @@ export type Town = {
 
 export type Walker = {
   id: number;
-  kind: 'settlers' | 'army' | 'ship';
+  kind: 'settlers' | 'army' | 'ship' | 'caravan';
   owner: Kingdom;
   path: Tile[];
   /** Position along the path, in tiles. */
@@ -94,14 +126,38 @@ export type Walker = {
   enemy: Walker | null;
 };
 
-export type Mark = { kind: 'battle' | 'fire' | 'plague' | 'found' | 'razed' | 'wonder' | 'dragonfire' | 'schism'; x: number; y: number; t0: number; dur: number; color: string; seed: number };
+export type Mark = {
+  kind: 'battle' | 'fire' | 'plague' | 'found' | 'razed' | 'wonder' | 'dragonfire' | 'schism' | 'volcano' | 'flood';
+  x: number;
+  y: number;
+  t0: number;
+  dur: number;
+  color: string;
+  seed: number;
+  /** A flood's reach: the river tiles under water. */
+  pts?: [number, number][];
+};
 export type Label = { text: string; x: number; y: number; color: string; t0: number; dur: number };
+/** A line of history, for the ribbon: when, what kind, whose color. */
+export type Moment = { year: number; kind: string; color: string; text: string };
 
 export type AgesOptions = { speed: number; kingdoms: number; wars: number; disasters: number; dragons: number };
 
 export const ERAS = ['THE HEARTH YEARS', 'THE BRONZE DAWN', 'THE IRON CENTURIES', 'THE HIGH CROWNS', 'THE YEARS OF SAIL AND POWDER', 'THE LAMP AGE'];
-const ERA_YEARS = 210;
-const WONDERS = ['THE GREAT LIGHTHOUSE', 'THE SKY CATHEDRAL', 'THE HANGING GARDENS', 'THE COLOSSUS', 'THE LIBRARY OF ALL THINGS', 'THE STAIR OF KINGS', 'THE WHITE OBSERVATORY'];
+export const ERA_YEARS = 210;
+/** The years an age runs before it ends (if nothing ends it sooner). */
+export const AGE_YEARS = ERAS.length * ERA_YEARS + 60;
+/** Wonders, each with its own shape (the painter draws them by index). */
+export const WONDERS = ['THE GREAT LIGHTHOUSE', 'THE SKY CATHEDRAL', 'THE HANGING GARDENS', 'THE COLOSSUS', 'THE LIBRARY OF ALL THINGS', 'THE STAIR OF KINGS', 'THE WHITE OBSERVATORY'];
+
+const HOUSES = ['VALLOR', 'DARROW', 'ASHFORD', 'MERRIN', 'KESTREL', 'THORNE', 'ALDER', 'HALE', 'CRANE', 'VANE', 'MORROW', 'STRAND', 'IVERS', 'GALE', 'RAVENSCAR', 'ORME'];
+/** Names, and whether they take the crown as a king (0) or a queen (1). */
+const NAMES: [string, 0 | 1][] = [
+  ['ALDRIC', 0], ['MAEVE', 1], ['OSWIN', 0], ['BRANNA', 1], ['EDRIC', 0], ['ISOLDE', 1], ['CORWIN', 0], ['ELSPETH', 1], ['HAKON', 0], ['SIGRID', 1],
+  ['ROWAN', 0], ['TAMSIN', 1], ['ULRIC', 0], ['YSOLDE', 1], ['BERIC', 0], ['GWEN', 1], ['LEOFRIC', 0], ['AVERIL', 1], ['TOMAS', 0], ['ELLA', 1],
+];
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+export const regnal = (r: Ruler) => `${r.title} ${r.name}${r.n > 1 ? ` ${ROMAN[Math.min(12, r.n)]}` : ''}`;
 
 export type AgesWorld = {
   t: number;
@@ -125,6 +181,10 @@ export type AgesWorld = {
   version: number;
   /** Bumped when the land itself changes (a new age). */
   landVersion: number;
+  /** Bumped when woods are cleared or a volcano wakes (the painter redraws its woods and peaks). */
+  landEdits: number;
+  /** This age's history, oldest first. */
+  history: Moment[];
   ending: number;
   unified: Kingdom | null;
   /** The land's elevation and moisture at any point (the tiles sample it at their centers). */
@@ -168,6 +228,8 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
     chronicle: [],
     version: 0,
     landVersion: 0,
+    landEdits: 0,
+    history: [],
     ending: -1,
     unified: null,
     elevAt: (x, y) => land(x, y),
@@ -184,7 +246,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       world.H = h;
     },
     counts() {
-      return { year: Math.floor(world.year), era: world.era, kingdoms: world.kingdoms.filter((k) => !k.fallen && !k.horde).length, towns: world.towns.filter((t) => !t.ruined).length, armies: world.walkers.filter((w) => w.kind === 'army').length, ships: world.walkers.filter((w) => w.kind === 'ship').length };
+      return { year: Math.floor(world.year), era: world.era, kingdoms: world.kingdoms.filter((k) => !k.fallen && !k.horde).length, towns: world.towns.filter((t) => !t.ruined).length, armies: world.walkers.filter((w) => w.kind === 'army').length, ships: world.walkers.filter((w) => w.kind === 'ship').length, caravans: world.walkers.filter((w) => w.kind === 'caravan').length };
     },
   };
 
@@ -201,8 +263,17 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
     if (world.chronicle.length > 6) world.chronicle.shift();
   };
   const emit = (type: string, x: number, y: number, weight: number, extra: Record<string, unknown> = {}) => bus.emit({ type, x, y, weight, ...extra });
-  const mark = (kind: Mark['kind'], x: number, y: number, dur: number, color: string) => world.marks.push({ kind, x, y, t0: world.t, dur, color, seed: Math.floor(r() * 1e6) });
+  const mark = (kind: Mark['kind'], x: number, y: number, dur: number, color: string) => {
+    const m: Mark = { kind, x, y, t0: world.t, dur, color, seed: Math.floor(r() * 1e6) };
+    world.marks.push(m);
+    return m;
+  };
   const T = (s: string) => titled(s);
+  /** Keep it in the age's history (the ribbon). */
+  const remember = (kind: string, color: string, text: string) => {
+    world.history.push({ year: world.year, kind, color, text });
+    if (world.history.length > 400) world.history.shift();
+  };
 
   // ---- the land ------------------------------------------------------------------------------
 
@@ -224,7 +295,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       const { elev, moist } = land(x, y);
       const terrain: Terrain = elev < -0.18 ? 'deep' : elev < 0 ? 'sea' : elev < 0.05 ? 'coast' : elev > 0.55 ? 'mountain' : elev > 0.36 ? 'hill' : moist > 0.58 ? 'forest' : 'plain';
       const fert = terrain === 'plain' ? 0.8 + moist * 0.2 : terrain === 'coast' ? 0.6 : terrain === 'forest' ? 0.45 : terrain === 'hill' ? 0.35 : 0;
-      return { terrain, elev, moist, fert, river: false, road: false, town: null, kingdom: null } as Partial<Cell>;
+      return { terrain, elev, moist, fert, river: false, road: false, town: null, kingdom: null, traffic: 0, cleared: false, erupted: -1, down: null, flow: 0 } as Partial<Cell>;
     });
     const tiles: Tile[] = [];
     grid.forEachIn({ left: -size, right: world.W + size, top: -size, bottom: world.H + size }, (c) => tiles.push(c as Tile));
@@ -234,12 +305,20 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       let cur: Tile | undefined = highs[Math.floor(r() * highs.length)];
       for (let n = 0; cur && n < 60; n++) {
         if (cur.terrain === 'sea' || cur.terrain === 'deep') break;
+        const joined = cur.river;
         cur.river = true;
+        cur.flow++;
         if (cur.terrain === 'plain' || cur.terrain === 'forest' || cur.terrain === 'coast') cur.fert = Math.min(1, cur.fert + 0.25);
         const next: Tile = (grid.neighbors(cur) as Tile[]).reduce((a, b) => (b.elev < a.elev ? b : a));
         if (next.elev >= cur.elev) {
           // A lake: let it spill through the lowest edge anyway, but not forever.
           cur.elev -= 0.02;
+          break;
+        }
+        cur.down = next;
+        // Joined an existing river: the rest of the way is already carved, but carries more.
+        if (joined) {
+          for (let d: Tile | null = next, k = 0; d && k < 60; d = d.down, k++) d.flow++;
           break;
         }
         cur = next;
@@ -297,15 +376,62 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
     for (let i = 0; i < 6 && used.has(f.color); i++) f = makeFaction(PEOPLES[Math.floor(r() * PEOPLES.length)], r);
     const place = placeName(r);
     const name = horde ? f.name : `${KINGDOM_TITLES[Math.floor(r() * KINGDOM_TITLES.length)]} ${place}`;
-    const k: Kingdom = { id: ids++, name, short: horde ? f.name.replace(/^THE /, '') : place, color: f.color, dark: f.dark, faction: f, towns: [], capital: null, wealth: 0, founded: world.year, fallen: false, horde, wars: new Map(), tension: new Map(), unrest: 0 };
+    const k: Kingdom = {
+      id: ids++, name, short: horde ? f.name.replace(/^THE /, '') : place, color: f.color, dark: f.dark, faction: f, towns: [], capital: null, wealth: 0, founded: world.year, fallen: false, horde, wars: new Map(), tension: new Map(), unrest: 0,
+      house: HOUSES[Math.floor(r() * HOUSES.length)], ruler: { name: '', title: '', n: 1, since: world.year }, reignEnds: 0, names: new Map(),
+    };
+    crown(k);
     world.kingdoms.push(k);
     void at;
     return k;
   }
 
+  /** A new ruler for a kingdom, of its house: a name, a title, a regnal number, a reign's length. */
+  function crown(k: Kingdom) {
+    const [name, queen] = NAMES[Math.floor(r() * NAMES.length)];
+    const p = k.faction.people;
+    const title = p === 'horde' ? 'KHAN' : p === 'hollow' ? (queen ? 'THE PALE QUEEN' : 'THE PALE KING') : p === 'fey' ? (queen ? 'THE LADY' : 'THE LORD') : queen ? 'QUEEN' : 'KING';
+    const n = (k.names.get(name) ?? 0) + 1;
+    k.names.set(name, n);
+    k.ruler = { name, title, n, since: world.year };
+    k.reignEnds = world.year + 14 + r() * 42;
+  }
+
+  /** Reigns end: an heir takes the crown, or the house dies out (sometimes into a war). */
+  function successions() {
+    const live = world.kingdoms.filter((k) => !k.fallen && !k.horde && k.towns.length);
+    const top = [...live].sort((a, b) => b.towns.length - a.towns.length)[0];
+    for (const k of live) {
+      if (world.year < k.reignEnds) continue;
+      const was = regnal(k.ruler);
+      const c = k.capital?.tile;
+      if (r() < 0.06) {
+        // The line ends. A new house takes the throne; a big realm may split over it.
+        const old = k.house;
+        let house = HOUSES[Math.floor(r() * HOUSES.length)];
+        if (house === old) house = HOUSES[(HOUSES.indexOf(house) + 5) % HOUSES.length];
+        k.house = house;
+        k.names = new Map();
+        crown(k);
+        say(`THE HOUSE OF ${old} ENDS`, c?.x ?? world.W / 2, (c?.y ?? world.H / 2) - 30, k.color, 'medium');
+        emit('dynastyends', c?.x ?? world.W / 2, c?.y ?? world.H / 2, 0.55, { color: k.color });
+        chronicle(`${T(was)} died without an heir. The house of ${T(old)} ended; ${T(regnal(k.ruler))} of the house of ${T(house)} took the crown of ${T(k.short)}.`);
+        remember('dynastyends', k.color, `The house of ${T(old)} ends`);
+        if (k.towns.length >= 6 && r() < 0.45) schism(k, `A WAR OF SUCCESSION IN ${k.short}`);
+        continue;
+      }
+      crown(k);
+      // Only the great realms' successions make the chronicle; every crown passing would drown it.
+      if (k === top) {
+        chronicle(`${T(was)} of ${T(k.short)} died. ${T(regnal(k.ruler))} took the crown.`);
+        emit('succession', c?.x ?? world.W / 2, c?.y ?? world.H / 2, 0.2, { color: k.color });
+      }
+    }
+  }
+
   function found(k: Kingdom, tile: Tile, name = placeName(r)): Town {
     const town: Town = {
-      id: ids++, name, tile, owner: k, pop: 12, tier: 0, founded: world.year, walls: false, wonder: null, wonderAt: 0, plague: 0, burning: 0, ruined: false, besieged: false,
+      id: ids++, name, tile, owner: k, pop: 12, tier: 0, founded: world.year, walls: false, wonder: null, wonderAt: 0, wonderStart: 0, wonderKind: 0, trade: 0, plague: 0, burning: 0, ruined: false, besieged: false,
       houses: Array.from({ length: 14 }, (_, i) => {
         const a = r() * Math.PI * 2;
         const d = i === 0 ? 0 : (0.25 + 0.75 * Math.sqrt(r())) * world.grid.size * (i < 4 ? 0.7 : i < 8 ? 1.1 : 1.5);
@@ -451,9 +577,18 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
         continue;
       }
       const tile = w.path[Math.min(w.path.length - 1, Math.floor(w.at))];
-      const speed = (w.kind === 'ship' ? 1.6 : w.kind === 'settlers' ? 0.55 : 0.7) * (tile.road ? 1.6 : tile.terrain === 'forest' || tile.terrain === 'hill' ? 0.6 : 1);
+      // Ships are faster each era (oars, then sail, then tall ships).
+      const base = w.kind === 'ship' ? 1.2 + world.era * 0.15 : w.kind === 'settlers' ? 0.55 : w.kind === 'caravan' ? 0.6 : 0.7;
+      const speed = base * (tile.road ? 1.6 : tile.terrain === 'forest' || tile.terrain === 'hill' ? 0.6 : 1);
       if (w.state === 'march' || w.state === 'sail' || w.state === 'home') {
+        const was = Math.floor(w.at);
         w.at = Math.min(w.path.length - 1, w.at + speed * dy);
+        // Caravans wear the road they walk.
+        if (w.kind === 'caravan' && Math.floor(w.at) !== was) {
+          const t = w.path[Math.floor(w.at)];
+          if (t.road && Math.floor(t.traffic + 1) % 6 === 0) world.version++;
+          t.traffic++;
+        }
         walkerPos(w);
         if (w.at >= w.path.length - 1) arrive(w, i);
       } else if (w.state === 'siege') siege(w, i, dy);
@@ -495,7 +630,15 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
     } else if (w.kind === 'ship') {
       world.walkers.splice(i, 1);
       w.owner.wealth += 20;
+      if (w.target && !w.target.ruined) w.target.trade += 1.5;
       emit('trade', end.x, end.y, 0.15);
+    } else if (w.kind === 'caravan') {
+      world.walkers.splice(i, 1);
+      w.owner.wealth += 8;
+      if (w.target && !w.target.ruined) {
+        w.target.trade += 1;
+        w.target.owner.wealth += 4;
+      }
     } else if (w.kind === 'army') {
       if (w.state === 'home' || !w.target || w.target.ruined || w.target.owner === w.owner) {
         world.walkers.splice(i, 1);
@@ -594,6 +737,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
     say(`${town.name} IS RAZED`, town.tile.x, town.tile.y - 20, '#fca5a5', 'high');
     emit('razed', town.tile.x, town.tile.y, 0.7);
     chronicle(`${T(by.name)} burned ${T(town.name)} to the ground.`);
+    if (town.tier >= 2) remember('razed', '#ef4444', `${T(town.name)} razed`);
     const old = town.owner;
     if (old.capital === town) old.capital = old.towns.filter((t) => !t.ruined).sort((a, b) => b.pop - a.pop)[0] ?? null;
     territory();
@@ -612,6 +756,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
     say(`${k.name} IS NO MORE`, c?.tile.x ?? world.W / 2, (c?.tile.y ?? world.H / 2) - 30, '#e7e5e4', 'high');
     emit('fall', c?.tile.x ?? world.W / 2, c?.tile.y ?? world.H / 2, 0.7);
     chronicle(`${T(k.name)} fell, after ${Math.floor(world.year - k.founded)} years.`);
+    remember('fall', '#e7e5e4', `${T(k.name)} falls`);
   }
 
   // ---- diplomacy ------------------------------------------------------------------------------
@@ -650,6 +795,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
           say(`WAR · ${a.short} AND ${b.short}`, c?.x ?? world.W / 2, (c?.y ?? world.H / 2) - 30, '#fca5a5', 'high');
           emit('war', c?.x ?? world.W / 2, c?.y ?? world.H / 2, 0.6);
           chronicle(`War between ${T(a.name)} and ${T(b.name)}.`);
+          remember('war', '#ef4444', `War: ${T(a.short)} and ${T(b.short)}`);
         }
       } else if (world.year - at > 35 + r() * 50) {
         a.wars.delete(b.id);
@@ -686,10 +832,13 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
         if (town.ruined) continue;
         let food = town.tile.fert * 2;
         for (const n of world.grid.neighbors(town.tile) as Tile[]) food += n.fert + (n.terrain === 'sea' || n.terrain === 'coast' ? 0.25 : 0);
-        const cap = food * (60 + world.era * 45) * (town === k.capital ? 1.6 : 1) * (town.plague > 0 ? 0.5 : 1);
+        // Trade feeds a town past what its own fields can: rich towns visibly outgrow the rest.
+        const rich = 1 + Math.min(0.7, town.trade * 0.06);
+        const cap = food * (60 + world.era * 45) * (town === k.capital ? 1.6 : 1) * (town.plague > 0 ? 0.5 : 1) * rich;
         town.pop += town.pop * 0.035 * (1 - town.pop / cap) * dy * (town.besieged ? 0 : 1);
         town.pop = Math.max(4, town.pop);
         town.plague = Math.max(0, town.plague - dy * 0.05);
+        town.trade = Math.max(0, town.trade - dy * 0.02 * town.trade);
         k.wealth += town.pop * 0.002 * dy;
         const tier = (town === k.capital && town.pop > 260 ? 4 : town.pop > 420 ? 3 : town.pop > 150 ? 2 : town.pop > 45 ? 1 : 0) as Tier;
         if (tier > town.tier) {
@@ -702,25 +851,38 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
           territory();
         }
         if (town.tier < tier) town.tier = tier;
-        // A capital at its height builds a wonder.
-        if (town === k.capital && town.tier === 4 && world.era >= 2 && !town.wonder && town.pop > 500 && r() < dy * 0.0025) {
-          town.wonder = WONDERS[Math.floor(r() * WONDERS.length)];
-          town.wonderAt = world.year + 25 + r() * 25;
+        // A capital at its height (or a great trading city) begins a wonder; it takes decades.
+        const wonders = world.towns.filter((o) => o.wonder && !o.ruined).length;
+        if ((town === k.capital || town.trade > 4) && town.tier >= 3 && world.era >= 2 && !town.wonder && town.pop > 380 && wonders < 4 && r() < dy * 0.004) {
+          // A design no one else in this age has built.
+          const used = new Set(world.towns.filter((o) => o.wonder).map((o) => o.wonderKind));
+          const free = WONDERS.map((_, i) => i).filter((i) => !used.has(i));
+          if (free.length) {
+            town.wonderKind = free[Math.floor(r() * free.length)];
+            town.wonder = WONDERS[town.wonderKind];
+            town.wonderStart = world.year;
+            town.wonderAt = world.year + 40 + r() * 35;
+            say(`WORK BEGINS ON ${town.wonder}`, town.tile.x, town.tile.y - 30, '#fde68a', 'medium');
+            emit('wonderbegun', town.tile.x, town.tile.y, 0.35);
+            chronicle(`In ${T(town.name)}, work began on ${T(town.wonder)}.`);
+          }
         }
         if (town.wonder && town.wonderAt > 0 && world.year >= town.wonderAt) {
           town.wonderAt = -1;
           mark('wonder', town.tile.x, town.tile.y, 8, '#fde68a');
           say(`${town.wonder} STANDS IN ${town.name}`, town.tile.x, town.tile.y - 34, '#fde68a', 'high');
           emit('wonder', town.tile.x, town.tile.y, 0.75);
-          chronicle(`${T(town.wonder)} was raised in ${T(town.name)}.`);
+          chronicle(`${T(town.wonder)} was raised in ${T(town.name)}, after ${Math.round(world.year - town.wonderStart)} years.`);
+          remember('wonder', '#fde68a', `${T(town.wonder)} stands in ${T(town.name)}`);
         }
       }
       // Settlers go out from the best-fed town.
       const settling = world.walkers.some((w) => w.kind === 'settlers' && w.owner === k);
       const home = k.towns.filter((t) => !t.ruined && t.pop > 40).sort((a, b) => b.pop - a.pop)[0];
       if (!settling && home && r() < dy * 0.14) sendSettlers(k, home);
-      // Trade at sea, once there are ships.
-      if (world.era >= 3 && r() < dy * 0.05 && world.walkers.filter((w) => w.kind === 'ship').length < 10) sendShip(k);
+      // Trade: caravans on the roads, and ships once there are ports (oared at first).
+      if (r() < dy * 0.07 && world.walkers.filter((w) => w.kind === 'caravan').length < 16) sendCaravan(k);
+      if (world.era >= 1 && r() < dy * (0.025 + world.era * 0.01) && world.walkers.filter((w) => w.kind === 'ship').length < 10) sendShip(k);
     }
   }
 
@@ -746,6 +908,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       say(`PLAGUE IN ${start.name}`, start.tile.x, start.tile.y - 22, '#bef264', 'high');
       emit('plague', start.tile.x, start.tile.y, 0.7);
       chronicle(`Plague came to ${T(start.name)} and spread along the roads.`);
+      remember('plague', '#84cc16', `Plague in ${T(start.name)}`);
     } else if (roll < 0.5) {
       const t = live[Math.floor(r() * live.length)];
       if (!t || t.tier < 1) return;
@@ -767,25 +930,15 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       say(`A HORDE · ${k.name}`, from.x, from.y - 20, k.color, 'high');
       emit('horde', from.x, from.y, 0.6);
       chronicle(`${T(k.name)} came out of the wild.`);
-    } else if (roll < 0.86) {
+      remember('horde', k.color, `${T(k.name)} comes out of the wild`);
+    } else if (roll < 0.8) {
       // Civil war in a kingdom grown too big.
       const big = world.kingdoms.filter((k) => !k.fallen && !k.horde && k.towns.length >= 8).sort((a, b) => b.unrest - a.unrest)[0];
-      if (!big || !big.capital) return;
-      const far = [...big.towns].filter((t) => !t.ruined && t !== big.capital).sort((a, b) => hexDist(b.tile, big.capital!.tile) - hexDist(a.tile, big.capital!.tile));
-      const rebels = far.slice(0, Math.floor(far.length / 2));
-      if (rebels.length < 2) return;
-      const k = newKingdom(rebels[0].tile, big.faction.people);
-      k.name = `THE FREE ${rebels[0].name}`;
-      k.short = rebels[0].name;
-      for (const t of rebels) transfer(t, k);
-      k.capital = rebels[0];
-      big.unrest = 0;
-      k.wars.set(big.id, world.year);
-      big.wars.set(k.id, world.year);
-      mark('schism', rebels[0].tile.x, rebels[0].tile.y, 8, k.color);
-      say(`CIVIL WAR · ${k.short} RISES AGAINST ${big.short}`, rebels[0].tile.x, rebels[0].tile.y - 26, k.color, 'high');
-      emit('schism', rebels[0].tile.x, rebels[0].tile.y, 0.7);
-      chronicle(`${T(rebels[0].name)} and ${rebels.length - 1} other towns rose against ${T(big.name)}.`);
+      if (big) schism(big);
+    } else if (roll < 0.9) {
+      // The land itself: a volcano wakes, or a river floods.
+      if (r() < 0.45) volcano();
+      else flood();
     } else if (r() < 0.6 * opts.dragons) {
       // A dragon from the mountains.
       const peaks = world.tiles.filter((t) => t.terrain === 'mountain' && inView(t));
@@ -796,6 +949,112 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       say('A DRAGON WAKES IN THE MOUNTAINS', lair.x, lair.y - 20, '#fb923c', 'high');
       emit('dragon', lair.x, lair.y, 0.8);
     }
+  }
+
+  /** A realm splits: its far towns rise under a rival and go to war with the crown. */
+  function schism(big: Kingdom, cry?: string) {
+    if (!big.capital) return;
+    const far = [...big.towns].filter((t) => !t.ruined && t !== big.capital).sort((a, b) => hexDist(b.tile, big.capital!.tile) - hexDist(a.tile, big.capital!.tile));
+    const rebels = far.slice(0, Math.floor(far.length / 2));
+    if (rebels.length < 2) return;
+    const k = newKingdom(rebels[0].tile, big.faction.people);
+    k.name = `THE FREE ${rebels[0].name}`;
+    k.short = rebels[0].name;
+    for (const t of rebels) transfer(t, k);
+    k.capital = rebels[0];
+    big.unrest = 0;
+    k.wars.set(big.id, world.year);
+    big.wars.set(k.id, world.year);
+    mark('schism', rebels[0].tile.x, rebels[0].tile.y, 8, k.color);
+    say(cry ?? `CIVIL WAR · ${k.short} RISES AGAINST ${big.short}`, rebels[0].tile.x, rebels[0].tile.y - 26, k.color, 'high');
+    emit('schism', rebels[0].tile.x, rebels[0].tile.y, 0.7);
+    chronicle(`${T(rebels[0].name)} and ${rebels.length - 1} other towns rose against ${T(big.name)}.`);
+    remember('schism', k.color, `${T(rebels[0].name)} rises against ${T(big.short)}`);
+  }
+
+  /** A mountain wakes: fire and ash on the towns below; the ash makes good fields after. */
+  function volcano() {
+    const peaks = world.tiles.filter((t) => t.terrain === 'mountain' && inView(t) && t.erupted < 0);
+    const peak = peaks[Math.floor(r() * peaks.length)];
+    if (!peak) return;
+    peak.erupted = world.year;
+    world.landEdits++;
+    mark('volcano', peak.x, peak.y, 26, '#f97316');
+    for (const t of world.towns) {
+      if (t.ruined) continue;
+      const d = hexDist(t.tile, peak);
+      if (d > 4) continue;
+      t.pop *= 0.55 + d * 0.08;
+      t.burning = world.year + 8;
+    }
+    for (const t of world.tiles) if (onLand(t) && hexDist(t, peak) <= 3 && t.terrain !== 'mountain') t.fert = Math.min(1, t.fert + 0.15);
+    const name = placeName(r);
+    say(`MOUNT ${name} WAKES`, peak.x, peak.y - 26, '#fb923c', 'high');
+    emit('volcano', peak.x, peak.y, 0.85);
+    chronicle(`Mount ${T(name)} woke, and ash fell on the towns below it.`);
+    remember('volcano', '#f97316', `Mount ${T(name)} wakes`);
+  }
+
+  /** A river breaks its banks along a stretch: the towns on it lose people and harvests. */
+  function flood() {
+    const rivers = world.tiles.filter((t) => t.river && t.flow >= 2 && inView(t));
+    const start = rivers[Math.floor(r() * rivers.length)];
+    if (!start) return;
+    const pts: [number, number][] = [];
+    let hit = 0;
+    for (let t: Tile | null = start, k = 0; t && k < 8; t = t.down, k++) {
+      pts.push([t.x, t.y]);
+      for (const n of [t, ...(world.grid.neighbors(t) as Tile[])]) {
+        if (n.town && !n.town.ruined) {
+          n.town.pop *= 0.8;
+          hit++;
+        }
+      }
+    }
+    if (pts.length < 3) return;
+    const m = mark('flood', start.x, start.y, 14, '#60a5fa');
+    m.pts = pts;
+    say(hit ? 'THE RIVER FLOODS' : 'THE RIVER RUNS HIGH', start.x, start.y - 22, '#93c5fd', hit ? 'high' : 'medium');
+    emit('flood', start.x, start.y, hit ? 0.6 : 0.35);
+    if (hit) {
+      chronicle(`The river flooded ${hit} town${hit > 1 ? 's' : ''} along its banks.`);
+      remember('flood', '#60a5fa', 'The river floods');
+    }
+  }
+
+  /** The land under the people: woods around the big towns are cleared for fields. */
+  function clearing() {
+    let changed = false;
+    for (const town of world.towns) {
+      if (town.ruined || town.tier < 2) continue;
+      // The reach of the axe grows with the town and the age.
+      const reach = town.tier >= 3 || world.era >= 3 ? 2 : 1;
+      for (const t of world.grid.neighbors(town.tile) as Tile[]) {
+        const ring = reach > 1 ? [t, ...(world.grid.neighbors(t) as Tile[])] : [t];
+        for (const n of ring) {
+          if (n.terrain !== 'forest' || n.cleared || r() > 0.35) continue;
+          n.cleared = true;
+          n.terrain = 'plain';
+          n.fert = Math.max(n.fert, 0.75);
+          changed = true;
+        }
+      }
+    }
+    if (changed) world.landEdits++;
+  }
+
+  /** Caravans between friendly towns, along the roads. */
+  function sendCaravan(k: Kingdom) {
+    const from = k.towns.filter((t) => !t.ruined && t.tier >= 1 && t.tile.road);
+    const a = from[Math.floor(r() * from.length)];
+    if (!a) return;
+    const to = world.towns.filter((t) => !t.ruined && t !== a && t.tile.road && !atWar(k, t.owner) && hexDist(t.tile, a.tile) <= 12 && hexDist(t.tile, a.tile) >= 3);
+    const b = to[Math.floor(r() * to.length)];
+    if (!b) return;
+    const p = path(a.tile, b.tile);
+    // Only along a road the whole way (mostly): a caravan does not cut across the wild.
+    if (!p || p.filter((t) => t.road).length < p.length * 0.7) return;
+    world.walkers.push({ id: ids++, kind: 'caravan', owner: k, path: p, at: 0, x: a.tile.x, y: a.tile.y, size: 1, target: b, state: 'march', since: world.year, enemy: null });
   }
 
   function dragonStep(dt: number) {
@@ -818,6 +1077,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
           say(`THE DRAGON BURNS ${town.name}`, town.tile.x, town.tile.y - 24, '#fb923c', 'high');
           emit('dragonfire', town.tile.x, town.tile.y, 0.85);
           chronicle(`A dragon burned ${T(town.name)}.`);
+          remember('dragon', '#fb923c', `A dragon burns ${T(town.name)}`);
         }
       } else {
         d.x += (dx / len) * speed;
@@ -852,6 +1112,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       say(ERAS[era], c?.x ?? world.W / 2, (c?.y ?? world.H / 2) - 40, '#fde68a', 'high');
       emit('era', world.W / 2, world.H / 2, 0.6);
       chronicle(`${T(ERAS[era])} began.`);
+      remember('era', '#fde68a', T(ERAS[era]));
       for (const t of world.towns) if (!t.ruined && t.tier >= 2 && era >= 1) t.walls = true;
     }
     // One crown over (nearly) every town: unification.
@@ -862,7 +1123,8 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       const c = top.capital?.tile;
       say(`${top.name} RULES ALL THE LAND`, c?.x ?? world.W / 2, (c?.y ?? world.H / 2) - 40, '#fde68a', 'high');
       emit('unified', c?.x ?? world.W / 2, c?.y ?? world.H / 2, 0.9);
-      chronicle(`${T(top.name)} united the land.`);
+      chronicle(`${T(top.name)} united the land, under ${T(regnal(top.ruler))} of the house of ${T(top.house)}.`);
+      remember('unified', '#fde68a', `${T(top.short)} rules all the land`);
     }
     if (world.ending < 0 && (world.year > ERAS.length * ERA_YEARS + 60 || (world.unified && world.year > 0 && r() < 0.0004))) {
       world.ending = world.t;
@@ -886,7 +1148,9 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
     world.dragon = null;
     world.unified = null;
     world.ending = -1;
+    world.history = [];
     nextTrouble = 30;
+    nextClearing = 40;
     nextDiplomacy = 0;
     nextTerritory = 0;
     makeLand();
@@ -898,6 +1162,8 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
 
   // ---- the frame ------------------------------------------------------------------------------
 
+  let nextClearing = 40;
+
   function step(dt: number) {
     world.t += dt;
     const dy = dt * opts.speed * 2.5;
@@ -907,6 +1173,11 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       walkers(dy);
       diplomacy(dy);
       troubles();
+      successions();
+      if (world.year >= nextClearing) {
+        nextClearing = world.year + 15;
+        clearing();
+      }
       if (world.year >= nextTerritory) {
         nextTerritory = world.year + 3;
         territory();
@@ -928,9 +1199,12 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
     walkers(0.5);
   }
   territory();
-  // What the head start said is history already: start with a clear map.
+  // What the head start said is history already: start with a clear map, and reigns that
+  // began then end later (not all at once in the first frames).
   world.labels = [];
   world.marks = [];
+  for (const k of world.kingdoms) k.reignEnds = world.year + 8 + r() * 40;
+  nextTrouble = world.year + 15 + r() * 25;
   const k0 = world.kingdoms[0];
   chronicle(`${world.kingdoms.length} peoples lit their first hearths${k0 ? `, ${T(k0.name)} among them` : ''}.`);
   return world;

@@ -456,15 +456,30 @@ export function mount(host: SkinHost): SkinInstance {
 
   type Wear = { battle: Battle; seq: number; burnt: number; at: number; c: HTMLCanvasElement };
   let wear: Wear | null = null;
+  let blob: HTMLCanvasElement | null = null;
 
-  /** The field's memory, painted into its own layer: redrawn when it changes, at most twice a second. */
+  /**
+   * The field's memory, painted into its own layer at half size (it is all soft blots):
+   * redrawn when it changes, at most once a second.
+   */
   function wearLayer(b: Battle, t: number): HTMLCanvasElement | null {
     const fresh = !wear || wear.battle !== b;
     if (!fresh && (wear!.seq === b.wearSeq && wear!.burnt === b.fire.burnt.size)) return wear!.c;
-    if (!fresh && t - wear!.at < 0.5) return wear!.c;
+    if (!fresh && t - wear!.at < 1) return wear!.c;
+    if (!blob) {
+      blob = document.createElement('canvas');
+      blob.width = blob.height = 32;
+      const bg = blob.getContext('2d')!;
+      const grad = bg.createRadialGradient(16, 16, 0, 16, 16, 16);
+      grad.addColorStop(0, 'rgba(14,10,6,1)');
+      grad.addColorStop(0.6, 'rgba(14,10,6,0.7)');
+      grad.addColorStop(1, 'rgba(14,10,6,0)');
+      bg.fillStyle = grad;
+      bg.fillRect(0, 0, 32, 32);
+    }
     const gw = b.BW + 400;
     const h = above ? H : world.depth + 30;
-    const c = fresh ? canvas(gw, h) : { c: wear!.c, g: wear!.c.getContext('2d')! };
+    const c = fresh ? canvas(gw, h, 0.5) : { c: wear!.c, g: wear!.c.getContext('2d')! };
     c.g.clearRect(0, 0, gw, h);
     const D = world.depth;
     const y0 = above ? world.groundTop : 0;
@@ -474,13 +489,10 @@ export function mount(host: SkinHost): SkinInstance {
       for (let i = 0; i < cols; i++) {
         const v = b.wear[j * cols + i];
         if (v < 0.15) continue;
-        const x = i * WEAR_CELL + WEAR_CELL / 2;
-        const y = y0 + j * rowH + rowH / 2;
-        const e = above ? 0 : world.elev(x - 200, (j + 0.5) / WEAR_ROWS);
-        c.g.fillStyle = hexA('#120d08', Math.min(0.42, v * 0.07));
-        c.g.beginPath();
-        c.g.ellipse(x + (hash(i, j) - 0.5) * 6, y - e, WEAR_CELL * 0.85, rowH * 0.75, 0, 0, Math.PI * 2);
-        c.g.fill();
+        const x = i * WEAR_CELL + WEAR_CELL / 2 + (hash(i, j) - 0.5) * 6;
+        const y = y0 + j * rowH + rowH / 2 - (above ? 0 : world.elev(x - 200, (j + 0.5) / WEAR_ROWS));
+        c.g.globalAlpha = Math.min(0.45, v * 0.075);
+        c.g.drawImage(blob, x - WEAR_CELL * 1.1, y - rowH, WEAR_CELL * 2.2, rowH * 2);
       }
     }
     const fh = D / FIRE_ROWS;
@@ -489,15 +501,13 @@ export function mount(host: SkinHost): SkinInstance {
       const j = key % 32;
       const x = i * FIRE_CELL + FIRE_CELL / 2;
       const y = y0 + j * fh + fh / 2;
-      c.g.fillStyle = hexA('#080605', 0.55);
-      c.g.beginPath();
-      c.g.ellipse(x + (hash(i, j, 3) - 0.5) * 8, y, FIRE_CELL * 0.62, fh * 0.6, 0, 0, Math.PI * 2);
-      c.g.fill();
-      for (let k = 0; k < 3; k++) {
-        c.g.fillStyle = hexA('#2a2521', 0.6);
-        c.g.fillRect(x + (hash(i, j, k) - 0.5) * FIRE_CELL, y + (hash(j, i, k) - 0.5) * fh, 2, 1);
-      }
+      c.g.globalAlpha = 0.6;
+      c.g.drawImage(blob, x - FIRE_CELL * 0.8 + (hash(i, j, 3) - 0.5) * 8, y - fh * 0.8, FIRE_CELL * 1.6, fh * 1.6);
+      c.g.globalAlpha = 1;
+      c.g.fillStyle = hexA('#2a2521', 0.6);
+      for (let k = 0; k < 3; k++) c.g.fillRect(x + (hash(i, j, k) - 0.5) * FIRE_CELL, y + (hash(j, i, k) - 0.5) * fh, 2, 1);
     }
+    c.g.globalAlpha = 1;
     wear = { battle: b, seq: b.wearSeq, burnt: b.fire.burnt.size, at: t, c: c.c };
     return c.c;
   }
@@ -1404,12 +1414,29 @@ export function mount(host: SkinHost): SkinInstance {
 
   const mixRgbHex = (a: string, c: string, k: number) => rgb(mixRgb(a, c, k));
 
+  /** Soft round glows, one cached sprite per color: far cheaper than a gradient per call. */
+  const glows = new Map<string, HTMLCanvasElement>();
   function glow(x: number, y: number, r: number, color: string, a: number) {
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, hexA(color, a));
-    g.addColorStop(1, hexA(color, 0));
-    ctx.fillStyle = g;
-    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    if (r <= 0 || a <= 0) return;
+    let s = glows.get(color);
+    if (!s) {
+      s = document.createElement('canvas');
+      s.width = s.height = 64;
+      const g = s.getContext('2d')!;
+      const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, hexA(color, 1));
+      grad.addColorStop(1, hexA(color, 0));
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 64, 64);
+      glows.set(color, s);
+    }
+    const prev = ctx.globalAlpha;
+    const smooth = ctx.imageSmoothingEnabled;
+    ctx.globalAlpha = prev * Math.min(1, a);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(s, x - r, y - r, r * 2, r * 2);
+    ctx.imageSmoothingEnabled = smooth;
+    ctx.globalAlpha = prev;
   }
 
   function shotPos(s: Shot, t: number) {
@@ -1737,14 +1764,15 @@ export function mount(host: SkinHost): SkinInstance {
       g.fillStyle = grad;
       g.fillRect(0, 0, 128, 128);
     }
+    // The dark is soft-edged anyway: kept at a quarter of the CSS size, laid over smooth.
     if (!darkness || darkness.W !== W || darkness.H !== H || darkness.dpr !== dpr) {
       const c = document.createElement('canvas');
-      c.width = Math.ceil(W * dpr);
-      c.height = Math.ceil(H * dpr);
+      c.width = Math.ceil(W / 4);
+      c.height = Math.ceil(H / 4);
       darkness = { c, g: c.getContext('2d')!, W, H, dpr };
     }
     const g = darkness.g;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.setTransform(0.25, 0, 0, 0.25, 0, 0);
     g.globalCompositeOperation = 'source-over';
     g.clearRect(0, 0, W, H);
     const shade = g.createLinearGradient(0, 0, 0, H);
@@ -1799,7 +1827,10 @@ export function mount(host: SkinHost): SkinInstance {
     if (!above && backdrop) for (const f of backdrop.fires) hole(f.x - camX * 0.8 - 60, world.groundTop - 50 + f.y, 30, 0.8);
     if (above && map) for (const l of map.layout.lights) hole(sx(l.x), l.y * H, l.r * 2.2, 0.7);
     g.globalAlpha = 1;
+    const smooth = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(darkness.c, 0, 0, W, H);
+    ctx.imageSmoothingEnabled = smooth;
     // The torches' flames, over the dark.
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -1900,7 +1931,7 @@ export function mount(host: SkinHost): SkinInstance {
         ctx.imageSmoothingEnabled = true;
         ctx.drawImage(m.terrain, Math.round(-camX - 200), 0);
         const wl = wearLayer(b, t);
-        if (wl) ctx.drawImage(wl, Math.round(-camX - 200), 0);
+        if (wl) ctx.drawImage(wl, Math.round(-camX - 200), 0, wl.width * 2, wl.height * 2);
         ctx.imageSmoothingEnabled = false;
         marks(b);
         if (b.siege) wallAbove(b.siege, p);
@@ -1942,7 +1973,7 @@ export function mount(host: SkinHost): SkinInstance {
       campfires(bd, t);
       ctx.drawImage(bd.ground, Math.round(-camX - 200), world.groundTop);
       const wl = wearLayer(b, t);
-      if (wl) ctx.drawImage(wl, Math.round(-camX - 200), world.groundTop);
+      if (wl) ctx.drawImage(wl, Math.round(-camX - 200), world.groundTop, wl.width * 2, wl.height * 2);
       woodSide(bd, b);
       ctx.imageSmoothingEnabled = false;
       marks(b);

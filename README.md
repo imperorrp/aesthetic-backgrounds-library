@@ -162,13 +162,21 @@ Two ways to watch: `view: 'side'`, a field under a moody sky with mountains, a k
 
 ### Ages
 
-![Ages: an island continent at year 70, a few villages and roads, and at year 685, walled cities with lights, wonders, and shifting borders](docs/media/worlds/ages.jpg)
+![Ages: an island continent at year 70, its first villages among the woods, and at year 685, stone cities, wonders, and wandering borders](docs/media/worlds/ages.jpg)
 
-A thousand years of a continent, from above, at dusk. A few peoples light their first hearths. Their settlements grow with the food of the land around them, from hamlet to village, town, city, and capital, and send settlers walking out to found new ones, with roads behind them. Each kingdom's land is its towns' reach, washed in its color.
+A thousand years of a continent, from above, at dusk. A few peoples light their first hearths. Their settlements grow with the food of the land around them, from hamlet to village, town, city, and capital, and send settlers walking out to found new ones, with roads behind them. Each kingdom's land is its towns' reach, washed in its color, with a border that wanders the way real ones do. The land is drawn from its own height and wetness: hillshade, shallows, a traced coastline, rivers that meander and widen downstream, woods where it is wet, and peaks on the ridges.
 
-Neighbors grow tense along long borders, and in time there is war: armies march along the roads, meet in the field, and sit down outside walls for years. Towns change hands and kingdoms fall. Eras turn every couple of centuries, from the Hearth Years to the Lamp Age. Walls go up, ships carry trade between ports, and capitals raise wonders. Plague travels the roads. Hordes come out of the wild, and sometimes take a town and settle. Kingdoms grown too big split in civil war, and now and then a dragon wakes in the mountains. When the last era ends, the age ends, and a new land rises.
+Neighbors grow tense along long borders, and in time there is war: armies march along the roads, meet in the field, and sit down outside walls for years. Towns change hands and kingdoms fall. Plague travels the roads. Hordes come out of the wild, and sometimes take a town and settle. Kingdoms grown too big split in civil war, and now and then a dragon wakes in the mountains. When the last era ends, the age ends, and a new land rises.
 
-![Ages up close: walled towns with keeps, a wonder's spire, a siege camp, an army on the march, a ship at sea](docs/media/moments/ages-zoom.jpg)
+The ages show in the towns:
+- **Eras turn every couple of centuries**, from the Hearth Years to the Lamp Age, and the towns are rebuilt in each one: round huts and palisades, then timber, then stone houses under red roofs, church spires, palaces, and star forts with moats. Ships go from oared galleys to cogs to tall ships.
+- **Dynasties:** every kingdom has a ruling house and a ruler, and reigns end. An heir takes the crown, or the house dies out and a new one takes the throne, and a big realm may split over it in a war of succession.
+- **Trade:** caravans walk the roads between friendly towns, and ships sail between ports. Rich towns grow past what their own fields could feed, and the busiest roads wear wider.
+- **Wonders take a lifetime.** A great city begins one, and it rises for decades under scaffolding and a crane: a lighthouse that turns its beam, a cathedral, hanging gardens, a colossus, a library, a stepped stair of kings, an observatory.
+- **The land changes:** woods around the growing towns are cleared for fields, volcanoes wake and bury the towns below in ash, and rivers flood.
+- **A ribbon of history** runs along the bottom of the map: the eras, a mark for every war, plague, wonder, and fallen house, and where the age is now.
+
+![Ages up close: stone towns with keeps and spires, a wonder, curving roads, borders in each realm's color, woods and peaks](docs/media/moments/ages-zoom.jpg)
 
 ```ts
 mount(document.body, { skin: 'ages', options: { speed: 1.5, kingdoms: 6 } });

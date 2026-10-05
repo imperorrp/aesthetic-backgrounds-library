@@ -346,6 +346,11 @@ export const SOUND_PALETTES: Record<string, SoundPalette> = {
       unified: { cue: [{ kind: 'bell', chord: [0, 4, 7, 12, 16], dur: 7 }, { kind: 'choir', note: 0, chord: [0, 4, 7], dur: 6, vowel: 'ah' }], gain: 0.12, every: 20 },
       ageends: { cue: { kind: 'choir', note: -12, chord: [0, 7], dur: 7, vowel: 'oo' }, gain: 0.1, every: 20 },
       newage: { cue: { kind: 'bell', note: 0, dur: 4 }, gain: 0.06, every: 10 },
+      succession: { cue: { kind: 'bell', note: 7, chord: [0, 5], dur: 2.5 }, gain: 0.03, every: 8 },
+      dynastyends: { cue: { kind: 'choir', note: -5, chord: [0, 3, 7], dur: 4, vowel: 'oo' }, gain: 0.07, every: 8 },
+      wonderbegun: { cue: [{ kind: 'thump', pitch: 90, dur: 0.3 }, { kind: 'bell', note: 12, dur: 2 }], gain: 0.04, every: 8 },
+      volcano: { cue: [{ kind: 'boom', dur: 5, tone: 220, sub: 1 }, { kind: 'crackle', dur: 4, rate: 18, tone: 600 }], gain: 0.3, every: 15 },
+      flood: { cue: { kind: 'whoosh', from: 1400, to: 300, dur: 4 }, gain: 0.07, every: 10 },
     },
   },
 

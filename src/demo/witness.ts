@@ -168,6 +168,11 @@ export const SIGHTS: Record<string, Sight[]> = {
     s('fall', 'A kingdom falls', 'rare', 'A kingdom was no more.'),
     s('dragon', 'Dragon', 'rare', 'A dragon woke in the mountains.'),
     s('ageends', 'The age ends', 'rare', 'An age ended, and a new land rose.'),
+    s('succession', 'The crown passes', 'common', 'A ruler died, and an heir took the crown.'),
+    s('wonderbegun', 'Work begins', 'uncommon', 'Work began on a wonder; it would take a lifetime.'),
+    s('dynastyends', 'A house ends', 'uncommon', 'A ruling house died out, and another took the throne.'),
+    s('flood', 'Flood', 'rare', 'A river broke its banks.'),
+    s('volcano', 'A mountain wakes', 'rare', 'A volcano woke, and ash fell on the towns below.'),
     s('unified', 'One crown', 'legendary', 'One crown ruled all the land.'),
   ],
   'war-table': [
