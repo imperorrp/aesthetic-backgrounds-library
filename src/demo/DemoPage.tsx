@@ -51,7 +51,7 @@ import './DemoPage.css';
 const DEBUG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug');
 
 /** Skins that report events and have a sound palette under their own id. */
-const SOUND_SKINS = new Set(['undercity', 'shieldwall', 'ages', 'war-table', 'petri', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
+const SOUND_SKINS = new Set(['undercity', 'shieldwall', 'ages', 'war-table', 'wyrmspire', 'petri', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
 
 /**
  * A world you can pick from a card: a sector map universe, Undercity, a fantasy world (or
@@ -67,6 +67,7 @@ const WORLD_CARDS: WorldCard[] = [
   { key: 'shieldwall-siege', source: 'shieldwall', options: { battles: 'siege' }, name: 'Shieldwall, a siege', tagline: 'Towers and a ram at a walled town; ladders, breaches, the gate, and the defenders holding each gap.', thumb: 'shieldwall-battles-siege' },
   { key: 'ages', source: 'ages', name: 'Ages', tagline: getSkin('ages')?.description, thumb: 'ages' },
   { key: 'war-table', source: 'war-table', name: 'War table', tagline: getSkin('war-table')?.description, thumb: 'war-table' },
+  { key: 'wyrmspire', source: 'wyrmspire', name: 'Wyrmspire', tagline: getSkin('wyrmspire')?.description, thumb: 'wyrmspire' },
 ];
 const INSTRUMENT_CARDS: WorldCard[] = [
   ...instrumentSkins.map((s) => ({ key: s.id, source: s.id, name: s.label ?? s.id, tagline: s.description, thumb: s.id })),

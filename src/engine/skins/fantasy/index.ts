@@ -5,6 +5,9 @@
  *   shieldwall   pitched battles between peoples, side-on or from above, in pixel sprites
  *   ages         a thousand years of a continent from above: kingdoms rise, war, and fall
  *   war-table    one war's campaign on a parchment map: ink orders and painted tokens
+ *   wyrmspire    a valley under a dragon's spire, seen from a watchtower
+ *   deephold     a dwarf hold in cutaway: tunnels, forges, veins, and what sleeps below
+ *   leylines     mage towers on a map of glowing lines: power flows, storms, duels, rifts
  */
 import type { Schema } from '../../core/schema';
 import { lazySkin } from '../lazy';
@@ -77,4 +80,27 @@ export const warTableSkin = lazySkin(
     defaults: { palette: { from: '#7a4b23', theme: 'light' }, intensity: 0.7 },
   },
   () => import('./table'),
+);
+
+export const WYRMSPIRE_SCHEMA = {
+  valley: { type: 'enum', values: ['any', 'alpine', 'fjord', 'canyon', 'fen', 'ashland'], default: 'any', label: 'The land' },
+  wrath: { type: 'number', min: 0, max: 3, default: 1, label: 'How restless the wyrm is' },
+  knights: { type: 'number', min: 0, max: 2, default: 1, label: 'Knights who ride out' },
+  villages: { type: 'number', min: 2, max: 4, step: 1, default: 3, label: 'Villages' },
+  time: { type: 'enum', values: ['cycle', 'dusk', 'night'], default: 'cycle', label: 'Time of day' },
+  labels: { type: 'boolean', default: true, label: 'Call-outs' },
+  hud: { type: 'boolean', default: true, label: 'The valley, the wyrm, the chronicle' },
+} satisfies Schema;
+
+export const wyrmspireSkin = lazySkin(
+  {
+    id: 'wyrmspire',
+    label: 'Wyrmspire',
+    description: 'A valley under a wyrm’s spire, through a watchtower’s spyglass: a different land and breed of wyrm each seed; herds, harvests, caravans, and festivals; a wyrm that basks, hunts, hoards, and raids; a lord who fortifies, pays tribute, or sends heroes up the spire path.',
+    tags: ['fantasy', 'dragon', 'pixel', 'medieval', 'dark', 'calm'],
+    crisp: true,
+    schema: WYRMSPIRE_SCHEMA,
+    defaults: { palette: { from: '#f97316' }, intensity: 0.75 },
+  },
+  () => import('./wyrm'),
 );

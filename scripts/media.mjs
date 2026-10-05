@@ -82,6 +82,17 @@ const IMAGES = [
     ],
   },
   {
+    file: 'worlds/wyrmspire.jpg',
+    cols: 2,
+    tile: [960, 600],
+    shots: [
+      { skin: 'wyrmspire', seed: 'v-alpine', options: { valley: 'alpine' }, t: [12], captions: ['THE ALPINE VALLEY'] },
+      { skin: 'wyrmspire', seed: 'v-ashland', options: { valley: 'ashland' }, seek: 'BURNS', max: 600, after: [1.5], captions: ['A FIRE WYRM IN THE ASHLANDS'] },
+      { skin: 'wyrmspire', seed: 'v-fjord', options: { valley: 'fjord' }, seek: 'BEGINS THE CLIMB', max: 1500, after: [40], captions: ['A HERO ON THE SPIRE PATH'] },
+      { skin: 'wyrmspire', seed: 'v-fen', options: { valley: 'fen', time: 'night' }, t: [60], captions: ['THE FEN BY NIGHT'] },
+    ],
+  },
+  {
     file: 'worlds/petri.jpg',
     cols: 2,
     tile: [960, 600],

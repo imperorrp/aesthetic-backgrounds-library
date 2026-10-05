@@ -16,6 +16,7 @@ export {
   shieldwallSkin,
   agesSkin,
   warTableSkin,
+  wyrmspireSkin,
   petriSkin,
   driftingDustSkin,
   matrixRainSkin,

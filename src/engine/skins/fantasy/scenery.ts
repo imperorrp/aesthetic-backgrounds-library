@@ -6,10 +6,21 @@
 import type { Rng } from '../../rng';
 import { finish } from './sprites';
 
-export type Prop = 'pine' | 'oak' | 'bush' | 'rock' | 'cottage' | 'keep' | 'tent' | 'mill' | 'well' | 'ship' | 'hut' | 'stonehouse' | 'spire' | 'palace' | 'galley' | 'galleon' | 'cart';
+export type Prop = 'pine' | 'oak' | 'bush' | 'rock' | 'cottage' | 'keep' | 'tent' | 'mill' | 'well' | 'ship' | 'hut' | 'stonehouse' | 'spire' | 'palace' | 'galley' | 'galleon' | 'cart'
+  | 'longhouse' | 'stilthouse' | 'adobe' | 'ballista' | 'sheep' | 'cattle' | 'goat' | 'deadtree' | 'reeds' | 'snowpine';
 
 const SIZES: Record<Prop, [number, number]> = {
   ship: [11, 9],
+  longhouse: [20, 10],
+  stilthouse: [13, 15],
+  adobe: [14, 10],
+  ballista: [13, 22],
+  sheep: [6, 4],
+  cattle: [9, 6],
+  goat: [6, 5],
+  deadtree: [11, 14],
+  reeds: [7, 6],
+  snowpine: [9, 15],
   hut: [8, 7],
   stonehouse: [12, 13],
   spire: [7, 19],
@@ -28,7 +39,10 @@ const SIZES: Record<Prop, [number, number]> = {
   well: [7, 7],
 };
 /** Variants per prop (tents: one per army color, set by the caller). */
-const VARIANTS: Record<Prop, number> = { pine: 3, oak: 3, bush: 2, rock: 2, cottage: 3, keep: 1, tent: 2, mill: 1, well: 1, ship: 1, hut: 2, stonehouse: 3, spire: 1, palace: 1, galley: 1, galleon: 1, cart: 1 };
+const VARIANTS: Record<Prop, number> = {
+  pine: 3, oak: 3, bush: 2, rock: 2, cottage: 3, keep: 1, tent: 2, mill: 1, well: 1, ship: 1, hut: 2, stonehouse: 3, spire: 1, palace: 1, galley: 1, galleon: 1, cart: 1,
+  longhouse: 2, stilthouse: 2, adobe: 3, ballista: 2, sheep: 2, cattle: 2, goat: 2, deadtree: 2, reeds: 2, snowpine: 2,
+};
 
 type Pen = (x: number, y: number, w: number, h: number, c: string) => void;
 
@@ -217,6 +231,113 @@ function draw(p: Pen, g: CanvasRenderingContext2D, prop: Prop, v: number, tents:
       }
       p(8, 0, 2, 1, '#b91c1c');
       break;
+    case 'longhouse': {
+      // A long hall under a turf roof, its gable carved.
+      const turf = ['#3f5a2a', '#4b5563'][v];
+      p(1, 5, 18, 5, '#5b3a1e');
+      for (let i = 0; i < 6; i++) p(2 + i * 3, 5, 1, 5, '#3f2a17');
+      p(0, 2, 20, 3, turf);
+      p(2, 1, 16, 1, turf);
+      p(0, 4, 20, 1, '#2a1c10');
+      p(9, 7, 2, 3, '#1c1410');
+      p(5, 6, 1, 1, '#fbbf24');
+      p(15, 6, 1, 1, '#fbbf24');
+      p(0, 0, 1, 2, '#7c5a3a');
+      p(19, 0, 1, 2, '#7c5a3a');
+      break;
+    }
+    case 'stilthouse': {
+      // A reed-roofed hut up on stilts over the water.
+      const roof = ['#78716c', '#a16207'][v];
+      for (const x of [2, 6, 10]) p(x, 9, 1, 6, '#3f2a17');
+      p(1, 8, 11, 1, '#5b3a1e');
+      p(2, 4, 9, 4, '#7c5a3a');
+      p(1, 1, 11, 3, roof);
+      p(3, 0, 7, 1, roof);
+      p(5, 5, 2, 3, '#1c1410');
+      p(8, 5, 2, 1, '#fbbf24');
+      break;
+    }
+    case 'adobe': {
+      // Flat-roofed mud brick, beams poking through, a dark door.
+      const wall = ['#b45309', '#a16207', '#92400e'][v];
+      p(1, 3, 12, 7, wall);
+      p(1, 3, 12, 1, '#d97706');
+      p(0, 2, 14, 1, '#78350f');
+      for (const x of [2, 6, 10]) p(x, 4, 2, 1, '#3f2a17');
+      p(5, 6, 3, 4, '#1c1410');
+      p(10, 6, 2, 2, '#fbbf24');
+      p(2, 0, 3, 2, wall);
+      break;
+    }
+    case 'ballista': {
+      // A timber tower with a great crossbow on top; burnt, a black stump.
+      if (v === 1) {
+        p(4, 12, 5, 10, '#1c1917');
+        p(3, 10, 2, 3, '#292524');
+        p(8, 14, 2, 2, '#9a3412');
+        break;
+      }
+      for (const x of [2, 10]) p(x, 8, 1, 14, '#5b3a1e');
+      for (let y = 10; y < 22; y += 4) p(2, y, 9, 1, '#3f2a17');
+      p(1, 7, 11, 2, '#7c5a3a');
+      p(0, 3, 13, 1, '#5b3a1e');
+      p(5, 2, 3, 4, '#3f2a17');
+      p(0, 2, 1, 3, '#a8a29e');
+      p(12, 2, 1, 3, '#a8a29e');
+      p(4, 1, 6, 1, '#d6d3d1');
+      break;
+    }
+    case 'sheep':
+      p(1, 0, 4, 3, ['#e7e5e4', '#d6d3d1'][v]);
+      p(0, 1, 1, 1, '#292524');
+      p(1, 3, 1, 1, '#292524');
+      p(4, 3, 1, 1, '#292524');
+      break;
+    case 'cattle':
+      p(1, 1, 7, 3, ['#78350f', '#e7e5e4'][v]);
+      p(0, 0, 2, 2, ['#78350f', '#e7e5e4'][v]);
+      p(2, 2, 2, 1, v ? '#292524' : '#a16207');
+      p(1, 4, 1, 2, '#292524');
+      p(6, 4, 1, 2, '#292524');
+      p(0, 0, 1, 1, '#d6d3d1');
+      break;
+    case 'goat':
+      p(1, 1, 4, 2, ['#d6d3d1', '#78716c'][v]);
+      p(0, 0, 1, 2, ['#d6d3d1', '#78716c'][v]);
+      p(0, 0, 1, 1, '#a8a29e');
+      p(1, 3, 1, 2, '#292524');
+      p(4, 3, 1, 2, '#292524');
+      break;
+    case 'deadtree': {
+      const c = ['#2a2420', '#1c1917'][v];
+      p(5, 4, 1, 10, c);
+      p(4, 9, 1, 3, c);
+      p(2, 3, 3, 1, c);
+      p(1, 1, 1, 2, c);
+      p(6, 5, 3, 1, c);
+      p(8, 2, 1, 3, c);
+      p(5, 0, 1, 4, c);
+      break;
+    }
+    case 'reeds': {
+      const c = ['#4d5a2a', '#5b5530'][v];
+      for (let i = 0; i < 6; i++) p(i, 1 + (i % 3), 1, 5 - (i % 3), c);
+      p(1, 0, 1, 1, '#78350f');
+      p(4, 1, 1, 1, '#78350f');
+      break;
+    }
+    case 'snowpine': {
+      const c = ['#1c3324', '#18301f'][v];
+      p(4, 12, 1, 3, '#3a2a1c');
+      for (let i = 0; i < 4; i++) {
+        const w = 2 + i * 2;
+        p(4.5 - w / 2, 1 + i * 3, w, 3, c);
+        p(4.5 - w / 2, 1 + i * 3, w, 1, '#e2e8f0');
+      }
+      p(4, 0, 1, 1, '#f1f5f9');
+      break;
+    }
     case 'cart':
       // An ox and a covered wagon.
       p(0, 2, 4, 3, '#78716c');

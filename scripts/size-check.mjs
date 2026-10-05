@@ -50,16 +50,18 @@ const BUDGETS_KB = {
   // the instruments' events (holds, torpedoes, aftershocks, predation, surface ops); 118 with
   // the v3 camera (view, bus, director); 119 with skin events and the Undercity shell (the city
   // itself and every universe beyond the first are lazy chunks); 121.5 with the lazy-skin helper
-  // and the shells of the fantasy worlds and Petri (each world is a lazy chunk).
-  'index.js': 121.5,
+  // and the shells of the fantasy worlds and Petri (each world is a lazy chunk); 123 with the
+  // shells of Wyrmspire, Deephold, and Leylines (~0.4 KB each: a schema and a description).
+  'index.js': 123,
   // framework adapters: core + all built-in skins, layers, and presets (no tooling); 59 since M9,
   // 89 with the overhauled sector map and the instruments, 107 with mechanics and events,
   // 109 with the v3 camera, 110 with skin events and the Undercity shell, 111 with the
-  // instruments reporting their events (for sound), 113.5 with the fantasy and Petri shells
-  'element.js': 113.5,
-  'react.js': 113.5,
-  'vue.js': 113.5,
-  'svelte.js': 113.5,
+  // instruments reporting their events (for sound), 113.5 with the fantasy and Petri shells,
+  // 115 with the three newest worlds' shells
+  'element.js': 115,
+  'react.js': 115,
+  'vue.js': 115,
+  'svelte.js': 115,
 };
 
 function walk(dir, out = []) {

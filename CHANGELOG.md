@@ -2,7 +2,16 @@
 
 ## Unreleased
 
-- **Petri: feeding, hunters, contamination, a microscope that behaves like one, a notebook, and Lenia.**
+- **Wyrmspire**, a new skin: a valley under a wyrm's spire, through a watchtower's spyglass.
+  - Five lands (`valley`, or one per seed): the alpine valley, the fjord, the red canyon, the fen, the ashlands. Each has its own houses (cottages, longhouses, adobe, stilt houses, stone), trees, water (a lake-wide fjord, a dry wash, a fen of pools, a river of lava), weather (snow, rain, fog, dust, ash), and far mountains (snowy crests, mesas, a smoking volcano).
+  - Five breeds of wyrm, by land: fire (houses burn), frost (houses freeze, rimed, and thaw cracked), storm (lightning; it brings storms), venom (clouds that hang and wither the fields), shadow (a pall that puts out every light).
+  - The wyrm (`wyrm-sim.ts`, no DOM) has hunger and wrath, and does what they want: basks on its spire, patrols the valley, hunts the herds and carries off what it catches, comes down at night for tribute, raids, and goes from village to village in a rage when its hoard is robbed. Long asleep, it grows restless (`wrath`).
+  - The valley lives through seasons: shepherds and herds, harvest carts, market carts on the road, boats, villages that grow when left in peace, the festival of lanterns on a midwinter night.
+  - A lord with a temper (bold, cautious, greedy) turns policy each season as the losses mount: endure, fortify (ballista towers by the villages), appease (tribute carts to the foot of the spire), or hunt.
+  - Quests up the spire path: a lone hero, a hunting party, a wizard binding the wyrm in chains of light, thieves by night after the hoard. The swords of heroes who died at the cave stay on its ledge.
+  - Rivals come over the mountains and fight the resident in the air; the winner keeps the spire. A wyrm driven off comes back, healed, for its spire. Eggs hatch; wyrmlings raid with their mothers, then fly off.
+  - The camera (`wyrm.ts`): the valley is wider than the screen; the view pans along it and zooms in on what is happening, through the spyglass's dark rim. Parallax mountains; aurora over the high lands at night; will-o'-wisps over the fen.
+  - A sound palette with a cue for every event, journal sightings, a gallery card, an e2e subject.- **Petri: feeding, hunters, contamination, a microscope that behaves like one, a notebook, and Lenia.**
   - Feeding: an agar food grid that regrows; cells take it up and drift up its gradient; energy per cell, fading as it runs low; starved cells become debris that rots back into the agar and comes up again as spores.
   - Hunters (`predators`, on by default): one strain seeks the rest, which flee it; a catch is eaten, and becomes another hunter only when the hunter is well fed. They starve fastest: booms and crashes, logged.
   - Contamination: a foreign strain at the rim that converts what it touches, until the technician sterilizes it under UV.

@@ -27,7 +27,7 @@ None of them loop. Each one is a small simulation with its own rules, and things
 <summary><b>Contents</b></summary>
 
 - [Things happen](#things-happen)
-- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [instruments](#instruments-from-other-worlds), [basics](#basics)
+- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [instruments](#instruments-from-other-worlds), [basics](#basics)
 - [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
 - [Sound](#sound), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
 - [Put one on your site](#put-one-on-your-site)
@@ -200,6 +200,19 @@ It is the one light-themed world: dark ink on parchment, legible under dark text
 
 ```ts
 mount(document.body, { skin: 'war-table', options: { realms: 3 } });
+```
+
+### Wyrmspire
+
+![Wyrmspire: a valley under a wyrm's spire, through a watchtower's spyglass; a hero climbing the spire path; the wyrm raiding a village](docs/media/worlds/wyrmspire.jpg)
+
+A valley seen from a watchtower, wider than the screen: villages along the water, a castle on a rise, herds on the pastures, and at the far end a crooked spire with a cave high up in it and a path cut up its face. The view pans along the valley and closes in, through the spyglass, on whatever is happening.
+
+Each seed is a different land and a different wyrm. The alpine valley, the fjord, the red canyon, the fen, the ashlands, each with its own houses, trees, water, and weather; a fire wyrm that burns, a frost wyrm that freezes houses, a storm drake that calls lightning, a venom wyrm that withers the fields, a shadow wyrm that puts out every light.
+
+The wyrm is hungry and proud. It basks on its spire, patrols its valley, hunts the herds, comes down at night for tribute, and raids; robbed, it goes from village to village in a rage. The valley goes on around it: seasons, harvests, carts, boats, villages growing, lanterns on a midwinter night. The lord turns policy as the losses mount (endure, fortify with ballistae, pay tribute, or hunt it), and quests go up the spire path: a lone hero, a hunting party, a wizard to bind it in chains of light, thieves after the hoard. Rivals come over the mountains for the spire, eggs hatch, and the swords of the heroes who fell stay on the ledge.
+
+```tsmount(document.body, { skin: 'wyrmspire', options: { valley: 'fen', wrath: 2 } });
 ```
 
 ### Instruments from other worlds
@@ -393,7 +406,7 @@ mount('#hero', { skin: 'matrix-rain' });
 | `/core` | The host: mount, sizing, clock, palettes, registries. |
 | `/skins/void-tactical` | The sector map, its universes (loaded on demand), and the mechanics API. |
 | `/skins/undercity` | Undercity's shell. The city itself loads on first mount. |
-| `/skins/fantasy` | Shieldwall, Ages, and the War Table: shells; each world loads on first mount. |
+| `/skins/fantasy` | Shieldwall, Ages, the War Table, and Wyrmspire: shells; each world loads on first mount. |
 | `/skins/petri` | The Petri dish's shell; the dish loads on first mount. |
 | `/skins/drifting-dust`, `/skins/matrix-rain` | The small skins. |
 | `/layers`, `/presets` | The layer library and the curated presets. |
@@ -509,7 +522,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | Option | Default | Description |
 | --- | --- | --- |
 | `seed` | random | PRNG seed. The same seed replays the same world, frame for frame. |
-| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `petri`, `drifting-dust`, `matrix-rain`, and every preset id. |
+| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `wyrmspire`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `petri`, `drifting-dust`, `matrix-rain`, and every preset id. |
 | `options` | `{}` | Skin-specific options; see each skin's section below. |
 | `palette` | `'void-cyan'` | One of: <ul><li>a built-in id (`void-cyan`, `amber`, `violet`)</li><li>a full token object</li><li>a bare hex color</li><li>`{ from: '#hex', theme: 'dark' \| 'light', harmony }`, which derives a palette in OKLCH. `harmony` (`analogous`, `complementary`, `split`, `triadic`, `mono`) sets the secondary hues `accent2` and `accent3`.</li></ul> |
 | `exposeTokens` | `false` | Also write the palette as `--bge-*` variables on `<html>` (or a given element) for your own UI. |
@@ -817,6 +830,21 @@ mount(document.body, {
 | `candle` | `true` | Candlelight from one side. |
 | `notes` | `true` | Notes in the margin: battles, sieges, falls, the peace. |
 | `fog` | `true` | The fog of war: the map as one realm's council knows it, the rest in pencil. `false` shows everything in ink. |
+
+## Wyrmspire's options
+
+`skin: 'wyrmspire'`. A lazy chunk (about 25 KB gzipped), like the other fantasy worlds.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `valley` | `'any'` | The land: `alpine`, `fjord`, `canyon`, `fen`, `ashland`, or `any` (one per seed). Its houses, water, weather, and breed of wyrm. |
+| `wrath` | `1` | How restless the wyrm grows (`0` for never: a quiet valley, though thieves may still wake it). |
+
+| `knights` | `1` | How many ride out (`0` for none: the villages are on their own). |
+| `villages` | `3` | Villages along the river: `2` to `4`. |
+| `time` | `'cycle'` | `cycle` (dawn, day, dusk, night), or always `dusk` or `night`. |
+| `labels` | `true` | Call-outs: the raids, hunts, quests, policies, and festivals. |
+| `hud` | `true` | The valley, the wyrm's state, the villages, the chronicle. |
 
 ## Using it with an AI agent
 
