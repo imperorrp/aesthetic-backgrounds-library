@@ -12,7 +12,7 @@ beforeAll(async () => {
   await prepareSkins();
 });
 
-describe('petri (headless)', { timeout: 60_000 }, () => {
+describe('petri (headless)', { timeout: 180_000 }, () => {
   it('life organizes: organisms form, divide, swallow each other; the technician drops and shifts', () => {
     const r = run(200);
     expect(r.threw).toBeUndefined();

@@ -104,3 +104,25 @@ export const wyrmspireSkin = lazySkin(
   },
   () => import('./wyrm'),
 );
+
+export const DEEPHOLD_SCHEMA = {
+  mountain: { type: 'enum', values: ['any', 'iron', 'crystal', 'frost', 'ember', 'drowned'], default: 'any', label: 'The mountain' },
+  depth: { type: 'number', min: 0.3, max: 2, default: 1, label: 'How greedily they dig' },
+  hazards: { type: 'number', min: 0, max: 2, default: 1, label: 'Floods, magma, cave-ins, goblins' },
+  sleeper: { type: 'boolean', default: true, label: 'Something sleeps below' },
+  labels: { type: 'boolean', default: true, label: 'Call-outs' },
+  hud: { type: 'boolean', default: true, label: 'The hold, its stores, the chronicle' },
+} satisfies Schema;
+
+export const deepholdSkin = lazySkin(
+  {
+    id: 'deephold',
+    label: 'Deephold',
+    description: 'A dwarf hold in cutaway, under a different mountain each seed: miners following veins of gold and gems, forges, a great hall, floods and magma that flow, cave-ins, caverns of glowing fungus and what lives in them, goblins at the gate, and something asleep below that they should not dig too near.',
+    tags: ['fantasy', 'pixel', 'cutaway', 'dwarves', 'dark', 'busy'],
+    crisp: true,
+    schema: DEEPHOLD_SCHEMA,
+    defaults: { palette: { from: '#f59e0b' }, intensity: 0.75 },
+  },
+  () => import('./deep'),
+);

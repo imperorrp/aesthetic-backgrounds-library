@@ -27,7 +27,7 @@ None of them loop. Each one is a small simulation with its own rules, and things
 <summary><b>Contents</b></summary>
 
 - [Things happen](#things-happen)
-- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [instruments](#instruments-from-other-worlds), [basics](#basics)
+- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [Deephold](#deephold), [instruments](#instruments-from-other-worlds), [basics](#basics)
 - [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
 - [Sound](#sound), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
 - [Put one on your site](#put-one-on-your-site)
@@ -212,7 +212,22 @@ Each seed is a different land and a different wyrm. The alpine valley, the fjord
 
 The wyrm is hungry and proud. It basks on its spire, patrols its valley, hunts the herds, comes down at night for tribute, and raids; robbed, it goes from village to village in a rage. The valley goes on around it: seasons, harvests, carts, boats, villages growing, lanterns on a midwinter night. The lord turns policy as the losses mount (endure, fortify with ballistae, pay tribute, or hunt it), and quests go up the spire path: a lone hero, a hunting party, a wizard to bind it in chains of light, thieves after the hoard. Rivals come over the mountains for the spire, eggs hatch, and the swords of the heroes who fell stay on the ledge.
 
-```tsmount(document.body, { skin: 'wyrmspire', options: { valley: 'fen', wrath: 2 } });
+```ts
+mount(document.body, { skin: 'wyrmspire', options: { valley: 'fen', wrath: 2 } });
+```
+
+### Deephold
+
+![Deephold: a dwarf hold in cutaway under a mountain; galleries and rooms off a shaft, a flooded deep, a cavern of glowing fungus, and a giant waking in its chamber below](docs/media/worlds/deephold.jpg)
+
+A mountain cut through like a glass ant farm, with a dwarf hold inside it: a gate in the slope, a shaft with ladders, and galleries off it at every deep, with rooms carved along them. There are storerooms, dormitories, mushroom farms, a brewery, forges, a great hall with its throne, hearth, and the clan's artifacts, a temple, tombs, barracks, a treasury, and the hall of records. Each seed is a different mountain (iron, crystal, frost, ember, or drowned) with its own rock, ores, and hazards, and a different clan.
+
+Everyone walks the tunnels for real. Miners dig what the overseer lays out and follow the veins of coal, iron, gold, gems, and, deep down, mithril; haulers cart the ore up; smiths, brewers, and farmers work their rooms; masons furnish and prop them. The dwarves sleep in shifts and feast in the hall. Caravans come up the mountain in summer, migrants when the hold grows rich; kings die and are crowned; a smith taken by a strange mood forges an artifact, or goes mad.
+
+The rock can see what the dwarves can't. Water breaks in from an aquifer and floods a deep, and it flows; so does magma, which cools to obsidian and hisses where it meets water. Wide rooms in weak rock cave in, and coal seams hold firedamp. Caverns broken into let out what lives in them, and the halls of an older people hold treasure, and sometimes their dead. Goblins come to the gate. Far below, something sleeps near the mithril. If the clan digs too greedily and too deep, it stirs, wakes, and climbs the shaft. The soldiers fight it and the masons race to seal the shaft above it. The hold may fall, and another clan comes in time to reclaim it.
+
+```ts
+mount(document.body, { skin: 'deephold', options: { mountain: 'ember', depth: 1.5 } });
 ```
 
 ### Instruments from other worlds
@@ -406,7 +421,7 @@ mount('#hero', { skin: 'matrix-rain' });
 | `/core` | The host: mount, sizing, clock, palettes, registries. |
 | `/skins/void-tactical` | The sector map, its universes (loaded on demand), and the mechanics API. |
 | `/skins/undercity` | Undercity's shell. The city itself loads on first mount. |
-| `/skins/fantasy` | Shieldwall, Ages, the War Table, and Wyrmspire: shells; each world loads on first mount. |
+| `/skins/fantasy` | Shieldwall, Ages, the War Table, Wyrmspire, and Deephold: shells; each world loads on first mount. |
 | `/skins/petri` | The Petri dish's shell; the dish loads on first mount. |
 | `/skins/drifting-dust`, `/skins/matrix-rain` | The small skins. |
 | `/layers`, `/presets` | The layer library and the curated presets. |
@@ -522,7 +537,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | Option | Default | Description |
 | --- | --- | --- |
 | `seed` | random | PRNG seed. The same seed replays the same world, frame for frame. |
-| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `wyrmspire`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `petri`, `drifting-dust`, `matrix-rain`, and every preset id. |
+| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `wyrmspire`, `deephold`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `petri`, `drifting-dust`, `matrix-rain`, and every preset id. |
 | `options` | `{}` | Skin-specific options; see each skin's section below. |
 | `palette` | `'void-cyan'` | One of: <ul><li>a built-in id (`void-cyan`, `amber`, `violet`)</li><li>a full token object</li><li>a bare hex color</li><li>`{ from: '#hex', theme: 'dark' \| 'light', harmony }`, which derives a palette in OKLCH. `harmony` (`analogous`, `complementary`, `split`, `triadic`, `mono`) sets the secondary hues `accent2` and `accent3`.</li></ul> |
 | `exposeTokens` | `false` | Also write the palette as `--bge-*` variables on `<html>` (or a given element) for your own UI. |
@@ -839,12 +854,24 @@ mount(document.body, {
 | --- | --- | --- |
 | `valley` | `'any'` | The land: `alpine`, `fjord`, `canyon`, `fen`, `ashland`, or `any` (one per seed). Its houses, water, weather, and breed of wyrm. |
 | `wrath` | `1` | How restless the wyrm grows (`0` for never: a quiet valley, though thieves may still wake it). |
-
 | `knights` | `1` | How many ride out (`0` for none: the villages are on their own). |
 | `villages` | `3` | Villages along the river: `2` to `4`. |
 | `time` | `'cycle'` | `cycle` (dawn, day, dusk, night), or always `dusk` or `night`. |
 | `labels` | `true` | Call-outs: the raids, hunts, quests, policies, and festivals. |
 | `hud` | `true` | The valley, the wyrm's state, the villages, the chronicle. |
+
+## Deephold's options
+
+`skin: 'deephold'`. A lazy chunk (about 34 KB gzipped), like the other fantasy worlds.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `mountain` | `'any'` | `iron`, `crystal`, `frost`, `ember`, `drowned`, or `any` (one per seed): its rock, ores, hazards, and what sleeps below. |
+| `depth` | `1` | How greedily they dig: how fast the shaft goes down, and how deep (`0.3` to `2`). |
+| `hazards` | `1` | Aquifers, magma, weak rock, caverns, goblins (`0` for none of them). |
+| `sleeper` | `true` | Something asleep below that they should not dig too near. |
+| `labels` | `true` | Call-outs: strikes, rooms, floods, cave-ins, the gate, the deep. |
+| `hud` | `true` | The hold, its king, its stores and artifacts, the chronicle. |
 
 ## Using it with an AI agent
 

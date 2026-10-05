@@ -93,6 +93,17 @@ const IMAGES = [
     ],
   },
   {
+    file: 'worlds/deephold.jpg',
+    cols: 2,
+    tile: [960, 600],
+    shots: [
+      { skin: 'deephold', seed: 'm-crystal', options: { mountain: 'crystal' }, t: [700], captions: ['A HOLD UNDER THE CRYSTAL DEEP'] },
+      { skin: 'deephold', seed: 'm-drowned', options: { mountain: 'drowned' }, seek: 'WATER BREAKS', max: 900, after: [6], captions: ['WATER BREAKS IN'] },
+      { skin: 'deephold', seed: 'm-frost', options: { mountain: 'frost' }, seek: 'RIME KING WAKES', max: 900, after: [8], captions: ['WHAT SLEPT BELOW WAKES'] },
+      { skin: 'deephold', seed: 'm-ember', options: { mountain: 'ember' }, seek: 'FLAME BENEATH WAKES', max: 1200, after: [14], captions: ['THE FLAME BENEATH'] },
+    ],
+  },
+  {
     file: 'worlds/petri.jpg',
     cols: 2,
     tile: [960, 600],

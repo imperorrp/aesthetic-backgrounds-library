@@ -11,13 +11,13 @@ import { matrixRainSkin } from './matrix-rain';
 import { localSkins } from './local';
 import { instrumentSkins, sonarSkin, atcRadarSkin, seismicSkin, abyssalSkin, marsRadarSkin } from './instruments';
 import { undercitySkin, prepareUndercity } from './undercity';
-import { shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin } from './fantasy';
+import { shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin, deepholdSkin } from './fantasy';
 import { petriSkin } from './petri';
 
-export const builtInSkins: readonly BackgroundSkin[] = [voidTacticalSkin, undercitySkin, shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin, ...instrumentSkins, petriSkin, driftingDustSkin, matrixRainSkin, ...localSkins];
+export const builtInSkins: readonly BackgroundSkin[] = [voidTacticalSkin, undercitySkin, shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin, deepholdSkin, ...instrumentSkins, petriSkin, driftingDustSkin, matrixRainSkin, ...localSkins];
 builtInSkins.forEach((skin) => registerSkin(skin));
 
-export { voidTacticalSkin, undercitySkin, prepareUndercity, shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin, petriSkin, driftingDustSkin, matrixRainSkin, instrumentSkins, sonarSkin, atcRadarSkin, seismicSkin, abyssalSkin, marsRadarSkin };
+export { voidTacticalSkin, undercitySkin, prepareUndercity, shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin, deepholdSkin, petriSkin, driftingDustSkin, matrixRainSkin, instrumentSkins, sonarSkin, atcRadarSkin, seismicSkin, abyssalSkin, marsRadarSkin };
 export type { VoidTacticalOptions } from './void-tactical/runtime';
 export type { NetworkSkinOptions } from './drifting-dust';
 export type { MatrixSkinOptions } from './matrix-rain';
