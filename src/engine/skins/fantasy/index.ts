@@ -126,3 +126,25 @@ export const deepholdSkin = lazySkin(
   },
   () => import('./deep'),
 );
+
+export const LEYLINES_SCHEMA = {
+  land: { type: 'enum', values: ['any', 'isles', 'steppe', 'forest', 'desert', 'tundra'], default: 'any', label: 'The land' },
+  orders: { type: 'number', min: 2, max: 5, step: 1, default: 4, label: 'Orders of mages' },
+  storms: { type: 'number', min: 0, max: 2, default: 1, label: 'Arcane storms' },
+  rifts: { type: 'number', min: 0, max: 2, default: 1, label: 'Rifts' },
+  labels: { type: 'boolean', default: true, label: 'Call-outs' },
+  hud: { type: 'boolean', default: true, label: 'The orders, the moons, the chronicle' },
+} satisfies Schema;
+
+export const leylinesSkin = lazySkin(
+  {
+    id: 'leylines',
+    label: 'Leylines',
+    description: 'A land at night and the lines of power under it: orders of mages raising towers on the wells, power pulsing along the lines, duels fought along them, arcane storms, the convergence of the moons, and rifts that must be closed.',
+    tags: ['fantasy', 'magic', 'map', 'glow', 'dark', 'calm'],
+    crisp: true,
+    schema: LEYLINES_SCHEMA,
+    defaults: { palette: { from: '#a78bfa' }, intensity: 0.75 },
+  },
+  () => import('./ley'),
+);

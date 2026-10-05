@@ -51,7 +51,7 @@ import './DemoPage.css';
 const DEBUG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug');
 
 /** Skins that report events and have a sound palette under their own id. */
-const SOUND_SKINS = new Set(['undercity', 'shieldwall', 'ages', 'war-table', 'wyrmspire', 'deephold', 'petri', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
+const SOUND_SKINS = new Set(['undercity', 'shieldwall', 'ages', 'war-table', 'wyrmspire', 'deephold', 'leylines', 'petri', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
 
 /**
  * A world you can pick from a card: a sector map universe, Undercity, a fantasy world (or
@@ -69,6 +69,7 @@ const WORLD_CARDS: WorldCard[] = [
   { key: 'war-table', source: 'war-table', name: 'War table', tagline: getSkin('war-table')?.description, thumb: 'war-table' },
   { key: 'wyrmspire', source: 'wyrmspire', name: 'Wyrmspire', tagline: getSkin('wyrmspire')?.description, thumb: 'wyrmspire' },
   { key: 'deephold', source: 'deephold', name: 'Deephold', tagline: getSkin('deephold')?.description, thumb: 'deephold' },
+  { key: 'leylines', source: 'leylines', name: 'Leylines', tagline: getSkin('leylines')?.description, thumb: 'leylines' },
 ];
 const INSTRUMENT_CARDS: WorldCard[] = [
   ...instrumentSkins.map((s) => ({ key: s.id, source: s.id, name: s.label ?? s.id, tagline: s.description, thumb: s.id })),

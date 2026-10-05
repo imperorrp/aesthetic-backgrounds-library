@@ -104,6 +104,17 @@ const IMAGES = [
     ],
   },
   {
+    file: 'worlds/leylines.jpg',
+    cols: 2,
+    tile: [960, 600],
+    shots: [
+      { skin: 'leylines', seed: 'l2', t: [300], captions: ['THE SHATTERED ISLES'] },
+      { skin: 'leylines', seed: 'l1', seek: 'DUEL', max: 900, after: [3], captions: ['A DUEL ALONG THE LINE'] },
+      { skin: 'leylines', seed: 'l3', seek: 'RIFT OPENS', max: 900, after: [25], captions: ['A RIFT'] },
+      { skin: 'leylines', seed: 'l3', options: { land: 'tundra' }, seek: 'CONVERGENCE', max: 900, after: [10], captions: ['THE CONVERGENCE'] },
+    ],
+  },
+  {
     file: 'worlds/petri.jpg',
     cols: 2,
     tile: [960, 600],

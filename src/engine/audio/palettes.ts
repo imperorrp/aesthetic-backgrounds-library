@@ -521,6 +521,48 @@ export const SOUND_PALETTES: Record<string, SoundPalette> = {
     },
   },
 
+  /** Leylines: a humming land, chimes along the lines, crackling duels, the choir of the convergence. */
+  leylines: {
+    id: 'leylines',
+    root: 73.4,
+    scale: [0, 2, 4, 7, 9, 12],
+    drone: { wave: 'sine', notes: [-12, 7, 12], level: 0.007, cutoff: 700, wobble: 0.5 },
+    bed: { noise: 'pink', lo: 300, hi: 2400, level: 0.006, follow: true },
+    space: 5,
+    wet: 0.55,
+    echo: 0.5,
+    cues: {
+      say: { cue: { kind: 'ping', note: 24, dur: 0.05 }, gain: 0.012, every: 1, only: 'high' },
+      tower: { cue: [{ kind: 'bell', note: 12, chord: [0, 7], dur: 2.5 }, { kind: 'ping', note: 19, dur: 0.3, then: 24 }], gain: 0.04, every: 4 },
+      upgrade: { cue: { kind: 'ping', note: 24, wave: 'triangle', dur: 0.25, then: 31 }, gain: 0.02, every: 4 },
+      towerhigh: { cue: { kind: 'bell', note: 19, chord: [0, 5, 12], dur: 3 }, gain: 0.04, every: 8 },
+      greatwork: { cue: [{ kind: 'bell', note: 12, chord: [0, 4, 7, 12, 16], dur: 7 }, { kind: 'choir', note: 0, chord: [0, 4, 7], dur: 6, vowel: 'ah' }], gain: 0.12, every: 20 },
+      neworder: { cue: { kind: 'choir', note: 0, chord: [0, 7], dur: 4, vowel: 'ah' }, gain: 0.07, every: 15 },
+      orderends: { cue: { kind: 'choir', note: -12, chord: [0, 3, 7], dur: 5, vowel: 'oo' }, gain: 0.08, every: 15 },
+      elemental: { cue: [{ kind: 'whoosh', from: 300, to: 1600, dur: 1.5 }, { kind: 'crackle', dur: 1.5, rate: 26, tone: 900 }], gain: 0.07, every: 6 },
+      wardholds: { cue: { kind: 'bell', note: 24, dur: 1.2 }, gain: 0.03, every: 4 },
+      duel: { cue: [{ kind: 'crackle', dur: 1.2, rate: 60, tone: 2600 }, { kind: 'sweep', from: 400, to: 900, dur: 1, wave: 'sawtooth', q: 4 }], gain: 0.08, every: 4 },
+      turned: { cue: { kind: 'bell', note: 3, chord: [0, 6], dur: 3 }, gain: 0.07, every: 6 },
+      towerfalls: { cue: [{ kind: 'boom', dur: 3, tone: 400, sub: 0.8 }, { kind: 'crackle', dur: 2, rate: 18, tone: 800 }], gain: 0.18, every: 5 },
+      burnout: { cue: [{ kind: 'crackle', dur: 0.6, rate: 70, tone: 3000 }, { kind: 'sweep', from: 1200, to: 200, dur: 1.2, wave: 'square', q: 2 }], gain: 0.07, every: 5 },
+      war: { cue: { kind: 'choir', note: -12, chord: [0, 7], dur: 3.5, vowel: 'oo' }, gain: 0.08, every: 10 },
+      peace: { cue: { kind: 'bell', note: 12, chord: [0, 4, 7, 12], dur: 4 }, gain: 0.07, every: 10 },
+      pact: { cue: { kind: 'bell', note: 7, chord: [0, 4, 7], dur: 3 }, gain: 0.05, every: 10 },
+      betrayal: { cue: [{ kind: 'ping', note: 6, wave: 'square', dur: 0.4, then: 0 }, { kind: 'choir', note: -12, chord: [0, 1, 6], dur: 3, vowel: 'oo' }], gain: 0.08, every: 10 },
+      storm: { cue: [{ kind: 'whoosh', from: 200, to: 900, dur: 4 }, { kind: 'crackle', dur: 3, rate: 8, tone: 2000 }], gain: 0.07, every: 15 },
+      rift: { cue: [{ kind: 'sweep', from: 200, to: 40, dur: 5, wave: 'sawtooth', q: 1 }, { kind: 'choir', note: -24, chord: [0, 1, 6], dur: 6, vowel: 'oo' }], gain: 0.25, every: 15 },
+      swallowed: { cue: { kind: 'sweep', from: 160, to: 50, dur: 3, wave: 'sine', q: 1 }, gain: 0.08, every: 4 },
+      ritual: { cue: { kind: 'choir', note: 0, chord: [0, 5, 10], dur: 5, vowel: 'oo' }, gain: 0.06, every: 10 },
+      riftclosed: { cue: [{ kind: 'bell', note: 12, chord: [0, 7, 12, 19], dur: 5 }, { kind: 'whoosh', from: 2000, to: 300, dur: 2 }], gain: 0.1, every: 15 },
+      heal: { cue: { kind: 'bell', note: 19, chord: [0, 5], dur: 2.5 }, gain: 0.03, every: 10 },
+      moonswarn: { cue: { kind: 'bell', note: 0, chord: [0, 7, 14], dur: 4 }, gain: 0.05, every: 30 },
+      convergence: { cue: [{ kind: 'choir', note: 0, chord: [0, 4, 7, 11], dur: 8, vowel: 'ah' }, { kind: 'bell', note: 24, chord: [0, 7, 12], dur: 6 }], gain: 0.14, every: 30 },
+      convergenceends: { cue: { kind: 'whoosh', from: 1600, to: 200, dur: 4 }, gain: 0.04, every: 30 },
+      archmage: { cue: { kind: 'choir', note: -5, chord: [0, 3, 7], dur: 4, vowel: 'ah' }, gain: 0.06, every: 15 },
+      schism: { cue: [{ kind: 'crackle', dur: 1, rate: 40, tone: 1500 }, { kind: 'choir', note: -12, chord: [0, 6], dur: 4, vowel: 'oo' }], gain: 0.08, every: 15 },
+    },
+  },
+
   // ---- the instruments: their own rooms, their own alarms ----------------------------------
 
   /** Petri: the microscope's hum; drips from a pipette, soft pops of division, a slow swallow. */

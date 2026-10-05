@@ -27,7 +27,7 @@ None of them loop. Each one is a small simulation with its own rules, and things
 <summary><b>Contents</b></summary>
 
 - [Things happen](#things-happen)
-- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [Deephold](#deephold), [instruments](#instruments-from-other-worlds), [basics](#basics)
+- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [Deephold](#deephold), [Leylines](#leylines), [instruments](#instruments-from-other-worlds), [basics](#basics)
 - [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
 - [Sound](#sound), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
 - [Put one on your site](#put-one-on-your-site)
@@ -230,6 +230,20 @@ The rock can see what the dwarves can't. Water breaks in from an aquifer and flo
 mount(document.body, { skin: 'deephold', options: { mountain: 'ember', depth: 1.5 } });
 ```
 
+### Leylines
+
+![Leylines: a land at night with glowing lines of power between wells; orders of mages' towers in their colors; a duel along a line, a rift, and the convergence of the moons](docs/media/worlds/leylines.jpg)
+
+A land at night, mapped in contours, with the lines of power that run under it lit over it. Each seed is a different land: the shattered isles, the great steppe, the elderwood, the glass desert, or the white waste. Power rises at the wells and flows along the lines from high to low, in pulses as many and as quick as the flow; a line that carries more than it can runs hot, and burns out.
+
+Orders of mages raise towers on the nodes, each in its own style and colors (spires, ziggurats, floating crystals, towers grown from trees, black obelisks), and draw on the lines to build out, raise their towers higher, ward them against storms, and send elementals down the lines at their enemies. Orders that meet make pacts or war; at war, they duel along the lines between their towers, beam against beam, until a tower falls or is turned. Archmages die and orders split; in time one may raise its great work.
+
+Arcane storms cross the land, pouring wild power into the lines and striking the towers. Every so often the moons come into line, and every well burns. Where a line burns out or a storm strikes a well, the world can tear: a rift grows, swallows the nodes around it, and sends shades along the lines to drain the towers, until the orders' ritualists close it.
+
+```ts
+mount(document.body, { skin: 'leylines', options: { land: 'isles', orders: 5 } });
+```
+
 ### Instruments from other worlds
 
 The same idea, applied to other screens.
@@ -421,7 +435,7 @@ mount('#hero', { skin: 'matrix-rain' });
 | `/core` | The host: mount, sizing, clock, palettes, registries. |
 | `/skins/void-tactical` | The sector map, its universes (loaded on demand), and the mechanics API. |
 | `/skins/undercity` | Undercity's shell. The city itself loads on first mount. |
-| `/skins/fantasy` | Shieldwall, Ages, the War Table, Wyrmspire, and Deephold: shells; each world loads on first mount. |
+| `/skins/fantasy` | Shieldwall, Ages, the War Table, Wyrmspire, Deephold, and Leylines: shells; each world loads on first mount. |
 | `/skins/petri` | The Petri dish's shell; the dish loads on first mount. |
 | `/skins/drifting-dust`, `/skins/matrix-rain` | The small skins. |
 | `/layers`, `/presets` | The layer library and the curated presets. |
@@ -537,7 +551,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | Option | Default | Description |
 | --- | --- | --- |
 | `seed` | random | PRNG seed. The same seed replays the same world, frame for frame. |
-| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `wyrmspire`, `deephold`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `petri`, `drifting-dust`, `matrix-rain`, and every preset id. |
+| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `wyrmspire`, `deephold`, `leylines`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `petri`, `drifting-dust`, `matrix-rain`, and every preset id. |
 | `options` | `{}` | Skin-specific options; see each skin's section below. |
 | `palette` | `'void-cyan'` | One of: <ul><li>a built-in id (`void-cyan`, `amber`, `violet`)</li><li>a full token object</li><li>a bare hex color</li><li>`{ from: '#hex', theme: 'dark' \| 'light', harmony }`, which derives a palette in OKLCH. `harmony` (`analogous`, `complementary`, `split`, `triadic`, `mono`) sets the secondary hues `accent2` and `accent3`.</li></ul> |
 | `exposeTokens` | `false` | Also write the palette as `--bge-*` variables on `<html>` (or a given element) for your own UI. |
@@ -872,6 +886,19 @@ mount(document.body, {
 | `sleeper` | `true` | Something asleep below that they should not dig too near. |
 | `labels` | `true` | Call-outs: strikes, rooms, floods, cave-ins, the gate, the deep. |
 | `hud` | `true` | The hold, its king, its stores and artifacts, the chronicle. |
+
+## Leylines' options
+
+`skin: 'leylines'`. A lazy chunk (about 15 KB gzipped), like the other fantasy worlds.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `land` | `'any'` | `isles`, `steppe`, `forest`, `desert`, `tundra`, or `any` (one per seed). |
+| `orders` | `4` | Orders of mages at the start: `2` to `5`. |
+| `storms` | `1` | How often arcane storms cross the land (`0` for never). |
+| `rifts` | `1` | How easily the world tears (`0` for never). |
+| `labels` | `true` | Call-outs: towers, duels, pacts and wars, storms, rifts, the convergence. |
+| `hud` | `true` | The orders and their towers, the moons, the chronicle. |
 
 ## Using it with an AI agent
 
