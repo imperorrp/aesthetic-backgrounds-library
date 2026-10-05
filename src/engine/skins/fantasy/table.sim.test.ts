@@ -21,6 +21,12 @@ describe('war table (headless)', { timeout: 60_000 }, () => {
     for (const t of ['order', 'battle', 'siege', 'captured', 'winter', 'peace', 'campaign']) expect(types, t).toContain(t);
   });
 
+  it('dispatches ride out; some are taken on the road, and a few are forged', () => {
+    const r = run(900);
+    const types = new Set(r.log.map((e) => e.type));
+    for (const t of ['dispatch', 'intercepted', 'forgery']) expect(types, t).toContain(t);
+  });
+
   it('three realms play as well as two', () => {
     const r = run(150, 'three', { realms: 3 });
     expect(r.threw).toBeUndefined();

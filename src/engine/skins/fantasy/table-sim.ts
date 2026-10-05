@@ -9,12 +9,18 @@
  * winter quarters. The war ends when a realm loses its capital or the war has worn
  * everyone out: a peace is sealed, and the next campaign is unrolled on a new map.
  *
+ * Dispatches: each month a realm's seat sends sealed letters to its armies, carried across
+ * the map. A rider who passes too near the enemy may be taken: the letter is read, the army
+ * it was for is laid bare, and the enemy moves against it. Now and then a letter is a
+ * forgery under a stolen seal, and the army that obeys it marches into a trap.
+ *
  * Time: a month every `MONTH` seconds.
  */
 import { forkRng, type Rng } from '../../rng';
 import { createBus, type Bus } from '../../sim/bus';
 import type { Noise2D } from '../../noise';
 import { placeName, titled } from './names';
+import { hash } from '../instruments/kit';
 
 export const MONTH = 3.2;
 export const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
@@ -39,6 +45,29 @@ export type Token = {
   x: number;
   y: number;
   fallenAt: number;
+  /** Marching on a forged letter: a trap waits where it is going. */
+  trap: boolean;
+};
+/** A sealed letter on its way from a seat to an army. */
+export type Dispatch = {
+  id: number;
+  realm: Realm;
+  to: Token;
+  x: number;
+  y: number;
+  x0: number;
+  y0: number;
+  t0: number;
+  dur: number;
+  /** A forgery, and whose. */
+  forger: Realm | null;
+  /** Taken on the road, by whom, when. */
+  taken: Realm | null;
+  takenAt: number;
+  /** Delivered and opened (shown unfolding a moment). */
+  opened: number;
+  goal: TTown | null;
+  seed: number;
 };
 /** An order on the map, in ink: from, through, to. Drawn as it is given, fading after. */
 export type Arrow = { pts: [number, number][]; color: string; t0: number; realm: Realm };
@@ -63,6 +92,9 @@ export type TableWorld = {
   arrows: Arrow[];
   notes: Note[];
   blots: Blot[];
+  dispatches: Dispatch[];
+  /** Armies laid bare by a taken letter: token id → until when the council knows where they are. */
+  revealed: Map<number, number>;
   /** The land: elevation at any point, for drawing the coast. */
   elevAt(x: number, y: number): number;
   /** Set when a peace is sealed; the next campaign follows a few seconds later. */
@@ -106,6 +138,8 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
     arrows: [],
     notes: [],
     blots: [],
+    dispatches: [],
+    revealed: new Map(),
     elevAt: (x, y) => land(x, y),
     sealed: -1,
     winter: false,
@@ -117,7 +151,7 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
       world.H = h;
     },
     counts() {
-      return { month: world.month, tokens: world.tokens.filter((k) => k.fallenAt < 0).length, towns: world.towns.length, arrows: world.arrows.length, notes: world.notes.length };
+      return { month: world.month, tokens: world.tokens.filter((k) => k.fallenAt < 0).length, towns: world.towns.length, arrows: world.arrows.length, notes: world.notes.length, dispatches: world.dispatches.length };
     },
   };
 
@@ -152,6 +186,8 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
     world.arrows = [];
     world.notes = [];
     world.blots = [];
+    world.dispatches = [];
+    world.revealed = new Map();
     world.dragon = null;
     world.sealed = -1;
     world.month = 2 + Math.floor(r() * 3);
@@ -233,7 +269,7 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
   }
 
   function token(realm: Realm, at: TTown, strength: number, kind: Token['kind']): Token {
-    const k: Token = { id: ids++, realm, strength, kind, at, to: null, k: 0, t0: 0, dur: 0, goal: null, route: [], x: at.x, y: at.y, fallenAt: -1 };
+    const k: Token = { id: ids++, realm, strength, kind, at, to: null, k: 0, t0: 0, dur: 0, goal: null, route: [], x: at.x, y: at.y, fallenAt: -1, trap: false };
     world.tokens.push(k);
     return k;
   }
@@ -283,6 +319,7 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
         if (!path.length) continue;
         k.goal = goal;
         k.route = path.slice(0, 3);
+        k.trap = false;
         world.arrows.push({ pts: [[k.x, k.y], ...k.route.map((t) => [t.x, t.y] as [number, number])], color: realm.color, t0: world.t, realm });
         if (world.arrows.length > 24) world.arrows.shift();
         emit('order', k.x, k.y, 0.2);
@@ -337,8 +374,101 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
     }
   }
 
+  // ---- dispatches ------------------------------------------------------------------------------
+
+  /** Letters from each seat to an army in the field; now and then an enemy's forgery among them. */
+  function sendDispatches() {
+    for (const realm of world.realms) {
+      if (realm.out || !realm.capital || realm.capital.owner !== realm) continue;
+      if (r() > 0.55 || world.dispatches.filter((d) => d.realm === realm && d.opened < 0).length >= 2) continue;
+      const seat = realm.capital;
+      const field = live().filter((k) => k.realm === realm && k.kind !== 'king' && Math.hypot(k.x - seat.x, k.y - seat.y) > Math.min(world.W, world.H) * 0.18);
+      const to = field[Math.floor(r() * field.length)];
+      if (!to) continue;
+      // The goal the letter names: a weak enemy town near the army.
+      const enemy = world.towns.filter((t) => t.owner !== realm && !t.owner.out).sort((a, b) => score(to, a) - score(to, b));
+      const goal = enemy[0] ?? null;
+      // A forgery: an enemy writes it, naming a town where its own strength waits.
+      const foes = world.realms.filter((x) => x !== realm && !x.out);
+      const forger = foes.length && r() < 0.1 ? foes[Math.floor(r() * foes.length)] : null;
+      const trapAt = forger ? world.towns.filter((t) => t.owner === forger).sort((a, b) => garrison(b) - garrison(a))[0] ?? goal : goal;
+      const dist = Math.hypot(to.x - seat.x, to.y - seat.y);
+      world.dispatches.push({ id: ids++, realm, to, x: seat.x, y: seat.y, x0: seat.x, y0: seat.y, t0: world.t, dur: Math.max(2.4, dist / 95), forger, taken: null, takenAt: -1, opened: -1, goal: trapAt, seed: Math.floor(r() * 1e6) });
+      emit('dispatch', seat.x, seat.y, 0.15);
+    }
+  }
+
+  function dispatches(dt: number) {
+    for (let i = world.dispatches.length - 1; i >= 0; i--) {
+      const d = world.dispatches[i];
+      // Done with: opened a while ago, or taken and read.
+      if ((d.opened >= 0 && world.t - d.opened > 2.5) || (d.taken && world.t - d.takenAt > 3.5)) {
+        world.dispatches.splice(i, 1);
+        continue;
+      }
+      if (d.opened >= 0 || d.taken) continue;
+      if (d.to.fallenAt >= 0) {
+        world.dispatches.splice(i, 1);
+        continue;
+      }
+      // The rider rides toward the army, wherever it has got to.
+      const k = Math.min(1, (world.t - d.t0) / d.dur);
+      const e = k * k * (3 - 2 * k);
+      d.x = d.x0 + (d.to.x - d.x0) * e + Math.sin(k * Math.PI) * (hash(d.seed) - 0.5) * 50;
+      d.y = d.y0 + (d.to.y - d.y0) * e;
+      // Too near the enemy, and the rider may be taken.
+      const foe = live().find((o) => o.realm !== d.realm && Math.hypot(o.x - d.x, o.y - d.y) < 26);
+      if (foe && !d.forger && r() < dt * 0.9) {
+        d.taken = foe.realm;
+        d.takenAt = world.t;
+        // The letter is read: the army it was for is laid bare, and the enemy goes for it.
+        world.revealed.set(d.to.id, world.t + MONTH * 4);
+        note(`A rider of ${titled(d.realm.short)} is taken; the letter is read`, d.x, d.y + 30, foe.realm.ink, 'medium');
+        emit('intercepted', d.x, d.y, 0.55);
+        const hunter = live().filter((o) => o.realm === foe.realm && !o.to && o.kind !== 'king').sort((a, b) => Math.hypot(a.x - d.to.x, a.y - d.to.y) - Math.hypot(b.x - d.to.x, b.y - d.to.y))[0];
+        const where = d.goal ?? d.to.at;
+        if (hunter && where && where !== hunter.at) {
+          const path = route(hunter.at, where);
+          if (path.length) {
+            hunter.goal = where;
+            hunter.route = path.slice(0, 3);
+            world.arrows.push({ pts: [[hunter.x, hunter.y], ...hunter.route.map((t) => [t.x, t.y] as [number, number])], color: hunter.realm.color, t0: world.t, realm: hunter.realm });
+            if (world.arrows.length > 24) world.arrows.shift();
+            moveNext(hunter);
+          }
+        }
+        continue;
+      }
+      if (k < 1) continue;
+      // Delivered: the seal is broken and the army does as it says.
+      d.opened = world.t;
+      const army = d.to;
+      if (!d.goal || army.to || d.goal === army.at) continue;
+      const path = route(army.at, d.goal);
+      if (!path.length) continue;
+      army.goal = d.goal;
+      army.route = path.slice(0, 3);
+      army.trap = !!d.forger;
+      world.arrows.push({ pts: [[army.x, army.y], ...army.route.map((t) => [t.x, t.y] as [number, number])], color: army.realm.color, t0: world.t, realm: army.realm });
+      if (world.arrows.length > 24) world.arrows.shift();
+      moveNext(army);
+    }
+  }
+
   function arriveAt(k: Token) {
     const town = k.at;
+    // A forged letter's march ends in an ambush laid for it.
+    if (k.trap && (!k.route.length || town === k.goal)) {
+      k.trap = false;
+      k.strength -= 1 + (r() < 0.5 ? 1 : 0);
+      note(`The letter was false: ${titled(k.realm.short)} marched into a trap`, town.x, town.y + 36, '#5e2015', 'high');
+      emit('forgery', town.x, town.y, 0.7);
+      world.blots.push({ kind: 'battle', x: town.x, y: town.y + 10, t0: world.t, color: '#3b2a1a', seed: Math.floor(r() * 1e6) });
+      if (k.strength <= 0) {
+        fall(k);
+        return;
+      }
+    }
     // Enemies here: battle.
     const foes = live().filter((o) => o !== k && o.at === town && !o.to && o.realm !== k.realm);
     if (foes.length) {
@@ -476,6 +606,7 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
       }
     }
     orders();
+    sendDispatches();
     // The end of the war.
     const standing = world.realms.filter((x) => !x.out);
     if (world.sealed < 0 && (standing.length <= 1 || monthsAtWar > 30 + r() * 12)) seal(standing);
@@ -536,7 +667,9 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
     }
     moves();
     sieges(dt * Math.max(0.3, opts.pace));
+    dispatches(dt * Math.max(0.3, opts.pace));
     dragonStep(dt);
+    for (const [id, until] of world.revealed) if (world.t > until) world.revealed.delete(id);
     // Battles on the road: tokens of enemies that pass each other.
     const moving = live().filter((k) => k.to);
     for (let i = 0; i < moving.length; i++) {

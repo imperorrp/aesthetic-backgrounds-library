@@ -384,6 +384,9 @@ export const SOUND_PALETTES: Record<string, SoundPalette> = {
       peace: { cue: [{ kind: 'bell', note: 12, chord: [0, 4, 7, 12], dur: 5 }, { kind: 'thump', pitch: 50, dur: 0.8 }], gain: 0.1, every: 10 },
       dragon: { cue: [{ kind: 'sweep', from: 170, to: 60, dur: 3, wave: 'sawtooth', q: 1 }, { kind: 'whoosh', from: 200, to: 900, dur: 3 }], gain: 0.1, every: 10 },
       dragonfire: { cue: [{ kind: 'whoosh', from: 900, to: 3000, dur: 2 }, { kind: 'crackle', dur: 2.5, rate: 30, tone: 900 }], gain: 0.1, every: 6 },
+      dispatch: { cue: { kind: 'crackle', dur: 0.4, rate: 26, tone: 2600 }, gain: 0.02, every: 3 },
+      intercepted: { cue: [{ kind: 'crackle', dur: 0.6, rate: 30, tone: 1800 }, { kind: 'ping', note: 3, wave: 'triangle', dur: 0.5, then: 0 }], gain: 0.05, every: 5 },
+      forgery: { cue: [{ kind: 'thump', pitch: 70, dur: 0.4 }, { kind: 'choir', note: -12, chord: [0, 1, 6], dur: 3, vowel: 'oo' }], gain: 0.07, every: 8 },
     },
   },
 

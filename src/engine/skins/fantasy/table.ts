@@ -11,16 +11,17 @@
 import type { FrameInfo, SkinHost, SkinInspection, SkinInstance, Viewport } from '../../core/skin';
 import { resolveOptions } from '../../core/schema';
 import { forkRng } from '../../rng';
-import { hash, hexA } from '../instruments/kit';
+import { hash, hexA, mixRgb } from '../instruments/kit';
 import { WAR_TABLE_SCHEMA } from './index';
-import { createTableWorld, MONTHS, type Arrow, type Blot, type Token } from './table-sim';
-import { serif, titled } from './names';
+import { createTableWorld, MONTH as MONTH_S, MONTHS, type Arrow, type Blot, type Token } from './table-sim';
+import { placeName, serif, titled } from './names';
+import { isoPath } from './iso';
 
 const INK = '#3b2a1a';
 const PAPER = '#e9dcbd';
 
 export function mount(host: SkinHost): SkinInstance {
-  const o = resolveOptions(WAR_TABLE_SCHEMA, host.options) as { realms: number; pace: number; dragons: number; candle: boolean; notes: boolean };
+  const o = resolveOptions(WAR_TABLE_SCHEMA, host.options) as { realms: number; pace: number; dragons: number; candle: boolean; notes: boolean; fog: boolean };
   const { ctx } = host;
   let W = host.viewport.width;
   let H = host.viewport.height;
@@ -168,13 +169,65 @@ export function mount(host: SkinHost): SkinInstance {
     g.strokeStyle = hexA(INK, 0.85);
     g.lineWidth = 1.5;
     contour(g, 0, 5);
+    // Rhumb lines from the compass rose, faint, across everything.
+    const sea0: [number, number][] = [];
+    for (let i = 0; i < 400 && sea0.length < 40; i++) {
+      const x = hash(world.n, i, 1) * W;
+      const y = hash(world.n, i, 2) * H;
+      if (world.elevAt(x, y) < -0.14) sea0.push([x, y]);
+    }
+    const rosePt = sea0.find(([x, y]) => x > W * 0.7 && y > H * 0.6) ?? [W - 90, H - 110];
+    g.strokeStyle = hexA(INK, 0.07);
+    g.lineWidth = 0.7;
+    g.beginPath();
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      g.moveTo(rosePt[0], rosePt[1]);
+      g.lineTo(rosePt[0] + Math.cos(a) * W * 1.5, rosePt[1] + Math.sin(a) * W * 1.5);
+    }
+    g.stroke();
+    // Rivers: from the high ground, downhill to the sea, thickening as they go.
+    const peaks: [number, number][] = [];
+    for (let y = 30; y < H - 20; y += 24) for (let x = 20; x < W - 20; x += 26) if (world.elevAt(x, y) > 0.56) peaks.push([x, y]);
+    for (let i = 0; i < Math.min(5, peaks.length); i++) {
+      let [x, y] = peaks[Math.floor(hash(world.n, i, 7) * peaks.length)];
+      const line: [number, number][] = [[x, y]];
+      for (let s = 0; s < 120; s++) {
+        let best: [number, number] | null = null;
+        let be = world.elevAt(x, y);
+        for (let a = 0; a < 8; a++) {
+          const nx = x + Math.cos((a / 8) * Math.PI * 2) * 9;
+          const ny = y + Math.sin((a / 8) * Math.PI * 2) * 9;
+          const e = world.elevAt(nx, ny);
+          if (e < be) {
+            be = e;
+            best = [nx, ny];
+          }
+        }
+        if (!best) break;
+        [x, y] = best;
+        line.push([x + (hash(s, i) - 0.5) * 3, y + (hash(i, s) - 0.5) * 3]);
+        if (be < 0) break;
+      }
+      if (line.length < 6 || world.elevAt(x, y) >= 0.02) continue;
+      g.strokeStyle = hexA(INK, 0.6);
+      for (let s = 1; s < line.length; s++) {
+        g.lineWidth = 0.6 + (s / line.length) * 1.4;
+        g.beginPath();
+        g.moveTo(line[s - 1][0], line[s - 1][1]);
+        g.lineTo(line[s][0], line[s][1]);
+        g.stroke();
+      }
+    }
     // Hills and mountains, hatched on the side away from the light.
+    const ranges: [number, number][] = [];
     for (let y = 30; y < H - 20; y += 24) {
       for (let x = 20; x < W - 20; x += 26) {
         const jx = x + (hash(x, y, 1) - 0.5) * 14;
         const jy = y + (hash(x, y, 2) - 0.5) * 12;
         const e = world.elevAt(jx, jy);
         if (e < 0.48) continue;
+        ranges.push([jx, jy]);
         const big = e > 0.62;
         const w = big ? 11 : 7;
         const h = big ? 12 : 7;
@@ -195,13 +248,15 @@ export function mount(host: SkinHost): SkinInstance {
         }
       }
     }
-    // Woods: little trees in clusters.
+    // Woods: little trees in clusters (the biggest gets a name).
+    let wood: [number, number, number] = [0, 0, 0];
     for (let i = 0; i < 70; i++) {
       const cx = r() * W;
       const cy = r() * H;
       const e = world.elevAt(cx, cy);
       if (e < 0.1 || e > 0.45) continue;
       const n = 4 + Math.floor(r() * 9);
+      if (n > wood[2] && world.towns.every((t) => Math.hypot(t.x - cx, t.y - cy) > 60)) wood = [cx, cy, n];
       for (let k = 0; k < n; k++) {
         const x = cx + (r() - 0.5) * 50;
         const y = cy + (r() - 0.5) * 30;
@@ -303,9 +358,202 @@ export function mount(host: SkinHost): SkinInstance {
       g.quadraticCurveTo(x + 9, y - 10, x, y - 3);
       g.stroke();
     }
-    const rose = sea.find(([x, y]) => x > W * 0.7 && y > H * 0.6) ?? [W - 90, H - 110];
-    compass(g, rose[0], rose[1], 34);
+    compass(g, rosePt[0], rosePt[1], 34);
+    // Names across the land and sea, spaced out as on old maps.
+    const spaced = (text: string, x: number, y: number, size: number, a: number) => {
+      g.font = serif(size, true);
+      g.textAlign = 'center';
+      g.fillStyle = hexA(INK, a);
+      g.fillText(text.split('').join(' '), x, y);
+    };
+    const nameOf = () => titled(placeName(r)).replace(/(wood|mere|vale|hold|wick|barrow|haven|moor|fell|stead|march|gate|bridge|watch|crag|holm|by|ton|reach|dale|mouth|well|ford)$/i, '');
+    if (ranges.length > 6) {
+      const mx = ranges.reduce((s, p) => s + p[0], 0) / ranges.length;
+      const my = ranges.reduce((s, p) => s + p[1], 0) / ranges.length;
+      spaced(`The ${nameOf()} Peaks`.toUpperCase(), mx, my + 26, 10, 0.5);
+    }
+    if (wood[2]) spaced(`The ${nameOf()}wood`.toUpperCase(), wood[0], wood[1] + 26, 10, 0.5);
+    const deep = sea.slice().sort((a, b) => world.elevAt(a[0], a[1]) - world.elevAt(b[0], b[1]))[0];
+    if (deep) spaced(`The ${nameOf()} Sea`.toUpperCase(), deep[0], deep[1], 12, 0.42);
+    // Strange places, with their names in a small hand.
+    const land: [number, number][] = [];
+    for (let i = 0; i < 600 && land.length < 12; i++) {
+      const x = 60 + r() * (W - 120);
+      const y = 90 + r() * (H - 160);
+      const e = world.elevAt(x, y);
+      if (e < 0.12 || e > 0.46) continue;
+      if (world.towns.some((t) => Math.hypot(t.x - x, t.y - y) < 70)) continue;
+      if (land.some(([px, py]) => Math.hypot(px - x, py - y) < 120)) continue;
+      land.push([x, y]);
+    }
+    const label = (text: string, x: number, y: number) => {
+      g.font = serif(10, true);
+      g.textAlign = 'center';
+      g.fillStyle = hexA(INK, 0.62);
+      g.fillText(text, x, y + 14);
+    };
+    g.strokeStyle = hexA(INK, 0.75);
+    g.fillStyle = hexA(INK, 0.75);
+    g.lineWidth = 1;
+    if (land[0]) {
+      // A tower where someone lives who should not be visited.
+      const [x, y] = land[0];
+      g.strokeRect(x - 2.5, y - 16, 5, 16);
+      g.beginPath();
+      g.moveTo(x - 4, y - 16);
+      g.lineTo(x, y - 25);
+      g.lineTo(x + 4, y - 16);
+      g.closePath();
+      g.stroke();
+      g.fillRect(x - 0.6, y - 11, 1.2, 2.5);
+      star(g, x + 6, y - 26, 2.5);
+      label(`the ${['Witch', 'Wizard', 'Hermit', 'Astrologer'][Math.floor(r() * 4)]}'s Tower`, x, y);
+    }
+    if (land[1]) {
+      // Ruins: broken columns, a fallen lintel.
+      const [x, y] = land[1];
+      for (const [dx, h] of [
+        [-8, 10],
+        [-3, 6],
+        [3, 12],
+        [8, 4],
+      ] as const) g.strokeRect(x + dx - 1, y - h, 2, h);
+      g.beginPath();
+      g.moveTo(x - 10, y + 1);
+      g.lineTo(x + 10, y + 1);
+      g.moveTo(x + 2, y - 2);
+      g.lineTo(x + 10, y - 4);
+      g.stroke();
+      label(`ruins of Old ${titled(placeName(r))}`, x, y);
+    }
+    if (land[2]) {
+      // A ring of standing stones.
+      const [x, y] = land[2];
+      for (let k = 0; k < 9; k++) {
+        const a = (k / 9) * Math.PI * 2;
+        g.fillRect(x + Math.cos(a) * 9 - 1, y + Math.sin(a) * 5 - 4, 2, 4);
+      }
+      label('the Standing Stones', x, y);
+    }
+    if (land[3]) {
+      // A barrow, and a warning.
+      const [x, y] = land[3];
+      g.beginPath();
+      g.ellipse(x, y, 9, 4, 0, Math.PI, 0);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(x - 2, y - 1);
+      g.lineTo(x + 2, y - 1);
+      g.stroke();
+      label('the barrow, let it be', x, y);
+    }
+    // A kraken in the deep, and a whale spouting.
+    if (sea[20]) {
+      const [x, y] = sea[20];
+      g.strokeStyle = hexA(INK, 0.7);
+      g.lineWidth = 1.2;
+      for (let k = 0; k < 4; k++) {
+        const bx = x - 18 + k * 12;
+        g.beginPath();
+        g.moveTo(bx, y + 4);
+        g.bezierCurveTo(bx - 4, y - 8, bx + 8, y - 14 - k * 2, bx + 4 + (k % 2 ? 4 : -4), y - 18 - k * 2);
+        g.stroke();
+        for (let s = 0; s < 3; s++) g.fillRect(bx + 1 + s * 0.5, y - 2 - s * 5, 1.2, 1.2);
+      }
+      g.beginPath();
+      g.moveTo(x - 24, y + 4);
+      g.quadraticCurveTo(x, y + 8, x + 24, y + 4);
+      g.stroke();
+      label('here the deep thing rises', x, y + 6);
+    }
+    if (sea[25]) {
+      const [x, y] = sea[25];
+      g.strokeStyle = hexA(INK, 0.7);
+      g.lineWidth = 1.1;
+      g.beginPath();
+      g.moveTo(x - 14, y);
+      g.quadraticCurveTo(x - 4, y - 9, x + 10, y - 2);
+      g.lineTo(x + 16, y - 7);
+      g.moveTo(x + 10, y - 2);
+      g.lineTo(x + 16, y + 2);
+      g.moveTo(x - 14, y);
+      g.quadraticCurveTo(x, y + 3, x + 10, y - 2);
+      g.moveTo(x - 9, y - 6);
+      g.quadraticCurveTo(x - 12, y - 14, x - 15, y - 12);
+      g.moveTo(x - 9, y - 6);
+      g.quadraticCurveTo(x - 6, y - 14, x - 3, y - 12);
+      g.stroke();
+    }
+    // A wind's head in the upper right, blowing across the sea.
+    wind(g, W - 74, 138);
+    // The frame, and a scale of leagues.
+    g.strokeStyle = hexA(INK, 0.7);
+    g.lineWidth = 1.4;
+    g.strokeRect(9, 9, W - 18, H - 18);
+    g.lineWidth = 0.7;
+    g.strokeRect(14, 14, W - 28, H - 28);
+    for (const [cx2, cy2] of [
+      [9, 9],
+      [W - 9, 9],
+      [9, H - 9],
+      [W - 9, H - 9],
+    ]) {
+      g.fillStyle = hexA(INK, 0.7);
+      g.fillRect(cx2 - 3, cy2 - 3, 6, 6);
+    }
+    const sx0 = 36;
+    const sy0 = H - 34;
+    for (let k = 0; k < 5; k++) {
+      g.fillStyle = k % 2 ? PAPER : hexA(INK, 0.7);
+      g.fillRect(sx0 + k * 18, sy0, 18, 4);
+    }
+    g.strokeStyle = hexA(INK, 0.7);
+    g.strokeRect(sx0, sy0, 90, 4);
+    g.font = serif(9, true);
+    g.textAlign = 'left';
+    g.fillStyle = hexA(INK, 0.65);
+    g.fillText('leagues', sx0, sy0 - 4);
     mapArt = { n: world.n, W, H, c };
+  }
+
+  function star(g: CanvasRenderingContext2D, x: number, y: number, rr: number) {
+    g.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+      const d = i % 2 ? rr * 0.45 : rr;
+      if (i) g.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d);
+      else g.moveTo(x + Math.cos(a) * d, y + Math.sin(a) * d);
+    }
+    g.closePath();
+    g.fill();
+  }
+
+  /** A wind's head: a round face, puffed cheeks, and the breath in curling lines. */
+  function wind(g: CanvasRenderingContext2D, x: number, y: number) {
+    g.save();
+    g.strokeStyle = hexA(INK, 0.6);
+    g.lineWidth = 1;
+    g.beginPath();
+    g.arc(x, y, 12, 0, Math.PI * 2);
+    g.stroke();
+    g.beginPath();
+    g.arc(x - 6, y + 2, 4, 0, Math.PI * 2);
+    g.stroke();
+    g.beginPath();
+    g.arc(x + 4, y - 4, 1, 0, Math.PI * 2);
+    g.moveTo(x - 4, y - 5);
+    g.arc(x - 4, y - 4, 1, 0, Math.PI * 2);
+    g.stroke();
+    g.beginPath();
+    g.arc(x - 11, y + 4, 2, 0, Math.PI * 2);
+    g.stroke();
+    for (let k = 0; k < 4; k++) {
+      g.beginPath();
+      g.moveTo(x - 14, y + 4 + (k - 1.5) * 4);
+      g.bezierCurveTo(x - 30, y + (k - 1.5) * 8, x - 44, y + 10 + (k - 1.5) * 9, x - 62 - k * 6, y + 4 + (k - 1.5) * 10);
+      g.stroke();
+    }
+    g.restore();
   }
 
   function compass(g: CanvasRenderingContext2D, x: number, y: number, R: number) {
@@ -606,6 +854,362 @@ export function mount(host: SkinHost): SkinInstance {
     ctx.restore();
   }
 
+  // ---- dispatches -----------------------------------------------------------------------------
+
+  /** A folded letter, sealed in red wax; broken open when taken, unfolded when delivered. */
+  function letter(x: number, y: number, a: number, s: number, alpha: number, broken: boolean) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(a);
+    ctx.scale(s, s);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(40,25,10,0.25)';
+    ctx.fillRect(-6 + 1.5, -4 + 1.5, 12, 8);
+    ctx.fillStyle = '#f4ead3';
+    ctx.fillRect(-6, -4, 12, 8);
+    ctx.strokeStyle = hexA(INK, 0.75);
+    ctx.lineWidth = 0.7;
+    ctx.strokeRect(-6, -4, 12, 8);
+    ctx.beginPath();
+    ctx.moveTo(-6, -4);
+    ctx.lineTo(0, 0.5);
+    ctx.lineTo(6, -4);
+    ctx.stroke();
+    ctx.fillStyle = '#991b1b';
+    if (broken) {
+      ctx.fillRect(-2.6, -0.6, 2, 2.6);
+      ctx.fillRect(0.8, 0.2, 2, 2.4);
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0.8, 2.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function letters(t: number) {
+    for (const d of world.dispatches) {
+      if (d.taken) {
+        // Taken: the seal broken, the letter turned over in the enemy's hand.
+        const k = Math.min(1, (t - d.takenAt) / 0.6);
+        letter(d.x, d.y - 6, 0.4 + k * 2.2, 1.1, Math.max(0, 1 - (t - d.takenAt - 2.5)), true);
+        continue;
+      }
+      if (d.opened >= 0) {
+        // Delivered: unfolded a moment, a few lines of a hand on it, then put away.
+        const k = (t - d.opened) / 2.5;
+        const s = 1 + Math.min(1, k * 4) * 0.9;
+        ctx.save();
+        ctx.translate(d.x + 14, d.y - 18);
+        ctx.rotate(-0.08);
+        ctx.globalAlpha = Math.max(0, 1 - Math.max(0, k - 0.6) * 2.5);
+        ctx.fillStyle = 'rgba(40,25,10,0.2)';
+        ctx.fillRect(-9 * s + 1.5, -6 * s + 1.5, 18 * s, 12 * s);
+        ctx.fillStyle = '#f6eedb';
+        ctx.fillRect(-9 * s, -6 * s, 18 * s, 12 * s);
+        ctx.strokeStyle = hexA(INK, 0.6);
+        ctx.lineWidth = 0.6;
+        ctx.strokeRect(-9 * s, -6 * s, 18 * s, 12 * s);
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const yy = -3.5 * s + i * 2.4 * s;
+          ctx.moveTo(-7 * s, yy);
+          for (let j = 0; j < 6; j++) ctx.lineTo(-7 * s + (j + 1) * 2.2 * s, yy + (hash(d.seed, i, j) - 0.5) * 1.2);
+        }
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+      // On the road: a dotted line behind the rider, the letter riding along.
+      ctx.save();
+      ctx.strokeStyle = hexA(d.realm.color, 0.35);
+      ctx.lineWidth = 0.9;
+      ctx.setLineDash([1.5, 3]);
+      ctx.beginPath();
+      ctx.moveTo(d.x0, d.y0);
+      ctx.quadraticCurveTo((d.x0 + d.x) / 2 + (hash(d.seed) - 0.5) * 30, (d.y0 + d.y) / 2, d.x, d.y);
+      ctx.stroke();
+      ctx.restore();
+      letter(d.x, d.y - 6, Math.sin(t * 6 + d.seed) * 0.12, 1, 1, false);
+    }
+  }
+
+  // ---- the fog of war ---------------------------------------------------------------------------
+
+  /**
+   * The map is kept by the first realm's war council. What it cannot see is blank paper with
+   * the coast and towns sketched in pencil; enemy armies there are only where they were last
+   * reported, marked in pencil with a question.
+   */
+  let pencil: { n: number; W: number; H: number; c: HTMLCanvasElement } | null = null;
+  let fogLayer: { c: HTMLCanvasElement; g: CanvasRenderingContext2D; W: number; H: number; at: number } | null = null;
+  let holeSprite: HTMLCanvasElement | null = null;
+  const lastSeen = new Map<number, { x: number; y: number; t: number; color: string; kind: Token['kind'] }>();
+
+  function paintPencil() {
+    const { c, g } = canvas(W, H, 1);
+    g.drawImage(paper!.c, 0, 0, W, H);
+    // Graphite hatching, light, over the unknown.
+    g.strokeStyle = 'rgba(80,80,90,0.07)';
+    g.lineWidth = 0.8;
+    g.beginPath();
+    for (let k = -H; k < W; k += 9) {
+      g.moveTo(k, H);
+      g.lineTo(k + H, 0);
+    }
+    g.stroke();
+    // The coast, in pencil.
+    const cell = 6;
+    const cols = Math.ceil(W / cell) + 1;
+    const rows = Math.ceil(H / cell) + 1;
+    const v = new Float32Array(cols * rows);
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) v[j * cols + i] = world.elevAt(i * cell, j * cell);
+    g.strokeStyle = 'rgba(70,70,80,0.45)';
+    g.lineWidth = 1;
+    g.beginPath();
+    isoPath(g, v, cols, rows, cell, 0);
+    g.stroke();
+    // Towns as pencil rings, names faint.
+    g.font = serif(11, true);
+    g.textAlign = 'center';
+    for (const t of world.towns) {
+      g.strokeStyle = 'rgba(70,70,80,0.5)';
+      g.beginPath();
+      g.arc(t.x, t.y - 4, t.capital ? 6 : 4.5, 0, Math.PI * 2);
+      g.stroke();
+      g.fillStyle = 'rgba(70,70,80,0.45)';
+      g.fillText(titled(t.name), t.x, t.y + 14);
+    }
+    pencil = { n: world.n, W, H, c };
+  }
+
+  /** What the council can see: around its towns, its armies, its riders, and armies laid bare. */
+  function known(): [number, number, number][] {
+    const us = world.realms[0];
+    const out: [number, number, number][] = [];
+    const m = Math.min(W, H);
+    if (!us) return out;
+    for (const t of world.towns) {
+      if (t.owner === us) out.push([t.x, t.y, m * (t.capital ? 0.28 : 0.21)]);
+      // Enemy towns on a road from ours are watched by scouts.
+      else if (t.links.some((l) => l.owner === us)) out.push([t.x, t.y, m * 0.1]);
+    }
+    for (const k of world.tokens) if (k.realm === us && k.fallenAt < 0) out.push([k.x, k.y, m * 0.17]);
+    for (const d of world.dispatches) if (d.realm === us && d.opened < 0 && !d.taken) out.push([d.x, d.y, 50]);
+    for (const k of world.tokens) if (world.revealed.has(k.id) && k.fallenAt < 0) out.push([k.x, k.y, 60]);
+    return out;
+  }
+
+  function fog(t: number) {
+    if (!o.fog || world.realms.length < 2) return;
+    if (!pencil || pencil.n !== world.n || pencil.W !== W || pencil.H !== H) paintPencil();
+    if (!holeSprite) {
+      holeSprite = document.createElement('canvas');
+      holeSprite.width = holeSprite.height = 64;
+      const g = holeSprite.getContext('2d')!;
+      const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(0,0,0,1)');
+      grad.addColorStop(0.62, 'rgba(0,0,0,1)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 64, 64);
+    }
+    const seen = known();
+    // Redrawn four times a second: the edge of the known moves slowly.
+    if (!fogLayer || fogLayer.W !== W || fogLayer.H !== H || t - fogLayer.at > 0.25 || t < fogLayer.at) {
+      if (!fogLayer || fogLayer.W !== W || fogLayer.H !== H) {
+        const c = document.createElement('canvas');
+        c.width = Math.ceil(W / 2);
+        c.height = Math.ceil(H / 2);
+        fogLayer = { c, g: c.getContext('2d')!, W, H, at: t };
+      }
+      const g = fogLayer.g;
+      g.setTransform(0.5, 0, 0, 0.5, 0, 0);
+      g.globalCompositeOperation = 'source-over';
+      g.clearRect(0, 0, W, H);
+      g.drawImage(pencil!.c, 0, 0, W, H);
+      g.globalCompositeOperation = 'destination-out';
+      for (const [x, y, rr] of seen) g.drawImage(holeSprite, x - rr, y - rr, rr * 2, rr * 2);
+      // The title and the legend are always legible.
+      g.fillRect(0, 0, 360, 90);
+      g.fillRect(W - 300, 0, 300, 100);
+      g.globalCompositeOperation = 'source-over';
+      fogLayer.at = t;
+    }
+    // Who is seen now; the rest are where they were last reported.
+    const inSight = (x: number, y: number) => seen.some(([sx, sy, rr]) => Math.hypot(sx - x, sy - y) < rr * 0.8);
+    for (const k of world.tokens) {
+      if (k.fallenAt >= 0) {
+        lastSeen.delete(k.id);
+        continue;
+      }
+      if (k.realm === world.realms[0]) continue;
+      if (inSight(k.x, k.y)) lastSeen.set(k.id, { x: k.x, y: k.y, t, color: k.realm.color, kind: k.kind });
+    }
+    ctx.drawImage(fogLayer.c, 0, 0, W, H);
+    ctx.save();
+    ctx.font = serif(11, true);
+    ctx.textAlign = 'center';
+    for (const [id, s] of lastSeen) {
+      const k = world.tokens.find((x) => x.id === id);
+      if (!k || inSight(k.x, k.y)) continue;
+      const age = t - s.t;
+      const a = Math.max(0, 1 - age / (MONTH_S * 5));
+      if (a <= 0) {
+        lastSeen.delete(id);
+        continue;
+      }
+      ctx.strokeStyle = `rgba(70,70,80,${(0.6 * a).toFixed(3)})`;
+      ctx.lineWidth = 0.9;
+      ctx.setLineDash([2, 2]);
+      ctx.strokeRect(s.x - 7, s.y - 7, 14, 14);
+      ctx.setLineDash([]);
+      ctx.fillStyle = `rgba(70,70,80,${(0.7 * a).toFixed(3)})`;
+      ctx.fillText('?', s.x, s.y + 4);
+    }
+    ctx.restore();
+  }
+
+  // ---- the light of the seasons ---------------------------------------------------------------
+
+  /** Each month's light on the table: cold in winter, fresh in spring, gold in summer, amber in autumn. */
+  const LIGHT = ['#c4cfe2', '#c9d3e3', '#d6dccf', '#dfe6c8', '#e6e8c8', '#fbe2b0', '#ffdca2', '#ffd9a0', '#f6cf98', '#f0c08e', '#e2c1a2', '#ccd3e0'];
+  let lightRGB: [number, number, number] | null = null;
+
+  function seasons(t: number) {
+    const want = mixRgb(LIGHT[world.month], LIGHT[world.month], 0);
+    lightRGB = lightRGB ? (lightRGB.map((v, i) => v + (want[i] - v) * 0.02) as [number, number, number]) : want;
+    const [lr, lg, lb] = lightRGB.map((v) => v | 0);
+    // The whole table takes the season's color.
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgba(${lr},${lg},${lb},0.55)`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+    // Light through a window: a skewed pane drifting across the table as the days go by,
+    // the mullions' shadows across it. Brighter and longer in summer.
+    const summer = [5, 6, 7].includes(world.month);
+    const winter = [11, 0, 1].includes(world.month);
+    const drift = ((t / (MONTH_S * 3)) % 1) * 0.6;
+    const px = W * (0.08 + drift);
+    const py = H * 0.12;
+    const pw = W * (summer ? 0.3 : winter ? 0.2 : 0.25);
+    const ph = H * (summer ? 0.62 : 0.5);
+    const skew = pw * 0.45;
+    // Painted tiny and laid over large: the window's light has soft edges, as real light does.
+    if (!pane) {
+      const c = document.createElement('canvas');
+      pane = { c, g: c.getContext('2d')! };
+    }
+    const k = 1 / 10;
+    const pwc = Math.ceil(W * k);
+    const phc = Math.ceil(H * k);
+    if (pane.c.width !== pwc || pane.c.height !== phc) {
+      pane.c.width = pwc;
+      pane.c.height = phc;
+    }
+    const g = pane.g;
+    g.setTransform(k, 0, 0, k, 0, 0);
+    g.clearRect(0, 0, W, H);
+    const quad = (x: number, y: number, w: number, h: number, sk: number) => {
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x + w, y);
+      g.lineTo(x + w + sk, y + h);
+      g.lineTo(x + sk, y + h);
+      g.closePath();
+    };
+    g.fillStyle = `rgba(${lr},${lg},${lb},1)`;
+    quad(px, py, pw, ph, skew);
+    g.fill();
+    // The mullions' shadow: a cross through the pane.
+    g.globalCompositeOperation = 'destination-out';
+    quad(px + pw * 0.47, py, pw * 0.06, ph, skew);
+    g.fill();
+    quad(px + skew * 0.48, py + ph * 0.48, pw, ph * 0.05, skew * 0.05);
+    g.fill();
+    g.globalCompositeOperation = 'source-over';
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = summer ? 0.2 : winter ? 0.1 : 0.14;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(pane.c, 0, 0, W, H);
+    ctx.restore();
+  }
+  let pane: { c: HTMLCanvasElement; g: CanvasRenderingContext2D } | null = null;
+
+  /** Autumn: a few leaves blown in through the window, lying on the map. */
+  function leaves(t: number) {
+    if (![8, 9, 10].includes(world.month)) return;
+    const n = 2 + ((world.month - 8) * 2);
+    for (let i = 0; i < n; i++) {
+      const x = hash(world.n, world.year, i * 3) * W;
+      const y = hash(world.n, world.year, i * 3 + 1) * H;
+      const a = hash(world.n, world.year, i * 3 + 2) * Math.PI * 2;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(a);
+      ctx.fillStyle = ['#b45309', '#9a3412', '#a16207'][i % 3];
+      ctx.strokeStyle = hexA(INK, 0.5);
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(-9, 0);
+      ctx.quadraticCurveTo(-3, -6, 7, 0);
+      ctx.quadraticCurveTo(-3, 6, -9, 0);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-11, 0);
+      ctx.lineTo(6, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+    void t;
+  }
+
+  /** A realm's arms on a small shield: a crown, a tower, a star, or an oak. */
+  function arms(x: number, y: number, color: string, kind: string) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = color;
+    ctx.strokeStyle = hexA(INK, 0.85);
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-6, -7);
+    ctx.lineTo(6, -7);
+    ctx.lineTo(6, 0);
+    ctx.quadraticCurveTo(6, 6, 0, 8);
+    ctx.quadraticCurveTo(-6, 6, -6, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#f4ead3';
+    if (kind === 'lion') {
+      ctx.beginPath();
+      ctx.moveTo(-3.5, 1.5);
+      ctx.lineTo(-3.5, -3);
+      ctx.lineTo(-1.5, -0.5);
+      ctx.lineTo(0, -3.5);
+      ctx.lineTo(1.5, -0.5);
+      ctx.lineTo(3.5, -3);
+      ctx.lineTo(3.5, 1.5);
+      ctx.closePath();
+      ctx.fill();
+    } else if (kind === 'tower') {
+      ctx.fillRect(-2, -3, 4, 6);
+      ctx.fillRect(-3, -4.5, 1.5, 2);
+      ctx.fillRect(-0.75, -4.5, 1.5, 2);
+      ctx.fillRect(1.5, -4.5, 1.5, 2);
+    } else if (kind === 'star') star(ctx, 0, -0.5, 4);
+    else {
+      ctx.beginPath();
+      ctx.arc(0, -1.5, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(-0.6, 1, 1.2, 3);
+    }
+    ctx.restore();
+  }
+
   function dragon(t: number) {
     const d = world.dragon;
     if (!d) return;
@@ -692,12 +1296,18 @@ export function mount(host: SkinHost): SkinInstance {
     ctx.font = serif(12, true);
     world.realms.forEach((rl, i) => {
       const held = world.towns.filter((tw) => tw.owner === rl).length;
-      const ty = 30 + i * 18;
+      const ty = 32 + i * 20;
       ctx.fillStyle = hexA(INK, (rl.out ? 0.45 : 0.9) * level);
-      ctx.fillText(`${titled(rl.short)}, ${held} town${held === 1 ? '' : 's'}${rl.out ? ' (yielded)' : ''}`, W - 40, ty);
-      ctx.fillStyle = rl.color;
-      ctx.fillRect(W - 32, ty - 9, 10, 10);
+      ctx.fillText(`${titled(rl.short)}, ${held} town${held === 1 ? '' : 's'}${rl.out ? ' (yielded)' : ''}`, W - 44, ty);
+      arms(W - 32, ty - 4, rl.color, rl.arms);
     });
+    // Whose map this is.
+    if (o.fog && world.realms[0]) {
+      ctx.textAlign = 'center';
+      ctx.font = serif(10, true);
+      ctx.fillStyle = hexA(INK, 0.6 * level);
+      ctx.fillText(`as kept by the council of ${titled(world.realms[0].short)}`, x + w / 2, y + h + 13);
+    }
     ctx.restore();
   }
 
@@ -710,6 +1320,8 @@ export function mount(host: SkinHost): SkinInstance {
       mapArt = null;
       washes = null;
       frost = null;
+      pencil = null;
+      fogLayer = null;
     },
     frame(info: FrameInfo) {
       step(info);
@@ -727,8 +1339,12 @@ export function mount(host: SkinHost): SkinInstance {
       sieges(t);
       const order = [...world.tokens].sort((a, b) => a.y - b.y);
       for (const k of order) tokenAt(k, t);
+      letters(t);
       dragon(t);
+      fog(t);
+      leaves(t);
       for (const b of world.blots) if (b.kind === 'seal') blot(b, t);
+      seasons(t);
       // Winter: frost creeps in from the edges.
       winterK += ((world.winter ? 1 : 0) - winterK) * 0.03;
       if (winterK > 0.01) {

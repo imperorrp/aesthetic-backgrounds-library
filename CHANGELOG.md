@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The War Table: dispatches, the fog of war, the seasons, an old map's furniture.**
+  - Dispatches (`table-sim.ts`): each month a seat may send a sealed letter to an army in the field, ridden across the map and opened on arrival (the army does as it says). Riders near the enemy may be taken: the letter is read, the army it was for laid bare, and the enemy sends a token after it. About one letter in ten is a forgery under a stolen seal; the army that obeys it marches into a trap.
+  - The fog of war (`fog`, on by default): the map as the first realm's council knows it. Ink around its towns, armies, riders, and the enemy towns its scouts watch; elsewhere bare paper with the coast and towns in pencil and graphite hatching, and enemy armies as pencilled squares with a question where they were last seen. Redrawn four times a second at half size.
+  - The seasons: the table takes each month's light (cold, fresh, gold, amber), and a window's light with its mullions' shadow drifts across it, painted at a tenth of the size for soft edges. Leaves blow in through the autumn.
+  - The map's furniture: a double frame with corner blocks, a scale of leagues, rhumb lines from the rose, rivers run downhill, named peaks, woods, and seas in spaced capitals, a witch's tower, ruins, standing stones, a barrow, a kraken, a whale, a wind's head, and each realm's arms (crown, tower, star, oak) in the legend.
+  - Sounds and sightings: a sealed letter, a rider taken, a false letter.
 - **Ages: a real map, and history you can see.**
   - No more hexes on screen. The sim keeps its grid; the painting does not: relief from the land's own height and wetness at 2 px (hillshade, shelves, a coastline traced by marching squares, `fantasy/iso.ts`), rivers as meandering curves that widen as streams join, woods and peaks placed by the land, territory from each town's reach on a fine grid with a wobble, washed and outlined along a traced border, roads curving through nudged tile middles and wearing wider with traffic.
   - Eras rebuild the towns: huts and palisades, timber, stone houses, spires, palaces, star forts with moats; galleys, cogs, tall ships (new pixel props: hut, stone house, spire, palace, galley, galleon, cart).

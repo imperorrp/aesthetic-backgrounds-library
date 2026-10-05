@@ -63,13 +63,14 @@ export const WAR_TABLE_SCHEMA = {
   dragons: { type: 'number', min: 0, max: 3, default: 1, label: 'Dragons' },
   candle: { type: 'boolean', default: true, label: 'Candlelight' },
   notes: { type: 'boolean', default: true, label: 'Notes in the margin' },
+  fog: { type: 'boolean', default: true, label: 'Fog of war' },
 } satisfies Schema;
 
 export const warTableSkin = lazySkin(
   {
     id: 'war-table',
     label: 'War table',
-    description: 'A campaign on a parchment map: orders drawn in ink, painted tokens moved by an unseen hand, sieges counted in ticks, battles and burnings, winter quarters, and the wax seal of a peace.',
+    description: 'A campaign on a parchment map: orders in ink, painted tokens moved by an unseen hand, sealed dispatches that can be taken or forged, the fog of what the council cannot see, the light of the seasons, and the wax seal of a peace.',
     tags: ['fantasy', 'map', 'parchment', 'light', 'medieval', 'calm'],
     crisp: true,
     schema: WAR_TABLE_SCHEMA,

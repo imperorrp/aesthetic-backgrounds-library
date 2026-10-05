@@ -188,6 +188,9 @@ export const SIGHTS: Record<string, Sight[]> = {
     s('sickness', 'Sickness in the camp', 'rare', 'Sickness went through a camp.'),
     s('kingtaken', 'A king is taken', 'rare', 'A king was taken in the field.'),
     s('yields', 'A realm yields', 'rare', 'A realm lost its seat and yielded.'),
+    s('dispatch', 'A sealed letter', 'common', 'A rider set out from the seat with sealed orders.'),
+    s('intercepted', 'A rider taken', 'uncommon', 'A rider was taken on the road, and the letter read.'),
+    s('forgery', 'A false letter', 'rare', 'A letter under a stolen seal led an army into a trap.'),
     s('dragon', 'Here be dragons', 'legendary', 'A dragon crossed the map and burned a town.'),
   ],
   petri: [

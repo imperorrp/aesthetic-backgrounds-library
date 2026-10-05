@@ -850,7 +850,7 @@
       "kind": "skin",
       "id": "war-table",
       "label": "War table",
-      "description": "A campaign on a parchment map: orders drawn in ink, painted tokens moved by an unseen hand, sieges counted in ticks, battles and burnings, winter quarters, and the wax seal of a peace.",
+      "description": "A campaign on a parchment map: orders in ink, painted tokens moved by an unseen hand, sealed dispatches that can be taken or forged, the fog of what the council cannot see, the light of the seasons, and the wax seal of a peace.",
       "tags": [
         "fantasy",
         "map",
@@ -895,6 +895,11 @@
           "type": "boolean",
           "default": true,
           "label": "Notes in the margin"
+        },
+        "fog": {
+          "type": "boolean",
+          "default": true,
+          "label": "Fog of war"
         }
       },
       "defaults": {
