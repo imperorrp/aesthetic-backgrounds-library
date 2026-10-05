@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Petri dish**, a new instrument: artificial life under a fluorescence microscope.
+  - Particle life (`petri/dish.ts`): several strains pull on and push each other by a seeded matrix, with a hard core and a wide personal space, a slow current through the medium, and a little Brownian jostle. Cells form, crawl, chase, and swallow each other; past about seventy cells an organism divides along its long axis.
+  - The instrument finds organisms every half second (union-find over a typed-array grid), matches them to the last look, and logs new organisms, divisions, engulfings, dissolutions, colonies, and symbioses of three strains. Specimens get brackets and a readout; organisms get membranes (their hull, eased and smoothed).
+  - A technician: nutrient drops, shifts of the medium (a strain adapts), antibiotic disks with a zone of inhibition, and very rarely something enormous. Fluorescent or darkfield. A sound palette and journal sightings. Passes the e2e gates.
+- **New entries**: `space-background-engine/skins/fantasy` (Shieldwall, Ages, the War Table) and `space-background-engine/skins/petri`, shells of about 2 KB each; the worlds are lazy chunks.
 - **The War Table**, a new skin: one war's campaign on a parchment map.
   - The map, in ink (`table.ts`): parchment with fibres, stains, a crease, and burnt edges; a coast traced by marching squares with contour ripples; hatched hills, woods, dotted roads, castle towns named in an italic hand, a compass rose, a sea serpent and a ship; realms washed in watercolor around their towns.
   - The campaign (`table-sim.ts`, no DOM): towns joined by roads; two or three realms; each month, orders drawn in ink, then painted wooden tokens (stacked by strength, carved with a sword, a horseshoe, or a crown) slide along them. Battles and ambushes, sieges counted in ticks, towns that fall or burn or turn their coat, levies at the seats, sickness, winter quarters with frost, a king taken, a realm that yields, a dragon now and then. The peace is sealed in red wax, and the next campaign is unrolled.

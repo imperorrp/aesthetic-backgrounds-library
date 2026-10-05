@@ -32,6 +32,9 @@ const BUDGETS_KB = {
   'skins/matrix-rain.js': 11,
   // the shell only; the city is a lazy chunk (~14 KB gzip) fetched on first mount
   'skins/undercity.js': 11,
+  // shells only: each fantasy world and the dish are lazy chunks fetched on first mount
+  'skins/fantasy.js': 11,
+  'skins/petri.js': 11,
   // the sector map skin plus its five part layers and the void-sector preset; 52 since the
   // overhaul added universe packs, fleets, and anomaly art; 58 with the mechanics system
   // (nine built-in mechanics, effects, combat) and a fourth pack, less the GitHub galaxy

@@ -16,6 +16,7 @@ export {
   shieldwallSkin,
   agesSkin,
   warTableSkin,
+  petriSkin,
   driftingDustSkin,
   matrixRainSkin,
 } from './engine/skins';

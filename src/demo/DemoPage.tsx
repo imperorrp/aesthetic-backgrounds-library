@@ -51,7 +51,7 @@ import './DemoPage.css';
 const DEBUG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug');
 
 /** Skins that report events and have a sound palette under their own id. */
-const SOUND_SKINS = new Set(['undercity', 'shieldwall', 'ages', 'war-table', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
+const SOUND_SKINS = new Set(['undercity', 'shieldwall', 'ages', 'war-table', 'petri', 'sonar', 'atc-radar', 'seismograph', 'abyssal', 'mars-radar']);
 
 /**
  * A world you can pick from a card: a sector map universe, Undercity, a fantasy world (or
@@ -67,7 +67,10 @@ const WORLD_CARDS: WorldCard[] = [
   { key: 'ages', source: 'ages', name: 'Ages', tagline: getSkin('ages')?.description, thumb: 'ages' },
   { key: 'war-table', source: 'war-table', name: 'War table', tagline: getSkin('war-table')?.description, thumb: 'war-table' },
 ];
-const INSTRUMENT_CARDS: WorldCard[] = instrumentSkins.map((s) => ({ key: s.id, source: s.id, name: s.label ?? s.id, tagline: s.description, thumb: s.id }));
+const INSTRUMENT_CARDS: WorldCard[] = [
+  ...instrumentSkins.map((s) => ({ key: s.id, source: s.id, name: s.label ?? s.id, tagline: s.description, thumb: s.id })),
+  { key: 'petri', source: 'petri', name: 'Petri dish', tagline: getSkin('petri')?.description, thumb: 'petri' },
+];
 const ALL_CARDS = [...WORLD_CARDS, ...INSTRUMENT_CARDS];
 
 /** A journal world id (a universe, Undercity, an instrument) as its card. */

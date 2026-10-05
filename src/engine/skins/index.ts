@@ -12,11 +12,12 @@ import { localSkins } from './local';
 import { instrumentSkins, sonarSkin, atcRadarSkin, seismicSkin, abyssalSkin, marsRadarSkin } from './instruments';
 import { undercitySkin, prepareUndercity } from './undercity';
 import { shieldwallSkin, agesSkin, warTableSkin } from './fantasy';
+import { petriSkin } from './petri';
 
-export const builtInSkins: readonly BackgroundSkin[] = [voidTacticalSkin, undercitySkin, shieldwallSkin, agesSkin, warTableSkin, ...instrumentSkins, driftingDustSkin, matrixRainSkin, ...localSkins];
+export const builtInSkins: readonly BackgroundSkin[] = [voidTacticalSkin, undercitySkin, shieldwallSkin, agesSkin, warTableSkin, ...instrumentSkins, petriSkin, driftingDustSkin, matrixRainSkin, ...localSkins];
 builtInSkins.forEach((skin) => registerSkin(skin));
 
-export { voidTacticalSkin, undercitySkin, prepareUndercity, shieldwallSkin, agesSkin, warTableSkin, driftingDustSkin, matrixRainSkin, instrumentSkins, sonarSkin, atcRadarSkin, seismicSkin, abyssalSkin, marsRadarSkin };
+export { voidTacticalSkin, undercitySkin, prepareUndercity, shieldwallSkin, agesSkin, warTableSkin, petriSkin, driftingDustSkin, matrixRainSkin, instrumentSkins, sonarSkin, atcRadarSkin, seismicSkin, abyssalSkin, marsRadarSkin };
 export type { VoidTacticalOptions } from './void-tactical/runtime';
 export type { NetworkSkinOptions } from './drifting-dust';
 export type { MatrixSkinOptions } from './matrix-rain';

@@ -322,6 +322,75 @@
     },
     {
       "kind": "skin",
+      "id": "petri",
+      "label": "Petri dish",
+      "description": "Artificial life under a fluorescence microscope: particles that attract and repel by species until cells form, divide, engulf each other, and colonize, logged by the instrument.",
+      "tags": [
+        "instrument",
+        "science",
+        "life",
+        "biology",
+        "dark",
+        "organic"
+      ],
+      "themes": [
+        "dark"
+      ],
+      "cost": "medium",
+      "schema": {
+        "stain": {
+          "type": "enum",
+          "values": [
+            "fluorescent",
+            "darkfield"
+          ],
+          "default": "fluorescent",
+          "label": "Stain"
+        },
+        "species": {
+          "type": "number",
+          "min": 3,
+          "max": 7,
+          "step": 1,
+          "default": 6,
+          "label": "Species"
+        },
+        "life": {
+          "type": "number",
+          "min": 0.4,
+          "max": 1.6,
+          "default": 1,
+          "label": "How much life"
+        },
+        "drops": {
+          "type": "number",
+          "min": 0,
+          "max": 2,
+          "default": 1,
+          "label": "The technician (drops, reagents)"
+        },
+        "tracking": {
+          "type": "boolean",
+          "default": true,
+          "label": "Track specimens"
+        },
+        "hud": {
+          "type": "boolean",
+          "default": true,
+          "label": "Instrument readout"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#4ade80"
+        },
+        "intensity": 0.75
+      },
+      "preview": "gallery/petri.png",
+      "source": "builtin"
+    },
+    {
+      "kind": "skin",
       "id": "seismograph",
       "label": "Seismograph",
       "description": "A seismic record: station traces trembling, quakes sweeping across the stack, the crust below.",

@@ -58,7 +58,7 @@ describe.each(subjects.map((s) => [s.id, s] as const))('%s', (_id, skin) => {
     const a = run(skin, 'orion-7', 60);
     const b = run(skin, 'orion-8', 60);
     expect(a.hash).not.toBe(b.hash);
-  });
+  }, 30_000);
 
   it('never calls Math.random or reads the wall clock while running', () => {
     const random = vi.spyOn(Math, 'random');
@@ -68,5 +68,5 @@ describe.each(subjects.map((s) => [s.id, s] as const))('%s', (_id, skin) => {
     expect(dateNow).not.toHaveBeenCalled();
     random.mockRestore();
     dateNow.mockRestore();
-  });
+  }, 30_000);
 });

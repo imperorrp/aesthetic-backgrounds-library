@@ -174,6 +174,18 @@ export const SIGHTS: Record<string, Sight[]> = {
     s('yields', 'A realm yields', 'rare', 'A realm lost its seat and yielded.'),
     s('dragon', 'Here be dragons', 'legendary', 'A dragon crossed the map and burned a town.'),
   ],
+  petri: [
+    s('emerge', 'A new organism', 'common', 'A new organism came together.'),
+    s('division', 'Division', 'common', 'An organism divided in two.'),
+    s('engulf', 'Engulfing', 'common', 'One organism swallowed another.'),
+    s('drop', 'Nutrient drop', 'common', 'The technician added a drop of nutrients.'),
+    s('dissolve', 'Dissolution', 'uncommon', 'An organism came apart.'),
+    s('mutation', 'The medium shifts', 'uncommon', 'The medium shifted, and a strain adapted.'),
+    s('colony', 'A colony', 'uncommon', 'An organism grew into a colony.'),
+    s('symbiosis', 'Symbiosis', 'uncommon', 'Three strains lived as one.'),
+    s('toxin', 'Zone of inhibition', 'rare', 'An antibiotic disk cleared a ring around itself.'),
+    s('giant', 'Something large', 'legendary', 'Something enormous drifted through the field.'),
+  ],
   sonar: [
     s('contact', 'Contact', 'common', 'A new contact on the scope.'),
     s('echo', 'Echo', 'common', 'An echo came back.'),

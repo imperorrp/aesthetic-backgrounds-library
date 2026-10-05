@@ -27,6 +27,10 @@ Community presets live in `registry/community/*.json` and in `registry/index.jso
 | --- | --- | --- |
 | `void-tactical` | living sci-fi sector map: fleets in formation between working structures, anomalies, target locks, chatter | `universe` (`void`, `saltwind`, `choir`, `siege`, `hive`, `lastfleet`, `cradle`) or `pack` (a universe pack JSON, e.g. from `universePrompt()`), `mechanics`, `camera`, `hueVariety`, `lineWeight`, `spriteScale`, `shipScale`, `hud`, `paths`, `trails`, `lock`, CSS layer toggles; config `detail`, `density` |
 | `undercity` | 2.5D cyberpunk city at night in the rain: parallax towers, an open megastructure, air traffic, trains, crowds, netrunners breaching corp ICE | `speed`, `rain`, `traffic`, `crowd`, `net`, `overlay`, `hud` |
+| `shieldwall` | pixel-sprite high-fantasy battles: regiments, cavalry, archers, mages, dragons, a war of five battles; side-on at dusk or from above as a war map | `view` (`side`, `above`), `troops`, `magic`, `dragons`, `weather`, `camera`, `labels`, `hud` |
+| `ages` | a thousand years of a continent from above: kingdoms rise, roads and towns grow, wars, plagues, dragons, eras | `speed`, `kingdoms`, `wars`, `disasters`, `dragons`, `labels`, `hud` |
+| `war-table` | a medieval campaign on a parchment map: ink, orders as arrows, tokens, sieges, winter, a sealed peace | `realms`, `pace`, `dragons`, `candle`, `notes` |
+| `petri` | artificial life under a microscope: particle-life organisms that divide, engulf, and form colonies | `stain` (`fluorescent`, `darkfield`), `species`, `life`, `drops`, `tracking`, `hud` |
 | `sonar` | submarine passive sonar waterfall | `contacts`, `speed`, `grain`, `labels` |
 | `atc-radar` | approach radar with phosphor returns, data blocks, clearances | `traffic`, `sweep`, `timeScale`, `weather` |
 | `seismograph` | station traces, quakes sweeping the stack, crust section | `stations`, `speed`, `activity`, `section` |

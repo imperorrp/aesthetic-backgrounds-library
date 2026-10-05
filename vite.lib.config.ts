@@ -20,6 +20,8 @@ export default defineConfig({
         'skins/drifting-dust': 'src/entries/skins/drifting-dust.ts',
         'skins/matrix-rain': 'src/entries/skins/matrix-rain.ts',
         'skins/undercity': 'src/entries/skins/undercity.ts',
+        'skins/fantasy': 'src/entries/skins/fantasy.ts',
+        'skins/petri': 'src/entries/skins/petri.ts',
         shader: 'src/entries/shader.ts',
         manifest: 'src/entries/manifest.ts',
         tokens: 'src/entries/tokens.ts',

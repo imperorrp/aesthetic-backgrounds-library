@@ -16,7 +16,7 @@
 
 I made this to test one idea: what if a website's background wasn't decoration, but a window onto somewhere else?
 
-A war room following a front that has held for forty years. A city in the rain where a netrunner is breaking into the corp tower three blocks over. A refugee fleet counting its souls. A sonar room, waiting for a torpedo. A billion years of a galaxy, a minute and a half at a time.
+A war room following a front that has held for forty years. A city in the rain where a netrunner is breaking into the corp tower three blocks over. A refugee fleet counting its souls. A sonar room, waiting for a torpedo. A billion years of a galaxy, a minute and a half at a time. A shieldwall at dusk with a dragon over the lines. A thousand years of a continent. A dish of things that are almost alive.
 
 None of them loop. Each one is a small simulation with its own rules, and things happen in it on their own: raids, breaches, truces, supernovae, a district's lights going out block by block. The same seed always plays the same story, so a link is an exact world. And they still behave like backgrounds:
 - They keep the text over them readable.
@@ -181,7 +181,7 @@ The same idea, applied to other screens.
 | --- | --- |
 | ![Sonar](e2e/__screenshots__/chromium/sonar.png) **Sonar.** A submarine's passive waterfall. Contacts drift across bearings, and whales sing on and off. Then a torpedo is in the water: the boat turns hard and every trace bends with it, a decoy blooms, and the torpedo veers off after it. | ![Approach radar](e2e/__screenshots__/chromium/atc-radar.png) **Approach radar.** The sweep paints aircraft onto fading phosphor. Arrivals hold, land, or go around, departures climb out, and conflict alerts blink. Now and then someone declares an emergency and squawks 7700. |
 | ![Seismograph](e2e/__screenshots__/chromium/seismograph.png) **Seismograph.** Station pens tremble until a quake's waves sweep down the stack. Big ones bring aftershock sequences. Quarry blasts, volcanic tremor, and great quakes from the far side of the planet that reach every station at once. | ![Abyssal scanner](e2e/__screenshots__/chromium/abyssal.png) **Abyssal scanner.** Marine snow and bioluminescent animals. A startled jelly's alarm flash runs through its neighbors, and a dragonfish hunts by red light. Something very large crosses the edge of the light. |
-| ![Martian weather radar](e2e/__screenshots__/chromium/mars-radar.png) **Martian weather radar.** Dust storm cells drift over Jezero. A rover drives and cores samples, a helicopter scouts ahead, meteors leave fresh craters, and storm watches park everything. It all goes into the ops log. | |
+| ![Martian weather radar](e2e/__screenshots__/chromium/mars-radar.png) **Martian weather radar.** Dust storm cells drift over Jezero. A rover drives and cores samples, a helicopter scouts ahead, meteors leave fresh craters, and storm watches park everything. It all goes into the ops log. | ![Petri dish](e2e/__screenshots__/chromium/petri.png) **Petri dish.** Artificial life under a fluorescence microscope. Particles of six strains pull on and push each other by a seeded rule, and from that alone, cells form with membranes, crawl, divide, and swallow each other. The instrument tracks specimens and logs it all. A technician adds nutrient drops, the medium shifts and a strain adapts, an antibiotic disk clears a zone, and very rarely something enormous drifts through. |
 
 ### Basics
 
@@ -348,6 +348,8 @@ mount('#hero', { skin: 'matrix-rain' });
 | `/core` | The host: mount, sizing, clock, palettes, registries. |
 | `/skins/void-tactical` | The sector map, its universes (loaded on demand), and the mechanics API. |
 | `/skins/undercity` | Undercity's shell. The city itself loads on first mount. |
+| `/skins/fantasy` | Shieldwall, Ages, and the War Table: shells; each world loads on first mount. |
+| `/skins/petri` | The Petri dish's shell; the dish loads on first mount. |
 | `/skins/drifting-dust`, `/skins/matrix-rain` | The small skins. |
 | `/layers`, `/presets` | The layer library and the curated presets. |
 | `/shader` | `createShaderLayer` for GPU layers. |
@@ -462,7 +464,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | Option | Default | Description |
 | --- | --- | --- |
 | `seed` | random | PRNG seed. The same seed replays the same world, frame for frame. |
-| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `drifting-dust`, `matrix-rain`, and every preset id. |
+| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `petri`, `drifting-dust`, `matrix-rain`, and every preset id. |
 | `options` | `{}` | Skin-specific options; see each skin's section below. |
 | `palette` | `'void-cyan'` | One of: <ul><li>a built-in id (`void-cyan`, `amber`, `violet`)</li><li>a full token object</li><li>a bare hex color</li><li>`{ from: '#hex', theme: 'dark' \| 'light', harmony }`, which derives a palette in OKLCH. `harmony` (`analogous`, `complementary`, `split`, `triadic`, `mono`) sets the secondary hues `accent2` and `accent3`.</li></ul> |
 | `exposeTokens` | `false` | Also write the palette as `--bge-*` variables on `<html>` (or a given element) for your own UI. |
@@ -740,6 +742,19 @@ mount(document.body, {
 | `dragons` | `1` | How likely a dragon is when trouble comes. |
 | `labels` | `true` | Call-outs on the map. |
 | `hud` | `true` | The year and era, the peoples by the towns they hold, and the chronicle. |
+
+## The Petri dish's options
+
+`skin: 'petri'`. A lazy chunk (about 8 KB gzipped).
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `stain` | `'fluorescent'` | `fluorescent` (a dye per strain) or `darkfield` (silver on black). |
+| `species` | `6` | How many strains (3 to 7). |
+| `life` | `1` | How many particles, relative to the dish's size. |
+| `drops` | `1` | The technician: how often nutrient drops and antibiotic disks come (`0` for never). |
+| `tracking` | `true` | Brackets and a readout on a few specimens. |
+| `hud` | `true` | The instrument readout, the strains' dyes, the scale bar, and the log. |
 
 ## The War Table's options
 

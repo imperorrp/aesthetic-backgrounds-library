@@ -82,6 +82,15 @@ const IMAGES = [
     ],
   },
   {
+    file: 'worlds/petri.jpg',
+    cols: 2,
+    tile: [960, 600],
+    shots: [
+      { skin: 'petri', t: [60], captions: ['THE DISH'] },
+      { skin: 'petri', t: [60], crop: [330, 160, 640, 400], dsf: 2, captions: ['UP CLOSE'] },
+    ],
+  },
+  {
     file: 'moments/shieldwall-dragon.jpg',
     cols: 4,
     tile: [480, 300],

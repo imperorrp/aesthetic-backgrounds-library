@@ -371,6 +371,33 @@ export const SOUND_PALETTES: Record<string, SoundPalette> = {
 
   // ---- the instruments: their own rooms, their own alarms ----------------------------------
 
+  /** Petri: the microscope's hum; drips from a pipette, soft pops of division, a slow swallow. */
+  petri: {
+    id: 'petri',
+    root: 92.5,
+    scale: [0, 2, 7, 9, 12, 14],
+    drone: { wave: 'sine', notes: [-12, 7], level: 0.007, cutoff: 400, wobble: 0.4 },
+    bed: { noise: 'brown', lo: 30, hi: 200, level: 0.01 },
+    space: 2.6,
+    wet: 0.45,
+    echo: 0.5,
+    grid: 0.25,
+    cues: {
+      say: { cue: { kind: 'ping', note: 28, dur: 0.04 }, gain: 0.012, every: 1, only: 'high' },
+      emerge: { cue: { kind: 'ping', note: 12, dur: 0.3 }, gain: 0.02, every: 2 },
+      division: { cue: [{ kind: 'ping', note: 19, dur: 0.4, echoes: 1 }, { kind: 'ping', note: 26, dur: 0.3 }], gain: 0.04, every: 1.5 },
+      engulf: { cue: { kind: 'sweep', from: 400, to: 120, dur: 0.8, wave: 'sine', q: 2 }, gain: 0.05, every: 2 },
+      dissolve: { cue: { kind: 'sweep', from: 600, to: 200, dur: 0.6, wave: 'triangle', q: 1 }, gain: 0.02, every: 3 },
+      drop: { cue: [{ kind: 'thump', pitch: 140, dur: 0.15 }, { kind: 'ping', note: 24, dur: 0.6, echoes: 2 }], gain: 0.05, every: 3 },
+      mutation: { cue: { kind: 'bell', note: 7, chord: [0, 6], dur: 3 }, gain: 0.05, every: 8 },
+      colony: { cue: { kind: 'bell', note: 12, chord: [0, 4, 7], dur: 3 }, gain: 0.06, every: 6 },
+      symbiosis: { cue: { kind: 'choir', note: 12, chord: [0, 4, 7], dur: 4, vowel: 'ah' }, gain: 0.06, every: 8 },
+      toxin: { cue: [{ kind: 'thump', pitch: 90, dur: 0.3 }, { kind: 'choir', chord: [0, 1], dur: 4, vowel: 'ee' }], gain: 0.06, every: 10 },
+      giant: { cue: [{ kind: 'choir', note: -12, chord: [0, 1], dur: 6, vowel: 'oo' }, { kind: 'sweep', from: 120, to: 60, dur: 5, wave: 'sine', q: 1 }], gain: 0.1, every: 20 },
+      giantgone: { cue: { kind: 'whoosh', from: 600, to: 150, dur: 3 }, gain: 0.05, every: 20 },
+    },
+  },
+
   /** Sonar: the deep, the hull, a ping into the dark and what comes back. */
   sonar: {
     id: 'sonar',
