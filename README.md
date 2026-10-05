@@ -212,6 +212,22 @@ The same idea, applied to other screens.
 | ![Seismograph](e2e/__screenshots__/chromium/seismograph.png) **Seismograph.** Station pens tremble until a quake's waves sweep down the stack. Big ones bring aftershock sequences. Quarry blasts, volcanic tremor, and great quakes from the far side of the planet that reach every station at once. | ![Abyssal scanner](e2e/__screenshots__/chromium/abyssal.png) **Abyssal scanner.** Marine snow and bioluminescent animals. A startled jelly's alarm flash runs through its neighbors, and a dragonfish hunts by red light. Something very large crosses the edge of the light. |
 | ![Martian weather radar](e2e/__screenshots__/chromium/mars-radar.png) **Martian weather radar.** Dust storm cells drift over Jezero. A rover drives and cores samples, a helicopter scouts ahead, meteors leave fresh craters, and storm watches park everything. It all goes into the ops log. | ![Petri dish](e2e/__screenshots__/chromium/petri.png) **Petri dish.** Artificial life under a fluorescence microscope. Particles of six strains pull on and push each other by a seeded rule, and from that alone, cells form with membranes, crawl, divide, and swallow each other. The instrument tracks specimens and logs it all. A technician adds nutrient drops, the medium shifts and a strain adapts, an antibiotic disk clears a zone, and very rarely something enormous drifts through. |
 
+#### The Petri dish, up close
+
+![Petri: a dish of strains under fluorescence, the same under phase contrast, and a Lenia culture: Orbia gliding, and a collision overgrowing the field](docs/media/worlds/petri.jpg)
+
+The life in the dish has to eat. The agar holds food that slowly regrows. Cells take it up and drift toward where there is more, and where it runs out they fade and die. The dead rot back into the agar, and spores come up where there is food again.
+
+One strain hunts. The others flee it, and what it catches it eats, turning prey into more of itself when it is well fed. It also starves fastest, so its numbers boom and crash. Now and then something gets in at the rim, a contaminant that converts what it touches, until the technician puts it under the UV lamp.
+
+The microscope behaves like one:
+- The focus drifts as the stage warms, and the autofocus hunts back to sharp.
+- The stage pans slowly to keep the action in the eyepiece.
+- There are three stains: `fluorescent`, `darkfield`, and `phase` contrast, which shows dark bodies with bright halos.
+- The lab notebook gives every organism a Latin name (a genus per strain, an epithet each, now and then one named for the sample) and notes what it saw, beside a chart of each strain's numbers over the last two minutes.
+
+`medium: 'lenia'` swaps the particles for a Lenia culture, a continuous cellular automaton (Bert Chan's) run with FFT convolutions. Its creature is Orbium, a glider that looks alive. They swim out of the eyepiece and back in, and they meet: two may merge, break apart, dissolve, or set off an overgrowth that fills the field, which the technician dilutes before inoculating again.
+
 ### Basics
 
 Not every site wants a story. Calm presets for product pages are built from the same layer library, tuned behind real text:
@@ -775,16 +791,19 @@ mount(document.body, {
 
 ## The Petri dish's options
 
-`skin: 'petri'`. A lazy chunk (about 8 KB gzipped).
+`skin: 'petri'`. A lazy chunk (about 18 KB gzipped, both media).
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `stain` | `'fluorescent'` | `fluorescent` (a dye per strain) or `darkfield` (silver on black). |
+| `medium` | `'particles'` | `particles` (strains of particle life) or `lenia` (a Lenia culture of Orbium). |
+| `stain` | `'fluorescent'` | `fluorescent` (a dye per strain), `darkfield` (silver on black), or `phase` (phase contrast: dark bodies, bright halos). |
 | `species` | `6` | How many strains (3 to 7). |
 | `life` | `1` | How many particles, relative to the dish's size. |
-| `drops` | `1` | The technician: how often nutrient drops and antibiotic disks come (`0` for never). |
-| `tracking` | `true` | Brackets and a readout on a few specimens. |
-| `hud` | `true` | The instrument readout, the strains' dyes, the scale bar, and the log. |
+| `predators` | `true` | One strain hunts the others (its numbers boom and crash). |
+| `drops` | `1` | The technician: how often nutrient drops, antibiotic disks, inoculations, and contaminations come (`0` for never). |
+| `tracking` | `true` | Brackets and a readout (with a Latin name) on a few specimens. |
+| `notebook` | `true` | The lab notebook and the population chart. |
+| `hud` | `true` | The instrument readout (with the focus), the strains' dyes, the scale bar, and the log. |
 
 ## The War Table's options
 

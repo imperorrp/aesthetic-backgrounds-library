@@ -86,8 +86,10 @@ const IMAGES = [
     cols: 2,
     tile: [960, 600],
     shots: [
-      { skin: 'petri', t: [60], captions: ['THE DISH'] },
-      { skin: 'petri', t: [60], crop: [330, 160, 640, 400], dsf: 2, captions: ['UP CLOSE'] },
+      { skin: 'petri', t: [200], captions: ['FLUORESCENCE'] },
+      { skin: 'petri', options: { stain: 'phase' }, t: [200], captions: ['PHASE CONTRAST'] },
+      { skin: 'petri', options: { medium: 'lenia' }, t: [4], captions: ['LENIA: ORBIUM GLIDING'] },
+      { skin: 'petri', options: { medium: 'lenia' }, t: [30], captions: ['A COLLISION OVERGROWS'] },
     ],
   },
   {

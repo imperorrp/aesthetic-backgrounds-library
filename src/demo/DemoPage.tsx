@@ -71,6 +71,7 @@ const WORLD_CARDS: WorldCard[] = [
 const INSTRUMENT_CARDS: WorldCard[] = [
   ...instrumentSkins.map((s) => ({ key: s.id, source: s.id, name: s.label ?? s.id, tagline: s.description, thumb: s.id })),
   { key: 'petri', source: 'petri', name: 'Petri dish', tagline: getSkin('petri')?.description, thumb: 'petri' },
+  { key: 'petri-lenia', source: 'petri', options: { medium: 'lenia' }, name: 'Petri, a Lenia culture', tagline: 'Orbium, the glider, in a continuous culture: they glide, meet, break apart, overgrow, and are diluted.', thumb: 'petri-medium-lenia' },
 ];
 const ALL_CARDS = [...WORLD_CARDS, ...INSTRUMENT_CARDS];
 

@@ -324,7 +324,7 @@
       "kind": "skin",
       "id": "petri",
       "label": "Petri dish",
-      "description": "Artificial life under a fluorescence microscope: particles that attract and repel by species until cells form, divide, engulf each other, and colonize, logged by the instrument.",
+      "description": "Artificial life under a microscope: strains that feed, hunt, divide, engulf, and colonize, a contamination at the rim, a drifting focus, and a notebook naming what is found; or a Lenia culture of gliding creatures.",
       "tags": [
         "instrument",
         "science",
@@ -338,11 +338,21 @@
       ],
       "cost": "medium",
       "schema": {
+        "medium": {
+          "type": "enum",
+          "values": [
+            "particles",
+            "lenia"
+          ],
+          "default": "particles",
+          "label": "Medium"
+        },
         "stain": {
           "type": "enum",
           "values": [
             "fluorescent",
-            "darkfield"
+            "darkfield",
+            "phase"
           ],
           "default": "fluorescent",
           "label": "Stain"
@@ -362,6 +372,11 @@
           "default": 1,
           "label": "How much life"
         },
+        "predators": {
+          "type": "boolean",
+          "default": true,
+          "label": "A hunting strain"
+        },
         "drops": {
           "type": "number",
           "min": 0,
@@ -373,6 +388,11 @@
           "type": "boolean",
           "default": true,
           "label": "Track specimens"
+        },
+        "notebook": {
+          "type": "boolean",
+          "default": true,
+          "label": "Lab notebook and chart"
         },
         "hud": {
           "type": "boolean",

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Petri: feeding, hunters, contamination, a microscope that behaves like one, a notebook, and Lenia.**
+  - Feeding: an agar food grid that regrows; cells take it up and drift up its gradient; energy per cell, fading as it runs low; starved cells become debris that rots back into the agar and comes up again as spores.
+  - Hunters (`predators`, on by default): one strain seeks the rest, which flee it; a catch is eaten, and becomes another hunter only when the hunter is well fed. They starve fastest: booms and crashes, logged.
+  - Contamination: a foreign strain at the rim that converts what it touches, until the technician sterilizes it under UV.
+  - The microscope (`petri/scope.ts`): the focus drifts and the autofocus hunts back to sharp (glows widen and dim out of focus); the stage pans across a dish a little wider than the eyepiece; a third stain, `phase` contrast (dark bodies, bright halos).
+  - A lab notebook: Latin names (a genus per strain, an epithet each, some named for the sample) on brackets and in dated notes; a population chart of the strains over two minutes (`notebook`).
+  - `medium: 'lenia'`: a Lenia culture (`petri/lenia.ts`: Chan's continuous CA, a 128 × 128 torus stepped by FFT convolution, about 2 ms a step) of Orbium under the same microscope; inoculation, gliding, collisions that merge, break, dissolve, or overgrow, dilution. Growth and decay tinted at the creatures' edges. A new e2e subject and a gallery card.
+  - Sounds and sightings: the hunters feed, bloom, and crash; starvation; contamination; sterilized; autofocus; an overgrowth diluted.
 - **The War Table: dispatches, the fog of war, the seasons, an old map's furniture.**
   - Dispatches (`table-sim.ts`): each month a seat may send a sealed letter to an army in the field, ridden across the map and opened on arrival (the army does as it says). Riders near the enemy may be taken: the letter is read, the army it was for laid bare, and the enemy sends a token after it. About one letter in ten is a forgery under a stolen seal; the army that obeys it marches into a trap.
   - The fog of war (`fog`, on by default): the map as the first realm's council knows it. Ink around its towns, armies, riders, and the enemy towns its scouts watch; elsewhere bare paper with the coast and towns in pencil and graphite hatching, and enemy armies as pencilled squares with a question where they were last seen. Redrawn four times a second at half size.
