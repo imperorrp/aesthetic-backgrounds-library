@@ -131,7 +131,7 @@ export const deepholdSkin = lazySkin(
 );
 
 export const LEYLINES_SCHEMA = {
-  style: { type: 'enum', values: ['ink', 'classic'], default: 'ink', label: 'Style' },
+  style: { type: 'enum', values: ['realm', 'ink', 'classic'], default: 'realm', label: 'Style (the realm of towers and mages, the ink network, or the first version)' },
   land: { type: 'enum', values: ['any', 'isles', 'steppe', 'forest', 'desert', 'tundra', 'marsh', 'mountains'], default: 'any', label: 'The land' },
   scale: { type: 'number', min: 0.5, max: 2, default: 1, label: 'Scale (how much is going on)' },
   orders: { type: 'number', min: 2, max: 6, step: 1, default: 4, label: 'Orders of mages' },
@@ -145,7 +145,7 @@ export const leylinesSkin = lazySkin(
   {
     id: 'leylines',
     label: 'Leylines',
-    description: 'A land at night and the lines of power under it: orders of mages raising towers on the wells, power pulsing along the lines, duels fought along them, arcane storms, the convergence of the moons, and rifts that must be closed.',
+    description: 'A realm seen from high up, drawn like a fantasy map: orders of mages of seven schools raise towers on the wells of the ley lines, walk the land to claim, bless, and search ruins, duel with fireballs, lightning, ice, and vines, and go to war with summoned elementals; storms, a dragon, rifts, falling stars, and great rituals under the converging moons.',
     tags: ['fantasy', 'magic', 'map', 'glow', 'dark', 'calm'],
     crisp: true,
     schema: LEYLINES_SCHEMA,

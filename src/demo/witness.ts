@@ -315,6 +315,13 @@ export const SIGHTS: Record<string, Sight[]> = {
     s('eclipse', 'Eclipse', 'rare', 'The sun was eaten, and the wells grew dim.'),
     s('blight', 'Blight', 'rare', 'A hostile growth ate the orders\' lines.'),
     s('leviathan', 'The leviathan', 'legendary', 'Something vast moved under the lines.'),
+    s('artifact', 'An artifact', 'rare', 'A mage found an artifact in the ruins of an older age.'),
+    s('guardian', 'A guardian wakes', 'uncommon', 'A stone guardian woke in the ruins.'),
+    s('greattower', 'A tower crowned', 'rare', 'An order crowned its tower, the highest in the land.'),
+    s('wardbreaks', 'A ward breaks', 'uncommon', "A tower's ward broke under siege."),
+    s('dragon', 'A dragon', 'rare', 'A dragon came over the hills.'),
+    s('dragonslain', 'The dragon falls', 'legendary', 'The mages of the realm brought a dragon down.'),
+    s('giant', 'A giant', 'uncommon', 'A giant came down from the hills.'),
   ],
   petri: [
     s('emerge', 'A new organism', 'common', 'A new organism came together.'),

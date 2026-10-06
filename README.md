@@ -255,27 +255,28 @@ mount(document.body, { skin: 'deephold', options: { mountain: 'ember', holds: '4
 
 ### Leylines
 
-![Leylines: four seeds; glowing threads of five orders on a night map, an inked map on vellum, the drowned fens with a leviathan, long filaments across the white waste](docs/media/worlds/leylines.jpg)
+![Leylines: four realms; rival mages dueling by a tower, a dragon over the villages, a rift pouring out demons as the orders close it, an order's great ritual under the converging moons](docs/media/worlds/leylines.jpg)
 
-Lines of power that grow by themselves, and the orders of mages who grow them. Each order is a swarm of thousands of movers that follow and lay a trail, a slime mold's way of finding paths. Their networks find and link the wells on their own, and orders meet at living borders that grind and spark. Whoever's lines run strongest at a well holds it. Orders grow with the wells they hold, fade when they hold none, and new ones rise at free wells. Power pulses out from the wells along the threads, and the land remembers old routes faintly.
+A realm seen from high up, wider than the screen, the way a mapmaker draws it: hills and snowcapped peaks, forests, lakes or sea, villages with their fields and roads, the ruins of an older age, and stone circles on the wells where the ley lines meet. Power runs along the lines into the towers built on them.
 
-Every seed is drawn, not picked from a list:
-- **The land:** a blend of isles, steppe, forest, desert, tundra, fens and peaks. Sea and ridges shape where the lines can run.
-- **The wells:** how many, and laid out scattered, clustered, ringed, in a line, or in a spiral.
-- **The orders:** two to six, each growing its own way (long filaments, veins, coral mazes, lace, webs), with colors from the page's palette and their own sigils.
-- **The medium:** night ink, a star chart, black lacquer, or ink on vellum when the page is light.
-- **The pacing:** the arc of the director.
-- **The cast of phenomena:**
-  - weather: storms that swirl the lines, auroras, ley-tides, mist
-  - calamities: rifts, a blight that eats lines, faults that cut the land, eclipses
-  - wonders: the convergence of the moons, comets that lay new lines, starfalls that open new wells
-  - life: flocks of wisps, a leviathan, pilgrims, migrations
+Orders of mages hold the wells. Each has a school (fire, frost, storm, the green, shadow, light, stone) that decides its spells and its summons, a tower style (spires, ziggurats, crystal clusters, great trees, obelisks), its colours, an archmage, and a temper. Their mages are out on the land all the time, walking the roads and the lines (storm mages ride the air):
+- channelling at their wells
+- going out to claim free wells and raising towers on them, stone by stone, then higher
+- blessing villages, which grow
+- searching ruins for artifacts, and sometimes waking what guards them
 
-One seed gets two calamities and no wonders; the next, a quiet sky full of life.
+Rival mages who meet duel with their school's spells: fireballs, ice lances, lightning, vines, shadow bolts, beams of light, spikes of stone. The spells mark the land, burning the woods and leaving frost. Orders at war send war parties with summoned elementals to besiege a tower until its ward breaks and it falls, and its well is free to claim again. An archmage who falls is succeeded; an order that loses its last tower is gone, and a new one rises at a free well.
 
-The first version (towers on a fixed graph, duels along it) is still there as `style: 'classic'`.
+Every seed draws its land (a blend of isles, steppe, forest, desert, tundra, fens and peaks) and a cast:
+- **Weather:** arcane storms whose lightning charges the towers, long rains, or still air.
+- **Calamities:** a rift that pours out demons until the orders close it together, a falling star the orders race to, a blight creeping out of the ruins.
+- **The sky:** a dragon that burns villages until the mages bring it down or drive it off, griffon riders, or empty skies.
+- **Beasts and folk:** great herds, wolves, giants from the hills, pilgrims, traders between the villages.
+- **The moons:** at their convergence an order gathers in a circle for a great ritual (a phoenix, a colossus, a forest raised in a night, a ward of light, a fall of stars). Some seeds also get eclipses.
+
+The night is long and lit: tower windows and crystals, braziers, spells, the lines, the cottages. The light is cheap glow sprites, with no bloom pass. The ink network (`style: 'ink'`) and the first version (`style: 'classic'`) are still there.
 ```ts
-mount(document.body, { skin: 'leylines', options: { land: 'isles', orders: 5, scale: 1.5 } });
+mount(document.body, { skin: 'leylines', options: { land: 'mountains', orders: 5, scale: 1.5 } });
 ```
 
 ### Instruments from other worlds
@@ -930,14 +931,14 @@ mount(document.body, {
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `style` | `'ink'` | `ink` (growing lines, a drawn cast) or `classic` (the first version). |
+| `style` | `'realm'` | `realm` (towers, mages and spells on a drawn land), `ink` (growing lines), or `classic` (the first version). |
 | `land` | `'any'` | `isles`, `steppe`, `forest`, `desert`, `tundra`, `marsh`, `mountains`, or `any` (a blend drawn per seed). |
-| `scale` | `1` | How much is going on: more movers, more wells (`0.5` to `2`). |
+| `scale` | `1` | How big the land and how much is going on (`0.5` to `2`). |
 | `orders` | `4` | Orders of mages at the start (about; the seed varies it): `2` to `6`. |
 | `storms` | `1` | Weather in the cast (`0` for none). |
 | `rifts` | `1` | Calamities in the cast (`0` for none). |
 | `labels` | `true` | Title cards for the big moments. |
-| `hud` | `true` | The land, this age's cast, the orders and their wells, a short chronicle. |
+| `hud` | `true` | The land, the orders (school, archmage, towers, mages, wars), the cast, artifacts, a short chronicle. |
 ## Using it with an AI agent
 
 The repository ships a skill, `skills/background-designer/SKILL.md`, that turns a conversation into a background. It contains:

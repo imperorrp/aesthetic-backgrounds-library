@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Leylines: the realm** (now the default; the ink network is `style: 'ink'`, the first version `style: 'classic'`).
+  - A land seen from high up and drawn like a fantasy map: shaded hills, snowcapped peaks, forests, lakes or sea, villages with fields and roads, ruins, and stone circles on the wells. It is wider than the screen, and the camera follows the kit's director.
+  - Orders of mages of seven schools (fire, frost, storm, the green, shadow, light, stone), each with its tower style (spires, ziggurats, crystal clusters, great trees, obelisks), colours, archmage and temper.
+  - Their mages are out on the land at 1x: they channel at their wells, claim free wells and raise towers stone by stone, raise them higher, bless villages (which grow), search ruins for artifacts (and wake guardians), and summon elementals.
+  - Rival mages duel with their school's spells, which mark the land (burnt woods, frost). Wars send war parties to break a tower's ward and bring it down. Archmages fall and are succeeded; orders end and new ones rise.
+  - A drawn cast: arcane storms, a dragon, rifts the orders close together, a falling star they race to, a blight, herds, wolves, giants, pilgrims and traders, and great rituals under the converging moons (a phoenix, a colossus, a forest raised in a night).
+  - The ground is tiled and patched where it changes; the lights are cached glow sprites, with no bloom.
 - **Deephold: a dwarven kingdom** (now the default; the single hold is `style: 'classic'`).
   - A range of mountains wider than the screen, with two to four rival holds (`holds`). Each clan has its own banner, king, and way of building:
     - down by ladder shafts, a lift on its ropes, or flights of stairs that zigzag from deep to deep

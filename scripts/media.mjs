@@ -108,10 +108,10 @@ const IMAGES = [
     cols: 2,
     tile: [960, 600],
     shots: [
-      { skin: 'leylines', seed: 'i5', t: [60], captions: ['FIVE ORDERS, FIVE WAYS OF GROWING'] },
-      { skin: 'leylines', seed: 'i6', palette: { from: '#b45309', theme: 'light' }, t: [120], captions: ['IN INK, ON VELLUM'] },
-      { skin: 'leylines', seed: 'i4', t: [40], captions: ['THE DROWNED FENS, AND A LEVIATHAN'] },
-      { skin: 'leylines', seed: 'i9', t: [120], captions: ['THE WHITE WASTE'] },
+      { skin: 'leylines', seed: 'fen-2', seek: 'DUELS', max: 600, after: [4], captions: ['RIVAL MAGES DUEL'] },
+      { skin: 'leylines', seed: 'fen-2', seek: 'THE DRAGON .* COMES', max: 900, after: [26], captions: ['A DRAGON BURNS A VILLAGE'] },
+      { skin: 'leylines', seed: 'ash-5', seek: 'RIFT TEARS', max: 900, after: [8], captions: ['THE ORDERS CLOSE A RIFT'] },
+      { skin: 'leylines', seed: 'orion-7', seek: 'GATHERS AT', max: 900, after: [22], captions: ['A GREAT RITUAL UNDER THE MOONS'] },
     ],
   },
   {
