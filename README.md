@@ -204,13 +204,22 @@ mount(document.body, { skin: 'war-table', options: { realms: 3 } });
 
 ### Wyrmspire
 
-![Wyrmspire: a valley under a wyrm's spire, through a watchtower's spyglass; a hero climbing the spire path; the wyrm raiding a village](docs/media/worlds/wyrmspire.jpg)
+![Wyrmspire: four views; a wyrm raiding a village as the beacons burn, a fjord with its boats and mills, the walled town under the spire, the ashlands by night](docs/media/worlds/wyrmspire.jpg)
 
-A valley seen from a watchtower, wider than the screen: villages along the water, a castle on a rise, herds on the pastures, and at the far end a crooked spire with a cave high up in it and a path cut up its face. The view pans along the valley and closes in, through the spyglass, on whatever is happening.
+A valley seen in depth from a hillside, wider than the screen. At its far end a spire of rock rises with a cave high in it, a path cut up its face, and the wyrm coiled on top with its brood on the ledges.
 
-Each seed is a different land and a different wyrm. The alpine valley, the fjord, the red canyon, the fen, the ashlands, each with its own houses, trees, water, and weather; a fire wyrm that burns, a frost wyrm that freezes houses, a storm drake that calls lightning, a venom wyrm that withers the fields, a shadow wyrm that puts out every light.
+The valley is full and busy at any speed:
+- a walled town under its castle, with its church, inn, smithy and market
+- villages with their fields and windmills, a river and its bridge, forests, pastures and herds, and watchtowers on the hills
+- farmers plough, tend and reap with the seasons and cart the sheaves to the granary
+- woodcutters fell trees and haul the logs, and builders keep raising houses, churches, granaries, mills, palisades and ballista towers
+- shepherds, merchants, caravans, guards on the walls, knights at the lists, and priests at the church
 
-The wyrm is hungry and proud. It basks on its spire, patrols its valley, hunts the herds, comes down at night for tribute, and raids; robbed, it goes from village to village in a rage. The valley goes on around it: seasons, harvests, carts, boats, villages growing, lanterns on a midwinter night. The lord turns policy as the losses mount (endure, fortify with ballistae, pay tribute, or hunt it), and quests go up the spire path: a lone hero, a hunting party, a wizard to bind it in chains of light, thieves after the hoard. Rivals come over the mountains for the spire, eggs hatch, and the swords of the heroes who fell stay on the ledge.
+The wyrm basks, patrols and hunts the herds, and its drakes take cattle and harry the villages. When its wrath is up it raids. The beacons are lit from hill to hill and the bells ring, and the people run for the walls. Its breath burns, freezes, calls lightning, withers or darkens, by breed. Fires spread from roof to roof until the bucket chains put them out, and the ruins are rebuilt. Archers loose, ballistae throw their bolts, and the knights ride out.
+
+The lord answers by temper: endure, fortify, pay tribute (carts to the foot of the spire), or hunt. Heroes ride in, feast, and climb the spire path to the cave; thieves go up by night for the hoard.
+
+Each seed draws its land (alpine, fjord, red canyon, fen, ashlands) and breed, and a cast: the brood (drakes, a clutch of eggs, or the wyrm alone), foes (a rival wyrm to fight over the valley, a hill giant, a troll under the bridge), pageants (tournaments, a great fair, pilgrims), trade (mines, boats, caravans), the land's own hazards (avalanches, a smoking mountain, floods), and help (griffon riders, a wizard in his tower). The first version, through a watchtower's spyglass, is `style: 'classic'`.
 
 ```ts
 mount(document.body, { skin: 'wyrmspire', options: { valley: 'fen', wrath: 2 } });
@@ -897,17 +906,18 @@ mount(document.body, {
 
 ## Wyrmspire's options
 
-`skin: 'wyrmspire'`. A lazy chunk (about 25 KB gzipped), like the other fantasy worlds.
+`skin: 'wyrmspire'`. A lazy chunk, like the other fantasy worlds (both styles ship in it).
 
 | Option | Default | Effect |
 | --- | --- | --- |
+| `style` | `'vale'` | `vale` (the living valley) or `classic` (the first version). |
 | `valley` | `'any'` | The land: `alpine`, `fjord`, `canyon`, `fen`, `ashland`, or `any` (one per seed). Its houses, water, weather, and breed of wyrm. |
 | `wrath` | `1` | How restless the wyrm grows (`0` for never: a quiet valley, though thieves may still wake it). |
 | `knights` | `1` | How many ride out (`0` for none: the villages are on their own). |
-| `villages` | `3` | Villages along the river: `2` to `4`. |
+| `villages` | `3` | Villages besides the town (about; the seed varies it): `2` to `4`. |
 | `time` | `'cycle'` | `cycle` (dawn, day, dusk, night), or always `dusk` or `night`. |
-| `labels` | `true` | Call-outs: the raids, hunts, quests, policies, and festivals. |
-| `hud` | `true` | The valley, the wyrm's state, the villages, the chronicle. |
+| `labels` | `true` | Call-outs: raids, hunts, new buildings, tournaments, quests, policies, festivals. |
+| `hud` | `true` | The valley, the wyrm's state and hoard, the lord's policy, the settlements and their roofs, the chronicle. |
 
 ## Deephold's options
 

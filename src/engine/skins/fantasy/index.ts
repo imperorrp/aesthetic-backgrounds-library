@@ -83,6 +83,7 @@ export const warTableSkin = lazySkin(
 );
 
 export const WYRMSPIRE_SCHEMA = {
+  style: { type: 'enum', values: ['vale', 'classic'], default: 'vale', label: 'Style (the living vale, or the first version)' },
   valley: { type: 'enum', values: ['any', 'alpine', 'fjord', 'canyon', 'fen', 'ashland'], default: 'any', label: 'The land' },
   wrath: { type: 'number', min: 0, max: 3, default: 1, label: 'How restless the wyrm is' },
   knights: { type: 'number', min: 0, max: 2, default: 1, label: 'Knights who ride out' },
@@ -96,7 +97,7 @@ export const wyrmspireSkin = lazySkin(
   {
     id: 'wyrmspire',
     label: 'Wyrmspire',
-    description: 'A valley under a wyrm’s spire, through a watchtower’s spyglass: a different land and breed of wyrm each seed; herds, harvests, caravans, and festivals; a wyrm that basks, hunts, hoards, and raids; a lord who fortifies, pays tribute, or sends heroes up the spire path.',
+    description: 'A living valley under a wyrm’s spire, seen in depth from a hillside: a walled town, villages, fields worked through the seasons, builders, woodcutters, herds, caravans, knights at the lists. The wyrm and its drakes hunt and raid; beacons are lit, roofs burn and are rebuilt; heroes climb the spire. Each seed draws its land, its breed, and a cast of rivals, giants, pageants, and trade.',
     tags: ['fantasy', 'dragon', 'pixel', 'medieval', 'dark', 'calm'],
     crisp: true,
     schema: WYRMSPIRE_SCHEMA,

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Wyrmspire: the living vale** (now the default; the spyglass version is `style: 'classic'`).
+  - A valley in depth from a hillside: a walled town under its castle, villages, fields, windmills, a river and bridge, forests, pastures, watchtowers, and the spire with the wyrm coiled on top and drakes on its ledges.
+  - Busy at 1x: farmers plough, tend and reap by season; woodcutters fell and haul; builders keep raising houses, churches, granaries, mills, palisades and ballista towers; shepherds, caravans, guards, knights, and priests.
+  - Drakes hunt and harry; the wyrm raids by breed. Beacons are lit hill to hill and bells ring, fires spread roof to roof until bucket chains douse them, and ruins are rebuilt. Archers, ballistae and knights fight back.
+  - The lord's policy, tribute carts, heroes climbing the spire path, thieves by night, tournaments, the fair, the lantern festival.
+  - A drawn cast: the brood, a rival wyrm duelling over the valley, a hill giant, a troll under the bridge, mines, boats, caravans, avalanches, a smoking mountain, floods, griffon riders, a wizard.
 - **Leylines: the realm** (now the default; the ink network is `style: 'ink'`, the first version `style: 'classic'`).
   - A land seen from high up and drawn like a fantasy map: shaded hills, snowcapped peaks, forests, lakes or sea, villages with fields and roads, ruins, and stone circles on the wells. It is wider than the screen, and the camera follows the kit's director.
   - Orders of mages of seven schools (fire, frost, storm, the green, shadow, light, stone), each with its tower style (spires, ziggurats, crystal clusters, great trees, obelisks), colours, archmage and temper.

@@ -86,10 +86,10 @@ const IMAGES = [
     cols: 2,
     tile: [960, 600],
     shots: [
-      { skin: 'wyrmspire', seed: 'v-alpine', options: { valley: 'alpine' }, t: [12], captions: ['THE ALPINE VALLEY'] },
-      { skin: 'wyrmspire', seed: 'v-ashland', options: { valley: 'ashland' }, seek: 'BURNS', max: 600, after: [1.5], captions: ['A FIRE WYRM IN THE ASHLANDS'] },
-      { skin: 'wyrmspire', seed: 'v-fjord', options: { valley: 'fjord' }, seek: 'BEGINS THE CLIMB', max: 1500, after: [40], captions: ['A HERO ON THE SPIRE PATH'] },
-      { skin: 'wyrmspire', seed: 'v-fen', options: { valley: 'fen', time: 'night' }, t: [60], captions: ['THE FEN BY NIGHT'] },
+      { skin: 'wyrmspire', seed: 'orion-7', seek: 'FALLS ON', max: 900, after: [12], captions: ['THE WYRM FALLS ON A VILLAGE'] },
+      { skin: 'wyrmspire', seed: 'orion-7', t: [60], captions: ['A FJORD, ITS BOATS AND MILLS'] },
+      { skin: 'wyrmspire', seed: 'orion-7', t: [8], captions: ['THE WALLED TOWN UNDER THE SPIRE'] },
+      { skin: 'wyrmspire', seed: 'vale-2', options: { time: 'night' }, t: [40], captions: ['THE ASHLANDS BY NIGHT'] },
     ],
   },
   {

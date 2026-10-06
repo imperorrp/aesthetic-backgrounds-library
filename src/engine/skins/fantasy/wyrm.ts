@@ -24,6 +24,7 @@ import { BREED_NAMES, createWyrmWorld, LAND_NAMES, SEASONS, type Biome, type Bre
 import { buildAtlas, stamp, type Atlas, type DragonColors } from './sprites';
 import { serif } from './names';
 import { buildScenery, stampProp, type Prop, type SceneryAtlas } from './scenery';
+import { mountVale } from './vale/paint';
 
 /** Sky keyframes through the day: [time, top, mid, low]. Kept low-key for legibility. */
 const SKY: [number, string, string, string][] = [
@@ -75,7 +76,8 @@ const BREATH: Record<Breed, [string, string, string]> = {
 };
 
 export function mount(host: SkinHost): SkinInstance {
-  const o = resolveOptions(WYRMSPIRE_SCHEMA, host.options) as { valley: string; wrath: number; knights: number; villages: number; time: string; labels: boolean; hud: boolean };
+  const o = resolveOptions(WYRMSPIRE_SCHEMA, host.options) as { style: string; valley: string; wrath: number; knights: number; villages: number; time: string; labels: boolean; hud: boolean };
+  if (o.style !== 'classic') return mountVale(host, o);
   const { ctx } = host;
   let W = host.viewport.width;
   let H = host.viewport.height;
