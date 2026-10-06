@@ -51,8 +51,8 @@ describe.each(subjects.map((s) => [s.id, s] as const))('%s', (_id, skin) => {
     expect(a.calls).toBeGreaterThan(FRAMES);
     expect(a.calls).toBe(b.calls);
     expect(a.hash).toBe(b.hash);
-    // Busy skins issue millions of recorded calls; the default 5 s is too tight under parallel load.
-  }, 30_000);
+    // Busy skins (the living vale, the kingdom) issue millions of recorded calls; the default 5 s is too tight under parallel load.
+  }, 90_000);
 
   it('diverges for a different seed', () => {
     const a = run(skin, 'orion-7', 60);

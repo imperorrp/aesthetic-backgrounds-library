@@ -1,5 +1,6 @@
 /// <reference types="vitest/config" />
-import { resolve } from 'node:path';
+import { cpSync } from 'node:fs';
+import { basename, resolve } from 'node:path';
 import { build, defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -62,13 +63,37 @@ function wallpaperRuntime(): Plugin {
   };
 }
 
+/**
+ * Pages in public/ that are dev tools: they import from /src, which only the dev server
+ * serves, so they would 404 on the deployed site. The site build copies public/ without them
+ * (the lab, the e2e harness, and the rest stay available under `pnpm dev`).
+ */
+const DEV_PAGES = new Set(['lab.html', 'check.html', 'quick.html', 'skins.html', 'sprites-preview.html', 'element.html']);
+function publicWithoutDevPages(): Plugin {
+  let outDir = 'dist';
+  let publicDir = 'public';
+  return {
+    name: 'public-without-dev-pages',
+    apply: 'build',
+    configResolved(c) {
+      outDir = c.build.outDir;
+      publicDir = c.publicDir;
+    },
+    writeBundle() {
+      if (publicDir) cpSync(publicDir, outDir, { recursive: true, filter: (src) => !DEV_PAGES.has(basename(src)) });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), wallpaperRuntime()],
+  plugins: [react(), wallpaperRuntime(), publicWithoutDevPages()],
   server: {
     port: 5174,
     strictPort: false,
   },
   build: {
+    // public/ is copied by publicWithoutDevPages, minus the dev-only pages.
+    copyPublicDir: false,
     rollupOptions: {
       // The studio, and the bare full-screen page wallpapers point at.
       input: { main: resolve('index.html'), wallpaper: resolve('wallpaper.html') },

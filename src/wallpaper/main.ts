@@ -18,6 +18,8 @@ import { readWallpaperQuery, type WallpaperSettings } from './codec';
  * bundler from deciding the imports are unused and dropping the registration with them.
  */
 export const registered = { skins: builtInSkins.length, layers: standardLayers.length, presets: presets.length };
+// An app build drops entry exports, so read it too: otherwise the deployed page registers nothing.
+document.documentElement.dataset.worlds = String(registered.skins + registered.layers + registered.presets);
 
 declare global {
   interface Window {

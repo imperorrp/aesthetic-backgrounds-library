@@ -1,8 +1,8 @@
-<h1 align="center">Aesthetic Background Engine</h1>
+<h1 align="center">Vivarium</h1>
 
 <p align="center">
-  <b>Backgrounds that are alive.</b><br>
-  Not wallpaper: working displays from somewhere else, quietly running behind your site.
+  <b>Small worlds that run behind a web page.</b><br>
+  Living algorithmic art. An idle game that plays itself.
 </p>
 
 <p align="center">
@@ -14,13 +14,19 @@
 
 ![Four of the worlds: a rainy cyberpunk city, a war front held hex by hex, a refugee ark with its flotilla, and a leviathan among hollow stars](docs/media/hero.jpg)
 
-I made this to test one idea: what if a website's background wasn't decoration, but a window onto somewhere else?
+Vivarium is a set of animated backgrounds for websites. They are not loops. Each one is a small simulation with its own rules, and the rules make things happen.
 
-A war room following a front that has held for forty years. A city in the rain where a netrunner is breaking into the corp tower three blocks over. A refugee fleet counting its souls. A sonar room, waiting for a torpedo. A billion years of a galaxy, a minute and a half at a time. A shieldwall at dusk with a dragon over the lines. A thousand years of a continent. A dish of things that are almost alive.
+A war room tracks a front that has not moved in forty years. A city in the rain loses its power one block at a time. Dwarves dig a kingdom into a mountain. Mages raise towers on lines of power. A wyrm sleeps on a spire above a valley, until it wakes.
 
-None of them loop. Each one is a small simulation with its own rules, and things happen in it on their own: raids, breaches, truces, supernovae, a district's lights going out block by block. The same seed always plays the same story, so a link is an exact world. And they still behave like backgrounds:
+You can read it two ways:
+- **Living algorithmic art.** Generative pieces that do not stop or repeat. The same seed always plays the same story, so a link is an exact world.
+- **An idle game with no player.** Economies, sieges, harvests, and wars run on their own. Watch for a minute, or leave the tab open for a week and look back at what happened.
+
+It is also an experiment. Most of the code here was written with frontier AI coding agents, one world at a time. Each world is a hard brief: a simulation, a renderer, pacing, sound, and taste, all in one file tree. It is a fun way to see what the models can do, and where they still fail.
+
+The worlds still behave like backgrounds:
 - They keep the text over them readable.
-- They pause when the tab is hidden and calm down under reduced motion.
+- They pause when the tab is hidden, and calm down under reduced motion.
 - They stay small. The engine is about 16 KB, and each world loads only when it is shown.
 
 <details>
@@ -1080,7 +1086,9 @@ After an intentional visual change, refresh the baselines with `pnpm test:e2e:up
 - **Journal**: sightings, the chronicle, and catching up after you have been away.
 - **Share**: the prompt for your AI, the link, the `mount()` code, JSON, images, a video loop rendered on a fixed clock, and the wallpapers.
 
-Press **?** for every shortcut, and **H** to hide the studio. The URL holds the whole state, so a link reproduces the exact background.
+Press **?** for every shortcut, **A** for the About card, and **H** to hide the studio. The URL holds the whole state, so a link reproduces the exact background.
+
+**Deploying.** `pnpm build` (or `pnpm build:site` for a relative base) writes the site to `dist`: the studio, the wallpaper page, and the gallery. The dev tool pages in `public/` (`lab.html`, `check.html`, `quick.html`, `skins.html`, `element.html`, `sprites-preview.html`) import straight from `/src`, so they run only under `pnpm dev` and are left out of the build.
 
 The wallpaper page is `/wallpaper.html`. `vite build` also writes `wallpaper-runtime.js` next to the site: the engine and every world as one script, which the studio inlines into offline wallpaper files (in dev, the server builds it on first request).
 

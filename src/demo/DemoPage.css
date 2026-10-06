@@ -1054,6 +1054,60 @@
   backdrop-filter: blur(14px);
 }
 
+.demo-about-card {
+  width: min(31rem, calc(100vw - 2rem));
+  padding: 1.3rem 1.4rem 1.2rem;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.demo-about-card p {
+  margin: 0 0 0.7rem;
+  color: var(--ink-dim);
+}
+
+.demo-about-title {
+  margin: 0;
+  font: 600 24px var(--display);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.demo-about-card .demo-about-tag {
+  margin: 0.1rem 0 0.9rem;
+  color: var(--ink);
+}
+
+.demo-about-how {
+  margin: 0.2rem 0 1rem;
+  padding-left: 1.1rem;
+  color: var(--ink-dim);
+}
+
+.demo-about-how li {
+  margin: 0.25rem 0;
+}
+
+.demo-about-how kbd {
+  display: inline-block;
+  margin: 0 0.1rem;
+  padding: 0 0.35rem;
+  font: 12px var(--mono);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+.demo-about-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.demo-about-actions a.demo-btn {
+  text-decoration: none;
+}
+
 .demo-shortcuts dl {
   margin: 0 0 0.8rem;
 }

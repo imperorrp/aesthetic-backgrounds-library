@@ -105,7 +105,11 @@ const SHORTCUTS: [string, string][] = [
   ['H', 'Hide or show the studio'],
   ['Ctrl Z', 'Undo (Shift for redo)'],
   ['?', 'This list'],
+  ['A', 'About Vivarium'],
 ];
+
+const REPO = 'https://github.com/imperorrp/aesthetic-backgrounds-library';
+const ABOUT_SEEN = 'vivarium.about-seen';
 
 type PaletteMode = PaletteId | 'custom';
 
@@ -280,6 +284,22 @@ export default function DemoPage() {
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState<number>(1);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // The About card opens by itself on a first visit, once.
+  const [aboutOpen, setAboutOpen] = useState(() => {
+    try {
+      return !localStorage.getItem(ABOUT_SEEN);
+    } catch {
+      return false;
+    }
+  });
+  const closeAbout = useCallback(() => {
+    setAboutOpen(false);
+    try {
+      localStorage.setItem(ABOUT_SEEN, '1');
+    } catch {
+      // Private mode: it opens again next time, which is fine.
+    }
+  }, []);
   useEffect(() => {
     if (!handle) return;
     if (paused) handle.pause();
@@ -701,10 +721,12 @@ export default function DemoPage() {
     },
     g: () => setGalleryOpen((o) => !o),
     '?': () => setShortcutsOpen((o) => !o),
+    a: () => setAboutOpen((o) => !o),
     '/': () => setShortcutsOpen((o) => !o),
     Escape: () => {
       setGalleryOpen(false);
       setShortcutsOpen(false);
+      closeAbout();
     },
   };
 
@@ -847,14 +869,14 @@ export default function DemoPage() {
 
       {showContent && (
         <main id="demo-content" className="demo-content" style={{ color: resolvePalette(palette).ink }}>
-          <h1>Your headline sits here</h1>
+          <h1>Vivarium</h1>
           <p>
-            This column stands in for real page content. The readout in the studio samples the background behind it and reports
-            how legible body text in the palette ink would be, so a scene is tuned against text, not an empty frame.
+            Small worlds that run behind a web page. Each background is a simulation with its own rules, not a loop. Fleets trade and
+            fight, cities lose power block by block, dwarves dig, mages raise towers, and a wyrm wakes above its valley.
           </p>
           <p>
-            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute
-            irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            This column stands in for your page&apos;s text. The studio samples the background behind it and reports how legible text in
+            the palette ink would be, so a scene is tuned against real content, not an empty frame.
           </p>
         </main>
       )}
@@ -872,6 +894,7 @@ export default function DemoPage() {
       {skipNote && <div className="demo-skip">{skipNote}</div>}
       <ToastStack toasts={toasts} onDismiss={dismissToast} onOpenJournal={openJournal} />
       {shortcutsOpen && <ShortcutsCard onClose={() => setShortcutsOpen(false)} />}
+      {aboutOpen && <AboutCard onClose={closeAbout} />}
 
       {panelOpen ? (
         <aside className="demo-panel" aria-label="Studio">
@@ -1308,6 +1331,9 @@ export default function DemoPage() {
           </div>
 
           <footer className="demo-foot">
+            <button type="button" className="demo-link" onClick={() => setAboutOpen(true)}>
+              <Icon name="info" /> About
+            </button>
             <button type="button" className="demo-link" onClick={() => setShortcutsOpen(true)}>
               <Icon name="keys" /> Shortcuts
             </button>
@@ -1329,6 +1355,48 @@ export default function DemoPage() {
           {speed > 1 && <em>×{speed}</em>}
         </button>
       )}
+    </div>
+  );
+}
+
+/** What this is, for people who never read the README. */
+function AboutCard({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="demo-shortcuts" role="dialog" aria-modal="true" aria-label="About Vivarium" onClick={onClose}>
+      <div className="demo-shortcuts-card demo-about-card" onClick={(e) => e.stopPropagation()}>
+        <h3 className="demo-about-title">Vivarium</h3>
+        <p className="demo-about-tag">Small worlds that run behind a web page.</p>
+        <p>
+          These are animated backgrounds for websites, but they are not loops. Each one is a small simulation with its own rules,
+          and the rules make things happen: trade and raids, sieges and harvests, a city going dark, a wyrm waking.
+        </p>
+        <p>
+          Read it as living algorithmic art, or as an idle game with no player. The same seed always plays the same story, so a
+          link is an exact world. Leave one open and look back later.
+        </p>
+        <p>
+          It is also an experiment. Most of the code was written with frontier AI coding agents, one world at a time, to see what
+          the models can build and where they still fail.
+        </p>
+        <ul className="demo-about-how">
+          <li>
+            <b>Look around.</b> Arrows change the world, <kbd>S</kbd> rolls a new seed, <kbd>1</kbd>
+            <kbd>2</kbd>
+            <kbd>3</kbd> set the speed, <kbd>M</kbd> turns on sound.
+          </li>
+          <li>
+            <b>Take one with you.</b> The studio exports the code for your site, a still, a video, or an offline wallpaper.
+          </li>
+        </ul>
+        <div className="demo-about-actions">
+          <button type="button" className="demo-btn" onClick={onClose}>
+            Enter
+          </button>
+          <a className="demo-btn" href={REPO} target="_blank" rel="noreferrer">
+            Source and docs
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

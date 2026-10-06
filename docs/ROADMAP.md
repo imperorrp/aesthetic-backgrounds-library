@@ -463,6 +463,12 @@ Void-tactical's own evolution (factions, lanes, events, sensor model) has its ow
 
 ---
 
+## To do later
+
+- **Camera in the big worlds (Wyrmspire, Deephold, Leylines).** The director's camera pans and zooms constantly and shows only part of each scene. The maintainer dislikes this (2026-10-06). Fix: show the whole scene by default (fit the world to the screen, or a fixed wide framing that pans very slowly at most), and make close-ups rare, slow, and optional (an option such as `camera: 'still' | 'drift' | 'director'`, default `still` or `drift`). Make sure the HUD and labels stay legible at the wide framing.
+
+---
+
 ## Doc fixes to make now
 
 - README: replace the ResizeObserver claim; scope the determinism claim to generation until M1 lands; remove "instantly" from the React wrapper claim; add the `skin` attribute once it exists; document the DPR cap; mention font loading behavior.
@@ -473,7 +479,7 @@ Void-tactical's own evolution (factions, lanes, events, sensor model) has its ow
 
 ## Open decisions
 
-1. **Name.** Decided 2026-09-27: keep `space-background-engine` on npm with the "Aesthetic Background Engine" title and the `<bg-engine>` tag. Candidates considered and set aside: Wallflower, Scrim, Cyclorama, Skybox, Farfield, Nightglass.
+1. **Name.** Decided 2026-09-27: keep `space-background-engine` on npm with the "Aesthetic Background Engine" title and the `<bg-engine>` tag. Candidates considered and set aside: Wallflower, Scrim, Cyclorama, Skybox, Farfield, Nightglass. Updated 2026-10-06: the project is called **Vivarium** in the README and on the site; the npm package name and the `<bg-engine>` tag stay unchanged for now.
 2. **Fonts.** Ship no web fonts and use system stacks (privacy, zero requests), or opt-in Google Fonts injection. Recommendation: system stacks by default; a `fonts` option for skins that need a display face.
 3. **Light mode as first-class.** Most premium landing pages are light. Recommendation: yes, via palette derivation in M1, with `calm-mesh` as the first light preset.
 4. **WebGL now or later.** Later. Canvas 2D covers every niche above at acceptable frame budgets once culling and batching are consistent; WebGL is a `Layer.kind`, not a rewrite.

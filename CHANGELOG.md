@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Vivarium.** The project has a name: Vivarium, small worlds that run behind a web page. The npm package and the `<bg-engine>` tag are unchanged.
+  - A new README intro: what it is, two ways to read it (living algorithmic art, an idle game that plays itself), and why it exists (partly to test what frontier AI coding agents can build).
+  - The site explains itself: an About card on the first visit (and on **A**, or from the studio's footer), the sample text column describes the project, and the page has a real title, description, and share image.
+- **Deploy fixes.**
+  - The deployed `/wallpaper.html` registered no worlds (the build dropped the imports whose job is to register them) and failed with "Unknown skin". It now works.
+  - The dev tool pages in `public/` that import from `/src` are no longer copied into the build, where they could only 404.
+  - The determinism suite allows the busiest worlds more time under parallel load.
 - **Wyrmspire: the living vale** (now the default; the spyglass version is `style: 'classic'`).
   - A valley in depth from a hillside: a walled town under its castle, villages, fields, windmills, a river and bridge, forests, pastures, watchtowers, and the spire with the wyrm coiled on top and drakes on its ledges.
   - Busy at 1x: farmers plough, tend and reap by season; woodcutters fell and haul; builders keep raising houses, churches, granaries, mills, palisades and ballista towers; shepherds, caravans, guards, knights, and priests.

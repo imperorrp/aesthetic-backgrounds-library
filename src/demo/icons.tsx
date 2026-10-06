@@ -12,6 +12,7 @@ const paths = {
   panel: 'M2.5 3.5h11v9h-11zM9.5 3.5v9',
   grid: 'M2.5 2.5h4.5v4.5H2.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5H2.5zM9 9h4.5v4.5H9z',
   keys: 'M1.5 4.5h13v7h-13zM4 7h1M7 7h1M10 7h1M5 9.5h6',
+  info: 'M8 1.5a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13zM8 7.2v4.3M8 4.6v.4',
 } as const;
 
 export type IconName = keyof typeof paths;
