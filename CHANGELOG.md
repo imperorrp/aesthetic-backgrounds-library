@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Deephold: a drawn cast, and much more of it.**
+  - Each seed composes a cast (`kit/compose`, see `deep-cast.ts`):
+    - what lies below: a sleeper of five kinds with drawn names and colors, a lich, an elder engine, a hive, or nothing
+    - one to four hazards (floods, magma, weak rock, firedamp, a spore plague)
+    - neighbors (goblins at the gate, a goblin warren, deep gnomes who trade)
+    - wonders (a crystal geode, a mithril lode, a sunken shrine, the old halls, a black lake)
+    - cavern fauna (spiders, crawlers, trolls, bats, glow-worms, mushroom folk)
+  - The things below:
+    - The lich, the engine and the hive queen wake when the miners dig near or break in, and break through to the hold if they must.
+    - They send their own: the dead (including the clan's, from the tombs), golems, swarms.
+    - They can be ended by the soldiers, or they wind down and can be woken again.
+  - The plague spreads by contact, and the temple helps. Warrens raid; gnomes walk up to the storeroom to trade.
+  - Drawn scale: the mountain's size, a founding clan of 10 to 30, a population cap of 30 to 120, bigger migrant waves.
+  - New sprites: golems, gnomes, mushroom folk, the lich, the engine's turning wheels, the hive queen.
+  - New scenery: crystal geodes, the shrine's statue, egg sacs and webs, warren torches, gnome houses and lanterns, bats in the caverns, glow-worms on the ceilings, sick dwarves.
+  - The HUD names what the mountain holds.
+  - Options: `below` (replaces `sleeper`) and `scale`.
 - **The world kit** (`src/engine/kit`): what new worlds are built from.
   - `genome`: a seed's draws as continuous variety (ranges, lognormal, blends of archetypes, palette harmonies in OKLCH).
   - `compose`: a seed's cast of systems drawn from a library with tags, quotas, exclusions and needs, the way the sector map's universes recombine mechanics.

@@ -37,6 +37,8 @@
 import { forkRng, type Rng } from '../../rng';
 import { createBus, type Bus } from '../../sim/bus';
 import { titled } from './names';
+import { compose, createGenome } from '../../kit';
+import { CAST_RULE, DEEP_CAST } from './deep-cast';
 
 export type Mountain = 'iron' | 'crystal' | 'frost' | 'ember' | 'drowned';
 const MOUNTAINS: Mountain[] = ['iron', 'crystal', 'frost', 'ember', 'drowned'];
@@ -73,22 +75,24 @@ export type Task = {
 };
 export type Dwarf = {
   id: number; name: string; job: Job; x: number; y: number; at: number; route: number[]; ri: number; task: Task | null; hp: number; alive: boolean; deadAt: number; anim: number;
-  facing: 1 | -1; beard: number; variant: number; age: number; fails: number; carry: Load | null; swingUntil: number; drown: number; cd: number; repath: number; outside: boolean; crossbow: boolean; mad: boolean;
+  facing: 1 | -1; beard: number; variant: number; age: number; fails: number; carry: Load | null; swingUntil: number; drown: number; cd: number; repath: number; outside: boolean; crossbow: boolean; mad: boolean; sick: number;
 };
-export type FoeKind = 'goblin' | 'spider' | 'troll' | 'skeleton' | 'crawler' | 'trader' | 'mule';
-export type Foe = { id: number; kind: FoeKind; x: number; y: number; at: number; route: number[]; ri: number; hp: number; hpMax: number; alive: boolean; deadAt: number; anim: number; facing: 1 | -1; cd: number; home: number; active: boolean; swingUntil: number; repath: number; lost: number; task: 'wander' | 'hunt' | 'gate' | 'leave' | 'trade' };
+export type FoeKind = 'goblin' | 'spider' | 'troll' | 'skeleton' | 'crawler' | 'trader' | 'mule' | 'golem' | 'gnome' | 'mushroom' | 'lich' | 'engine' | 'queen';
+export type Foe = { id: number; kind: FoeKind; x: number; y: number; at: number; route: number[]; ri: number; hp: number; hpMax: number; alive: boolean; deadAt: number; anim: number; facing: 1 | -1; cd: number; home: number; active: boolean; boss: boolean; swingUntil: number; repath: number; lost: number; task: 'wander' | 'hunt' | 'gate' | 'leave' | 'trade' };
 export type SleeperKind = 'worm' | 'spider' | 'giant' | 'demon' | 'tentacle';
-export type Sleeper = { kind: SleeperKind; name: string; x: number; y: number; hp: number; hpMax: number; state: 'sleep' | 'stir' | 'rise' | 'batter' | 'return' | 'dead'; t0: number; way: [number, number][]; anim: number; facing: 1 | -1; home: [number, number]; cd: number; wounded: boolean; woke: number };
+export type Sleeper = { kind: SleeperKind; name: string; tint: string; x: number; y: number; hp: number; hpMax: number; state: 'sleep' | 'stir' | 'rise' | 'batter' | 'return' | 'dead'; t0: number; way: [number, number][]; anim: number; facing: 1 | -1; home: [number, number]; cd: number; wounded: boolean; woke: number };
 export type Fx = { kind: 'dust' | 'spark' | 'glint' | 'blast' | 'steam' | 'splash' | 'rubble' | 'ghost' | 'bolt' | 'fire' | 'rune' | 'z'; x: number; y: number; x1?: number; y1?: number; t0: number; dur: number; r: number; seed: number; color?: string };
 export type Label = { text: string; x: number; y: number; color: string; t0: number; dur: number };
 export type Level = { k: number; floor: number; left: number; right: number; sealed: boolean };
-export type Cavern = { id: number; c: number; r: number; known: boolean; kind: 'cavern' | 'lake' | 'ruin' | 'lair'; clearAt: number; claimed: boolean; name: string };
+export type Cavern = { id: number; c: number; r: number; known: boolean; kind: 'cavern' | 'lake' | 'ruin' | 'lair' | 'geode' | 'shrine' | 'warren' | 'gnomes' | 'engine' | 'hive'; clearAt: number; claimed: boolean; name: string };
 
-export type DeepOptions = { mountain: string; depth: number; hazards: number; sleeper: boolean };
+export type DeepOptions = { mountain: string; depth: number; hazards: number; below: string; scale: number };
 
 export type DeepWorld = {
   t: number; W: number; H: number; GW: number; GH: number; CELL: number; cols: number; rows: number; bus: Bus;
   name: string; clan: string; king: Dwarf | null; reign: number; mountain: Mountain;
+  /** What this mountain holds (the drawn cast), by label and by id; what lies below. */
+  cast: string[]; castIds: string[]; below: string;
   mat: Uint8Array; water: Float32Array; magma: Float32Array; ladder: Uint8Array; roomAt: Int16Array; caveAt: Int8Array;
   /** Cells whose material changed since the painter last looked. */
   dirty: number[];
@@ -125,9 +129,6 @@ const HOLD1 = ['KAR', 'BAR', 'DUR', 'ZAR', 'GUN', 'MOR', 'THAR', 'NAL', 'BRUN', 
 const HOLD2 = ['AK', 'GRIM', 'HELM', 'DAL', 'KUL', 'UND', 'RUK', 'BAZ', 'DRUM', 'GOL', 'ZIRAK', 'HOLD'];
 const ART_KIND = ['AXE', 'HAMMER', 'CROWN', 'SHIELD', 'CHALICE', 'RING', 'HELM', 'ANVIL', 'LANTERN', 'BLADE', 'GAUNTLET', 'CIRCLET'];
 const ART_NAME = ['STARFALL', 'DEEPHEART', 'EMBERKISS', 'OATHSTONE', 'NIGHTFORGE', 'GLOAMING', 'KINGSBANE', 'THE LONG MEMORY', 'MOUNTAINROOT', 'FIRSTLIGHT', 'SORROW', 'THE LAST WORD', 'GRUDGEKEEPER', 'THE COLD WEIGHT'];
-const SLEEPERS: Record<Mountain, [SleeperKind, string]> = {
-  iron: ['worm', 'THE STONE-EATER'], crystal: ['spider', 'THE GLASS MOTHER'], frost: ['giant', 'THE RIME KING'], ember: ['demon', 'THE FLAME BENEATH'], drowned: ['tentacle', 'THE DROWNED ONE'],
-};
 
 export function createDeepWorld(seed: string | number, W: number, H: number, opts: DeepOptions): DeepWorld {
   const bus = createBus(() => world.t);
@@ -135,9 +136,15 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
   const pick = <T>(a: readonly T[]) => a[Math.floor(r() * a.length)];
   let ids = 1;
   const mountain: Mountain = (MOUNTAINS as string[]).includes(opts.mountain) ? (opts.mountain as Mountain) : pick(MOUNTAINS);
+  const hz = Math.max(0, opts.hazards);
+  // The cast: what this mountain holds (see deep-cast.ts).
+  const cg = createGenome(seed, 'deep-cast');
+  const castDrawn = compose(cg, { mountain, hazards: hz, below: opts.below ?? 'any' }, DEEP_CAST, CAST_RULE);
+  const drew = (id: string) => castDrawn.some((c) => c.def.id === id);
+  const scale = Math.max(0.5, Math.min(2, opts.scale ?? 1));
   const CELL = Math.max(6, Math.round(H / 80));
-  const cols = Math.ceil((W * 1.6) / CELL);
-  const rows = Math.ceil((H * 2.6) / CELL);
+  const cols = Math.ceil((W * cg.range(1.5, 2.1) * Math.sqrt(scale)) / CELL);
+  const rows = Math.ceil((H * cg.range(2.4, 3.3) * Math.sqrt(scale)) / CELL);
   const N = cols * rows;
   const mat = new Uint8Array(N);
   const water = new Float32Array(N);
@@ -147,12 +154,12 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
   const caveAt = new Int8Array(N).fill(-1);
   const veinAt = new Int16Array(N).fill(-1);
   const surface = new Int16Array(cols);
-  const hz = Math.max(0, opts.hazards);
   const dwarfName = () => pick(N1) + pick(N2);
 
   const world: DeepWorld = {
     t: 0, W, H, GW: cols * CELL, GH: rows * CELL, CELL, cols, rows, bus,
     name: pick(HOLD1) + pick(HOLD2), clan: pick(CLAN1) + pick(CLAN2), king: null, reign: 1, mountain,
+    cast: castDrawn.map((c) => c.def.label ?? c.def.id), castIds: castDrawn.map((c) => c.def.id), below: castDrawn.find((c) => c.def.tags.includes('below'))?.def.id ?? 'nothing',
     mat, water, magma, ladder, roomAt, caveAt, dirty: [], surface,
     gate: { c: 0, floor: 0, open: true, hp: 120, hpMax: 120, side: 1 },
     shaftC: 0, levels: [], rooms: [], dwarves: [], foes: [], caverns: [], sleeper: null, loads: [], fx: [], labels: [], chronicle: [],
@@ -180,6 +187,8 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
         wealth: world.wealth(),
         artifacts: world.artifacts.length,
         sleeper: world.sleeper ? ['sleep', 'stir', 'rise', 'batter', 'return', 'dead'].indexOf(world.sleeper.state) : -1,
+        bosses: world.foes.filter((f) => f.boss && f.alive).length,
+        sick: world.dwarves.filter((d) => d.alive && d.sick >= 0).length,
       };
     },
   };
@@ -226,6 +235,7 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
   const pending: { at: number; fn: () => void }[] = [];
   const later = (s: number, fn: () => void) => pending.push({ at: world.t + s, fn });
   let nearSleeper = Infinity;
+  let nearLair = Infinity;
   const levelOf = (row: number) => Math.max(0, Math.round((row - world.gate.floor) / LEV));
 
   // ---- the mountain -------------------------------------------------------------------------------
@@ -239,7 +249,7 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
     const d = Math.abs(c - peakC) / (cols * 0.5);
     surface[c] = Math.round(peakR + (baseR - peakR) * Math.min(1, d * 1.2) ** 1.15 + Math.sin(c * 0.37 + peakC) * 1.2);
   }
-  const eF = Math.round(rows * 0.17);
+  const eF = Math.min(Math.round(rows * 0.17), baseR - 4);
   // The gate: out along the gate side from the shaft, where the slope comes down to the gate's floor.
   let gc = shaftC;
   while (gc > 1 && gc < cols - 2 && surface[gc] < eF - 1) gc += side;
@@ -326,17 +336,20 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
     }
     return null;
   };
-  for (let n = 0; n < Math.round(k(4, ['drowned', 2.5], ['frost', 0.6]) * hz); n++) {
+  // Hazards, as the cast has them.
+  const nAquifers = drew('floods') ? Math.round(k(4, ['drowned', 2], ['frost', 0.6]) * hz * cg.range(0.7, 1.6)) : 0;
+  for (let n = 0; n < nAquifers; n++) {
     const p = place(0.22, 0.75, 6, 3);
     if (p) blob(p[0], p[1], 3 + r() * 6, 2 + r() * 2.5, (i) => rockAt(i) && (mat[i] = M.AQUIFER));
   }
-  for (let n = 0; n < Math.round(k(2, ['ember', 2.2]) * hz); n++) {
-    const p = place(0.55, 0.9, 5, 3);
+  const nMagma = drew('magma') ? Math.round(k(2, ['ember', 2]) * hz * cg.range(0.8, 1.8)) : 0;
+  for (let n = 0; n < nMagma; n++) {
+    const p = place(0.5, 0.9, 5, 3);
     if (p) blob(p[0], p[1], 3 + r() * 4, 2 + r() * 2, (i) => mat[i] >= M.SOIL && mat[i] !== M.SKY && (mat[i] = M.MAGMA));
   }
-  // Caverns: wide hollows of fungus, with things living in them; in the drowned mountain, a lake.
-  const cavern = (kind: Cavern['kind'], f0: number, f1: number, rx: number, ry: number, name: string) => {
-    const p = place(f0, f1, rx, ry);
+  // Caverns: wide hollows of fungus, with things living in them.
+  const cavern = (kind: Cavern['kind'], f0: number, f1: number, rx: number, ry: number, name: string, close = false) => {
+    const p = close ? near(f0, f1, rx) : place(f0, f1, rx, ry);
     if (!p) return null;
     const cv: Cavern = { id: world.caverns.length, c: p[0], r: p[1], known: false, kind, clearAt: -1, claimed: false, name };
     world.caverns.push(cv);
@@ -348,51 +361,82 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
     });
     return cv;
   };
-  const caveNames = ['THE GLOWING DARK', 'THE FUNGUS WOOD', 'THE WEEPING HOLLOW', 'THE LONG DARK', 'THE SPORE GARDENS', 'THE ECHOING VAULT'];
-  for (let n = 0; n < Math.max(1, Math.round((2 + r() * 1.5) * Math.min(1.5, 0.5 + hz * 0.5))); n++) cavern('cavern', 0.38, 0.85, 12 + r() * 10, 4 + r() * 3, caveNames[n % caveNames.length]);
-  if (mountain === 'drowned') cavern('lake', 0.4, 0.7, 16, 5, 'THE BLACK LAKE');
-  // The halls of an older people: worked stone walls round a hall.
-  const ruin = (() => {
-    const p = place(0.33, 0.6, 12, 4);
+  const CAVE_A = ['GLOWING', 'WEEPING', 'LONG', 'ECHOING', 'HOLLOW', 'SUNLESS', 'WHISPERING', 'DRIPPING', 'GREEN', 'BLUE', 'SILENT', 'FOLDED'];
+  const CAVE_B = ['DARK', 'WOOD', 'VAULT', 'GARDENS', 'DEEPS', 'HALLS', 'GALLERIES', 'MAZE', 'CHAPELS', 'WARRENS', 'SPIRES', 'FOREST'];
+  const caveName = () => `THE ${pick(CAVE_A)} ${pick(CAVE_B)}`;
+  const nCaverns = Math.max(1, Math.round(cg.lognormal(2.6, 0.35) * Math.sqrt(scale) * Math.min(1.5, 0.5 + hz * 0.5)));
+  for (let n = 0; n < nCaverns; n++) cavern('cavern', 0.32, 0.88, cg.range(10, 24), cg.range(3.5, 8), caveName());
+  if (drew('lake')) cavern('lake', 0.4, 0.75, cg.range(14, 26), cg.range(4, 7), `THE ${pick(['BLACK', 'STILL', 'DROWNED', 'MIRROR', 'COLD'])} LAKE`);
+  // A worked chamber: walls of old masonry round a hall (the old halls, a shrine, the engine's housing).
+  /** Somewhere the miners will come to: off to one side of the shaft, at a depth they will reach. */
+  const near = (f0: number, f1: number, hw: number): [number, number] | null => {
+    for (let tries = 0; tries < 40; tries++) {
+      const c = shaftC + (r() < 0.5 ? -1 : 1) * (hw + 6 + r() * 20);
+      const rr = rows * (f0 + r() * (f1 - f0));
+      if (c - hw < 3 || c + hw > cols - 4 || safe(c, rr, hw) || rr - 6 < surface[Math.round(c)] + 6) continue;
+      return [c, rr];
+    }
+    return null;
+  };
+  const chamber = (kind: Cavern['kind'], f0: number, f1: number, hw: number, name: string) => {
+    const p = near(f0, f1, hw + 2);
     if (!p) return null;
-    const cv: Cavern = { id: world.caverns.length, c: p[0], r: p[1], known: false, kind: 'ruin', clearAt: -1, claimed: false, name: `THE HALLS OF ${pick(N1)}${pick(N2)} THE ELDER` };
+    const cv: Cavern = { id: world.caverns.length, c: p[0], r: p[1], known: false, kind, clearAt: -1, claimed: false, name };
     world.caverns.push(cv);
-    const w = 9 + Math.floor(r() * 4);
     for (let rr = Math.round(p[1]) - 4; rr <= Math.round(p[1]) + 2; rr++) {
-      for (let c = Math.round(p[0]) - w; c <= Math.round(p[0]) + w; c++) {
+      for (let c = Math.round(p[0]) - hw; c <= Math.round(p[0]) + hw; c++) {
         if (!inb(c, rr)) continue;
         const i = at(c, rr);
-        const wall = rr === Math.round(p[1]) - 4 || rr === Math.round(p[1]) + 2 || Math.abs(c - p[0]) >= w - 0.5;
+        const wall = rr === Math.round(p[1]) - 4 || rr === Math.round(p[1]) + 2 || Math.abs(c - p[0]) >= hw - 0.5;
         mat[i] = wall ? M.RUIN : M.CAVE;
         if (!wall) caveAt[i] = cv.id;
       }
     }
     return cv;
-  })();
-  // Something to find early: gold a deep or two down, and water that should have been left alone.
+  };
+  const elder = `${pick(N1)}${pick(N2)}`;
+  const ruin = drew('ruins') || drew('lich') ? chamber('ruin', 0.28, 0.5, 9 + Math.floor(r() * 5), `THE HALLS OF ${elder} THE ELDER`) : null;
+  if (drew('shrine')) chamber('shrine', 0.3, 0.55, 6, `THE SHRINE OF ${pick(['THE STONEFATHER', 'THE FORGE-MOTHER', 'THE DEEP KING', 'THE FIRST HAMMER', 'THE LANTERN GOD'])}`);
+  if (drew('geode')) cavern('geode', 0.3, 0.6, cg.range(7, 12), cg.range(4, 6), `THE ${pick(['STAR', 'AMETHYST', 'SAPPHIRE', 'FROST', 'SUNSTONE'])} GEODE`, true);
+  if (drew('warren')) cavern('warren', 0.35, 0.7, cg.range(10, 16), cg.range(3, 5), `THE ${pick(['RED', 'GNAWED', 'STINKING', 'BONE', 'TWISTED'])} WARREN`, true);
+  if (drew('deepfolk')) cavern('gnomes', 0.45, 0.8, cg.range(10, 16), cg.range(4, 6), `THE ${pick(['LANTERN', 'QUIET', 'COPPER', 'MOSS', 'CLOCKWORK'])} HOLLOW`, true);
+  if (drew('lode')) for (let n = 0; n < 4; n++) vein(M.MITHRIL, 0.5, 0.85, 26 + r() * 20);
+  // Something to find early: gold a deep or two down, and (if there are aquifers) water that should have been left alone.
   vein(M.GOLD, 0, 0, 14, [shaftC + (r() < 0.5 ? -1 : 1) * (10 + r() * 14), eF + LEV * 3 - 3]);
-  if (hz > 0) blob(shaftC + (r() < 0.5 ? -1 : 1) * (16 + r() * 12), eF + LEV * 3 + 6, 4 + r() * 3, 2.2, (i) => rockAt(i) && (mat[i] = M.AQUIFER));
+  if (nAquifers) blob(shaftC + (r() < 0.5 ? -1 : 1) * (16 + r() * 12), eF + LEV * 3 + 6, 4 + r() * 3, 2.2, (i) => rockAt(i) && (mat[i] = M.AQUIFER));
   // The magma sea at the mountain's roots.
   for (let rr = rows - 4; rr < rows; rr++) for (let c = 0; c < cols; c++) {
     mat[at(c, rr)] = M.OPEN;
     magma[at(c, rr)] = 1;
   }
-  // What sleeps below: a chamber some deeps down, with mithril near it.
-  const sleeperRow = eF + LEV * (6 + Math.floor(r() * 4)) + 4;
-  const sleeperC = shaftC + (r() < 0.5 ? -1 : 1) * (14 + r() * 18);
-  if (opts.sleeper) {
-    const cv: Cavern = { id: world.caverns.length, c: sleeperC, r: sleeperRow, known: false, kind: 'lair', clearAt: -1, claimed: false, name: 'THE DEEP CHAMBER' };
+  // What lies below.
+  let bossLair: Cavern | null = null;
+  const lairRow = eF + LEV * (5 + Math.floor(r() * 5)) + 4;
+  const lairC = shaftC + (r() < 0.5 ? -1 : 1) * (12 + r() * 22);
+  const lair = (kind: Cavern['kind'], name: string, rx: number, ry: number) => {
+    const cv: Cavern = { id: world.caverns.length, c: lairC, r: lairRow, known: false, kind, clearAt: -1, claimed: false, name };
     world.caverns.push(cv);
-    blob(sleeperC, sleeperRow, 9, 5, (i) => {
+    blob(lairC, lairRow, rx, ry, (i) => {
+      if (mat[i] === M.SKY) return;
       mat[i] = M.CAVE;
       caveAt[i] = cv.id;
     });
-    for (let n = 0; n < 3; n++) vein(M.MITHRIL, 0, 0, 10 + r() * 8, [sleeperC + (r() - 0.5) * 30, sleeperRow - 8 - r() * 8]);
-    const [sk, sn] = SLEEPERS[mountain];
-    world.sleeper = { kind: sk, name: sn, x: sleeperC * CELL, y: (sleeperRow + 4) * CELL, hp: 240, hpMax: 240, state: 'sleep', t0: 0, way: [], anim: 0, facing: 1, home: [sleeperC * CELL, (sleeperRow + 4) * CELL], cd: 0, wounded: false, woke: 0 };
-  }
+    for (let n = 0; n < 3; n++) vein(M.MITHRIL, 0, 0, 10 + r() * 8, [lairC + (r() - 0.5) * 30, lairRow - 8 - r() * 8]);
+    return cv;
+  };
+  if (drew('sleeper')) {
+    lair('lair', 'THE DEEP CHAMBER', 9, 5);
+    const kinds: [SleeperKind, number][] = [['worm', mountain === 'iron' ? 3 : 1], ['spider', mountain === 'crystal' ? 3 : 1], ['giant', mountain === 'frost' ? 3 : 1], ['demon', mountain === 'ember' ? 3 : 1], ['tentacle', mountain === 'drowned' ? 3 : 1]];
+    const kind = cg.weighted(Object.fromEntries(kinds) as Record<SleeperKind, number>);
+    const ADJ_S = ['HUNGERING', 'PALE', 'OLD', 'DROWNED', 'BURNING', 'BLIND', 'NAMELESS', 'GLASS', 'RIME', 'DREAMING', 'WEEPING', 'IRON', 'HOLLOW', 'GREAT'];
+    const NOUN_S: Record<SleeperKind, string[]> = { worm: ['WORM', 'STONE-EATER', 'DEVOURER', 'COIL'], spider: ['MOTHER', 'WEAVER', 'QUEEN', 'SPINNER'], giant: ['KING', 'GIANT', 'WARDEN', 'JOTUN'], demon: ['FLAME', 'BALEFIRE', 'LORD BELOW', 'SHADOW'], tentacle: ['ONE', 'DREAMER', 'HUNGER', 'THING BELOW'] };
+    const TINTS: Record<SleeperKind, string[]> = { worm: ['#78716c', '#9a3412', '#475569'], spider: ['#a78bfa', '#f0abfc', '#67e8f9'], giant: ['#cbd5e1', '#a5f3fc', '#d6d3d1'], demon: ['#44201a', '#3b0764', '#1c1917'], tentacle: ['#052e16', '#1e1b4b', '#3f0d12'] };
+    const name = `THE ${cg.pick(ADJ_S)} ${cg.pick(NOUN_S[kind])}`;
+    world.sleeper = { kind, name, tint: cg.pick(TINTS[kind]), x: lairC * CELL, y: (lairRow + 4) * CELL, hp: 240, hpMax: 240, state: 'sleep', t0: 0, way: [], anim: 0, facing: 1, home: [lairC * CELL, (lairRow + 4) * CELL], cd: 0, wounded: false, woke: 0 };
+  } else if (drew('engine')) bossLair = lair('engine', `THE ENGINE OF ${elder}`, 10, 5);
+  else if (drew('hive')) bossLair = lair('hive', `THE ${pick(['CHITTERING', 'WRITHING', 'BLACK', 'HUMMING'])} HIVE`, 12, 6);
+  if (drew('lich') && ruin) bossLair = ruin;
   void ruin;
-
   // ---- walking ---------------------------------------------------------------------------------
 
   const gateCells = () => [at(world.gate.c, eF), at(world.gate.c, eF - 1), at(world.gate.c, eF - 2)];
@@ -547,13 +591,14 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
       world.deepestCol = c;
     }
     if (world.sleeper) nearSleeper = Math.min(nearSleeper, Math.hypot((c - world.sleeper.x / CELL) * 0.6, rr - world.sleeper.y / CELL));
+    if (bossLair) nearLair = Math.min(nearLair, Math.hypot((c - bossLair.c) * 0.6, rr - bossLair.r));
     if (r() < 0.5) world.fx.push({ kind: 'dust', x: world.cellX(i), y: world.cellY(i) - CELL / 2, t0: world.t, dur: 1.2, r: CELL * 0.6, seed: ids++ });
     const ore = ORE[m];
     if (ore) {
       world.loads.push({ id: ids++, kind: ore, cell: by ? cellOf(by) : i, taken: false, skip: 0 });
       const v = veinAt[i];
       if (v >= 0 && once(`vein-${v}`)) strike(ore, i);
-      if (ore === 'coal' && rr > rows * 0.35 && r() < 0.05 * hz) firedamp(i);
+      if (ore === 'coal' && rr > rows * 0.35 && drew('firedamp') && r() < 0.08 * hz) firedamp(i);
     }
     // What is on the other side.
     for (const j of [i - 1, i + 1, i - cols, i + cols]) {
@@ -656,12 +701,55 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
       if (world.sleeper && world.sleeper.state === 'sleep') wake('THEY BROKE INTO ITS CHAMBER');
       return;
     }
+    if (cv.kind === 'engine' || cv.kind === 'hive') {
+      rouse(cv.kind === 'engine' ? 'engine' : 'queen', cv);
+      return;
+    }
+    if (cv.kind === 'geode') {
+      world.stocks.gem += 30;
+      for (let n = 0; n < 6; n++) world.fx.push({ kind: 'glint', x: (cv.c + (r() - 0.5) * 16) * CELL, y: (cv.r + (r() - 0.5) * 6) * CELL, t0: world.t + n * 0.4, dur: 3, r: CELL * 3, seed: ids++, color: '#c4b5fd' });
+      say(`${cv.name}!`, x, y, '#d8b4fe', 'high');
+      emit('geode', x, y, 0.75);
+      chronicle(`The miners broke into ${T(cv.name)}, a hollow lined with crystal, and the hold was rich.`);
+      look('ruin', cv.c * CELL, cv.r * CELL, 1.4, 10);
+      return;
+    }
+    if (cv.kind === 'shrine') {
+      for (const d of alive()) {
+        d.hp = Math.max(d.hp, d.job === 'soldier' ? 20 : 10);
+        d.sick = -1;
+      }
+      world.feast = world.t + 40;
+      say(`${cv.name}`, x, y, '#fde68a', 'high');
+      emit('shrine', x, y, 0.75);
+      chronicle(`The clan found ${T(cv.name)} under the mountain, and gave thanks, and feasted.`);
+      look('ruin', cv.c * CELL, cv.r * CELL, 1.4, 10);
+      return;
+    }
+    if (cv.kind === 'warren' || cv.kind === 'gnomes') {
+      say(cv.kind === 'warren' ? `THE MINERS BREAK INTO ${cv.name}` : `THE MINERS FIND ${cv.name} AND THE DEEP GNOMES IN IT`, x, y, cv.kind === 'warren' ? '#fca5a5' : '#bbf7d0', 'high');
+      emit(cv.kind === 'warren' ? 'warren' : 'deepfolk', x, y, 0.7);
+      chronicle(cv.kind === 'warren' ? `The miners broke into a goblin warren. It would not be the last they saw of it.` : `The miners met the deep gnomes of ${T(cv.name)}, and they traded.`);
+      look('cavern', cv.c * CELL, cv.r * CELL, 1.2, 10);
+      if (cv.kind === 'warren') {
+        for (const f of world.foes) if (f.home === cv.id) {
+          f.active = true;
+          f.task = 'hunt';
+        }
+        alarm(i, 40);
+      }
+      return;
+    }
     if (cv.kind === 'ruin') {
       world.stocks.treasure += 20;
       say(`${cv.name}!`, x, y, '#fde68a', 'high');
       emit('ruin', x, y, 0.75);
       chronicle(`The miners broke into ${T(cv.name)}, sealed since before the clan.`);
       look('ruin', cv.c * CELL, cv.r * CELL, 1.35, 12);
+      if (drew('lich')) {
+        later(4, () => rouse('lich', cv));
+        return;
+      }
       if (r() < 0.45) {
         later(6, () => {
           const n = 4 + Math.floor(r() * 4);
@@ -1076,7 +1164,7 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
   function dwarf(job: Job, x: number, y: number, outside = false): Dwarf {
     let name = dwarfName();
     for (let k2 = 0; k2 < 6 && world.dwarves.some((o) => o.alive && o.name === name); k2++) name = dwarfName();
-    const d: Dwarf = { id: ids++, name, job, x, y, at: cellOf({ x, y }), route: [], ri: 0, task: null, hp: job === 'soldier' ? 20 : 10, alive: true, deadAt: -1, anim: r() * 4, facing: r() < 0.5 ? 1 : -1, beard: Math.floor(r() * 6), variant: Math.floor(r() * 4), fails: 0, age: 30 + Math.floor(r() * 120), carry: null, swingUntil: -1, drown: 0, cd: 0, repath: 0, outside, crossbow: job === 'soldier' && r() < 0.4, mad: false };
+    const d: Dwarf = { id: ids++, name, job, x, y, at: cellOf({ x, y }), route: [], ri: 0, task: null, hp: job === 'soldier' ? 20 : 10, alive: true, deadAt: -1, anim: r() * 4, facing: r() < 0.5 ? 1 : -1, beard: Math.floor(r() * 6), variant: Math.floor(r() * 4), fails: 0, age: 30 + Math.floor(r() * 120), carry: null, swingUntil: -1, drown: 0, cd: 0, repath: 0, outside, crossbow: job === 'soldier' && r() < 0.4, mad: false, sick: -1 };
     world.dwarves.push(d);
     return d;
   }
@@ -1125,16 +1213,25 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
       }
       if (!px) return null;
     }
-    const hp = { goblin: 7, spider: 9, troll: 30, skeleton: 8, crawler: 12, trader: 10, mule: 10 }[kind];
-    const f: Foe = { id: ids++, kind, x: px, y: py, at: cellOf({ x: px, y: py }), route: [], ri: 0, hp, hpMax: hp, alive: true, deadAt: -1, anim: r() * 4, facing: 1, cd: 0, home: cv ? cv.id : -1, active, swingUntil: -1, repath: 0, lost: 0, task: 'wander' };
+    const hp = { goblin: 7, spider: 9, troll: 30, skeleton: 8, crawler: 12, trader: 10, mule: 10, golem: 26, gnome: 8, mushroom: 6, lich: 120, engine: 160, queen: 110 }[kind];
+    const f: Foe = { id: ids++, kind, x: px, y: py, at: cellOf({ x: px, y: py }), route: [], ri: 0, hp, hpMax: hp, alive: true, deadAt: -1, anim: r() * 4, facing: 1, cd: 0, home: cv ? cv.id : -1, active, boss: kind === 'lich' || kind === 'engine' || kind === 'queen', swingUntil: -1, repath: 0, lost: 0, task: 'wander' };
     world.foes.push(f);
     return f;
   }
   // Creatures in the caverns, asleep to the dwarves until they break in.
   for (const cv of world.caverns) {
+    if (cv.kind === 'warren') {
+      for (let k2 = 0; k2 < 8 + Math.floor(r() * 6); k2++) foe('goblin', cv, false);
+      continue;
+    }
+    if (cv.kind === 'gnomes') {
+      for (let k2 = 0; k2 < 6 + Math.floor(r() * 5); k2++) foe('gnome', cv, false);
+      continue;
+    }
     if (cv.kind !== 'cavern' && cv.kind !== 'lake') continue;
-    const n = 3 + Math.floor(r() * 4 * Math.max(0.3, hz));
-    const kinds: FoeKind[] = mountain === 'crystal' ? ['spider', 'spider', 'crawler'] : cv.r > rows * 0.65 ? ['troll', 'crawler', 'spider'] : ['crawler', 'spider', 'goblin'];
+    const n = Math.round((3 + r() * 5 * Math.max(0.3, hz)) * Math.sqrt(scale));
+    const kinds: FoeKind[] = [...(drew('spiders') ? ['spider', 'spider'] : []), ...(drew('crawlers') ? ['crawler', 'crawler'] : []), ...(drew('trolls') && cv.r > rows * 0.5 ? ['troll'] : []), ...(drew('mushroomfolk') ? ['mushroom', 'mushroom'] : [])] as FoeKind[];
+    if (!kinds.length) kinds.push('crawler');
     for (let k2 = 0; k2 < n; k2++) foe(pick(kinds), cv, false);
   }
 
@@ -1186,7 +1283,11 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
   placeRoom('forge', 1, true);
   world.deepest = world.levels[2].floor;
   const mid = (shaftC + 1) * CELL;
-  const jobs: Job[] = ['king', 'miner', 'miner', 'miner', 'miner', 'hauler', 'hauler', 'smith', 'brewer', 'farmer', 'mason', 'soldier', 'soldier', 'soldier'];
+  // The founding clan: its size drawn, its trades in proportion.
+  const founders = Math.max(10, Math.min(30, Math.round(cg.lognormal(15, 0.3) * scale)));
+  const trades: [Job, number][] = [['miner', 0.3], ['hauler', 0.14], ['soldier', 0.16], ['mason', 0.1], ['smith', 0.08], ['farmer', 0.1], ['brewer', 0.07]];
+  const jobs: Job[] = ['king'];
+  for (const [j, share] of trades) for (let n = 0; n < Math.max(1, Math.round(founders * share)); n++) jobs.push(j);
   for (const [n, j] of jobs.entries()) {
     const lv = world.levels[1 + (n % 2)];
     let c = lv.left + Math.floor(r() * (lv.right - lv.left + 1));
@@ -1571,7 +1672,8 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
 
   // ---- fighting ---------------------------------------------------------------------------------------
 
-  const hostile = (f: Foe) => f.alive && f.active && f.kind !== 'trader' && f.kind !== 'mule';
+  const neutral = (f: Foe) => f.kind === 'trader' || f.kind === 'mule' || f.kind === 'gnome' || f.kind === 'mushroom';
+  const hostile = (f: Foe) => f.alive && f.active && !neutral(f);
   function soldiers(dt: number) {
     const foes = world.foes.filter(hostile).filter((f) => f.task === 'hunt' || f.task === 'gate');
     for (const d of alive()) {
@@ -1659,6 +1761,31 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
       f.cd -= dt;
       if (f.kind === 'trader' || f.kind === 'mule') {
         caravanStep(f, dt);
+        continue;
+      }
+      if (f.kind === 'gnome') {
+        gnomeStep(f, dt);
+        continue;
+      }
+      if (f.kind === 'mushroom') {
+        // The mushroom folk wander their caverns, and the dwarves leave them be.
+        f.repath -= dt;
+        if (f.repath <= 0) {
+          f.repath = 5 + r() * 8;
+          go(f, (i) => caveAt[i] === f.home && r() < 0.03, 800);
+        }
+        walk(f, 6, dt);
+        continue;
+      }
+      if (f.boss) {
+        // It does not move; it strikes whatever comes near.
+        for (const d of alive()) if (Math.hypot(d.x - f.x, d.y - f.y) < CELL * 3 && f.cd <= 0) {
+          f.cd = 1.2;
+          f.swingUntil = world.t + 0.3;
+          d.hp -= 6;
+          world.fx.push({ kind: f.kind === 'engine' ? 'blast' : 'spark', x: d.x, y: d.y - CELL, t0: world.t, dur: 0.6, r: CELL * 1.5, seed: ids++, color: '#fca5a5' });
+          if (d.hp <= 0) die(d, bossName.get(f.id)?.toLowerCase() ?? 'something below');
+        }
         continue;
       }
       if (!f.active) {
@@ -1843,8 +1970,9 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
     }
   }
 
+  const popCap = Math.max(30, Math.min(120, Math.round(cg.lognormal(60, 0.3) * scale)));
   function migrants() {
-    const n = 2 + Math.floor(r() * 3);
+    const n = 3 + Math.floor(r() * 6);
     for (let k2 = 0; k2 < n; k2++) {
       const d = dwarf(pick(['miner', 'miner', 'hauler', 'mason', 'farmer', 'brewer', 'smith', 'soldier'] as Job[]), edgeX() + side * k2 * CELL * 1.4, edgeY(), true);
       d.task = { kind: 'enter', t0: world.t };
@@ -1868,7 +1996,7 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
     say(`${SEASONS[s]} ON THE MOUNTAIN`, gc * CELL, (surface[gc] - 4) * CELL, '#e7dcc4', 'low');
     emit(SEASONS[s].toLowerCase(), gc * CELL, eF * CELL, 0.2);
     if ((s === 1 || s === 2) && !world.fallen) later(10 + r() * 40, caravan);
-    if (!world.fallen && world.wealth() > 300 && ready('dorm').length * 6 > alive().length + 2 && alive().length < 30 && r() < 0.7) later(20 + r() * 50, migrants);
+    if (!world.fallen && world.wealth() > 200 && ready('dorm').length * 6 > alive().length + 2 && alive().length < popCap && r() < 0.8) later(20 + r() * 50, migrants);
     // The old die.
     for (const d of alive()) if (d.age > 220 && r() < 0.25) {
       const wasKing = world.king === d;
@@ -1878,6 +2006,253 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
     }
   }
   const lastSeasonBase = world.season;
+
+  // ---- the others below: a lich, an engine, a hive; the plague; the neighbours ---------------------------
+
+  const BOSS_NAMES: Record<string, string[]> = {
+    lich: ['THE LICH KING', 'THE GREY CHANCELLOR', 'THE HOLLOW QUEEN', 'THE LAST ELDER'],
+    engine: ['THE IRON HEART', 'THE GREAT ENGINE', 'THE BRASS MIND', 'THE FIRST FURNACE'],
+    queen: ['THE HIVE QUEEN', 'THE BROOD MOTHER', 'THE PALE MATRIARCH', 'THE CHITTERING QUEEN'],
+  };
+  const bossName = new Map<number, string>();
+  const bossNext = new Map<number, number>();
+  const bossWoke = new Map<number, number>();
+  const retired = new Set<number>();
+  let lairRest = 0;
+  /** A thing below, woken by the breaking of its chamber: it stays, and sends its own. */
+  function rouse(kind: 'lich' | 'engine' | 'queen', cv: Cavern) {
+    if (world.foes.some((f) => f.boss && f.alive && f.home === cv.id)) return;
+    if (world.foes.some((f) => f.boss && f.home === cv.id && retired.has(f.id) && world.t - f.deadAt < 240)) return;
+    const f = foe(kind, cv, true);
+    if (!f) return;
+    f.task = 'hunt';
+    const name = pick(BOSS_NAMES[kind]);
+    bossName.set(f.id, name);
+    bossNext.set(f.id, world.t + 8);
+    bossWoke.set(f.id, world.t);
+    const what = kind === 'lich' ? 'RISES IN THE OLD HALLS' : kind === 'engine' ? 'TURNS OVER, AND WAKES' : 'STIRS IN THE HIVE';
+    say(`${name} ${what}`, f.x, f.y - CELL * 4, kind === 'engine' ? '#fdba74' : kind === 'lich' ? '#86efac' : '#d8b4fe', 'high');
+    emit(kind === 'lich' ? 'lich' : kind === 'engine' ? 'engine' : 'hive', f.x, f.y, 0.95);
+    chronicle(`${T(name)} ${what.toLowerCase()} beneath ${T(world.name)}.`);
+    look('sleeper', f.x, f.y - CELL * 3, 1.35, 12);
+    alarm(cellOf(f), 120);
+    quake(0.6);
+  }
+  function bosses(dt: number) {
+    // Dig near enough and it hears you.
+    if (bossLair && nearLair < (world.below === 'lich' ? 22 : 16) && world.t > lairRest && !world.foes.some((f) => f.boss && f.home === bossLair!.id && (f.alive || !retired.has(f.id)))) {
+      bossLair.known = true;
+      rouse(world.below === 'lich' ? 'lich' : world.below === 'engine' ? 'engine' : 'queen', bossLair);
+      breakOut(bossLair);
+    }
+    for (const f of world.foes) {
+      if (!f.boss) continue;
+      const name = bossName.get(f.id) ?? 'IT';
+      // Long awake and never reached, it winds down: the engine runs out, the lich withdraws,
+      // the hive goes quiet. It can be woken again.
+      if (f.alive && world.t - (bossWoke.get(f.id) ?? world.t) > 300) {
+        f.alive = false;
+        f.deadAt = world.t;
+        retired.add(f.id);
+        nearLair = Infinity;
+        lairRest = world.t + 240;
+        const what = f.kind === 'lich' ? `${name} WITHDRAWS INTO THE DARK` : f.kind === 'engine' ? `${name} RUNS DOWN` : 'THE HIVE GOES QUIET';
+        say(what, f.x, f.y - CELL * 4, '#c4b5fd', 'high');
+        emit('bossrests', f.x, f.y, 0.6);
+        chronicle(`${T(what.toLowerCase())}, for now.`);
+        alarmUntil = world.t;
+        for (const o of world.foes) if (o.alive && o.home === f.home && !o.boss) hurt(o, 1000);
+        continue;
+      }
+      if (!f.alive) {
+        if (!retired.has(f.id) && once(`boss-dead-${f.id}`)) {
+          const what = f.kind === 'lich' ? 'IS UNMADE' : f.kind === 'engine' ? 'IS STILLED' : 'IS BURNED IN HER HIVE';
+          say(`${name} ${what}`, f.x, f.y - CELL * 4, '#fde68a', 'high');
+          emit('bossslain', f.x, f.y, 1);
+          chronicle(`The soldiers of ${T(world.name)} came down to ${T(name)}, and it ${what.toLowerCase()}.`);
+          look('sleeper', f.x, f.y - CELL * 3, 1.4, 10);
+          world.stocks.treasure += 40;
+          world.stocks.mithril += f.kind === 'engine' ? 12 : 4;
+          world.feast = world.t + 40;
+          alarmUntil = world.t;
+          // Its own go back into the dark, or fall where they stand.
+          for (const o of world.foes) if (o.alive && o.home === f.home && !o.boss) hurt(o, 1000);
+        }
+        continue;
+      }
+      f.anim += dt;
+      if (f.kind === 'engine' && r() < dt * 0.15) quake(0.18);
+      // The camera comes back to it, now and then, while it is awake.
+      if (Math.floor(world.t / 40) !== Math.floor((world.t - dt) / 40)) look('sleeper', f.x, f.y - CELL * 4, 1.3, 12);
+      // It sends its own.
+      if (world.t >= (bossNext.get(f.id) ?? 0)) {
+        bossNext.set(f.id, world.t + (f.kind === 'queen' ? 30 : f.kind === 'lich' ? 42 : 55) + r() * 20);
+        const cv = world.caverns[f.home];
+        const n = f.kind === 'queen' ? 5 + Math.floor(r() * 6) : f.kind === 'lich' ? 3 + Math.floor(r() * 4) : 1 + Math.floor(r() * 2);
+        for (let k2 = 0; k2 < n; k2++) {
+          const m = foe(f.kind === 'queen' ? (r() < 0.7 ? 'crawler' : 'spider') : f.kind === 'lich' ? 'skeleton' : 'golem', cv, true);
+          if (m) m.task = 'hunt';
+        }
+        // The lich calls up the clan's own dead, from the tombs.
+        if (f.kind === 'lich') for (const tomb of ready('tomb').slice(0, 1)) for (let k2 = 0; k2 < Math.min(4, world.deaths); k2++) {
+          const m = foe('skeleton', null, true, ((tomb.c0 + tomb.c1) / 2 + (r() - 0.5) * 6) * CELL, (tomb.floor + 1) * CELL);
+          if (m) m.task = 'hunt';
+        }
+        const verb = f.kind === 'queen' ? 'A SWARM POURS OUT OF THE HIVE' : f.kind === 'lich' ? `${name} RAISES THE DEAD` : `${name} SENDS OUT ITS GOLEMS`;
+        say(verb, f.x, f.y - CELL * 4, '#fca5a5', 'medium');
+        look('sleeper', f.x, f.y - CELL * 4, 1.3, 8);
+        emit(f.kind === 'queen' ? 'swarm' : f.kind === 'lich' ? 'deadwake' : 'golems', f.x, f.y, 0.6);
+        alarm(cellOf(f), 40);
+      }
+    }
+  }
+
+  /** Woken before its chamber was opened, it opens the way itself: a tunnel to the nearest dwarves. */
+  function breakOut(cv: Cavern) {
+    const living = alive();
+    if (!living.length) return;
+    const tx = cv.c * CELL;
+    const ty = cv.r * CELL;
+    const d = living.sort((a, b) => Math.hypot(a.x - tx, a.y - ty) - Math.hypot(b.x - tx, b.y - ty))[0];
+    let c = cv.c;
+    let rr = cv.r + 1;
+    const ec = Math.floor(d.x / CELL);
+    const er = Math.floor((d.y - 1) / CELL);
+    for (let k2 = 0; k2 < 200 && (Math.abs(c - ec) > 1 || Math.abs(rr - er) > 1); k2++) {
+      // Across and up together, so the way can be walked.
+      if (c !== ec) c += Math.sign(ec - c);
+      if (rr !== er && (c === ec || k2 % 2 === 0)) rr += Math.sign(er - rr);
+      for (const dr of [0, -1]) {
+        if (!inb(c, rr + dr)) continue;
+        const i = at(c, rr + dr);
+        if (mat[i] >= M.SOIL && mat[i] !== M.MAGMA && mat[i] !== M.AQUIFER) setMat(i, M.OPEN);
+        else if (mat[i] === M.AQUIFER) breachWater(i);
+        else if (mat[i] === M.MAGMA) breachMagma(i);
+      }
+    }
+    quake(0.8);
+    for (let n = 0; n < 6; n++) world.fx.push({ kind: 'dust', x: (cv.c + (ec - cv.c) * (n / 6)) * CELL, y: (cv.r + (er - cv.r) * (n / 6)) * CELL, t0: world.t + n * 0.3, dur: 2, r: CELL * 2, seed: ids++ });
+    say('IT BREAKS THROUGH THE ROCK', d.x, d.y - CELL * 3, '#fca5a5', 'high');
+    emit('breakthrough', d.x, d.y, 0.85);
+  }
+
+  /** The spore plague: it goes from dwarf to dwarf; the temple helps; some die of it. */
+  let nextPlague = 280 + r() * 400;
+  let plagueOn = false;
+  let plagueTick = 0;
+  function plague(dt: number) {
+    if (!drew('plague') || world.fallen) return;
+    const living = alive();
+    if (!plagueOn && world.t > nextPlague && living.length > 6) {
+      plagueOn = true;
+      const zero = living[Math.floor(r() * living.length)];
+      zero.sick = world.t;
+      say('THE SPORE-SICKNESS', zero.x, zero.y - CELL * 2, '#bef264', 'high');
+      emit('plague', zero.x, zero.y, 0.75);
+      chronicle(`${T(zero.name)} came up from the caverns coughing spores, and the sickness spread.`);
+      look('fight', zero.x, zero.y - CELL, 1.4, 8);
+    }
+    if (!plagueOn) return;
+    plagueTick += dt;
+    if (plagueTick < 1) return;
+    plagueTick = 0;
+    const sick = living.filter((d) => d.sick >= 0);
+    const temple = ready('temple').length > 0;
+    for (const d of sick) {
+      for (const o of living) if (o.sick < 0 && Math.hypot(o.x - d.x, o.y - d.y) < CELL * 2.5 && r() < 0.05) o.sick = world.t;
+      if (r() < 0.25) world.fx.push({ kind: 'dust', x: d.x, y: d.y - CELL, t0: world.t, dur: 1.5, r: CELL * 0.7, seed: ids++, color: '#bef264' });
+      if (world.t - d.sick > (temple ? 50 : 85)) {
+        if (r() < (temple ? 0.05 : 0.16)) {
+          die(d, 'the spore-sickness');
+          emit('death', d.x, d.y, 0.2);
+        } else d.sick = -1;
+      }
+    }
+    if (!living.some((d) => d.sick >= 0)) {
+      plagueOn = false;
+      nextPlague = world.t + 500 + r() * 600;
+      say('THE SICKNESS PASSES', world.shaftC * CELL, eF * CELL, '#bbf7d0', 'medium');
+      emit('plagueends', world.shaftC * CELL, eF * CELL, 0.5);
+      chronicle(temple ? 'The sickness passed; the temple had kept most of them.' : 'The sickness passed, and the tombs were fuller.');
+    }
+  }
+
+  /** Neighbours: the warren raids once found; the deep gnomes come to trade. */
+  let nextWarren = 0;
+  let nextGnomes = 0;
+  function neighbours() {
+    if (world.fallen) return;
+    for (const cv of world.caverns) {
+      if (!cv.known) continue;
+      if (cv.kind === 'warren' && world.t > nextWarren) {
+        nextWarren = world.t + 90 + r() * 110;
+                const n = 4 + Math.floor(r() * 5 * Math.max(0.5, hz));
+        for (let k2 = 0; k2 < n; k2++) {
+          const f = foe(r() < 0.15 ? 'troll' : 'goblin', cv, true);
+          if (f) f.task = 'hunt';
+        }
+        say(`GOBLINS COME UP FROM ${cv.name}`, cv.c * CELL, cv.r * CELL, '#fca5a5', 'high');
+        emit('goblins', cv.c * CELL, cv.r * CELL, 0.75);
+        look('fight', cv.c * CELL, cv.r * CELL, 1.3, 8);
+        alarm(at(Math.round(cv.c), Math.round(cv.r)), 50);
+        attacked = true;
+      }
+      if (cv.kind === 'gnomes' && world.t > nextGnomes) {
+        nextGnomes = world.t + 120 + r() * 120;
+        for (const f of world.foes) if (f.alive && f.home === cv.id && f.kind === 'gnome' && r() < 0.5) {
+          f.active = true;
+          f.task = 'trade';
+          f.route = [];
+          f.repath = 0;
+        }
+        emit('gnomes', cv.c * CELL, cv.r * CELL, 0.3);
+      }
+    }
+  }
+  /** A deep gnome on its way to the storeroom with its wares, and home again. */
+  function gnomeStep(f: Foe, dt: number) {
+    if (f.task === 'trade') {
+      const store = ready('store')[0] ?? world.rooms[0];
+      if (f.route.length === 0 || f.ri >= f.route.length) {
+        f.repath -= dt;
+        if (f.repath <= 0) {
+          f.repath = 3;
+          if (!go(f, (i) => roomAt[i] === store.id)) return;
+        }
+      }
+      if (walk(f, 18, dt) && roomAt[cellOf(f)] === store.id) {
+        f.task = 'leave';
+        f.route = [];
+        world.stocks.gem += 2;
+        world.stocks.food += 6;
+        if (once(`gnome-trade-${Math.floor(world.t / 60)}`)) {
+          say('THE DEEP GNOMES TRADE', f.x, f.y - CELL * 2, '#bbf7d0', 'low');
+          emit('trade', f.x, f.y, 0.25);
+        }
+      }
+      return;
+    }
+    if (f.task === 'leave') {
+      if (f.route.length === 0 || f.ri >= f.route.length) {
+        f.repath -= dt;
+        if (f.repath <= 0) {
+          f.repath = 3;
+          go(f, (i) => caveAt[i] === f.home);
+        }
+      }
+      if (walk(f, 18, dt) && caveAt[cellOf(f)] === f.home) {
+        f.active = false;
+        f.task = 'wander';
+      }
+      return;
+    }
+    f.repath -= dt;
+    if (f.repath <= 0) {
+      f.repath = 4 + r() * 6;
+      go(f, (i) => caveAt[i] === f.home && r() < 0.02, 600);
+    }
+    walk(f, 8, dt);
+  }
 
   // ---- what sleeps below ------------------------------------------------------------------------------
 
@@ -2230,6 +2605,9 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
     if (!world.fallen && !alive().length) fall();
     soldiers(dt);
     sealing(dt);
+    bosses(dt);
+    plague(dt);
+    neighbours();
     foes(dt);
     sleeper(dt);
     fluids(dt);
@@ -2261,7 +2639,7 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
       }
     }
     // Goblins.
-    if (world.t > nextGoblins && !world.fallen && hz > 0) {
+    if (world.t > nextGoblins && !world.fallen && hz > 0 && drew('goblins')) {
       nextGoblins = world.t + (380 + r() * 420) / Math.max(0.4, hz);
       goblins();
     }
@@ -2281,7 +2659,7 @@ export function createDeepWorld(seed: string | number, W: number, H: number, opt
         if (!room.dug || room.pillars || room.kind === 'entrance' || room.c1 - room.c0 < 9) continue;
         const above = mat[at(Math.round((room.c0 + room.c1) / 2), room.top - 1)];
         const weak = above === M.SOIL || above === M.SLATE || above === M.ICE || above === M.RUBBLE;
-        const odds = (weak ? 0.012 : 0.003) * hz + world.quake * 0.05;
+        const odds = (weak ? 0.012 : 0.003) * hz * (drew('weakrock') ? 1.6 : 0.25) + world.quake * 0.05;
         if (r() < odds) {
           caveIn(room, world.quake > 0.2 ? 'The mountain shook' : 'The rock was weak');
           break;

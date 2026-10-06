@@ -42,13 +42,17 @@ const JOB_COLOR: Record<string, string> = { miner: '#8b5a2b', hauler: '#6b7280',
 
 const rgb = (c: [number, number, number]) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 const hexRgb = (h: string): [number, number, number] => mixRgb(h, h, 0);
+const mixHex = (a: string, b: string, k: number) => {
+  const [r, g, bl] = mixRgb(a, b, k);
+  return `#${[r, g, bl].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
+};
 
 export function mount(host: SkinHost): SkinInstance {
-  const o = resolveOptions(DEEPHOLD_SCHEMA, host.options) as { mountain: string; depth: number; hazards: number; sleeper: boolean; labels: boolean; hud: boolean };
+  const o = resolveOptions(DEEPHOLD_SCHEMA, host.options) as { mountain: string; depth: number; hazards: number; below: string; scale: number; labels: boolean; hud: boolean };
   const { ctx } = host;
   let W = host.viewport.width;
   let H = host.viewport.height;
-  const world = createDeepWorld(host.config.seed, W, H, { mountain: o.mountain, depth: o.depth, hazards: o.hazards, sleeper: o.sleeper });
+  const world = createDeepWorld(host.config.seed, W, H, { mountain: o.mountain, depth: o.depth, hazards: o.hazards, below: o.below, scale: o.scale });
   const { CELL, cols, rows, mat, water, magma, ladder } = world;
   const tint = TINTS[world.mountain];
   let nextAmbience = 0;
@@ -611,7 +615,7 @@ export function mount(host: SkinHost): SkinInstance {
     R(0, -2, 2, 2 - (1 - step), '#292524');
     R(-2, -6, 4, 4, body);
     R(-2, -3, 4, 1, '#3f2a17');
-    R(0, -8, 2, 2, '#f1c7a1');
+    R(0, -8, 2, 2, d.sick >= 0 ? '#a3e635' : '#f1c7a1');
     R(-1, -8, 1, 2, '#e8b38c');
     R(0, -6, 2, 3, BEARDS[d.beard]);
     R(1, -7, 1, 1, BEARDS[d.beard]);
@@ -645,6 +649,8 @@ export function mount(host: SkinHost): SkinInstance {
   }
 
   function foeSprite(fo: Foe, p: number) {
+    // The great ones are drawn great.
+    if (fo.boss) p *= 2.2;
     const X = Math.round(SX(fo.x));
     const Y = Math.round(SY(fo.y));
     if (X < -40 || X > W + 40 || Y < -40 || Y > H + 40) return;
@@ -720,10 +726,240 @@ export function mount(host: SkinHost): SkinInstance {
         R(3, -7, 3, 2, '#78553a');
         R(-3, -7, 5, 2, '#a16207');
         break;
+      case 'golem': {
+        const sw2 = sw ? -2 : 0;
+        R(-3, -4, 2, 4 - step, '#57534e');
+        R(1, -4, 2, 4 - (1 - step), '#57534e');
+        R(-4, -11, 8, 7, '#78716c');
+        R(-4, -11, 8, 1, '#a8a29e');
+        R(-2, -14, 4, 3, '#78716c');
+        R(0, -13, 1, 1, '#fbbf24');
+        R(4, -10 + sw2, 2, 5, '#57534e');
+        R(-6, -10, 2, 5, '#57534e');
+        if (fo.alive) glowsLater.push([X + f * p, Y - 13 * p, 5 * p, '#fbbf24', 0.6]);
+        break;
+      }
+      case 'gnome':
+        R(-1, -2, 1, 2 - step, '#292524');
+        R(1, -2, 1, 2 - (1 - step), '#292524');
+        R(-1, -5, 3, 3, '#365314');
+        R(0, -7, 2, 2, '#f1c7a1');
+        R(0, -5, 2, 2, '#e5e7eb');
+        R(-1, -8, 3, 1, '#dc2626');
+        R(0, -10, 2, 2, '#dc2626');
+        R(1, -11, 1, 1, '#dc2626');
+        glowsLater.push([X + f * 3 * p, Y - 5 * p, 6 * p, '#fbbf24', 0.5]);
+        break;
+      case 'mushroom': {
+        const cap = tint.fungus[fo.id % tint.fungus.length];
+        R(-1, -5, 2, 5, '#e7e5e4');
+        R(-3, -8, 6, 3, cap);
+        R(-2, -9, 4, 1, cap);
+        R(-1, -7, 1, 1, '#ffffff');
+        R(1, -8, 1, 1, '#ffffff');
+        glowsLater.push([X, Y - 7 * p, 8 * p, cap, 0.35]);
+        break;
+      }
+      case 'lich': {
+        // Robed, crowned, its staff burning green.
+        R(-4, -12, 8, 12, '#1f2937');
+        R(-3, -12, 2, 11, '#374151');
+        R(-2, -16, 4, 4, '#e5e7eb');
+        R(-2, -17, 4, 1, '#ca8a04');
+        R(-2, -18, 1, 1, '#ca8a04');
+        R(1, -18, 1, 1, '#ca8a04');
+        R(-1, -15, 1, 1, '#4ade80');
+        R(1, -15, 1, 1, '#4ade80');
+        R(5, -20, 1, 20, '#57534e');
+        R(4, -22, 3, 3, '#86efac');
+        if (fo.alive) {
+          glowsLater.push([X + f * 5.5 * p, Y - 21 * p, 14 * p, '#4ade80', 0.7]);
+          glowsLater.push([X, Y - 10 * p, 26 * p, '#16a34a', 0.25 + 0.1 * Math.sin(world.t * 2)]);
+        }
+        break;
+      }
+      case 'engine': {
+        // The elder engine: wheels within wheels, turning, its furnace-heart open.
+        const t2 = world.t;
+        for (const [ox, oy, rr, sp] of [[0, -10, 9, 0.6], [-11, -5, 5, -1.1], [10, -15, 6, -0.9], [8, -3, 4, 1.4]] as [number, number, number, number][]) {
+          const cx = X + ox * p;
+          const cy = Y + oy * p;
+          ctx.strokeStyle = fo.alive ? '#a16207' : '#57534e';
+          ctx.lineWidth = Math.max(1, p * 1.2);
+          ctx.beginPath();
+          ctx.arc(cx, cy, rr * p, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.beginPath();
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2 + (fo.alive ? t2 * sp : 0);
+            ctx.moveTo(cx + Math.cos(a) * rr * p, cy + Math.sin(a) * rr * p);
+            ctx.lineTo(cx + Math.cos(a) * (rr + 1.6) * p, cy + Math.sin(a) * (rr + 1.6) * p);
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + Math.cos(a) * rr * p, cy + Math.sin(a) * rr * p);
+          }
+          ctx.stroke();
+        }
+        R(-3, -13, 6, 6, fo.alive ? '#fb923c' : '#292524');
+        if (fo.alive) glowsLater.push([X, Y - 10 * p, 30 * p, '#f97316', 0.5 + 0.15 * Math.sin(world.t * 5)]);
+        break;
+      }
+      case 'queen': {
+        // Vast and pale, a body of eggs.
+        ctx.fillStyle = fo.alive ? '#d8b4fe' : '#57534e';
+        ctx.beginPath();
+        ctx.ellipse(X - f * 6 * p, Y - 6 * p, 10 * p, 6 * p, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#4c1d95';
+        for (let k = 0; k < 4; k++) ctx.fillRect(X - f * (12 - k * 4) * p, Y - 10 * p, p, 8 * p);
+        R(2, -10, 6, 5, '#3b0764');
+        R(7, -9, 2, 2, '#f0abfc');
+        ctx.strokeStyle = '#1e1b4b';
+        ctx.lineWidth = Math.max(1, p * 0.8);
+        ctx.beginPath();
+        for (let k = 0; k < 3; k++) for (const sd of [-1, 1]) {
+          ctx.moveTo(X + f * (3 + k * 2) * p, Y - 6 * p);
+          ctx.lineTo(X + f * (3 + k * 2 + sd * 3) * p, Y - 2 * p + Math.sin(world.t * 6 + k) * p);
+          ctx.lineTo(X + f * (3 + k * 2 + sd * 4) * p, Y);
+        }
+        ctx.stroke();
+        if (fo.alive) glowsLater.push([X, Y - 6 * p, 30 * p, '#c084fc', 0.3]);
+        break;
+      }
       default:
         break;
     }
     ctx.globalAlpha = 1;
+  }
+
+  // ---- the caverns' furniture: geodes, shrines, hives, the engine's housing, warrens, gnome hollows, and their life ----
+
+  const caveBox = world.caverns.map(() => ({ c0: Infinity, c1: -Infinity, r0: Infinity, r1: -Infinity }));
+  const ceilings: { x: number; y: number; cave: number; seed: number }[] = [];
+  for (let i = cols; i < mat.length - cols; i++) {
+    const cv = world.caveAt[i];
+    if (cv < 0) continue;
+    const c = i % cols;
+    const rr = Math.floor(i / cols);
+    const b = caveBox[cv];
+    b.c0 = Math.min(b.c0, c);
+    b.c1 = Math.max(b.c1, c);
+    b.r0 = Math.min(b.r0, rr);
+    b.r1 = Math.max(b.r1, rr);
+    if (!isOpen(mat[i - cols]) && hash(i, 31) < 0.18) ceilings.push({ x: world.cellX(i), y: rr * CELL, cave: cv, seed: i });
+  }
+  const castHas = (id: string) => world.castIds.includes(id);
+  function caveDecor(t: number) {
+    world.caverns.forEach((cv, k) => {
+      const b = caveBox[k];
+      if (b.c1 < b.c0) return;
+      const x0 = b.c0 * CELL;
+      const x1 = (b.c1 + 1) * CELL;
+      const y0 = b.r0 * CELL;
+      const y1 = (b.r1 + 1) * CELL;
+      if (!visible((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 + 40)) return;
+      const lit = cv.known ? 1 : 0.45;
+      const fl = y1;
+      switch (cv.kind) {
+        case 'geode':
+          for (let n = 0; n < 26; n++) {
+            const u = hash(k, n, 1);
+            const up = hash(k, n, 2) < 0.5;
+            const x = x0 + u * (x1 - x0);
+            const base = up ? y0 + CELL : fl;
+            const len = (1 + hash(k, n, 3) * 2.2) * CELL;
+            const col = hash(k, n, 4) < 0.5 ? '#a78bfa' : '#67e8f9';
+            ctx.fillStyle = hexA(col, 0.75 * lit);
+            ctx.beginPath();
+            ctx.moveTo(SX(x - CELL * 0.4), SY(base));
+            ctx.lineTo(SX(x + (hash(k, n, 5) - 0.5) * CELL), SY(base + (up ? len : -len)));
+            ctx.lineTo(SX(x + CELL * 0.4), SY(base));
+            ctx.fill();
+            if (Math.sin(t * 1.3 + n) > 0.85) glowsLater.push([SX(x), SY(base + (up ? len : -len) * 0.8), CELL * 2.2 * Z, col, 0.6 * lit]);
+          }
+          glowsLater.push([SX((x0 + x1) / 2), SY((y0 + y1) / 2), (x1 - x0) * 0.5 * Z, '#8b5cf6', 0.16 * lit]);
+          break;
+        case 'shrine': {
+          const x = (x0 + x1) / 2;
+          box(x - CELL * 1.2, fl - CELL * 0.7, CELL * 2.4, CELL * 0.7, '#57534e');
+          box(x - CELL * 0.7, fl - CELL * 4.5, CELL * 1.4, CELL * 3.8, '#8a8478');
+          box(x - CELL * 0.9, fl - CELL * 5.4, CELL * 1.8, CELL * 1, '#a8a29e');
+          box(x - CELL * 0.4, fl - CELL * 3.6, CELL * 0.8, CELL * 1.2, '#ca8a04');
+          glowsLater.push([SX(x), SY(fl - CELL * 3), CELL * 7 * Z, '#fde68a', (cv.known ? 0.45 : 0.15) * (0.8 + 0.2 * Math.sin(t))]);
+          break;
+        }
+        case 'hive':
+          for (let n = 0; n < 18; n++) {
+            const x = x0 + hash(k, n, 6) * (x1 - x0);
+            const y = fl - CELL * (0.3 + hash(k, n, 7) * 1.5);
+            ctx.fillStyle = hexA('#e9d5ff', 0.55 * lit);
+            ctx.beginPath();
+            ctx.ellipse(SX(x), SY(y), CELL * 0.5 * Z, CELL * 0.7 * Z, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.strokeStyle = hexA('#d6d3d1', 0.25 * lit);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let n = 0; n < 10; n++) {
+            ctx.moveTo(SX(x0 + hash(k, n, 8) * (x1 - x0)), SY(y0 + CELL));
+            ctx.lineTo(SX(x0 + hash(k, n, 9) * (x1 - x0)), SY(fl - CELL * 2));
+          }
+          ctx.stroke();
+          break;
+        case 'engine':
+          // Before it wakes: the housing and its still wheels.
+          if (!world.foes.some((f) => f.kind === 'engine' && f.home === cv.id)) {
+            for (const [ox, rr] of [[0, 4], [-5, 2.5], [5, 3]] as [number, number][]) {
+              ctx.strokeStyle = hexA('#78716c', 0.6 * lit);
+              ctx.lineWidth = Math.max(1, Z * 1.5);
+              ctx.beginPath();
+              ctx.arc(SX((x0 + x1) / 2 + ox * CELL), SY(fl - CELL * 4), rr * CELL * Z, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
+          break;
+        case 'warren':
+          for (let n = 0; n < 5; n++) {
+            const x = x0 + ((n + 0.5) / 5) * (x1 - x0);
+            box(x, fl - CELL * 1.6, CELL * 0.2, CELL * 1.6, '#57534e');
+            glowsLater.push([SX(x), SY(fl - CELL * 1.8), CELL * 3 * Z, '#ef4444', 0.35 * lit * (0.8 + 0.2 * Math.sin(t * 7 + n))]);
+          }
+          break;
+        case 'gnomes':
+          for (let n = 0; n < 6; n++) {
+            const x = x0 + ((n + 0.5) / 6) * (x1 - x0);
+            box(x - CELL * 0.8, fl - CELL * 1.6, CELL * 1.6, CELL * 1.6, '#7c5a36');
+            box(x - CELL, fl - CELL * 2.1, CELL * 2, CELL * 0.6, '#b91c1c');
+            glowsLater.push([SX(x), SY(fl - CELL), CELL * 2.5 * Z, '#fbbf24', 0.45 * lit]);
+          }
+          break;
+        default:
+          break;
+      }
+      // Bats, in the caverns the miners have opened.
+      if (castHas('bats') && cv.known && (cv.kind === 'cavern' || cv.kind === 'lake')) {
+        ctx.strokeStyle = 'rgba(214,211,209,0.55)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let n = 0; n < 9; n++) {
+          const ph = t * 0.35 + n * 0.7 + k;
+          const x = (x0 + x1) / 2 + Math.sin(ph) * (x1 - x0) * 0.4;
+          const y = (y0 + y1) / 2 + Math.sin(ph * 1.7) * (y1 - y0) * 0.3;
+          const fl2 = Math.sin(t * 14 + n) * 2 * Z;
+          ctx.moveTo(SX(x) - 3 * Z, SY(y) - fl2);
+          ctx.lineTo(SX(x), SY(y));
+          ctx.lineTo(SX(x) + 3 * Z, SY(y) - fl2);
+        }
+        ctx.stroke();
+      }
+    });
+    // Glow-worms on the cavern ceilings.
+    if (castHas('glowworms')) for (const c of ceilings) {
+      const X = SX(c.x);
+      const Y = SY(c.y);
+      if (X < -10 || X > W + 10 || Y < -10 || Y > H + 10) continue;
+      const a = (world.caverns[c.cave]?.known ? 0.7 : 0.3) * (0.6 + 0.4 * Math.sin(t * 0.8 + c.seed));
+      glowsLater.push([X, Y + 2, 4 * Z, '#5eead4', a]);
+    }
   }
 
   /** What sleeps below: drawn large, by kind; dim and breathing asleep, lit and terrible awake. */
@@ -757,7 +993,7 @@ export function mount(host: SkinHost): SkinInstance {
           const px = awake ? X - f * k * u * 1.1 + Math.sin(a) * u * 0.8 : X + Math.cos(k * 0.6) * u * 3.2;
           const py = awake ? Y - u * 2 + k * u * 0.6 + Math.cos(a) * u * 0.5 : Y - u * 2 + Math.sin(k * 0.6) * u * 1.6;
           const rad = u * (1.7 - k * 0.06);
-          ctx.fillStyle = k % 2 ? '#57534e' : '#78716c';
+          ctx.fillStyle = k % 2 ? mixHex(s.tint, '#000000', 0.25) : s.tint;
           ctx.beginPath();
           ctx.arc(px, py, rad, 0, Math.PI * 2);
           ctx.fill();
@@ -783,7 +1019,7 @@ export function mount(host: SkinHost): SkinInstance {
         }
         ctx.stroke();
         const g = ctx.createRadialGradient(X, Y - u * 3, u * 0.5, X, Y - u * 3, u * 4);
-        g.addColorStop(0, 'rgba(216,180,254,0.95)');
+        g.addColorStop(0, hexA(mixHex(s.tint, '#ffffff', 0.4), 0.95));
         g.addColorStop(1, 'rgba(76,29,149,0.9)');
         ctx.fillStyle = g;
         ctx.beginPath();
@@ -800,7 +1036,7 @@ export function mount(host: SkinHost): SkinInstance {
       case 'demon': {
         const demon = s.kind === 'demon';
         const crouch = !awake && !dead ? 0.6 : 1;
-        const body = demon ? '#44201a' : '#cbd5e1';
+        const body = s.tint;
         const shade = demon ? '#2a1410' : '#64748b';
         const h = u * 9 * crouch;
         if (demon && !dead) {
@@ -856,7 +1092,7 @@ export function mount(host: SkinHost): SkinInstance {
         break;
       }
       case 'tentacle': {
-        ctx.strokeStyle = '#14532d';
+        ctx.strokeStyle = mixHex(s.tint, '#ffffff', 0.15);
         ctx.lineCap = 'round';
         for (let k = 0; k < 7; k++) {
           ctx.lineWidth = u * (0.9 - k * 0.05);
@@ -869,7 +1105,7 @@ export function mount(host: SkinHost): SkinInstance {
           ctx.quadraticCurveTo(X + Math.cos(a0 + Math.sin(wave + k)) * u * 5, Y - u * 3 + Math.sin(a0 + Math.cos(wave + k)) * u * 4, ex, ey);
           ctx.stroke();
         }
-        ctx.fillStyle = '#052e16';
+        ctx.fillStyle = s.tint;
         ctx.beginPath();
         ctx.arc(X, Y - u * 3, u * 3.2, 0, Math.PI * 2);
         ctx.fill();
@@ -1082,10 +1318,19 @@ export function mount(host: SkinHost): SkinInstance {
     fillCrisp(ctx, `${king} · ${pop} DWARVES · WEALTH ${world.wealth().toLocaleString('en-US')} · DOWN TO ${deepName(Math.max(0, world.levels.length - 1))}`, 16, 42);
     const s = world.stocks;
     fillCrisp(ctx, `FOOD ${Math.round(s.food)} · ALE ${Math.round(s.ale)} · IRON ${s.iron} · COAL ${s.coal} · GOLD ${s.gold} · GEMS ${s.gem}${s.mithril ? ` · MITHRIL ${s.mithril}` : ''} · ${SEASONS[world.season]} ${world.year}`, 16, 57);
+    ctx.font = serif(11, true);
+    ctx.fillStyle = hexA('#a8a29e', 0.7 * level);
+    fillCrisp(ctx, `This mountain holds ${world.cast.filter((c) => c !== 'only stone').slice(0, 7).join(', ')}.`, 16, 72);
+    ctx.font = serif(11);
     ctx.textAlign = 'right';
     const sl = world.sleeper;
-    const below = !sl ? '' : sl.state === 'sleep' ? 'BELOW: SOMETHING SLEEPS' : sl.state === 'stir' ? 'BELOW: SOMETHING STIRS' : sl.state === 'dead' ? `BELOW: ${sl.name}, SLAIN` : sl.state === 'return' ? `BELOW: ${sl.name} GOES DOWN AGAIN` : `${sl.name} IS AWAKE`;
-    ctx.fillStyle = hexA(sl && sl.state !== 'sleep' && sl.state !== 'dead' ? '#fca5a5' : '#c4b5fd', 0.8 * level);
+    const boss = world.foes.find((f) => f.boss);
+    const awake = (sl && sl.state !== 'sleep' && sl.state !== 'dead') || (boss && boss.alive);
+    const below = sl
+      ? sl.state === 'sleep' ? 'BELOW: SOMETHING SLEEPS' : sl.state === 'stir' ? 'BELOW: SOMETHING STIRS' : sl.state === 'dead' ? `BELOW: ${sl.name}, SLAIN` : sl.state === 'return' ? `BELOW: ${sl.name} GOES DOWN AGAIN` : `${sl.name} IS AWAKE`
+      : boss ? (boss.alive ? `BELOW: SOMETHING IS AWAKE` : 'BELOW: IT IS ENDED')
+      : world.below === 'lich' ? 'BELOW: THE OLD HALLS ARE NOT EMPTY' : world.below === 'engine' ? 'BELOW: SOMETHING TICKS' : world.below === 'hive' ? 'BELOW: SOMETHING HUMS' : 'BELOW: ONLY STONE';
+    ctx.fillStyle = hexA(awake ? '#fca5a5' : '#c4b5fd', 0.8 * level);
     if (below) fillCrisp(ctx, below, W - 16, 26);
     ctx.fillStyle = hexA('#fde68a', 0.75 * level);
     world.artifacts.slice(-3).forEach((a, k) => fillCrisp(ctx, `${a.name}, BY ${a.maker}`, W - 16, 42 + k * 15));
@@ -1130,6 +1375,7 @@ export function mount(host: SkinHost): SkinInstance {
         if (!visible(x, y)) continue;
         box(x - CELL * 0.3, y - CELL * 0.35, CELL * 0.6, CELL * 0.35, l.kind === 'gold' ? '#facc15' : l.kind === 'gem' ? '#c084fc' : l.kind === 'mithril' ? '#e0f2fe' : l.kind === 'coal' ? '#18181b' : '#a0522d');
       }
+      caveDecor(t);
       sleeperDraw(t);
       for (const f of world.foes) foeSprite(f, p);
       for (const d of world.dwarves) dwarfSprite(d, t, p);

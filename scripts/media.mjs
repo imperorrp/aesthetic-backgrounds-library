@@ -97,10 +97,10 @@ const IMAGES = [
     cols: 2,
     tile: [960, 600],
     shots: [
-      { skin: 'deephold', seed: 'm-crystal', options: { mountain: 'crystal' }, t: [700], captions: ['A HOLD UNDER THE CRYSTAL DEEP'] },
-      { skin: 'deephold', seed: 'm-drowned', options: { mountain: 'drowned' }, seek: 'WATER BREAKS', max: 900, after: [6], captions: ['WATER BREAKS IN'] },
-      { skin: 'deephold', seed: 'm-frost', options: { mountain: 'frost' }, seek: 'RIME KING WAKES', max: 900, after: [8], captions: ['WHAT SLEPT BELOW WAKES'] },
-      { skin: 'deephold', seed: 'm-ember', options: { mountain: 'ember' }, seek: 'FLAME BENEATH WAKES', max: 1200, after: [14], captions: ['THE FLAME BENEATH'] },
+      { skin: 'deephold', seed: 'b-lich', options: { below: 'lich' }, seek: 'RISES IN THE OLD HALLS', max: 1300, after: [12], captions: ['A LICH IN THE OLD HALLS'] },
+      { skin: 'deephold', seed: 'b-engine', options: { below: 'engine' }, seek: 'TURNS OVER', max: 1300, after: [14], captions: ['AN ELDER ENGINE WAKES'] },
+      { skin: 'deephold', seed: 'c2', t: [400], captions: ['A YOUNG HOLD UNDER THE CRYSTAL DEEP'] },
+      { skin: 'deephold', seed: 'b-hive', options: { below: 'hive' }, seek: 'STIRS IN THE HIVE', max: 1300, after: [12], captions: ['THE HIVE QUEEN'] },
     ],
   },
   {

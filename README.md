@@ -218,16 +218,30 @@ mount(document.body, { skin: 'wyrmspire', options: { valley: 'fen', wrath: 2 } }
 
 ### Deephold
 
-![Deephold: a dwarf hold in cutaway under a mountain; galleries and rooms off a shaft, a flooded deep, a cavern of glowing fungus, and a giant waking in its chamber below](docs/media/worlds/deephold.jpg)
+![Deephold: four mountains; a lich rising in the old halls, an elder engine waking, a young hold under the crystal deep, a hive queen](docs/media/worlds/deephold.jpg)
 
-A mountain cut through like a glass ant farm, with a dwarf hold inside it: a gate in the slope, a shaft with ladders, and galleries off it at every deep, with rooms carved along them. There are storerooms, dormitories, mushroom farms, a brewery, forges, a great hall with its throne, hearth, and the clan's artifacts, a temple, tombs, barracks, a treasury, and the hall of records. Each seed is a different mountain (iron, crystal, frost, ember, or drowned) with its own rock, ores, and hazards, and a different clan.
+A mountain cut through like a glass ant farm, with a dwarf hold inside it. A gate is cut into the slope, a shaft drops down with ladders, and galleries run off it at every deep, with rooms carved along them as the clan needs them: storerooms, dormitories, farms, a brewery, forges, a great hall, a temple, tombs, barracks, a treasury, pumps, a hall of records. Everyone walks the tunnels for real. Miners dig what the overseer lays out and follow the veins; haulers cart the ore; smiths, brewers, farmers and masons work. The dwarves sleep in shifts and feast. Caravans come, migrants swell the hold, kings are crowned, and a smith in a strange mood forges an artifact.
 
-Everyone walks the tunnels for real. Miners dig what the overseer lays out and follow the veins of coal, iron, gold, gems, and, deep down, mithril; haulers cart the ore up; smiths, brewers, and farmers work their rooms; masons furnish and prop them. The dwarves sleep in shifts and feast in the hall. Caravans come up the mountain in summer, migrants when the hold grows rich; kings die and are crowned; a smith taken by a strange mood forges an artifact, or goes mad.
+Every seed is a different mountain with its own cast, drawn the way the sector map draws its mechanics:
+- **What lies below** (one of these):
+  - a sleeper, of many kinds and names, that stirs when they dig near and climbs the shaft
+  - a lich in the old halls who raises the dead (the clan's own, from the tombs)
+  - an elder engine that wakes and sends out golems
+  - a hive queen who sends swarms
+  - nothing at all but stone
+- **Hazards:**
+  - aquifers that flood a deep (the water flows, and pumps drain it)
+  - magma that flows and cools to obsidian
+  - weak rock that caves in
+  - firedamp in the coal
+  - a spore plague that spreads from dwarf to dwarf
+- **Neighbors:** goblins at the gate, a goblin warren that raids from below, deep gnomes who come up to trade.
+- **Wonders:** a crystal geode, a mithril lode, a sunken shrine, the halls of an older people, a black lake.
+- **Life in the caverns:** spiders, crawlers, trolls, bats, glow-worms, mushroom folk.
 
-The rock can see what the dwarves can't. Water breaks in from an aquifer and floods a deep, and it flows; so does magma, which cools to obsidian and hisses where it meets water. Wide rooms in weak rock cave in, and coal seams hold firedamp. Caverns broken into let out what lives in them, and the halls of an older people hold treasure, and sometimes their dead. Goblins come to the gate. Far below, something sleeps near the mithril. If the clan digs too greedily and too deep, it stirs, wakes, and climbs the shaft. The soldiers fight it and the masons race to seal the shaft above it. The hold may fall, and another clan comes in time to reclaim it.
-
+The size of the mountain and the clan are drawn too, from a dozen founders to a hold of a hundred. The things below can be driven off, sealed in, ended, or left to wind down; or the hold falls, and another clan comes in time to reclaim it.
 ```ts
-mount(document.body, { skin: 'deephold', options: { mountain: 'ember', depth: 1.5 } });
+mount(document.body, { skin: 'deephold', options: { mountain: 'ember', below: 'lich', scale: 1.5 } });
 ```
 
 ### Leylines
@@ -893,8 +907,9 @@ mount(document.body, {
 | --- | --- | --- |
 | `mountain` | `'any'` | `iron`, `crystal`, `frost`, `ember`, `drowned`, or `any` (one per seed): its rock, ores, hazards, and what sleeps below. |
 | `depth` | `1` | How greedily they dig: how fast the shaft goes down, and how deep (`0.3` to `2`). |
-| `hazards` | `1` | Aquifers, magma, weak rock, caverns, goblins (`0` for none of them). |
-| `sleeper` | `true` | Something asleep below that they should not dig too near. |
+| `hazards` | `1` | How hard the mountain is: hazards and hostile neighbors in the cast (`0` for none). |
+| `below` | `'any'` | What lies below: `sleeper`, `lich`, `engine`, `hive`, `nothing`, or `any` (drawn per seed). |
+| `scale` | `1` | How big the mountain and the clan (`0.5` to `2`). |
 | `labels` | `true` | Call-outs: strikes, rooms, floods, cave-ins, the gate, the deep. |
 | `hud` | `true` | The hold, its king, its stores and artifacts, the chronicle. |
 
