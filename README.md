@@ -218,11 +218,19 @@ mount(document.body, { skin: 'wyrmspire', options: { valley: 'fen', wrath: 2 } }
 
 ### Deephold
 
-![Deephold: four mountains; a lich rising in the old halls, an elder engine waking, a young hold under the crystal deep, a hive queen](docs/media/worlds/deephold.jpg)
+![Deephold: four kingdoms; a dragon burning a hold's gate, one hold sacking another, a range of holds with a king's face carved on the mountain, a lich rising in the old halls](docs/media/worlds/deephold.jpg)
 
-A mountain cut through like a glass ant farm, with a dwarf hold inside it. A gate is cut into the slope, a shaft drops down with ladders, and galleries run off it at every deep, with rooms carved along them as the clan needs them: storerooms, dormitories, farms, a brewery, forges, a great hall, a temple, tombs, barracks, a treasury, pumps, a hall of records. Everyone walks the tunnels for real. Miners dig what the overseer lays out and follow the veins; haulers cart the ore; smiths, brewers, farmers and masons work. The dwarves sleep in shifts and feast. Caravans come, migrants swell the hold, kings are crowned, and a smith in a strange mood forges an artifact.
+A range of mountains cut through like a glass ant farm, wider than the screen, with two to four dwarf holds inside it, each its own clan with its own banner, king, and way of building:
+- how it goes down: ladder shafts, a lift riding its ropes, or flights of stairs that zigzag from deep to deep
+- how it carves its rooms: arched, domed, tiered, or vaulted, lined in its own dressed stone or left raw
+- how it lights them: torches, braziers, crystal lamps, or lava run in channels
+- whether it lays rails, and how many statues of its kings it raises
 
-Every seed is a different mountain with its own cast, drawn the way the sector map draws its mechanics:
+The holds never stop building. Each has an endless plan: deeper levels, rooms as the clan needs them (storerooms, dormitories, farms, breweries, forges, great halls, temples, tombs, barracks, treasuries, pumps, halls of records), mines along the veins, vaulted halls and galleries of kings, its first king's face carved on the mountainside, and highways under the mountains to the next hold, bridged where they cross a cavern. Dwarves dig fast enough to watch; haulers push carts of ore; smiths, brewers, farmers and masons work; they sleep in shifts and feast. Caravans and migrants come up the slopes, kings are crowned, and a smith in a strange mood forges an artifact.
+
+The holds trade along the highways and fall out: a hold marches its soldiers through the tunnels to sack a rival's hall, then makes peace. A hold emptied falls, and another clan comes to retake it. A dragon comes over the peaks to burn a gate until the crossbows bring it down or it flies off.
+
+Every seed is a different range with its own cast, drawn the way the sector map draws its mechanics:
 - **What lies below** (one of these):
   - a sleeper, of many kinds and names, that stirs when they dig near and climbs the shaft
   - a lich in the old halls who raises the dead (the clan's own, from the tombs)
@@ -238,10 +246,11 @@ Every seed is a different mountain with its own cast, drawn the way the sector m
 - **Neighbors:** goblins at the gate, a goblin warren that raids from below, deep gnomes who come up to trade.
 - **Wonders:** a crystal geode, a mithril lode, a sunken shrine, the halls of an older people, a black lake.
 - **Life in the caverns:** spiders, crawlers, trolls, bats, glow-worms, mushroom folk.
+- **The sky:** a dragon, or clear skies. **The clans' temper:** rivals quick to war, allies who trade, or old feuds.
 
-The size of the mountain and the clan are drawn too, from a dozen founders to a hold of a hundred. The things below can be driven off, sealed in, ended, or left to wind down; or the hold falls, and another clan comes in time to reclaim it.
+The things below wake when the miners dig near them, break through to the holds, and send their own; they can be ended by the soldiers or wind down. The first version, a single hold under one mountain, is `style: 'classic'`.
 ```ts
-mount(document.body, { skin: 'deephold', options: { mountain: 'ember', below: 'lich', scale: 1.5 } });
+mount(document.body, { skin: 'deephold', options: { mountain: 'ember', holds: '4', below: 'lich' } });
 ```
 
 ### Leylines
@@ -901,17 +910,19 @@ mount(document.body, {
 
 ## Deephold's options
 
-`skin: 'deephold'`. A lazy chunk (about 34 KB gzipped), like the other fantasy worlds.
+`skin: 'deephold'`. A lazy chunk (about 88 KB gzipped, both styles), like the other fantasy worlds.
 
 | Option | Default | Effect |
 | --- | --- | --- |
+| `style` | `'kingdom'` | `kingdom` (a range of rival holds) or `classic` (the single hold). |
+| `holds` | `'any'` | How many holds in the range: `2`, `3`, `4`, or `any` (drawn per seed). |
 | `mountain` | `'any'` | `iron`, `crystal`, `frost`, `ember`, `drowned`, or `any` (one per seed): its rock, ores, hazards, and what sleeps below. |
-| `depth` | `1` | How greedily they dig: how fast the shaft goes down, and how deep (`0.3` to `2`). |
+| `depth` | `1` | Classic only: how greedily they dig (`0.3` to `2`). |
 | `hazards` | `1` | How hard the mountain is: hazards and hostile neighbors in the cast (`0` for none). |
 | `below` | `'any'` | What lies below: `sleeper`, `lich`, `engine`, `hive`, `nothing`, or `any` (drawn per seed). |
-| `scale` | `1` | How big the mountain and the clan (`0.5` to `2`). |
-| `labels` | `true` | Call-outs: strikes, rooms, floods, cave-ins, the gate, the deep. |
-| `hud` | `true` | The hold, its king, its stores and artifacts, the chronicle. |
+| `scale` | `1` | How big the range and the clans (`0.5` to `2`). |
+| `labels` | `true` | Call-outs: strikes, rooms, highways, wars, the dragon, floods, cave-ins, the deep. |
+| `hud` | `true` | The holds, their kings and wars, what the mountains hold, the artifacts, the chronicle. |
 
 ## Leylines' options
 

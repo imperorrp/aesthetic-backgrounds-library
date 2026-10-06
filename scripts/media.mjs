@@ -97,10 +97,10 @@ const IMAGES = [
     cols: 2,
     tile: [960, 600],
     shots: [
-      { skin: 'deephold', seed: 'b-lich', options: { below: 'lich' }, seek: 'RISES IN THE OLD HALLS', max: 1300, after: [12], captions: ['A LICH IN THE OLD HALLS'] },
-      { skin: 'deephold', seed: 'b-engine', options: { below: 'engine' }, seek: 'TURNS OVER', max: 1300, after: [14], captions: ['AN ELDER ENGINE WAKES'] },
-      { skin: 'deephold', seed: 'c2', t: [400], captions: ['A YOUNG HOLD UNDER THE CRYSTAL DEEP'] },
-      { skin: 'deephold', seed: 'b-hive', options: { below: 'hive' }, seek: 'STIRS IN THE HIVE', max: 1300, after: [12], captions: ['THE HIVE QUEEN'] },
+      { skin: 'deephold', seed: 'moss-9', seek: 'BURNS THE GATEHALL', max: 1500, after: [-8], captions: ['A DRAGON AT THE GATE'] },
+      { skin: 'deephold', seed: 'orion-7', seek: 'SACKS', max: 1800, after: [3], captions: ['ONE HOLD SACKS ANOTHER'] },
+      { skin: 'deephold', seed: 'moss-9', seek: 'FACE OF', max: 900, after: [3], captions: ['THE FIRST KING, CARVED IN THE MOUNTAIN'] },
+      { skin: 'deephold', seed: 'kb-lich', options: { below: 'lich' }, seek: 'RISES IN THE OLD HALLS', max: 1500, after: [10], captions: ['A LICH IN THE OLD HALLS'] },
     ],
   },
   {

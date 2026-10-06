@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Deephold, sim-only on the headless host: the clan digs, builds, and goes down; seeds draw
+ * Deephold's classic style (the single hold), sim-only on the headless host: the clan digs, builds, and goes down; seeds draw
  * different casts; each kind of thing below wakes when they dig near it; every mountain runs;
  * and a seed replays.
  */
@@ -9,7 +9,7 @@ import { prepareSkins, runHeadless } from '../../../dev/headless';
 import { compose, createGenome } from '../../kit';
 import { CAST_RULE, DEEP_CAST } from './deep-cast';
 
-const run = (seconds: number, seed = 'orion-7', options: Record<string, unknown> = {}) => runHeadless({ skin: 'deephold', seconds, seed, options });
+const run = (seconds: number, seed = 'orion-7', options: Record<string, unknown> = {}) => runHeadless({ skin: 'deephold', seconds, seed, options: { style: 'classic', ...options } });
 
 beforeAll(async () => {
   await prepareSkins();

@@ -20,6 +20,7 @@ import { fillCrisp, hash, hexA, mixRgb, typed } from '../instruments/kit';
 import { DEEPHOLD_SCHEMA } from './index';
 import { createDeepWorld, deepName, isOpen, M, MOUNTAIN_NAMES, SEASONS, type Dwarf, type Foe, type Mountain, type Room } from './deep-sim';
 import { serif } from './names';
+import { mountKingdom } from './kingdom/paint';
 
 const TEX = 4;
 
@@ -48,7 +49,8 @@ const mixHex = (a: string, b: string, k: number) => {
 };
 
 export function mount(host: SkinHost): SkinInstance {
-  const o = resolveOptions(DEEPHOLD_SCHEMA, host.options) as { mountain: string; depth: number; hazards: number; below: string; scale: number; labels: boolean; hud: boolean };
+  const o = resolveOptions(DEEPHOLD_SCHEMA, host.options) as { style: string; holds: string; mountain: string; depth: number; hazards: number; below: string; scale: number; labels: boolean; hud: boolean };
+  if (o.style !== 'classic') return mountKingdom(host, o);
   const { ctx } = host;
   let W = host.viewport.width;
   let H = host.viewport.height;

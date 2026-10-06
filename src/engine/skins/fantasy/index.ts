@@ -6,7 +6,7 @@
  *   ages         a thousand years of a continent from above: kingdoms rise, war, and fall
  *   war-table    one war's campaign on a parchment map: ink orders and painted tokens
  *   wyrmspire    a valley under a dragon's spire, seen from a watchtower
- *   deephold     a dwarf hold in cutaway: tunnels, forges, veins, and what sleeps below
+ *   deephold     a dwarven kingdom in cutaway: rival holds, highways, wars, a dragon, and what sleeps below
  *   leylines     mage towers on a map of glowing lines: power flows, storms, duels, rifts
  */
 import type { Schema } from '../../core/schema';
@@ -106,8 +106,10 @@ export const wyrmspireSkin = lazySkin(
 );
 
 export const DEEPHOLD_SCHEMA = {
+  style: { type: 'enum', values: ['kingdom', 'classic'], default: 'kingdom', label: 'Style (a range of rival holds, or the single hold)' },
+  holds: { type: 'enum', values: ['any', '2', '3', '4'], default: 'any', label: 'How many holds (kingdom)' },
   mountain: { type: 'enum', values: ['any', 'iron', 'crystal', 'frost', 'ember', 'drowned'], default: 'any', label: 'The mountain' },
-  depth: { type: 'number', min: 0.3, max: 2, default: 1, label: 'How greedily they dig' },
+  depth: { type: 'number', min: 0.3, max: 2, default: 1, label: 'How greedily they dig (classic)' },
   hazards: { type: 'number', min: 0, max: 2, default: 1, label: 'Floods, magma, cave-ins, goblins' },
   below: { type: 'enum', values: ['any', 'sleeper', 'lich', 'engine', 'hive', 'nothing'], default: 'any', label: 'What lies below' },
   scale: { type: 'number', min: 0.5, max: 2, default: 1, label: 'Scale (how big the mountain, how many dwarves)' },
@@ -119,7 +121,7 @@ export const deepholdSkin = lazySkin(
   {
     id: 'deephold',
     label: 'Deephold',
-    description: 'A dwarf hold in cutaway, under a different mountain each seed, each with its own cast: what lies below (a sleeper, a lich, an elder engine, a hive, or only stone), its hazards, its neighbors, its wonders, and what lives in its caverns. Miners follow veins of gold and gems; water and magma flow; the hold grows, and may fall.',
+    description: 'A dwarven kingdom in cutaway: a range of mountains with two to four rival holds, each building its own way (ladders, lifts, or stairs; arched, domed, or vaulted halls; torches, braziers, crystal, or lava), and never stopping. They dig deeper, carve great halls and galleries of kings, cut highways to each other, trade, go to war, and fall and are retaken; a dragon comes over the peaks; and something below may wake. Each seed draws its own cast.',
     tags: ['fantasy', 'pixel', 'cutaway', 'dwarves', 'dark', 'busy'],
     crisp: true,
     schema: DEEPHOLD_SCHEMA,

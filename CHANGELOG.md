@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Deephold: a dwarven kingdom** (now the default; the single hold is `style: 'classic'`).
+  - A range of mountains wider than the screen, with two to four rival holds (`holds`). Each clan has its own banner, king, and way of building:
+    - down by ladder shafts, a lift on its ropes, or flights of stairs that zigzag from deep to deep
+    - rooms arched, domed, tiered, or vaulted, lined in its own dressed stone or left raw
+    - lit by torches, braziers, crystal lamps, or lava in channels; rails or none; more or fewer statues
+  - The holds never stop building: deeper levels, rooms as each clan needs them, mines along the veins, great halls, vaulted halls and galleries of kings, its first king's face carved on the mountainside, and highways to the next hold, bridged over caverns. Digging is fast enough to watch at 1x.
+  - Haulers push carts; traders cart goods along the highways; caravans and migrant waves come up the slopes from the first seconds.
+  - The clans' temper is drawn (rivals, allies, old feuds): holds march soldiers through the tunnels to sack a rival's hall and make peace; an emptied hold falls and another clan retakes it.
+  - A dragon in the cast comes over the peaks to burn a hold's gate until the crossbows bring it down or it flies off.
+  - The cast, the things below, the plague, floods, magma and cave-ins carry over. Walking now crosses planked openings and climbs stairs and ladders through floods; rooms keep clear of stairs and shafts; shafts are re-laddered after blasts.
+  - The camera follows the kit's director; no bloom, the lights are cached glow sprites.
 - **Deephold: a drawn cast, and much more of it.**
   - Each seed composes a cast (`kit/compose`, see `deep-cast.ts`):
     - what lies below: a sleeper of five kinds with drawn names and colors, a lich, an elder engine, a hive, or nothing
