@@ -128,8 +128,10 @@ export const deepholdSkin = lazySkin(
 );
 
 export const LEYLINES_SCHEMA = {
-  land: { type: 'enum', values: ['any', 'isles', 'steppe', 'forest', 'desert', 'tundra'], default: 'any', label: 'The land' },
-  orders: { type: 'number', min: 2, max: 5, step: 1, default: 4, label: 'Orders of mages' },
+  style: { type: 'enum', values: ['ink', 'classic'], default: 'ink', label: 'Style' },
+  land: { type: 'enum', values: ['any', 'isles', 'steppe', 'forest', 'desert', 'tundra', 'marsh', 'mountains'], default: 'any', label: 'The land' },
+  scale: { type: 'number', min: 0.5, max: 2, default: 1, label: 'Scale (how much is going on)' },
+  orders: { type: 'number', min: 2, max: 6, step: 1, default: 4, label: 'Orders of mages' },
   storms: { type: 'number', min: 0, max: 2, default: 1, label: 'Arcane storms' },
   rifts: { type: 'number', min: 0, max: 2, default: 1, label: 'Rifts' },
   labels: { type: 'boolean', default: true, label: 'Call-outs' },

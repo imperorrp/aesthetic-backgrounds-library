@@ -335,6 +335,15 @@
       ],
       "cost": "medium",
       "schema": {
+        "style": {
+          "type": "enum",
+          "values": [
+            "ink",
+            "classic"
+          ],
+          "default": "ink",
+          "label": "Style"
+        },
         "land": {
           "type": "enum",
           "values": [
@@ -343,15 +352,24 @@
             "steppe",
             "forest",
             "desert",
-            "tundra"
+            "tundra",
+            "marsh",
+            "mountains"
           ],
           "default": "any",
           "label": "The land"
         },
+        "scale": {
+          "type": "number",
+          "min": 0.5,
+          "max": 2,
+          "default": 1,
+          "label": "Scale (how much is going on)"
+        },
         "orders": {
           "type": "number",
           "min": 2,
-          "max": 5,
+          "max": 6,
           "step": 1,
           "default": 4,
           "label": "Orders of mages"

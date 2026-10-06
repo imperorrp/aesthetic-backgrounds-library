@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- **The world kit** (`src/engine/kit`): what new worlds are built from.
+  - `genome`: a seed's draws as continuous variety (ranges, lognormal, blends of archetypes, palette harmonies in OKLCH).
+  - `compose`: a seed's cast of systems drawn from a library with tags, quotas, exclusions and needs, the way the sector map's universes recombine mechanics.
+  - `field`: a float grid with splat, diffuse, swirl, sample and geodesic distance. `physarum`: multi-species slime-mold movers.
+  - `ramp`: OKLCH color ramps. `light`: glow, bloom, grain and vignette.
+  - `director`: pacing by arc and novelty, plus camera shots. `caption`: title cards and a chronicle.
+  - `run`: a fixed-step sim plus a painter as a skin, with headless, inspect and events.
+- **Leylines, remade in ink** (now the default; the first version is `style: 'classic'`).
+  - Each order is a swarm of thousands of movers laying trails, so the lines grow and link the wells by themselves. Orders meet at living borders, hold wells by whose lines run strongest, grow, fade and rise.
+  - Drawn per seed:
+    - a blend of seven lands
+    - the wells' number and layout
+    - two to six orders, each with its own way of growing, colors and sigil
+    - a medium (night ink, star chart, black lacquer, or vellum on light pages)
+    - an arc
+    - a cast of phenomena from fifteen: storms, auroras, ley-tides, mist, rifts, blight, faults, eclipses, the convergence, comets, starfalls, wisps, a leviathan, pilgrims, migrations
+  - Painted as fine glowing threads (every mover traced into a fading buffer) over each order's soft halo, with power pulsing out from the wells, the memory of old routes, sigils at the orders' capitals, bloom, grain and title cards.
+  - The world recedes behind page content (`host.quiet`).
+  - New options: `style`, `scale`, and more lands.
+  - New sound cues and sightings. A `leylines~style=classic` e2e subject.
+- The lab and the media script take JSON palettes (for light-page renders).
 - **Leylines**, a new skin: a land at night and the lines of power under it.
   - Five lands (`land`, or one per seed): the shattered isles, the great steppe, the elderwood, the glass desert, the white waste; painted once from the sim's heights with contours, sea, trees, dunes, or snow.
   - The lines (`ley-sim.ts`, no DOM): nodes, a third of them wells; each joined to its nearest, never crossing. Power rises at the wells and flows along the lines from high to low; a line over its capacity runs hot and burns out for a while.

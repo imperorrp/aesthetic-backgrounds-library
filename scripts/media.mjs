@@ -18,7 +18,7 @@ import { dirname, resolve } from 'node:path';
 /**
  * @typedef {{ skin?: string, u?: string, seed?: string, w?: number, h?: number, dsf?: number,
  *   t?: number[], seek?: string, max?: number, after?: number[], crop?: [number, number, number, number],
- *   options?: Record<string, unknown>, captions?: string[] }} Shot
+ *   options?: Record<string, unknown>, palette?: string | Record<string, unknown>, captions?: string[] }} Shot
  * @typedef {{ file: string, cols: number, tile: [number, number], gap?: number, quality?: number, shots: Shot[] }} Image
  */
 
@@ -108,10 +108,10 @@ const IMAGES = [
     cols: 2,
     tile: [960, 600],
     shots: [
-      { skin: 'leylines', seed: 'l2', t: [300], captions: ['THE SHATTERED ISLES'] },
-      { skin: 'leylines', seed: 'l1', seek: 'DUEL', max: 900, after: [3], captions: ['A DUEL ALONG THE LINE'] },
-      { skin: 'leylines', seed: 'l3', seek: 'RIFT OPENS', max: 900, after: [25], captions: ['A RIFT'] },
-      { skin: 'leylines', seed: 'l3', options: { land: 'tundra' }, seek: 'CONVERGENCE', max: 900, after: [10], captions: ['THE CONVERGENCE'] },
+      { skin: 'leylines', seed: 'i5', t: [60], captions: ['FIVE ORDERS, FIVE WAYS OF GROWING'] },
+      { skin: 'leylines', seed: 'i6', palette: { from: '#b45309', theme: 'light' }, t: [120], captions: ['IN INK, ON VELLUM'] },
+      { skin: 'leylines', seed: 'i4', t: [40], captions: ['THE DROWNED FENS, AND A LEVIATHAN'] },
+      { skin: 'leylines', seed: 'i9', t: [120], captions: ['THE WHITE WASTE'] },
     ],
   },
   {
@@ -209,6 +209,7 @@ async function capture(shot) {
   const q = new URLSearchParams({ view: '1', skin: shot.skin ?? 'void-tactical', seed: shot.seed ?? 'orion-7', w: String(w), h: String(h) });
   if (shot.u) q.set('u', shot.u);
   if (shot.options) q.set('options', JSON.stringify(shot.options));
+  if (shot.palette) q.set('palette', typeof shot.palette === 'string' ? shot.palette : JSON.stringify(shot.palette));
   await page.goto(`${base}/lab.html?${q}`);
   // In view mode the body has no in-flow content, so wait for the flag, not visibility.
   await page.waitForSelector('body[data-ready="1"]', { timeout: 300_000, state: 'attached' });

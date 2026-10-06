@@ -16,6 +16,7 @@ import { fillCrisp, hash, hexA, mixRgb, typed } from '../instruments/kit';
 import { LEYLINES_SCHEMA } from './index';
 import { createLeyWorld, LAND_NAMES, type Land, type Line, type Order, type Tower } from './ley-sim';
 import { serif } from './names';
+import { mountInk } from './ink/paint';
 
 type LandLook = { low: string; high: string; sea: string; line: string; speck: string };
 const LOOKS: Record<Land, LandLook> = {
@@ -27,11 +28,13 @@ const LOOKS: Record<Land, LandLook> = {
 };
 
 export function mount(host: SkinHost): SkinInstance {
-  const o = resolveOptions(LEYLINES_SCHEMA, host.options) as { land: string; orders: number; storms: number; rifts: number; labels: boolean; hud: boolean };
+  const o = resolveOptions(LEYLINES_SCHEMA, host.options) as { style: string; land: string; scale: number; orders: number; storms: number; rifts: number; labels: boolean; hud: boolean };
+  // The ink world is the default; the first version stays as `style: 'classic'`.
+  if (o.style !== 'classic') return mountInk(host, o);
   const { ctx } = host;
   let W = host.viewport.width;
   let H = host.viewport.height;
-  const world = createLeyWorld(host.config.seed, W, H, { land: o.land, orders: o.orders, storms: o.storms, rifts: o.rifts }, host.noise);
+  const world = createLeyWorld(host.config.seed, W, H, { land: ['isles', 'steppe', 'forest', 'desert', 'tundra'].includes(o.land) ? o.land : 'any', orders: o.orders, storms: o.storms, rifts: o.rifts }, host.noise);
   const look = LOOKS[world.land];
   let nextAmbience = 0;
 

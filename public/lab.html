@@ -45,7 +45,8 @@
       if (skinId === 'undercity') await prepareUndercity();
       // Worlds that load on first mount (fantasy worlds, Petri) arrive before the clock starts.
       await getSkin(skinId)?.prepare?.();
-      const palette = q.get('palette') ?? universe?.palette ?? undefined;
+      const rawPalette = q.get('palette');
+      const palette = (rawPalette?.startsWith('{') ? JSON.parse(rawPalette) : rawPalette) ?? universe?.palette ?? undefined;
       const crop = q.has('crop') ? q.get('crop').split(',').map(Number) : [0, 0, W, H];
       const tileScale = num('tile', crop[2] < W ? 1 : 0.5);
 

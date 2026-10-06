@@ -232,16 +232,27 @@ mount(document.body, { skin: 'deephold', options: { mountain: 'ember', depth: 1.
 
 ### Leylines
 
-![Leylines: a land at night with glowing lines of power between wells; orders of mages' towers in their colors; a duel along a line, a rift, and the convergence of the moons](docs/media/worlds/leylines.jpg)
+![Leylines: four seeds; glowing threads of five orders on a night map, an inked map on vellum, the drowned fens with a leviathan, long filaments across the white waste](docs/media/worlds/leylines.jpg)
 
-A land at night, mapped in contours, with the lines of power that run under it lit over it. Each seed is a different land: the shattered isles, the great steppe, the elderwood, the glass desert, or the white waste. Power rises at the wells and flows along the lines from high to low, in pulses as many and as quick as the flow; a line that carries more than it can runs hot, and burns out.
+Lines of power that grow by themselves, and the orders of mages who grow them. Each order is a swarm of thousands of movers that follow and lay a trail, a slime mold's way of finding paths. Their networks find and link the wells on their own, and orders meet at living borders that grind and spark. Whoever's lines run strongest at a well holds it. Orders grow with the wells they hold, fade when they hold none, and new ones rise at free wells. Power pulses out from the wells along the threads, and the land remembers old routes faintly.
 
-Orders of mages raise towers on the nodes, each in its own style and colors (spires, ziggurats, floating crystals, towers grown from trees, black obelisks), and draw on the lines to build out, raise their towers higher, ward them against storms, and send elementals down the lines at their enemies. Orders that meet make pacts or war; at war, they duel along the lines between their towers, beam against beam, until a tower falls or is turned. Archmages die and orders split; in time one may raise its great work.
+Every seed is drawn, not picked from a list:
+- **The land:** a blend of isles, steppe, forest, desert, tundra, fens and peaks. Sea and ridges shape where the lines can run.
+- **The wells:** how many, and laid out scattered, clustered, ringed, in a line, or in a spiral.
+- **The orders:** two to six, each growing its own way (long filaments, veins, coral mazes, lace, webs), with colors from the page's palette and their own sigils.
+- **The medium:** night ink, a star chart, black lacquer, or ink on vellum when the page is light.
+- **The pacing:** the arc of the director.
+- **The cast of phenomena:**
+  - weather: storms that swirl the lines, auroras, ley-tides, mist
+  - calamities: rifts, a blight that eats lines, faults that cut the land, eclipses
+  - wonders: the convergence of the moons, comets that lay new lines, starfalls that open new wells
+  - life: flocks of wisps, a leviathan, pilgrims, migrations
 
-Arcane storms cross the land, pouring wild power into the lines and striking the towers. Every so often the moons come into line, and every well burns. Where a line burns out or a storm strikes a well, the world can tear: a rift grows, swallows the nodes around it, and sends shades along the lines to drain the towers, until the orders' ritualists close it.
+One seed gets two calamities and no wonders; the next, a quiet sky full of life.
 
+The first version (towers on a fixed graph, duels along it) is still there as `style: 'classic'`.
 ```ts
-mount(document.body, { skin: 'leylines', options: { land: 'isles', orders: 5 } });
+mount(document.body, { skin: 'leylines', options: { land: 'isles', orders: 5, scale: 1.5 } });
 ```
 
 ### Instruments from other worlds
@@ -889,17 +900,18 @@ mount(document.body, {
 
 ## Leylines' options
 
-`skin: 'leylines'`. A lazy chunk (about 15 KB gzipped), like the other fantasy worlds.
+`skin: 'leylines'`. A lazy chunk, like the other fantasy worlds.
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `land` | `'any'` | `isles`, `steppe`, `forest`, `desert`, `tundra`, or `any` (one per seed). |
-| `orders` | `4` | Orders of mages at the start: `2` to `5`. |
-| `storms` | `1` | How often arcane storms cross the land (`0` for never). |
-| `rifts` | `1` | How easily the world tears (`0` for never). |
-| `labels` | `true` | Call-outs: towers, duels, pacts and wars, storms, rifts, the convergence. |
-| `hud` | `true` | The orders and their towers, the moons, the chronicle. |
-
+| `style` | `'ink'` | `ink` (growing lines, a drawn cast) or `classic` (the first version). |
+| `land` | `'any'` | `isles`, `steppe`, `forest`, `desert`, `tundra`, `marsh`, `mountains`, or `any` (a blend drawn per seed). |
+| `scale` | `1` | How much is going on: more movers, more wells (`0.5` to `2`). |
+| `orders` | `4` | Orders of mages at the start (about; the seed varies it): `2` to `6`. |
+| `storms` | `1` | Weather in the cast (`0` for none). |
+| `rifts` | `1` | Calamities in the cast (`0` for none). |
+| `labels` | `true` | Title cards for the big moments. |
+| `hud` | `true` | The land, this age's cast, the orders and their wells, a short chronicle. |
 ## Using it with an AI agent
 
 The repository ships a skill, `skills/background-designer/SKILL.md`, that turns a conversation into a background. It contains:
