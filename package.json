@@ -4,6 +4,7 @@
   "private": false,
   "type": "module",
   "license": "MIT",
+  "packageManager": "pnpm@10.19.0",
   "description": "Procedural background engine. Seeded skins, layered atmosphere. Drop onto any site via mount() or <bg-engine>.",
   "keywords": [
     "background",
@@ -171,6 +172,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.5",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",

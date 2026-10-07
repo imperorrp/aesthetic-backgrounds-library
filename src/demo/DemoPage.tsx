@@ -888,6 +888,8 @@ export default function DemoPage() {
             setGalleryOpen(false);
           }}
           onClose={() => setGalleryOpen(false)}
+          onAbout={() => setAboutOpen(true)}
+          onShortcuts={() => setShortcutsOpen(true)}
         />
       )}
 
@@ -1348,12 +1350,22 @@ export default function DemoPage() {
           </footer>
         </aside>
       ) : (
-        <button type="button" className="demo-pill" onClick={() => setPanelOpen(true)} title="Show the studio (H)">
-          <Icon name="panel" />
-          <span>{title}</span>
-          {paused && <em>paused</em>}
-          {speed > 1 && <em>×{speed}</em>}
-        </button>
+        <>
+          <button type="button" className="demo-pill" onClick={() => setPanelOpen(true)} title="Show the studio (H)">
+            <Icon name="panel" />
+            <span>{title}</span>
+            {paused && <em>paused</em>}
+            {speed > 1 && <em>×{speed}</em>}
+          </button>
+          <div className="demo-fab">
+            <button type="button" className="demo-icon-btn" onClick={() => setAboutOpen(true)} title="About Vivarium (A)" aria-label="About Vivarium">
+              <Icon name="info" />
+            </button>
+            <button type="button" className="demo-icon-btn" onClick={() => setShortcutsOpen(true)} title="Controls (?)" aria-label="Controls">
+              <Icon name="keys" />
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
@@ -1405,7 +1417,8 @@ function ShortcutsCard({ onClose }: { onClose: () => void }) {
   return (
     <div className="demo-shortcuts" role="dialog" aria-label="Keyboard shortcuts" onClick={onClose}>
       <div className="demo-shortcuts-card" onClick={(e) => e.stopPropagation()}>
-        <h3 className="demo-h">Keyboard</h3>
+        <h3 className="demo-h">Controls</h3>
+        <p className="demo-hint">Keys work anywhere on the page. The studio panel (H) has the same controls as buttons.</p>
         <dl>
           {SHORTCUTS.map(([k, v]) => (
             <div key={k}>
@@ -1444,7 +1457,7 @@ function Slider({ label, value, text, min, max, step, onChange, title }: { label
  */
 type GalleryEntry = { key: string; image: string; source: string; universe?: string; label: string; description?: string; tags: string[]; community?: boolean };
 
-function Gallery({ onPick, onClose }: { onPick: (source: string, universe?: string, options?: Record<string, unknown>) => void; onClose: () => void }) {
+function Gallery({ onPick, onClose, onAbout, onShortcuts }: { onPick: (source: string, universe?: string, options?: Record<string, unknown>) => void; onClose: () => void; onAbout: () => void; onShortcuts: () => void }) {
   const [available, setAvailable] = useState<string[] | null>(null);
   useEffect(() => {
     fetch('thumbs/index.json')
@@ -1485,10 +1498,21 @@ function Gallery({ onPick, onClose }: { onPick: (source: string, universe?: stri
   return (
     <div className="demo-gallery" role="dialog" aria-label="Gallery">
       <div className="demo-gallery-head">
-        <h3 className="demo-h">Worlds and instruments</h3>
-        <button type="button" className="demo-btn" onClick={onClose}>
-          Close
-        </button>
+        <div>
+          <h3 className="demo-h">Worlds and instruments</h3>
+          <p className="demo-gallery-lede">Each one is a small simulation, not a loop. Pick one to open it; press G to come back here.</p>
+        </div>
+        <div className="demo-gallery-actions">
+          <button type="button" className="demo-btn" onClick={onAbout}>
+            <Icon name="info" /> About
+          </button>
+          <button type="button" className="demo-btn" onClick={onShortcuts}>
+            <Icon name="keys" /> Controls
+          </button>
+          <button type="button" className="demo-btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
       </div>
       <div className="demo-gallery-grid">{featured.map(card)}</div>
       <h3 className="demo-h demo-gallery-sub">Presets and simple backgrounds</h3>

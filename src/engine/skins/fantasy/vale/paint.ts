@@ -1293,7 +1293,8 @@ export function mountVale(host: SkinHost, o: ValePaintOptions): SkinInstance {
     fillCrisp(ctx, `This valley has ${world.cast.slice(0, 6).join(', ')}.`, 16, 72);
     ctx.font = serif(11);
     ctx.textAlign = 'right';
-    world.settlements.forEach((s, k) => {
+    // On a narrow screen the left column needs the width.
+    if (W >= 980) world.settlements.forEach((s, k) => {
       const n = world.buildings.filter((b) => b.settle === s.id && b.state === 'standing').length;
       const burning = world.buildings.some((b) => b.settle === s.id && b.fire > 0);
       ctx.fillStyle = hexA(burning ? '#fca5a5' : s.alarm > world.t ? '#fdba74' : '#b8b2a8', 0.85 * level);

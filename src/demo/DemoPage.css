@@ -1263,6 +1263,39 @@
   margin: 0 auto 1rem;
 }
 
+.demo-gallery-lede {
+  margin: 0.25rem 0 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+.demo-gallery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.demo-gallery-actions .demo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.demo-fab {
+  position: fixed;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 20;
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+}
+
 .demo-gallery-head .demo-h,
 .demo-gallery-sub {
   margin: 0;
