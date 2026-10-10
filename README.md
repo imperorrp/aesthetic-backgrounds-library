@@ -294,6 +294,19 @@ The night is long and lit: tower windows and crystals, braziers, spells, the lin
 mount(document.body, { skin: 'leylines', options: { land: 'mountains', orders: 5, scale: 1.5 } });
 ```
 
+### Silent Running
+
+![Silent Running: a sea chart with depth bands and ports; convoys on the lanes, a destroyer calling a contact, a raider firing on a merchant and releasing a decoy as the merchant goes down](e2e/__screenshots__/chromium/silent-running.png)
+
+The sonar instrument, grown into a world: a sea at war, on the chart table of a listening station. The chart shows coasts and islands, depth bands, two to four ports, and the shipping lanes between them. The station's sweep turns over all of it.
+
+Convoys of merchants and tankers sail the lanes from port to port, some with a destroyer as escort. Destroyers patrol and ping, and a ping can hear a submarine. Raiders are faint shapes under the water until they are heard. They stalk the lanes, come up to periscope depth, and fire on merchants. A destroyer that hears one hunts it: depth charges over the contact, a decoy, a lost contact, sometimes a kill. Sunk ships stay on the chart as named wrecks, with an oil slick that drifts. Whales migrate through the sound and sing, and now and then a destroyer mistakes one for a boat.
+
+Each seed draws its sea (which coasts, which islands, which ports) and a cast: raiders, a wolfpack that gathers on the lanes, gales that make the sonar deaf, ice in the north, and, very rarely, something far too large for any boat passing under the lanes. A click drops a sonobuoy: it listens for half a minute, and if it hears a submarine, the nearest destroyer comes.
+```ts
+mount(document.body, { skin: 'silent-running', options: { traffic: 1.5 } });
+```
+
 ### Instruments from other worlds
 
 The same idea, applied to other screens.
@@ -975,6 +988,18 @@ mount(document.body, {
 | `rifts` | `1` | Calamities in the cast (`0` for none). |
 | `labels` | `true` | Title cards for the big moments. |
 | `hud` | `true` | The land, the orders (school, archmage, towers, mages, wars), the cast, artifacts, a short chronicle. |
+
+## Silent Running's options
+
+`skin: 'silent-running'`. A lazy chunk, built on the world kit.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `camera` | `'drift'` | `drift`: the whole chart, easing in slowly for the biggest moments only. `still`: never moving. `director`: following each moment. |
+| `traffic` | `1` | How busy the lanes are (`0.4` to `2`): how often convoys sail, and how big they are. |
+| `labels` | `true` | Call-outs for contacts, torpedoes, sinkings, and the rest. |
+| `hud` | `true` | The sea, ships at sea, contacts, wrecks, and a short chronicle. |
+
 ## Using it with an AI agent
 
 The repository ships a skill, `skills/background-designer/SKILL.md`, that turns a conversation into a background. It contains:

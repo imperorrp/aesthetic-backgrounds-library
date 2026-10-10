@@ -17,8 +17,9 @@ const BUDGETS_KB = {
   // host + scene compositor + schema: must never pull a skin, a layer, or the GLSL prelude.
   // 13 covers the compositor's WebGL surface handling and snapshotScene (M5/M6).
   // 16 since M9 put the scene light, quiet zones, auto-shade, and transitions in the host;
-  // 16.5 with fastForward, time scale, inspect, page scroll, and interactive gestures (v3 phase 1).
-  'core.js': 16.5,
+  // 16.5 with fastForward, time scale, inspect, page scroll, and interactive gestures (v3 phase 1);
+  // 17.5 with nudges (a click answered by the world, and the ring that shows where).
+  'core.js': 17.5,
   // shader authoring (GLSL prelude + program setup), opt-in
   'shader.js': 15,
   // manifest validation/loading and the design-token bridge, opt-in (M8)
@@ -52,8 +53,9 @@ const BUDGETS_KB = {
   // the v3 camera (view, bus, director); 119 with skin events and the Undercity shell (the city
   // itself and every universe beyond the first are lazy chunks); 121.5 with the lazy-skin helper
   // and the shells of the fantasy worlds and Petri (each world is a lazy chunk); 123 with the
-  // shells of Wyrmspire, Deephold, and Leylines (~0.4 KB each: a schema and a description).
-  'index.js': 123,
+  // shells of Wyrmspire, Deephold, and Leylines (~0.4 KB each: a schema and a description); 124.5
+  // with Silent Running's shell, nudges in the host, and the <vivarium-bg> alias.
+  'index.js': 124.5,
   // framework adapters: core + all built-in skins, layers, and presets (no tooling); 59 since M9,
   // 89 with the overhauled sector map and the instruments, 107 with mechanics and events,
   // 109 with the v3 camera, 110 with skin events and the Undercity shell, 111 with the

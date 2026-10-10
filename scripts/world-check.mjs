@@ -42,9 +42,11 @@ const server = await createServer({
 });
 let failed = false;
 const warns = [];
+const fails = [];
+/** Failures are printed together at the end, after the table, where they cannot scroll away. */
 const fail = (msg) => {
   failed = true;
-  console.log(`FAIL  ${msg}`);
+  fails.push(msg);
 };
 try {
   const { runHeadless, prepareSkins } = await server.ssrLoadModule('/src/dev/headless.ts');
@@ -111,10 +113,9 @@ try {
   console.log(`Phone (390 × 844): ${phone.threw ? 'THREW' : `${phoneEvents} events in 2 min`}`);
   if (phone.threw) fail(`phone: threw: ${phone.threw.split('\n')[0]}`);
 
-  if (warns.length) {
-    console.log('');
-    for (const w of warns) console.log(`warn  ${w}`);
-  }
+  if (warns.length || fails.length) console.log('');
+  for (const f of fails) console.log(`FAIL  ${f}`);
+  for (const w of warns) console.log(`warn  ${w}`);
   console.log(failed ? '\nFailed.' : warns.length ? '\nPassed, with warnings. Now look at it: pnpm lab ' + args.skin + ' t=10,60,300,900' : '\nPassed. Now look at it: pnpm lab ' + args.skin + ' t=10,60,300,900');
 } finally {
   await server.close();
