@@ -1661,6 +1661,7 @@ export function mountKingdom(host: SkinHost, o: KingdomPaintOptions): SkinInstan
   return runWorld(host, world, {
     dt: 1 / 30,
     project: (x, y) => [SX(x), SY(y)],
+    unproject: (x, y) => [(x - W / 2) / cam.zoom + cam.x, (y - H / 2) / cam.zoom + cam.y],
     after: (dt) => camera(dt),
     paint: (t) => paint(t),
     ambience: () => (world.foes.some((f) => f.boss && f.alive) || world.dragon || world.holds.some((h) => h.war >= 0) ? 0.9 : 0.35),

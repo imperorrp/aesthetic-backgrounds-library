@@ -71,6 +71,8 @@ export type RealmWorld = {
   cellAt(x: number, y: number): number;
   wet(x: number, y: number): boolean;
   step(dt: number): void;
+  /** A visitor touched the land at (x, y), in world pixels. Returns the line said, or null. */
+  nudge(x: number, y: number): string | null;
   counts(): Record<string, number>;
 };
 
@@ -161,6 +163,7 @@ export function createRealm(seed: string | number, W: number, H: number, opts: R
     cellAt: (x, y) => Math.max(0, Math.min(rows - 1, Math.floor(y / CELL))) * cols + Math.max(0, Math.min(cols - 1, Math.floor(x / CELL))),
     wet: (x, y) => water[world.cellAt(x, y)] === 1,
     step,
+    nudge: (x, y) => nudge(x, y),
     counts() {
       return {
         orders: world.orders.filter((o) => o.alive).length,
@@ -1445,6 +1448,55 @@ export function createRealm(seed: string | number, W: number, H: number, opts: R
   }
 
   // ---- the frame -------------------------------------------------------------------------------
+  /**
+   * A visitor's touch. A tower sends light down its lines (and its order gains power); a
+   * village builds a cottage; open land gathers a storm where storms are part of this realm,
+   * or only shimmers. Once every few seconds.
+   */
+  let lastNudge = -Infinity;
+  function nudge(px: number, py: number): string | null {
+    if (world.t - lastNudge < 4) return null;
+    const said = (text: string, x: number, y: number, color: string) => {
+      lastNudge = world.t;
+      say(text, x, y - 30, color, 'high');
+      emit('nudge', x, y, 0.3);
+      return text;
+    };
+    const site = world.sites.slice().sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py))[0];
+    const d = site ? Math.hypot(site.x - px, site.y - py) : Infinity;
+    if (site && d < 90 * us) {
+      const tw = site.tower;
+      const o = tw && tw.fell < 0 ? world.orders[tw.order] : null;
+      if (tw && o?.alive) {
+        o.mana += 25;
+        for (const e of world.edges) if (e.ley && (e.a === site.id || e.b === site.id)) {
+          const other = world.sites[e.a === site.id ? e.b : e.a];
+          for (let k = 1; k <= 4; k++) fx('spark', site.x + ((other.x - site.x) * k) / 5, site.y + ((other.y - site.y) * k) / 5, 1 + k * 0.2, 3, o.trim);
+        }
+        return said(`LIGHT RUNS DOWN THE LINES FROM ${tw.name}`, site.x, site.y, o.trim);
+      }
+      if (site.kind === 'village' && site.cottages.length < 18) {
+        for (let k = 0; k < 6; k++) {
+          const a = r() * Math.PI * 2;
+          const dd = 20 + r() * 40;
+          const cx = site.x + Math.cos(a) * dd;
+          const cy = site.y + Math.sin(a) * dd * 0.7;
+          if (!landAt(cx, cy)) continue;
+          site.cottages.push([cx, cy, Math.floor(r() * 4)]);
+          site.prosper = Math.min(1, site.prosper + 0.1);
+          return said(`${site.name} BUILDS A NEW COTTAGE`, cx, cy, '#fde68a');
+        }
+      }
+    }
+    if (!landAt(px, py)) return null;
+    if (drew('storms') && world.storms.length < 2) {
+      world.storms.push({ x: px, y: py, vx: (r() - 0.5) * 30, vy: (r() - 0.5) * 12, r: 110 + r() * 60, t0: world.t, dur: 45, next: world.t + 2 });
+      return said('THE AIR CRACKLES, AND A STORM GATHERS', px, py, '#c7d2fe');
+    }
+    for (let k = 0; k < 10; k++) fx('spark', px + (r() - 0.5) * 60, py + (r() - 0.5) * 40, 1.5, 2, '#c7d2fe');
+    return said('THE AIR SHIMMERS OVER THE LAND', px, py, '#c7d2fe');
+  }
+
   function establish() {
     const p = r();
     if (p < 0.25) return { x: GW / 2, y: GH / 2, zoom: 0.6 };

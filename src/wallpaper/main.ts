@@ -57,6 +57,7 @@ const handle = mount(document.body, {
   targetFps: s.fps ?? 30,
   pixelRatio: s.pr,
   interactive: s.interactive,
+  nudges: s.interactive,
   legibility: 'off',
   pauseWhenHidden: true,
 });

@@ -270,3 +270,63 @@ describe('host inputs', () => {
     handle.destroy();
   });
 });
+
+describe('nudges', () => {
+  const nudgeSkin = () => {
+    const calls: [number, number][] = [];
+    const skin: BackgroundSkin = {
+      id: 'nudge-stub',
+      mount() {
+        return {
+          resize() {},
+          frame() {},
+          nudge(x, y) {
+            calls.push([x, y]);
+            return 'A STONE IS THROWN';
+          },
+          destroy() {},
+        };
+      },
+    };
+    return { skin, calls };
+  };
+  const press = (type: string, x: number, y: number, target: EventTarget = document.body) =>
+    target.dispatchEvent(Object.assign(new MouseEvent(type, { clientX: x, clientY: y, bubbles: true })));
+  const sized = (canvas: HTMLCanvasElement) => {
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, right: 200, bottom: 100, width: 200, height: 100, x: 0, y: 0, toJSON() {} }) as DOMRect;
+    return canvas;
+  };
+
+  it('handle.nudge reaches the skin and returns what it said', () => {
+    const { skin, calls } = nudgeSkin();
+    const handle = createBackground(canvasInBody(), { skin, scheduler: createManualScheduler(), config: { seed: 'n' } });
+    expect(handle.nudge(40, 30)).toBe('A STONE IS THROWN');
+    expect(calls).toEqual([[40, 30]]);
+    handle.destroy();
+  });
+
+  it('a click on the page nudges only with config.nudges, and a drag does not', () => {
+    const off = nudgeSkin();
+    const a = createBackground(sized(canvasInBody()), { skin: off.skin, scheduler: createManualScheduler(), config: { seed: 'n' } });
+    press('pointerdown', 50, 50);
+    press('pointerup', 50, 50);
+    expect(off.calls).toHaveLength(0);
+    a.destroy();
+
+    const on = nudgeSkin();
+    const b = createBackground(sized(canvasInBody()), { skin: on.skin, scheduler: createManualScheduler(), config: { seed: 'n', nudges: true } });
+    press('pointerdown', 50, 50);
+    press('pointerup', 51, 50);
+    expect(on.calls).toEqual([[51, 50]]);
+    press('pointerdown', 50, 50);
+    press('pointerup', 90, 50);
+    expect(on.calls).toHaveLength(1);
+    // A click on page content (a link, a paragraph) is the page's, not the world's.
+    const p = document.createElement('p');
+    document.body.appendChild(p);
+    press('pointerdown', 50, 50, p);
+    press('pointerup', 50, 50, p);
+    expect(on.calls).toHaveLength(1);
+    b.destroy();
+  });
+});

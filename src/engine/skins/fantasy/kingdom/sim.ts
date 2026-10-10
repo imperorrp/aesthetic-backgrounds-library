@@ -96,6 +96,8 @@ export type KingdomWorld = {
   holdAt(c: number): Hold;
   wealth(h: Hold): number;
   step(dt: number): void;
+  /** A visitor touched the range at (x, y), in world pixels. Returns the line said, or null. */
+  nudge(x: number, y: number): string | null;
   counts(): Record<string, number>;
 };
 
@@ -170,6 +172,7 @@ export function createKingdom(seed: string | number, W: number, H: number, opts:
       return Math.round(s.goods * 10 + s.gold * 8 + s.gem * 20 + s.mithril * 60 + s.treasure * 30 + h.artifacts.length * 500);
     },
     step,
+    nudge: (x, y) => nudge(x, y),
     counts() {
       return {
         holds: world.holds.filter((h) => !h.fallen).length,
@@ -2520,6 +2523,55 @@ export function createKingdom(seed: string | number, W: number, H: number, opts:
   }
 
   // ---- the frame --------------------------------------------------------------------------------------------
+  /**
+   * A visitor's touch. On the slopes or in the sky: traders come up the road. In a hold's
+   * rooms: the bell rings for a feast. In plain rock: a vein shows itself, and the miners
+   * will find it (one every half minute at most). Once every few seconds.
+   */
+  let lastNudge = -Infinity;
+  let lastVein = -Infinity;
+  function nudge(px: number, py: number): string | null {
+    if (world.t - lastNudge < 4) return null;
+    const c = Math.max(0, Math.min(cols - 1, Math.floor(px / CELL)));
+    const rr = Math.max(0, Math.min(rows - 1, Math.floor(py / CELL)));
+    const i = at(c, rr);
+    const h = world.holdAt(c);
+    if (!h || h.fallen) return null;
+    const said = (text: string, color: string) => {
+      lastNudge = world.t;
+      say(text, px, py - CELL * 2, color, 'high');
+      emit('nudge', px, py, 0.3);
+      return text;
+    };
+    if (rr < surface[c]) {
+      caravan(h);
+      return said(`TRADERS SET OUT FOR ${h.name}`, '#fde68a');
+    }
+    const room = roomAt[i] >= 0 ? world.rooms[roomAt[i]] : null;
+    if (room && room.dug && h.feast < world.t) {
+      h.feast = world.t + 24;
+      h.nextFeast = Math.max(h.nextFeast, world.t + 120);
+      return said(`THE BELL RINGS IN ${h.name}: A FEAST`, '#fde68a');
+    }
+    const m = mat[i];
+    if (m >= M.SOIL && m <= M.DEEP && world.t - lastVein > 30) {
+      lastVein = world.t;
+      const depth = (rr - surface[c]) / Math.max(1, rows - surface[c]);
+      const ore = depth > 0.6 && r() < 0.5 ? M.GEM : depth > 0.3 && r() < 0.6 ? M.GOLD : M.IRON;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -2; dx <= 2; dx++) {
+          const cc = c + dx;
+          const r2 = rr + dy;
+          if (!inb(cc, r2) || r2 <= surface[cc] + 1 || Math.abs(dx) + Math.abs(dy) > 2) continue;
+          const j = at(cc, r2);
+          if (mat[j] >= M.SOIL && mat[j] <= M.DEEP) setMat(j, ore);
+        }
+      world.fx.push({ kind: 'glint', x: px, y: py, t0: world.t, dur: 3, r: CELL * 3, seed: ids++, color: ore === M.GEM ? '#c084fc' : ore === M.GOLD ? '#facc15' : '#f97316' });
+      return said(ore === M.GEM ? 'GEMS GLITTER IN THE ROCK' : ore === M.GOLD ? 'A SEAM OF GOLD SHOWS IN THE ROCK' : 'IRON SHOWS RED IN THE ROCK', '#facc15');
+    }
+    return null;
+  }
+
   function establish() {
     const p = r();
     const hs = world.holds.filter((h) => !h.fallen);

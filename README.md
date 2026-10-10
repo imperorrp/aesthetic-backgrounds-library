@@ -400,6 +400,16 @@ playButton.onclick = () => sound.start(); // browsers allow audio only after a c
 
 Explosions boom where they happen across the screen. A raid brings a siren and a capture rings a bell. In the Choir, the songs are low voices answering each other, and in Undercity the thunder comes a moment late. Every world has its own palette and drone. In the studio, press the speaker (or **M**).
 
+## Touching a world
+
+In Wyrmspire, Deephold and Leylines a click nudges the world, and the nearest thing answers in its own way. A ring shows where you touched; the world says what happened in its own text.
+
+- **Wyrmspire.** Click the spire and a stone wakes the wyrm (it may come down angry). Click a raiding wyrm and the bells turn it for home. The town rings for a feast, a village goes out for wood and builds, and the open land sends a caravan down the road.
+- **Deephold.** Click the slopes and traders set out for the nearest hold. Click a hold's rooms and the bell rings for a feast. Click plain rock and a vein of iron, gold or gems shows itself; the miners will find it (one every half minute).
+- **Leylines.** Click a tower and light runs down its lines. A village builds a cottage. Open land gathers an arcane storm, where this realm has storms.
+
+The world waits a few seconds between nudges. Nudges are not part of the seed, so a replay of the same seed does not repeat them. On your own site, turn them on with `nudges: true`; on the wallpaper page, `&i=1` turns them on with zoom and pan.
+
 ## The journal
 
 Things happen whether you are watching or not, so the studio keeps a journal. It keeps it quietly: nothing pops up over the world while it plays. The worlds tell their own story on the canvas, and the Journal tab gets a *new* mark when there is something to look at.
@@ -620,6 +630,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | `detail` | `'low'` | Label and HUD budget for the sector map (`none`, `low`, `medium`, `high`). |
 | `cameraSpeed` | `0.25` | Base drift speed, in world units per frame at 60 fps. Real speed is time-based. |
 | `interactive` | `false` | Wheel zoom and drag pan on empty parts of the page, for skins with a camera. |
+| `nudges` | `false` | A click on an empty part of the page nudges the world there (Wyrmspire, Deephold, Leylines): a ring shows where, and the world answers. Also `handle.nudge(x, y)`. |
 | `targetFps` | `60` | Frame cap for the render loop. Lowering it does not slow the animation. |
 | `pixelRatio` | device | Backing pixels per CSS pixel, fixed. By default the device's, capped at 1.5 (2 for text-heavy skins) and lowered by the quality governor. Set it for exports and wallpapers: `3` renders a phone-sized viewport at a phone's own resolution. |
 | `adaptiveQuality` | `true` | Lowers `host.quality` when frames run over budget, and raises it back when they recover. |

@@ -1369,6 +1369,7 @@ export function mountVale(host: SkinHost, o: ValePaintOptions): SkinInstance {
   return runWorld(host, world, {
     dt: 1 / 30,
     project: (x, y) => [SX(x), SY(y)],
+    unproject: (x, y) => [(x - W / 2) / cam.zoom + cam.x, (y - H / 2) / cam.zoom + cam.y],
     after: (dt) => camera(dt),
     paint: (t) => paint(t),
     ambience: () => (world.dragons.some((d) => d.alive && (d.state === 'raid' || d.state === 'duel' || d.state === 'harass')) || world.buildings.some((b) => b.fire > 0) ? 0.9 : 0.4),

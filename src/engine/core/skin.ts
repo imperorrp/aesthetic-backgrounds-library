@@ -166,6 +166,11 @@ export type SkinInstance = {
    * panel: entity counts and a log of what happened. Never used for drawing.
    */
   inspect?(): SkinInspection | undefined;
+  /**
+   * Optional: someone clicked the world at (x, y), in canvas CSS pixels. Answer in the
+   * world's own way and return the line it said, or null to let the click pass unanswered.
+   */
+  nudge?(x: number, y: number): string | null;
   destroy(): void;
 };
 
@@ -228,5 +233,11 @@ export type BackgroundHandle = {
    * fast-forward. Returns an unsubscribe function. The audio entry listens here.
    */
   onEvent(listener: (e: SkinEvent) => void): () => void;
+  /**
+   * Nudge the world at (x, y), in CSS pixels from the canvas's top left: a ring shows
+   * where, and worlds that answer do something there. Returns what the world said, or
+   * null. With `config.nudges`, clicks on empty page area call this.
+   */
+  nudge(x: number, y: number): string | null;
   destroy(): void;
 };

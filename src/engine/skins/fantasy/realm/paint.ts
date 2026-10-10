@@ -1448,6 +1448,7 @@ export function mountRealm(host: SkinHost, o: RealmPaintOptions): SkinInstance {
   return runWorld(host, world, {
     dt: 1 / 30,
     project: (x, y) => [SX(x), SY(y)],
+    unproject: (x, y) => [(x - W / 2) / cam.zoom + cam.x, (y - H / 2) / cam.zoom + cam.y],
     after: (dt) => camera(dt),
     paint: (t) => paint(t),
     ambience: () => (world.rifts.some((x) => x.closed < 0) || world.units.some((u) => u.kind === 'dragon' && u.alive) || world.orders.some((x) => x.alive && x.war >= 0) ? 0.9 : 0.4),

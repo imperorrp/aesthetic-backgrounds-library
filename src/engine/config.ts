@@ -59,6 +59,12 @@ export type BackgroundConfig = {
    */
   interactive?: boolean;
   /**
+   * Let a click on empty page area nudge the world (worlds that answer: Wyrmspire, Deephold,
+   * Leylines). A ring shows where; the world answers in its own way. Default false.
+   * Nudges are not part of the seed: a replay of the same seed does not repeat them.
+   */
+  nudges?: boolean;
+  /**
    * Backing pixels per CSS pixel, fixed. Default: the device's, capped at 1.5 (2 for
    * text-heavy skins) and lowered by the quality governor. Set it for exports and
    * wallpapers: 3 renders a phone-sized viewport at a phone's native resolution.
@@ -85,6 +91,7 @@ export type ResolvedBackgroundConfig = {
   legibility: ResolvedLegibility;
   quiet: NormRect[];
   interactive: boolean;
+  nudges: boolean;
   /** 0 when the host picks (the device's, capped). */
   pixelRatio: number;
 };
@@ -146,6 +153,7 @@ export function resolveBackgroundConfig(config: BackgroundConfig = {}): Resolved
       height: clamp(q.height, 0, 1),
     })),
     interactive: config.interactive ?? false,
+    nudges: config.nudges ?? false,
     pixelRatio: config.pixelRatio ? clamp(config.pixelRatio, 0.25, 4) : 0,
   };
 }

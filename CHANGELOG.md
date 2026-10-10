@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Touching a world.** A click on empty page area nudges Wyrmspire, Deephold or Leylines, and the nearest thing answers in the world's own words: a stone wakes the wyrm, bells turn a raid, a hold rings for a feast, a vein shows in the rock, light runs down a tower's lines, a storm gathers. A ring shows where. New `nudges` option (off by default; on in the studio, and with `&i=1` on the wallpaper page), `handle.nudge(x, y)`, and an optional `nudge` on skins and kit worlds (`unproject` in `runWorld`).
 - **The name, carried through.** `<vivarium-bg>` is a second name for the `<bg-engine>` element (same element, same attributes). The package description, the wallpaper page, Wallpaper Engine packages and the AI prompt say Vivarium. The npm package is still `space-background-engine`.
 - **Wallpaper guides.** [docs/WALLPAPERS.md](docs/WALLPAPERS.md): Lively, Wallpaper Engine, Plash, KDE, Android and iPhone, step by step, with the link parameters that save battery. Linked from the Share tab.
 - **Moments, and no more popups.** First sightings no longer pop up over the world. Instead the journal keeps a picture and a two-second GIF clip of each uncommon-or-rarer first, or of anything when you press **K**. A moment opens large, with its picture, its clip, a link (the seed replayed to just before, with an honest note on how close a replay comes), and downloads. *Revisit* is gone; sightings with no picture offer *Replay*. A *new* mark on the Journal tab (and beside the pill when the studio is hidden) says when there is something to see.

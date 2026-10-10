@@ -103,6 +103,7 @@ const SHORTCUTS: [string, string][] = [
   ['M', 'Sound on or off'],
   ['J', 'Journal'],
   ['K', 'Keep this moment (a picture and a clip)'],
+  ['Click', 'Nudge the world (Wyrmspire, Deephold, Leylines)'],
   ['G', 'Gallery'],
   ['H', 'Hide or show the studio'],
   ['Ctrl Z', 'Undo (Shift for redo)'],
@@ -862,7 +863,8 @@ export default function DemoPage() {
   };
 
   return (
-    <div className="demo-root">
+    // The root itself is the empty backdrop: a click there (not on the panel) nudges the world.
+    <div className="demo-root" data-bg-backdrop="">
       <Background
         key={mountNonce}
         skin={sceneMode ? 'scene' : studio.source}
@@ -876,6 +878,7 @@ export default function DemoPage() {
         light={studio.lightAngle !== null ? { angle: studio.lightAngle, warmth: studio.warmth } : { warmth: studio.warmth }}
         legibility={studio.legibility}
         adaptiveQuality
+        nudges
         pauseWhenHidden={false}
         // Switching source dissolves into the new scene; option tweaks remount instantly.
         transition={sourceChanged ? { duration: 0.9, kind: transitionKind } : undefined}
@@ -1454,6 +1457,10 @@ function AboutCard({ onClose }: { onClose: () => void }) {
             <b>Look around.</b> Arrows change the world, <kbd>S</kbd> rolls a new seed, <kbd>1</kbd>
             <kbd>2</kbd>
             <kbd>3</kbd> set the speed, <kbd>M</kbd> turns on sound.
+          </li>
+          <li>
+            <b>Touch it.</b> In Wyrmspire, Deephold and Leylines a click nudges the world: throw a stone at the spire, ring a
+            hold&apos;s bell, gather a storm.
           </li>
           <li>
             <b>Take one with you.</b> The studio exports the code for your site, a still, a video, or an offline wallpaper.

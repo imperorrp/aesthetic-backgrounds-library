@@ -14,6 +14,8 @@ export type RunnableSim = {
   bus: Bus;
   step(dt: number): void;
   counts(): Record<string, number>;
+  /** Optional: a visitor touched the world at (x, y), in world coordinates. Return the line said, or null. */
+  nudge?(x: number, y: number): string | null;
 };
 
 export function runWorld(
@@ -24,6 +26,8 @@ export function runWorld(
     dt: number;
     /** Where a world point is on screen now. */
     project(x: number, y: number): [number, number];
+    /** The world point under a screen point now (for nudges). */
+    unproject?(x: number, y: number): [number, number];
     paint(t: number, dt: number): void;
     /** 0..1 how loud the bed should be now. */
     ambience?(): number;
@@ -71,6 +75,11 @@ export function runWorld(
     },
     advance(info) {
       step(info);
+    },
+    nudge(x, y) {
+      if (!sim.nudge || !opts.unproject || host.motion === 'off') return null;
+      const [wx, wy] = opts.unproject(x, y);
+      return sim.nudge(wx, wy);
     },
     inspect(): SkinInspection {
       return {

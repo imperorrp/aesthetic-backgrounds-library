@@ -278,11 +278,48 @@ export function createBackground<T = any>(
     instance!.frame(info);
     const shade = contentRects.length ? autoShadeStrength(resolved.legibility, effectiveIntensity()) : 0;
     if (shade > 0) paintShade(ctx, contentRects, viewport.width, viewport.height, viewport.dpr, shade, bgRgb);
+    if (ripples.length) paintRipples();
     if (resolved.adaptiveQuality) governor(perf.now() - began);
     for (const listener of frameListeners) listener(info);
   };
 
   const frameListeners = new Set<(info: FrameInfo) => void>();
+
+  // ---- nudges: a ring where the world was touched ---------------------------------------
+  /** Rings in canvas CSS pixels; `heard` when the world answered. Timed by the wall clock. */
+  const ripples: { x: number; y: number; t0: number; heard: boolean }[] = [];
+  const RIPPLE = 1.1;
+  const paintRipples = () => {
+    const now = perf.now();
+    ctx.save();
+    ctx.setTransform(viewport.dpr, 0, 0, viewport.dpr, 0, 0);
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const r = ripples[i];
+      const u = (now - r.t0) / 1000 / RIPPLE;
+      if (u >= 1) {
+        ripples.splice(i, 1);
+        continue;
+      }
+      const ease = 1 - (1 - u) * (1 - u);
+      ctx.globalAlpha = (1 - u) * (r.heard ? 0.75 : 0.35);
+      ctx.strokeStyle = r.heard ? palette.accent : palette.ink;
+      ctx.lineWidth = 1.5;
+      for (const k of r.heard ? [1, 0.6] : [1]) {
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, 4 + ease * 30 * k, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  };
+  const nudge = (x: number, y: number): string | null => {
+    if (destroyed) return null;
+    const said = instance?.nudge?.(x, y) ?? null;
+    ripples.push({ x, y, t0: perf.now(), heard: said !== null });
+    if (ripples.length > 6) ripples.shift();
+    if (state.motion === 'off') renderOnce();
+    return said;
+  };
 
   const loop = (timestamp: number) => {
     if (!running || destroyed) return;
@@ -361,16 +398,29 @@ export function createBackground<T = any>(
   };
   // Interactive mode: the wheel zooms and a drag on empty page area pans. "Empty" means the
   // event target is the page itself or the engine, never a link, input, or text block.
+  // A page can mark its own empty backdrop element with `data-bg-backdrop` (the element itself, not its children).
   const isBackdrop = (el: EventTarget | null) =>
-    el === document.body || el === document.documentElement || (el instanceof Element && !!el.closest('.bg-engine-root'));
+    el === document.body || el === document.documentElement || (el instanceof Element && (!!el.closest('.bg-engine-root') || el.hasAttribute('data-bg-backdrop')));
   let dragging = false;
+  /** Where a press began, for telling a click (a nudge) from a drag. */
+  let press: { x: number; y: number; at: number; backdrop: boolean } | null = null;
   const onPointerDown = (e: PointerEvent) => {
     pointer.down = true;
     dragging = resolved.interactive && isBackdrop(e.target);
+    press = { x: e.clientX, y: e.clientY, at: perf.now(), backdrop: isBackdrop(e.target) };
   };
-  const onPointerUp = () => {
+  const onPointerUp = (e: PointerEvent) => {
     pointer.down = false;
     dragging = false;
+    const p = press;
+    press = null;
+    if (!resolved.nudges || !p?.backdrop || e.type !== 'pointerup' || !isBackdrop(e.target)) return;
+    if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 6 || perf.now() - p.at > 500) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
+    nudge(x, y);
   };
   const onDragMove = (e: PointerEvent) => {
     if (!dragging) return;
@@ -470,6 +520,7 @@ export function createBackground<T = any>(
       eventListeners.add(listener);
       return () => eventListeners.delete(listener);
     },
+    nudge,
     destroy() {
       if (destroyed) return;
       destroyed = true;

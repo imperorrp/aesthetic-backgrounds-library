@@ -47,6 +47,7 @@ export function lazySkin<T = any>(meta: Omit<BackgroundSkin<T>, 'mount' | 'prepa
         },
         advance: (info) => inner?.advance?.(info),
         inspect: () => inner?.inspect?.(),
+        nudge: (x, y) => inner?.nudge?.(x, y) ?? null,
         destroy() {
           destroyed = true;
           inner?.destroy();

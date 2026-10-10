@@ -78,6 +78,8 @@ export type ValeWorld = {
   groundY(z: number): number;
   depth(z: number): number;
   step(dt: number): void;
+  /** A visitor touched the valley at (x, y), in world pixels. Returns the line said, or null. */
+  nudge(x: number, y: number): string | null;
   counts(): Record<string, number>;
 };
 
@@ -157,7 +159,7 @@ export function createVale(seed: string | number, W: number, H: number, opts: Va
     river: null, lake: null, road: [],
     settlements: [], buildings: [], fields: [], trees: [], beasts: [], people: [], dragons: [], missiles: [], fx: [], labels: [], chronicle: [], boats: [],
     day: 0.3 + r() * 0.2, season: Math.floor(r() * 3), year: 1100 + Math.floor(r() * 300), festival: -1, fair: -1, joust: null, slain: 0,
-    groundY, depth, step,
+    groundY, depth, step, nudge,
     counts() {
       const alive = world.people.filter((p) => p.alive);
       return {
@@ -1693,6 +1695,61 @@ export function createVale(seed: string | number, W: number, H: number, opts: Va
       a.task = b.task = 'idle';
       world.joust = null;
     }
+  }
+
+  // ---- a visitor's touch -----------------------------------------------------------------------------
+  /**
+   * The nearest thing answers, in its own way: a wyrm on its spire is woken by a thrown stone,
+   * a raiding one hears the bells and turns for home, the town holds a feast, a village sends
+   * its folk out for wood, and the open land gets a caravan on the road. Once every few seconds.
+   */
+  let lastNudge = -Infinity;
+  function nudge(px: number, py: number): string | null {
+    if (world.t - lastNudge < 4) return null;
+    const far = (x: number, z: number, h = 0) => {
+      const [a, b] = sy(x, z, h);
+      return Math.hypot(a - px, b - py);
+    };
+    const reach = 150 * world.u;
+    const said = (text: string, x: number, z: number, h: number, color: string) => {
+      lastNudge = world.t;
+      say(text, x, z, h, color, 'high');
+      emit('nudge', x, z, 0.3);
+      return text;
+    };
+    const w = world.dragons.find((d) => d.kind === 'wyrm' && d.alive);
+    if (w) {
+      const resting = w.state === 'sleep' || w.state === 'bask';
+      const [px0, pz0, ph0] = perch(0);
+      const atSpire = Math.abs(px - world.spire.x) < reach * 0.6 && py > world.spire.apexY - 40 && py < groundY(world.spire.z) + 20;
+      if (resting && (atSpire || far(w.x, w.z, w.h) < reach)) {
+        w.state = 'wake';
+        fx('dust', px0, pz0, ph0, 1.2, 10, '#e2e8f0');
+        return said(`A STONE IS THROWN AT THE SPIRE, AND ${w.name} WAKES`, px0, pz0, ph0 + 40, '#fca5a5');
+      }
+      if ((w.state === 'raid' || w.state === 'hunt' || w.state === 'harass') && far(w.x, w.z, w.h) < reach * 1.4) {
+        w.state = 'return';
+        return said(`THE BELLS RING OUT, AND ${w.name} TURNS FOR THE SPIRE`, w.x, w.z, w.h + 30, '#fde68a');
+      }
+    }
+    const s = world.settlements.slice().sort((a, b) => far(a.x, a.z) - far(b.x, b.z))[0];
+    if (s && far(s.x, s.z) < Math.max(reach, s.r * 1.1)) {
+      if (s.kind === 'town' && world.festival < world.t) {
+        world.festival = world.t + 35;
+        for (let k = 0; k < 8; k++) fx('lantern', s.x + (r() - 0.5) * s.r, s.z, 30 + r() * 40, 8, 3, '#fde68a');
+        return said(`THE BELLS OF ${s.name} RING FOR A FEAST`, s.x, s.z, 60, '#fde68a');
+      }
+      s.wood += 4;
+      s.prosper = Math.min(1, s.prosper + 0.08);
+      plan(s);
+      return said(`THE FOLK OF ${s.name} GO OUT FOR WOOD, AND BUILD`, s.x, s.z, 40, '#bbf7d0');
+    }
+    // Open ground (not the sky, not the water): a caravan.
+    if (py > groundY(0) && !wet(px, 0.6)) {
+      caravan(true);
+      return said('A CARAVAN SETS OUT ON THE ROAD', GW / 2, 0.6, 30, '#fde68a');
+    }
+    return null;
   }
 
   // ---- the frame -------------------------------------------------------------------------------------

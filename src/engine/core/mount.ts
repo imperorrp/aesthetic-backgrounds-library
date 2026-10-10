@@ -109,6 +109,7 @@ export function mount<T = any>(
     setTimeScale: (scale) => loop.setTimeScale(scale),
     inspect: () => loop.inspect(),
     onEvent: (listener) => loop.onEvent(listener),
+    nudge: (x, y) => loop.nudge(x, y),
     destroy() {
       if (destroyed) return;
       destroyed = true;
