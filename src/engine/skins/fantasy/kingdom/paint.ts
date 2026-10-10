@@ -14,7 +14,7 @@
  * bottom, or close in on the miners, the feast, the war, the dragon at the gate.
  */
 import type { SkinHost, SkinInstance, Viewport } from '../../../core/skin';
-import { runWorld } from '../../../kit';
+import { createFraming, fitText, runWorld } from '../../../kit';
 import { fillCrisp, hash, hexA, mixRgb, typed } from '../../instruments/kit';
 import { serif } from '../names';
 import { createKingdom, deepName, isOpen, M, MOUNTAIN_NAMES, SEASONS, type Dwarf, type Foe, type Hold, type KingdomWorld, type Mountain, type Room } from './sim';
@@ -47,25 +47,28 @@ const mixHex = (a: string, b: string, k: number) => {
   return `#${[r, g, bl].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
 };
 
-export type KingdomPaintOptions = { mountain: string; holds: string; hazards: number; below: string; scale: number; labels: boolean; hud: boolean };
+export type KingdomPaintOptions = { mountain: string; holds: string; hazards: number; below: string; scale: number; camera: string; labels: boolean; hud: boolean };
 
 export function mountKingdom(host: SkinHost, o: KingdomPaintOptions): SkinInstance {
   const { ctx } = host;
   let W = host.viewport.width;
   let H = host.viewport.height;
-  const world: KingdomWorld = createKingdom(host.config.seed, W, H, { mountain: o.mountain, holds: o.holds === 'any' ? 0 : Number(o.holds), hazards: o.hazards, below: o.below, scale: o.scale });
+  const world: KingdomWorld = createKingdom(host.config.seed, W, H, { mountain: o.mountain, holds: o.holds === 'any' ? 0 : Number(o.holds), hazards: o.hazards, below: o.below, scale: o.scale, camera: o.camera });
   const { CELL, cols, rows, mat, water, magma, ladder, plank, rail } = world;
   const tint = TINTS[world.mountain];
   const holdOfCol = new Int8Array(cols);
   for (let c = 0; c < cols; c++) holdOfCol[c] = world.holdAt(c).id;
 
   // ---- the camera --------------------------------------------------------------------------------
-  const cam = { x: world.GW / 2, y: world.GH * 0.3, zoom: 0.6 };
+  // The whole range, still or drifting in for the big moments; or the old director's camera.
+  const framing = o.camera === 'director' ? null : createFraming(o.camera === 'still' ? 'still' : 'drift', world);
+  const cam = framing ? framing.cam : { x: world.GW / 2, y: world.GH * 0.3, zoom: 0.6 };
   const minZoom = () => Math.max(W / world.GW, H / world.GH);
   let shake: [number, number] = [0, 0];
   const SX = (x: number) => (x - cam.x) * cam.zoom + W / 2 + shake[0];
   const SY = (y: number) => (y - cam.y) * cam.zoom + H / 2 + shake[1];
   function camera(dt: number) {
+    if (framing) return framing.update(dt, world.t, world.director, W, H);
     const s = world.director.shot;
     const zoom = Math.max(minZoom(), Math.min(1.8, s.zoom));
     cam.zoom += (zoom - cam.zoom) * Math.min(1, dt * 0.5);
@@ -1551,7 +1554,7 @@ export function mountKingdom(host: SkinHost, o: KingdomPaintOptions): SkinInstan
     ctx.textAlign = 'left';
     ctx.font = serif(13);
     ctx.fillStyle = hexA('#e7dcc4', 0.88 * level);
-    fillCrisp(ctx, `${MOUNTAIN_NAMES[world.mountain]} · ${SEASONS[world.season]} OF THE YEAR ${world.year}`, 16, 26);
+    fillCrisp(ctx, fitText(ctx, `${MOUNTAIN_NAMES[world.mountain]} · ${SEASONS[world.season]} OF THE YEAR ${world.year}`, (W >= 980 ? W * 0.6 : W - 44)), 16, 26);
     ctx.font = serif(11);
     world.holds.forEach((h, k) => {
       const y = 42 + k * 14;
@@ -1561,27 +1564,27 @@ export function mountKingdom(host: SkinHost, o: KingdomPaintOptions): SkinInstan
       const n = world.dwarves.filter((d) => d.alive && d.hold === h.id).length;
       const king = h.fallen ? 'FALLEN' : h.king?.alive ? `KING ${h.king.name}${h.reign > 1 ? ` ${roman(Math.min(10, h.reign))}` : ''}` : 'NO KING';
       const war = h.war >= 0 ? ` · AT WAR WITH ${world.holds[h.war].name}` : '';
-      fillCrisp(ctx, `${h.name} · ${h.clan} · ${king} · ${n} DWARVES · ${deepName(Math.max(0, h.levels.length - 1))}${war}`, 28, y);
+      fillCrisp(ctx, fitText(ctx, `${h.name} · ${h.clan} · ${king} · ${n} DWARVES · ${deepName(Math.max(0, h.levels.length - 1))}${war}`, (W >= 980 ? W * 0.6 : W - 44) - 12), 28, y);
     });
     ctx.font = serif(11, true);
     ctx.fillStyle = hexA('#a8a29e', 0.7 * level);
-    fillCrisp(ctx, `These mountains hold ${world.cast.filter((c) => c !== 'only stone').slice(0, 7).join(', ')}.`, 16, 46 + world.holds.length * 14);
+    fillCrisp(ctx, fitText(ctx, `These mountains hold ${world.cast.filter((c) => c !== 'only stone').slice(0, 7).join(', ')}.`, (W >= 980 ? W * 0.6 : W - 44)), 16, 46 + world.holds.length * 14);
     ctx.font = serif(11);
     ctx.textAlign = 'right';
     const boss = world.foes.find((f) => f.boss);
     const below = boss ? (boss.alive ? 'BELOW: SOMETHING IS AWAKE' : 'BELOW: IT IS ENDED')
       : world.below === 'sleeper' ? 'BELOW: SOMETHING SLEEPS' : world.below === 'lich' ? 'BELOW: THE OLD HALLS ARE NOT EMPTY' : world.below === 'engine' ? 'BELOW: SOMETHING TICKS' : world.below === 'hive' ? 'BELOW: SOMETHING HUMS' : 'BELOW: ONLY STONE';
     ctx.fillStyle = hexA(boss?.alive ? '#fca5a5' : '#c4b5fd', 0.8 * level);
-    fillCrisp(ctx, below, W - 16, 26);
+    if (W >= 980) fillCrisp(ctx, fitText(ctx, below, W * 0.34), W - 16, 26);
     ctx.fillStyle = hexA('#fde68a', 0.75 * level);
-    world.holds.flatMap((h) => h.artifacts.map((a) => ({ ...a, hold: h.name }))).slice(-3).forEach((a, k) => fillCrisp(ctx, `${a.name}, BY ${a.maker} OF ${a.hold}`, W - 16, 42 + k * 15));
+    if (W >= 980) world.holds.flatMap((h) => h.artifacts.map((a) => ({ ...a, hold: h.name }))).slice(-3).forEach((a, k) => fillCrisp(ctx, fitText(ctx, `${a.name}, BY ${a.maker} OF ${a.hold}`, W * 0.34), W - 16, 42 + k * 15));
     ctx.textAlign = 'left';
     ctx.font = serif(12, true);
     const lines = world.chronicle.slice(-3);
     lines.forEach((l, i) => {
       const age = t - l.t;
       ctx.fillStyle = hexA('#e7dcc4', Math.min(1, age * 2) * (i === lines.length - 1 ? 0.9 : 0.55) * level);
-      fillCrisp(ctx, typed(l.text, age, 50, t), 16, H - 16 - (lines.length - 1 - i) * 17);
+      fillCrisp(ctx, fitText(ctx, typed(l.text, age, 50, t), W - 32), 16, H - 16 - (lines.length - 1 - i) * 17);
     });
     ctx.restore();
   }

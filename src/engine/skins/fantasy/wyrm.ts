@@ -76,7 +76,7 @@ const BREATH: Record<Breed, [string, string, string]> = {
 };
 
 export function mount(host: SkinHost): SkinInstance {
-  const o = resolveOptions(WYRMSPIRE_SCHEMA, host.options) as { style: string; valley: string; wrath: number; knights: number; villages: number; time: string; labels: boolean; hud: boolean };
+  const o = resolveOptions(WYRMSPIRE_SCHEMA, host.options) as { style: string; valley: string; wrath: number; knights: number; villages: number; time: string; camera: string; labels: boolean; hud: boolean };
   if (o.style !== 'classic') return mountVale(host, o);
   const { ctx } = host;
   let W = host.viewport.width;

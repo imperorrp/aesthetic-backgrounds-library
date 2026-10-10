@@ -1888,15 +1888,20 @@ export function mount(host: SkinHost): SkinInstance {
     ctx.font = serif(11);
     ctx.fillStyle = hexA('#a8a29e', 0.8 * level);
     fillCrisp(ctx, `THE WAR OF ${world.war.name} · BATTLE ${b.n + 1}`, 16, 42);
-    ctx.textAlign = 'right';
+    // The score: top right on a wide screen; on a narrow one, a third line under the title.
+    const narrow = W < 760;
+    ctx.textAlign = narrow ? 'left' : 'right';
     ctx.font = serif(12);
     const score = `${fa.name}  ${world.war.wins[0]} · ${world.war.wins[1]}  ${fb.name}`;
+    const sw = ctx.measureText(score).width;
+    const sx = narrow ? 28 : W - 16;
+    const sy = narrow ? 58 : 26;
     ctx.fillStyle = hexA('#e7dcc4', 0.8 * level);
-    fillCrisp(ctx, score, W - 16, 26);
+    fillCrisp(ctx, score, sx, sy);
     ctx.fillStyle = fa.color;
-    ctx.fillRect(W - 16 - ctx.measureText(score).width - 10, 18, 6, 6);
+    ctx.fillRect(narrow ? 16 : W - 16 - sw - 10, sy - 8, 6, 6);
     ctx.fillStyle = fb.color;
-    ctx.fillRect(W - 12, 18, 6, 6);
+    ctx.fillRect(narrow ? 28 + sw + 4 : W - 12, sy - 8, 6, 6);
     // The chronicle, in the lower left.
     ctx.textAlign = 'left';
     ctx.font = serif(12, true);

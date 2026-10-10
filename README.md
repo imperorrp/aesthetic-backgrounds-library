@@ -917,6 +917,7 @@ mount(document.body, {
 | Option | Default | Effect |
 | --- | --- | --- |
 | `style` | `'vale'` | `vale` (the living valley) or `classic` (the first version). |
+| `camera` | `'drift'` | `drift`: the whole world on screen, easing in slowly for the biggest moments only. `still`: the whole world, never moving. `director`: the old wider world, followed shot by shot. |
 | `valley` | `'any'` | The land: `alpine`, `fjord`, `canyon`, `fen`, `ashland`, or `any` (one per seed). Its houses, water, weather, and breed of wyrm. |
 | `wrath` | `1` | How restless the wyrm grows (`0` for never: a quiet valley, though thieves may still wake it). |
 | `knights` | `1` | How many ride out (`0` for none: the villages are on their own). |
@@ -932,6 +933,7 @@ mount(document.body, {
 | Option | Default | Effect |
 | --- | --- | --- |
 | `style` | `'kingdom'` | `kingdom` (a range of rival holds) or `classic` (the single hold). |
+| `camera` | `'drift'` | `drift`: the whole world on screen, easing in slowly for the biggest moments only. `still`: the whole world, never moving. `director`: the old wider world, followed shot by shot. |
 | `holds` | `'any'` | How many holds in the range: `2`, `3`, `4`, or `any` (drawn per seed). |
 | `mountain` | `'any'` | `iron`, `crystal`, `frost`, `ember`, `drowned`, or `any` (one per seed): its rock, ores, hazards, and what sleeps below. |
 | `depth` | `1` | Classic only: how greedily they dig (`0.3` to `2`). |
@@ -948,6 +950,7 @@ mount(document.body, {
 | Option | Default | Effect |
 | --- | --- | --- |
 | `style` | `'realm'` | `realm` (towers, mages and spells on a drawn land), `ink` (growing lines), or `classic` (the first version). |
+| `camera` | `'drift'` | `drift`: the whole world on screen, easing in slowly for the biggest moments only. `still`: the whole world, never moving. `director`: the old wider world, followed shot by shot. |
 | `land` | `'any'` | `isles`, `steppe`, `forest`, `desert`, `tundra`, `marsh`, `mountains`, or `any` (a blend drawn per seed). |
 | `scale` | `1` | How big the land and how much is going on (`0.5` to `2`). |
 | `orders` | `4` | Orders of mages at the start (about; the seed varies it): `2` to `6`. |

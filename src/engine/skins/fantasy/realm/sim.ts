@@ -24,7 +24,7 @@
 import { forkRng, type Rng } from '../../../rng';
 import { createBus, type Bus } from '../../../sim/bus';
 import type { Noise2D } from '../../../noise';
-import { compose, createDirector, createGenome, ARCS, type Director, type Genome, type SystemDef } from '../../../kit';
+import { compose, createDirector, createGenome, ARCS, WORLD_SCALE, type Director, type Genome, type SystemDef } from '../../../kit';
 import { placeName, titled } from '../names';
 
 export type School = 'fire' | 'frost' | 'storm' | 'nature' | 'shadow' | 'light' | 'stone';
@@ -58,7 +58,7 @@ export type Storm = { x: number; y: number; vx: number; vy: number; r: number; t
 export type Rift = { site: number; x: number; y: number; r: number; t0: number; closing: number; closed: number; next: number };
 export type Ritual = { order: number; site: number; t0: number; dur: number; kind: 'aurora' | 'starfall' | 'colossus' | 'grove' | 'wardstone' | 'phoenix' | 'eclipse'; done: boolean };
 
-export type RealmOptions = { land: string; orders: number; storms: number; rifts: number; scale: number };
+export type RealmOptions = { land: string; orders: number; storms: number; rifts: number; scale: number; camera?: string };
 
 export type RealmWorld = {
   t: number; W: number; H: number; GW: number; GH: number; bus: Bus; director: Director; land: Land; blend: Record<Land, number>; name: string;
@@ -131,8 +131,15 @@ export function createRealm(seed: string | number, W: number, H: number, opts: R
   const land = LANDS.reduce((a, b) => (blend[b] > blend[a] ? b : a), LANDS[0]);
   const castDrawn = compose(g.fork('cast'), { land, storms: opts.storms, rifts: opts.rifts }, REALM_CAST, REALM_RULE);
   const drew = (id: string) => castDrawn.some((c) => c.def.id === id);
-  const GW = Math.round(W * g.range(2.2, 2.7) * Math.sqrt(scale));
-  const GH = Math.round(H * g.range(1.5, 1.8) * Math.sqrt(scale));
+  // The whole realm on screen (the default): the screen's shape, a little larger. Or the old
+  // wide land for the director's camera to pan over.
+  const wide = g.range(2.2, 2.7);
+  const tall = g.range(1.5, 1.8);
+  const whole = opts.camera !== 'director';
+  const GW = Math.round(whole ? W * WORLD_SCALE * 1.2 * Math.sqrt(scale) : W * wide * Math.sqrt(scale));
+  const GH = Math.round(whole ? H * WORLD_SCALE * 1.2 * Math.sqrt(scale) : H * tall * Math.sqrt(scale));
+  // Distances shrink on a narrow screen: a phone gets a smaller realm, not a cut-off one.
+  const us = Math.max(0.4, Math.min(1, Math.min(GW, GH * 1.6) / 1700));
   const CELL = 8;
   const cols = Math.ceil(GW / CELL);
   const rows = Math.ceil(GH / CELL);
@@ -217,7 +224,7 @@ export function createRealm(seed: string | number, W: number, H: number, opts: R
   // Sites: wells, villages, ruins, by Poisson-ish spacing on dry land.
   const placeSite = (kind: Site['kind'], minD: number, tries = 400): Site | null => {
     for (let k = 0; k < tries; k++) {
-      const x = 60 + r() * (GW - 120);
+      const x = 60 * us + r() * (GW - 120 * us);
       const y = 70 + r() * (GH - 140);
       if (!landAt(x, y) || height[world.cellAt(x, y)] > 0.6) continue;
       let ok = true;
@@ -235,7 +242,7 @@ export function createRealm(seed: string | number, W: number, H: number, opts: R
   const nRuins = Math.round(g.range(1, 2.5) * area);
   const usedNames = new Set<string>();
   for (let k = 0; k < nWells; k++) {
-    const s = placeSite('well', 230);
+    const s = placeSite('well', 230 * us);
     if (!s) continue;
     let n = pick(WELL_NAMES);
     for (let j = 0; j < 6 && usedNames.has(n); j++) n = pick(WELL_NAMES);
@@ -243,12 +250,12 @@ export function createRealm(seed: string | number, W: number, H: number, opts: R
     usedNames.add(s.name);
   }
   for (let k = 0; k < nVillages; k++) {
-    const s = placeSite('village', 200);
+    const s = placeSite('village', 200 * us);
     if (!s) continue;
     s.name = placeName(r).toUpperCase();
     for (let j = 0; j < 6 + Math.floor(r() * 8); j++) {
       const a = r() * Math.PI * 2;
-      const d = 14 + r() * 36;
+      const d = (14 + r() * 36) * Math.max(0.6, us);
       const cx = s.x + Math.cos(a) * d;
       const cy = s.y + Math.sin(a) * d * 0.7;
       if (landAt(cx, cy)) s.cottages.push([cx, cy, Math.floor(r() * 4)]);
@@ -260,7 +267,7 @@ export function createRealm(seed: string | number, W: number, H: number, opts: R
     }
   }
   for (let k = 0; k < nRuins; k++) {
-    const s = placeSite('ruin', 220);
+    const s = placeSite('ruin', 220 * us);
     if (s) s.name = `THE RUINS OF ${placeName(r).toUpperCase()}`;
   }
   for (const s of world.sites) if (s.kind === 'well') for (let dy = -4; dy <= 4; dy++) for (let dx = -5; dx <= 5; dx++) forest[world.cellAt(s.x + dx * CELL, s.y + dy * CELL)] = 0;
@@ -274,7 +281,7 @@ export function createRealm(seed: string | number, W: number, H: number, opts: R
   for (const a of world.sites) for (const b of world.sites) {
     if (b.id <= a.id) continue;
     const d = Math.hypot(a.x - b.x, a.y - b.y);
-    if (d > 620) continue;
+    if (d > 620 * us) continue;
     // Relative neighbourhood: no third site closer to both.
     if (world.sites.some((c) => c !== a && c !== b && Math.max(Math.hypot(c.x - a.x, c.y - a.y), Math.hypot(c.x - b.x, c.y - b.y)) < d)) continue;
     if (wetAlong(a, b) > 0.35) continue;

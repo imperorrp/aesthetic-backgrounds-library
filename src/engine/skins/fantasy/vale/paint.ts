@@ -9,7 +9,7 @@
  * in it: windows, beacons, lanterns, burning roofs. No post-processing: glows are cached sprites.
  */
 import type { SkinHost, SkinInstance, Viewport } from '../../../core/skin';
-import { runWorld } from '../../../kit';
+import { createFraming, fitText, runWorld } from '../../../kit';
 import { fillCrisp, hash, hexA, mixRgb, typed } from '../../instruments/kit';
 import { serif } from '../names';
 import { BREATH, BREED_NAMES, createVale, LAND_NAMES, SEASONS, type Beast, type Biome, type Building, type Dragon, type Person, type Tree, type ValeWorld } from './sim';
@@ -38,23 +38,26 @@ const mixHex = (a: string, b: string, k: number) => {
   return `#${[r, g, bl].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
 };
 
-export type ValePaintOptions = { valley: string; wrath: number; knights: number; villages: number; time: string; labels: boolean; hud: boolean };
+export type ValePaintOptions = { valley: string; wrath: number; knights: number; villages: number; time: string; camera: string; labels: boolean; hud: boolean };
 
 export function mountVale(host: SkinHost, o: ValePaintOptions): SkinInstance {
   const { ctx } = host;
   let W = host.viewport.width;
   let H = host.viewport.height;
-  const world: ValeWorld = createVale(host.config.seed, W, H, { valley: o.valley, wrath: o.wrath, knights: o.knights, villages: o.villages });
+  const world: ValeWorld = createVale(host.config.seed, W, H, { valley: o.valley, wrath: o.wrath, knights: o.knights, villages: o.villages, camera: o.camera });
   const { GW, GH, GY0, groundY, depth } = world;
   const L = LOOKS[world.biome];
 
   // ---- camera ---------------------------------------------------------------------------------------
-  const cam = { x: GW / 2, y: GH / 2, zoom: 1 };
+  // The whole valley, still or drifting in for the big moments; or the old director's camera.
+  const framing = o.camera === 'director' ? null : createFraming(o.camera === 'still' ? 'still' : 'drift', world);
+  const cam = framing ? framing.cam : { x: GW / 2, y: GH / 2, zoom: 1 };
   const minZoom = () => Math.max(W / GW, H / GH);
   let Z = 1;
   const SX = (x: number) => (x - cam.x) * cam.zoom + W / 2;
   const SY = (y: number) => (y - cam.y) * cam.zoom + H / 2;
   function camera(dt: number) {
+    if (framing) return framing.update(dt, world.t, world.director, W, H);
     const s = world.director.shot;
     const zoom = Math.max(minZoom(), Math.min(2.4, s.zoom));
     cam.zoom += (zoom - cam.zoom) * Math.min(1, dt * 0.5);
@@ -251,7 +254,7 @@ export function mountVale(host: SkinHost, o: ValePaintOptions): SkinInstance {
     for (let k = 0; k <= 14; k++) {
       const u = k / 14;
       const y = base - hgt * u;
-      const w = 150 * Math.pow(1 - u, 1.4) + 10 + hash(k, 3) * 10 * (1 - u);
+      const w = (150 * Math.pow(1 - u, 1.4) + 10 + hash(k, 3) * 10 * (1 - u)) * world.u;
       left.push(x - w - hash(k, 1) * 14, y);
       right.push(x + w + hash(k, 2) * 14, y);
     }
@@ -267,7 +270,7 @@ export function mountVale(host: SkinHost, o: ValePaintOptions): SkinInstance {
     // Lit ledges on the left, irregular.
     for (let k = 1; k < 12; k++) {
       const y = base - hgt * (k / 12) + hash(k, 8) * 10;
-      const w = 150 * Math.pow(1 - k / 12, 1.4) + 6;
+      const w = (150 * Math.pow(1 - k / 12, 1.4) + 6) * world.u;
       poly([x - w * (0.9 + hash(k, 4) * 0.1), y, x - w * (0.2 + hash(k, 5) * 0.3), y - 3 - hash(k, 6) * 4, x - w * 0.1, y], light);
     }
     // The path, zigzagging up to the cave.
@@ -1280,17 +1283,18 @@ export function mountVale(host: SkinHost, o: ValePaintOptions): SkinInstance {
     ctx.textAlign = 'left';
     ctx.font = serif(13);
     ctx.fillStyle = hexA('#ece4d4', 0.9 * level);
-    fillCrisp(ctx, `${LAND_NAMES[world.biome]} ${world.name} · ${SEASONS[world.season]} ${world.year}`, 16, 26);
+    const room = W - 32;
+    fillCrisp(ctx, fitText(ctx, `${LAND_NAMES[world.biome]} ${world.name} · ${SEASONS[world.season]} ${world.year}`, room), 16, 26);
     ctx.font = serif(11);
     const w = world.dragons.find((d) => d.kind === 'wyrm' && d.alive);
     ctx.fillStyle = hexA(w && (w.state === 'raid' || w.state === 'hunt') ? '#fca5a5' : '#b8b2a8', 0.9 * level);
-    fillCrisp(ctx, w ? `${w.name}, ${BREED_NAMES[w.breed]} · ${STATE_WORD[w.state] ?? w.state.toUpperCase()} · HOARD ${world.spire.hoard} CROWNS` : 'THE SPIRE STANDS EMPTY', 16, 42);
+    fillCrisp(ctx, fitText(ctx, w ? `${w.name}, ${BREED_NAMES[w.breed]} · ${STATE_WORD[w.state] ?? w.state.toUpperCase()} · HOARD ${world.spire.hoard} CROWNS` : 'THE SPIRE STANDS EMPTY', room), 16, 42);
     ctx.fillStyle = hexA('#b8b2a8', 0.85 * level);
     const pol = { endure: 'ENDURE', fortify: 'FORTIFY', appease: 'TRIBUTE', hunt: 'THE HUNT' }[world.policy];
-    fillCrisp(ctx, `${world.lord}, ${world.temper.toUpperCase()} · POLICY: ${pol} · ${world.people.filter((p) => p.alive).length} SOULS · ${world.slain} DRAGONS SLAIN`, 16, 57);
+    fillCrisp(ctx, fitText(ctx, `${world.lord}, ${world.temper.toUpperCase()} · POLICY: ${pol} · ${world.people.filter((p) => p.alive).length} SOULS · ${world.slain} DRAGONS SLAIN`, room), 16, 57);
     ctx.font = serif(11, true);
     ctx.fillStyle = hexA('#b8b2a8', 0.7 * level);
-    fillCrisp(ctx, `This valley has ${world.cast.slice(0, 6).join(', ')}.`, 16, 72);
+    fillCrisp(ctx, fitText(ctx, `This valley has ${world.cast.slice(0, 6).join(', ')}.`, room), 16, 72);
     ctx.font = serif(11);
     ctx.textAlign = 'right';
     // On a narrow screen the left column needs the width.
@@ -1306,7 +1310,7 @@ export function mountVale(host: SkinHost, o: ValePaintOptions): SkinInstance {
     lines.forEach((l, i) => {
       const age = t - l.t;
       ctx.fillStyle = hexA('#ece4d4', Math.min(1, age * 2) * (i === lines.length - 1 ? 0.9 : 0.55) * level);
-      fillCrisp(ctx, typed(l.text, age, 50, t), 16, H - 16 - (lines.length - 1 - i) * 17);
+      fillCrisp(ctx, fitText(ctx, typed(l.text, age, 50, t), W - 32), 16, H - 16 - (lines.length - 1 - i) * 17);
     });
     ctx.restore();
   }

@@ -41,14 +41,24 @@ describe('deephold kingdom (headless)', { timeout: 300_000 }, () => {
     }
   });
 
-  it('every mountain runs, with two to four holds', () => {
+  it('every mountain runs, with as many holds as were asked for and fit', () => {
     for (const [k, mountain] of ['iron', 'crystal', 'ember', 'drowned', 'frost'].entries()) {
-      const r = run(240, `kmt-${mountain}`, { mountain, holds: String(2 + (k % 3)) });
+      const asked = 2 + (k % 3);
+      const r = run(240, `kmt-${mountain}`, { mountain, holds: String(asked) });
       expect(r.threw, mountain).toBeUndefined();
       const last = r.samples[r.samples.length - 1].counts;
-      expect(last.holds, mountain).toBe(2 + (k % 3));
+      expect(last.holds, mountain).toBeGreaterThanOrEqual(2);
+      expect(last.holds, mountain).toBeLessThanOrEqual(asked);
       expect(last.dwarves, mountain).toBeGreaterThan(20);
     }
+  });
+
+  it('fits a phone: one whole hold on a narrow screen', () => {
+    const r = runHeadless({ skin: 'deephold', seconds: 240, seed: 'phone', options: {}, width: 390, height: 844, sampleEvery: 60 });
+    expect(r.threw).toBeUndefined();
+    const last = r.samples[r.samples.length - 1].counts;
+    expect(last.holds).toBe(1);
+    expect(last.dwarves).toBeGreaterThan(8);
   });
 
   it('replays identically for the same seed', () => {

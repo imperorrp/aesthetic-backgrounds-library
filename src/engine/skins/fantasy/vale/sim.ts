@@ -28,7 +28,7 @@
  */
 import { forkRng, type Rng } from '../../../rng';
 import { createBus, type Bus } from '../../../sim/bus';
-import { compose, createDirector, createGenome, ARCS, type Director, type Genome, type SystemDef } from '../../../kit';
+import { compose, createDirector, createGenome, ARCS, WORLD_SCALE, type Director, type Genome, type SystemDef } from '../../../kit';
 import { dragonName, heroName, placeName, titled } from '../names';
 
 export type Biome = 'alpine' | 'fjord' | 'canyon' | 'fen' | 'ashland';
@@ -65,10 +65,10 @@ export type Missile = { kind: 'arrow' | 'bolt' | 'rock' | 'spell' | 'lance'; x: 
 export type Fx = { kind: 'fire' | 'smoke' | 'spark' | 'flash' | 'ember' | 'dust' | 'splash' | 'debris' | 'lantern' | 'confetti' | 'frost' | 'venom' | 'lightning' | 'chop' | 'glint'; x: number; z: number; h: number; t0: number; dur: number; r: number; color: string; seed: number };
 export type Label = { text: string; x: number; y: number; color: string; t0: number; dur: number };
 
-export type ValeOptions = { valley: string; wrath: number; knights: number; villages: number };
+export type ValeOptions = { valley: string; wrath: number; knights: number; villages: number; camera?: string };
 
 export type ValeWorld = {
-  t: number; W: number; H: number; GW: number; GH: number; bus: Bus; director: Director; biome: Biome; breed: Breed; name: string; lord: string; temper: 'bold' | 'cautious' | 'greedy';
+  t: number; W: number; H: number; GW: number; GH: number; /** Distance scale: 1 on a desktop, less on a narrow screen. */ u: number; bus: Bus; director: Director; biome: Biome; breed: Breed; name: string; lord: string; temper: 'bold' | 'cautious' | 'greedy';
   policy: 'endure' | 'fortify' | 'appease' | 'hunt'; cast: string[]; castIds: string[];
   HZ: number; GY0: number; GY1: number; spire: { x: number; z: number; apexY: number; caveY: number; path: [number, number][]; hoard: number };
   river: { at(z: number): number; width: number } | null; lake: { x0: number; x1: number; z0: number; z1: number } | null; road: [number, number][];
@@ -123,8 +123,13 @@ export function createVale(seed: string | number, W: number, H: number, opts: Va
   const wrathK = Math.max(0, opts.wrath);
   const castDrawn = compose(g.fork('cast'), { biome, wrath: wrathK }, VALE_CAST, VALE_RULE);
   const drew = (id: string) => castDrawn.some((c) => c.def.id === id);
-  const GW = Math.round(W * g.range(2.3, 2.8));
-  const GH = Math.round(H * 1.12);
+  // The whole valley on screen (the default), or the old wide valley the director pans over.
+  const wide = g.range(2.3, 2.8);
+  const whole = opts.camera !== 'director';
+  const GW = Math.round(whole ? W * WORLD_SCALE : W * wide);
+  const GH = Math.round(whole ? H * WORLD_SCALE : H * 1.12);
+  // Distances shrink on a narrow screen, so a phone gets a smaller valley, not a cut-off one.
+  const u = Math.max(0.35, Math.min(1, GW / 1600));
   const HZ = GH * 0.38;
   const GY0 = GH * 0.44;
   const GY1 = GH;
@@ -140,13 +145,13 @@ export function createVale(seed: string | number, W: number, H: number, opts: Va
     const n = 9;
     for (let k = 0; k <= n; k++) {
       const y = base - (base - caveY) * (k / n);
-      const half = 40 + (1 - k / n) * 50;
+      const half = (40 + (1 - k / n) * 50) * u;
       path.push([spireX + (k % 2 ? half : -half) * 0.8, y]);
     }
   }
 
   const world: ValeWorld = {
-    t: 0, W, H, GW, GH, bus, director: null as unknown as Director, biome, breed, name: placeName(r), lord: g.pick(LORDS), temper: g.weighted({ bold: 1, cautious: 1, greedy: 1 }),
+    t: 0, W, H, GW, GH, u, bus, director: null as unknown as Director, biome, breed, name: placeName(r), lord: g.pick(LORDS), temper: g.weighted({ bold: 1, cautious: 1, greedy: 1 }),
     policy: 'endure', cast: castDrawn.map((c) => c.def.label ?? c.def.id), castIds: castDrawn.map((c) => c.def.id),
     HZ, GY0, GY1, spire: { x: spireX, z: 0.02, apexY, caveY, path, hoard: 900 + Math.floor(r() * 600) },
     river: null, lake: null, road: [],
@@ -234,11 +239,11 @@ export function createVale(seed: string | number, W: number, H: number, opts: Va
   };
 
   // ---- settlements -----------------------------------------------------------------------------------
-  const nVillages = Math.max(2, Math.min(5, Math.round(opts.villages + g.int(0, 1))));
-  const free = (x: number, z: number, rx: number) => !wet(x, z) && !wet(x - rx, z) && !wet(x + rx, z) && Math.abs(x - spireX) > 160 && world.settlements.every((s) => dist(s.x, s.z, x, z) > s.r + rx + 120);
+  const nVillages = Math.max(1, Math.min(5, Math.round(opts.villages + g.int(0, 1)), 1 + Math.floor(GW / 450)));
+  const free = (x: number, z: number, rx: number) => !wet(x, z) && !wet(x - rx, z) && !wet(x + rx, z) && Math.abs(x - spireX) > 160 * u && world.settlements.every((s) => dist(s.x, s.z, x, z) > s.r + rx + 120 * u);
   const settle = (kind: Settlement['kind'], z0: number, z1: number, rx: number): Settlement | null => {
     for (let k = 0; k < 200; k++) {
-      const x = 150 + r() * (GW - 300);
+      const x = 150 * u + r() * (GW - 300 * u);
       const z = z0 + r() * (z1 - z0);
       if (!free(x, z, rx)) continue;
       const s: Settlement = { id: world.settlements.length, name: placeName(r), kind, x, z, r: rx, wood: 6, grain: 10, gold: 20, prosper: 0.5, alarm: 0, raided: -999 };
@@ -247,8 +252,16 @@ export function createVale(seed: string | number, W: number, H: number, opts: Va
     }
     return null;
   };
-  const town = settle('town', 0.5, 0.68, 230)!;
-  for (let k = 0; k < nVillages; k++) settle('village', 0.3, 0.9, 120 + r() * 50);
+  // The town: wherever it fits, smaller if it must.
+  const town: Settlement = (() => {
+    let s = settle('town', 0.5, 0.68, 230 * u);
+    for (let k = 0; k < 4 && !s; k++) s = settle('town', 0.4, 0.85, 230 * u * (0.8 - k * 0.12));
+    if (s) return s;
+    const fallback: Settlement = { id: 0, name: placeName(r), kind: 'town', x: spireX < GW / 2 ? GW * 0.7 : GW * 0.3, z: 0.62, r: 140 * u, wood: 6, grain: 10, gold: 20, prosper: 0.5, alarm: 0, raided: -999 };
+    world.settlements.push(fallback);
+    return fallback;
+  })();
+  for (let k = 0; k < nVillages; k++) settle('village', 0.3, 0.9, (120 + r() * 50) * u);
   const bld = (kind: BKind, s: Settlement, x: number, z: number, w: number, state: Building['state'] = 'standing'): Building => {
     const b: Building = { id: ids++, kind, settle: s.id, x, z, w, state, progress: state === 'standing' ? 1 : 0, hp: 1, fire: 0, frozen: 0, blight: 0, seed: ids, beacon: -1, cd: 0, variant: Math.floor(r() * 4), ax: x, az: z, bx: x, bz: z };
     world.buildings.push(b);
@@ -333,7 +346,7 @@ export function createVale(seed: string | number, W: number, H: number, opts: Va
   for (let k = 0; k < 5; k++) {
     const x = ((k + 0.5) / 5) * GW + (r() - 0.5) * 100;
     const z = 0.12 + r() * 0.15;
-    if (wet(x, z) || Math.abs(x - spireX) < 140) continue;
+    if (wet(x, z) || Math.abs(x - spireX) < 140 * u) continue;
     const s = world.settlements.slice().sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0];
     bld('tower', s, x, z, 16);
   }
@@ -341,7 +354,7 @@ export function createVale(seed: string | number, W: number, H: number, opts: Va
   for (const s of world.settlements) {
     const n = s.kind === 'town' ? 4 : 5 + Math.floor(r() * 4);
     for (let k = 0; k < n; k++) {
-      const fw = 70 + r() * 90;
+      const fw = (70 + r() * 90) * Math.max(0.6, u);
       const fd = 0.03 + r() * 0.04;
       const a = r() * Math.PI * 2;
       const d = s.r * (s.kind === 'town' ? 1.25 : 0.9) + 40 + r() * 140;
@@ -361,7 +374,7 @@ export function createVale(seed: string | number, W: number, H: number, opts: Va
     const cz = c < 6 ? 0.07 + r() * 0.2 : 0.12 + r() * 0.7;
     const n = c < 6 ? 60 + Math.floor(r() * 60) : 30 + Math.floor(r() * 50);
     for (let k = 0; k < n; k++) {
-      const x = cx + (r() - 0.5) * 300;
+      const x = cx + (r() - 0.5) * 300 * u;
       const z = cz + (r() - 0.5) * 0.18;
       if (z < 0.06 || z > 1 || x < 0 || x > GW || blocked(x, z)) continue;
       world.trees.push({ x, z, kind: biome === 'fen' && r() < 0.3 ? 'dead' : r() < 0.2 && treeKind === 'oak' ? 'birch' : treeKind, felled: -1, burnt: -1, seed: ids++ });
@@ -381,7 +394,7 @@ export function createVale(seed: string | number, W: number, H: number, opts: Va
     for (let tries = 0; tries < 40; tries++) {
       const hx = r() * GW;
       const hz = 0.25 + r() * 0.6;
-      if (blocked(hx, hz) || Math.abs(hx - spireX) < 200) continue;
+      if (blocked(hx, hz) || Math.abs(hx - spireX) < 200 * u) continue;
       const kind = r() < 0.7 ? beastKind : pick(['cow', 'sheep', 'goat'] as Beast['kind'][]);
       for (let j = 0; j < 7 + Math.floor(r() * 8); j++) world.beasts.push({ id: ids++, kind, x: hx + (r() - 0.5) * 80, z: hz + (r() - 0.5) * 0.04, hx, hz, alive: true, carried: false, seed: ids, anim: r() * 6 });
       break;

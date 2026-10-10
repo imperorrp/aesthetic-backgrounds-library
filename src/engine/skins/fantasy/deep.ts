@@ -49,7 +49,7 @@ const mixHex = (a: string, b: string, k: number) => {
 };
 
 export function mount(host: SkinHost): SkinInstance {
-  const o = resolveOptions(DEEPHOLD_SCHEMA, host.options) as { style: string; holds: string; mountain: string; depth: number; hazards: number; below: string; scale: number; labels: boolean; hud: boolean };
+  const o = resolveOptions(DEEPHOLD_SCHEMA, host.options) as { style: string; holds: string; mountain: string; depth: number; hazards: number; below: string; scale: number; camera: string; labels: boolean; hud: boolean };
   if (o.style !== 'classic') return mountKingdom(host, o);
   const { ctx } = host;
   let W = host.viewport.width;

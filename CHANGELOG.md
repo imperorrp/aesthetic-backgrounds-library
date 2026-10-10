@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The whole scene, on any screen.** Wyrmspire, Deephold and Leylines now show their whole world by default. Each is generated in the screen's proportions, a little larger than the screen. On a phone that means a smaller, complete world (one hold, fewer villages, a smaller realm), not one cut off at the sides.
+  - New `camera` option: `drift` (the default) eases in slowly for the biggest moments only, `still` never moves, and `director` keeps the old wider world and its shot-by-shot camera (`kit/framing`).
+  - HUD lines shorten to fit narrow screens; side columns step aside below 980 px. Shieldwall's score moves under the title on a phone, and Sonar's contact labels flip left near the edge.
+- **CI.** Screenshot baselines are per platform (Windows in `chromium/`, others in `chromium-<platform>/`), so the Linux job no longer compares against Windows renders. The GitHub Pages mirror runs only by hand.
 - **Vivarium.** The project has a name: Vivarium, small worlds that run behind a web page. The npm package and the `<bg-engine>` tag are unchanged.
   - A new README intro: what it is, two ways to read it (living algorithmic art, an idle game that plays itself), and why it exists (partly to test what frontier AI coding agents can build).
   - The site explains itself: an About card on the first visit (and on **A**, or from the studio's footer), the sample text column describes the project, and the page has a real title, description, and share image.

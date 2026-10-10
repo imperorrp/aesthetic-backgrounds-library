@@ -202,6 +202,16 @@
       ],
       "cost": "medium",
       "schema": {
+        "camera": {
+          "type": "enum",
+          "values": [
+            "drift",
+            "still",
+            "director"
+          ],
+          "default": "drift",
+          "label": "Camera: the whole scene drifting in for big moments, perfectly still, or following the action"
+        },
         "style": {
           "type": "enum",
           "values": [
@@ -370,6 +380,16 @@
       ],
       "cost": "medium",
       "schema": {
+        "camera": {
+          "type": "enum",
+          "values": [
+            "drift",
+            "still",
+            "director"
+          ],
+          "default": "drift",
+          "label": "Camera: the whole scene drifting in for big moments, perfectly still, or following the action"
+        },
         "style": {
           "type": "enum",
           "values": [
@@ -1147,6 +1167,16 @@
       ],
       "cost": "medium",
       "schema": {
+        "camera": {
+          "type": "enum",
+          "values": [
+            "drift",
+            "still",
+            "director"
+          ],
+          "default": "drift",
+          "label": "Camera: the whole scene drifting in for big moments, perfectly still, or following the action"
+        },
         "style": {
           "type": "enum",
           "values": [

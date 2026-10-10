@@ -83,6 +83,7 @@ export const warTableSkin = lazySkin(
 );
 
 export const WYRMSPIRE_SCHEMA = {
+  camera: { type: 'enum', values: ['drift', 'still', 'director'], default: 'drift', label: 'Camera: the whole scene drifting in for big moments, perfectly still, or following the action' },
   style: { type: 'enum', values: ['vale', 'classic'], default: 'vale', label: 'Style (the living vale, or the first version)' },
   valley: { type: 'enum', values: ['any', 'alpine', 'fjord', 'canyon', 'fen', 'ashland'], default: 'any', label: 'The land' },
   wrath: { type: 'number', min: 0, max: 3, default: 1, label: 'How restless the wyrm is' },
@@ -107,6 +108,7 @@ export const wyrmspireSkin = lazySkin(
 );
 
 export const DEEPHOLD_SCHEMA = {
+  camera: { type: 'enum', values: ['drift', 'still', 'director'], default: 'drift', label: 'Camera: the whole scene drifting in for big moments, perfectly still, or following the action' },
   style: { type: 'enum', values: ['kingdom', 'classic'], default: 'kingdom', label: 'Style (a range of rival holds, or the single hold)' },
   holds: { type: 'enum', values: ['any', '2', '3', '4'], default: 'any', label: 'How many holds (kingdom)' },
   mountain: { type: 'enum', values: ['any', 'iron', 'crystal', 'frost', 'ember', 'drowned'], default: 'any', label: 'The mountain' },
@@ -132,6 +134,7 @@ export const deepholdSkin = lazySkin(
 );
 
 export const LEYLINES_SCHEMA = {
+  camera: { type: 'enum', values: ['drift', 'still', 'director'], default: 'drift', label: 'Camera: the whole scene drifting in for big moments, perfectly still, or following the action' },
   style: { type: 'enum', values: ['realm', 'ink', 'classic'], default: 'realm', label: 'Style (the realm of towers and mages, the ink network, or the first version)' },
   land: { type: 'enum', values: ['any', 'isles', 'steppe', 'forest', 'desert', 'tundra', 'marsh', 'mountains'], default: 'any', label: 'The land' },
   scale: { type: 'number', min: 0.5, max: 2, default: 1, label: 'Scale (how much is going on)' },

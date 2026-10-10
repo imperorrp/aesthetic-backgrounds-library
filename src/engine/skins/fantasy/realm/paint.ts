@@ -10,7 +10,7 @@
  * night and the lights in it. Lights are cached glow sprites, drawn additively: no bloom.
  */
 import type { SkinHost, SkinInstance, Viewport } from '../../../core/skin';
-import { runWorld } from '../../../kit';
+import { createFraming, fitText, runWorld } from '../../../kit';
 import { fillCrisp, hash, hexA, mixRgb, typed } from '../../instruments/kit';
 import { serif } from '../names';
 import { createRealm, LAND_NAMES, SPELL_COLOR, type Land, type Order, type RealmWorld, type School, type Site, type Spell, type Tower, type Unit } from './sim';
@@ -37,13 +37,13 @@ const mixHex = (a: string, b: string, k: number) => {
   return `#${[r, g, bl].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
 };
 
-export type RealmPaintOptions = { land: string; scale: number; orders: number; storms: number; rifts: number; labels: boolean; hud: boolean };
+export type RealmPaintOptions = { land: string; scale: number; orders: number; storms: number; rifts: number; camera: string; labels: boolean; hud: boolean };
 
 export function mountRealm(host: SkinHost, o: RealmPaintOptions): SkinInstance {
   const { ctx } = host;
   let W = host.viewport.width;
   let H = host.viewport.height;
-  const world: RealmWorld = createRealm(host.config.seed, W, H, { land: o.land, orders: o.orders, storms: o.storms, rifts: o.rifts, scale: o.scale }, host.noise);
+  const world: RealmWorld = createRealm(host.config.seed, W, H, { land: o.land, orders: o.orders, storms: o.storms, rifts: o.rifts, scale: o.scale, camera: o.camera }, host.noise);
   const { GW, GH, CELL, cols, rows } = world;
   // The ground colours: the land blend, mixed.
   const mixBlend = (key: 'lo' | 'hi' | 'dry'): RGB => {
@@ -58,12 +58,15 @@ export function mountRealm(host: SkinHost, o: RealmPaintOptions): SkinInstance {
   const ley = LEY_COLOR[world.land];
 
   // ---- the camera --------------------------------------------------------------------------------
-  const cam = { x: GW / 2, y: GH / 2, zoom: 0.6 };
+  // The whole realm, still or drifting in for the big moments; or the old director's camera.
+  const framing = o.camera === 'director' ? null : createFraming(o.camera === 'still' ? 'still' : 'drift', world);
+  const cam = framing ? framing.cam : { x: GW / 2, y: GH / 2, zoom: 0.6 };
   const minZoom = () => Math.max(W / GW, H / GH);
   let Z = 1;
   const SX = (x: number) => (x - cam.x) * cam.zoom + W / 2;
   const SY = (y: number) => (y - cam.y) * cam.zoom + H / 2;
   function camera(dt: number) {
+    if (framing) return framing.update(dt, world.t, world.director, W, H);
     const s = world.director.shot;
     const zoom = Math.max(minZoom(), Math.min(2.2, s.zoom));
     cam.zoom += (zoom - cam.zoom) * Math.min(1, dt * 0.5);
@@ -1347,7 +1350,7 @@ export function mountRealm(host: SkinHost, o: RealmPaintOptions): SkinInstance {
     ctx.textAlign = 'left';
     ctx.font = serif(13);
     ctx.fillStyle = hexA('#ece4d4', 0.9 * level);
-    fillCrisp(ctx, `${LAND_NAMES[world.land]} · THE LINES OF ${world.name.toUpperCase()}${world.converging ? ' · THE MOONS CONVERGE' : ''}`, 16, 26);
+    fillCrisp(ctx, fitText(ctx, `${LAND_NAMES[world.land]} · THE LINES OF ${world.name.toUpperCase()}${world.converging ? ' · THE MOONS CONVERGE' : ''}`, (W >= 980 ? W * 0.6 : W - 44)), 16, 26);
     ctx.font = serif(11);
     live.forEach((ord: Order, k) => {
       const y = 42 + k * 14;
@@ -1359,22 +1362,22 @@ export function mountRealm(host: SkinHost, o: RealmPaintOptions): SkinInstance {
       const mages = world.units.filter((u) => u.alive && u.order === ord.id && (u.kind === 'archmage' || u.kind === 'mage' || u.kind === 'apprentice')).length;
       ctx.fillStyle = hexA(ord.war >= 0 ? '#fca5a5' : '#b8b2a8', 0.9 * level);
       const war = ord.war >= 0 && world.orders[ord.war]?.alive ? ` · AT WAR WITH ${world.orders[ord.war].name}` : '';
-      fillCrisp(ctx, `${ord.name} · ${SCHOOL_NAME[ord.school]} · ${ord.archmage} · ${n} TOWERS · ${mages} MAGES${war}`, 28, y);
+      fillCrisp(ctx, fitText(ctx, `${ord.name} · ${SCHOOL_NAME[ord.school]} · ${ord.archmage} · ${n} TOWERS · ${mages} MAGES${war}`, (W >= 980 ? W * 0.6 : W - 44) - 12), 28, y);
     });
     ctx.font = serif(11, true);
     ctx.fillStyle = hexA('#b8b2a8', 0.7 * level);
-    fillCrisp(ctx, `This realm holds ${world.cast.slice(0, 7).join(', ')}.`, 16, 48 + live.length * 14);
+    fillCrisp(ctx, fitText(ctx, `This realm holds ${world.cast.slice(0, 7).join(', ')}.`, (W >= 980 ? W * 0.6 : W - 44)), 16, 48 + live.length * 14);
     ctx.textAlign = 'right';
     ctx.font = serif(11);
     ctx.fillStyle = hexA('#fde68a', 0.75 * level);
-    world.orders.flatMap((x) => x.artifacts.map((a) => `${a}, HELD BY ${x.name}`)).slice(-3).forEach((a, k) => fillCrisp(ctx, a, W - 16, 26 + k * 15));
+    if (W >= 980) world.orders.flatMap((x) => x.artifacts.map((a) => `${a}, HELD BY ${x.name}`)).slice(-3).forEach((a, k) => fillCrisp(ctx, fitText(ctx, a, W * 0.34), W - 16, 26 + k * 15));
     ctx.textAlign = 'left';
     ctx.font = serif(12, true);
     const lines = world.chronicle.slice(-3);
     lines.forEach((l, i) => {
       const age = t - l.t;
       ctx.fillStyle = hexA('#ece4d4', Math.min(1, age * 2) * (i === lines.length - 1 ? 0.9 : 0.55) * level);
-      fillCrisp(ctx, typed(l.text, age, 50, t), 16, H - 16 - (lines.length - 1 - i) * 17);
+      fillCrisp(ctx, fitText(ctx, typed(l.text, age, 50, t), W - 32), 16, H - 16 - (lines.length - 1 - i) * 17);
     });
     ctx.restore();
   }

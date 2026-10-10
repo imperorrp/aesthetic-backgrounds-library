@@ -28,7 +28,9 @@ const server = await createServer({
   configFile: false,
   logLevel: 'error',
   appType: 'custom',
-  server: { middlewareMode: true, hmr: false },
+  server: { middlewareMode: true, hmr: false, ws: false },
+  // Only SSR-loads source; no dependency scan over the HTML (the examples import the published package).
+  optimizeDeps: { noDiscovery: true, include: [] },
 });
 
 let failed = false;

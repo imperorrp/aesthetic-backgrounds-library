@@ -344,7 +344,10 @@ export const sonarSkin: BackgroundSkin<Partial<Record<keyof typeof schema, unkno
             ctx.lineTo(x, y - 5);
             ctx.stroke();
             ctx.fillStyle = hexA(ink, 0.75 * level * life);
-            fillCrisp(ctx, `S${c.id} ${c.kind}`, x + 4, y);
+            // Flip to the left of the trace near the right edge, so a label never runs off screen.
+            const tag = `S${c.id} ${c.kind}`;
+            const tw = ctx.measureText(tag).width;
+            fillCrisp(ctx, tag, x + 4 + tw > area.x + area.w - 2 ? x - 4 - tw : x + 4, y);
           }
         }
 

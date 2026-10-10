@@ -29,7 +29,7 @@ const LOOKS: Record<Land, LandLook> = {
 };
 
 export function mount(host: SkinHost): SkinInstance {
-  const o = resolveOptions(LEYLINES_SCHEMA, host.options) as { style: string; land: string; scale: number; orders: number; storms: number; rifts: number; labels: boolean; hud: boolean };
+  const o = resolveOptions(LEYLINES_SCHEMA, host.options) as { style: string; land: string; scale: number; orders: number; storms: number; rifts: number; camera: string; labels: boolean; hud: boolean };
   // The ink world is the default; the first version stays as `style: 'classic'`.
   if (o.style === 'ink') return mountInk(host, o);
   if (o.style !== 'classic') return mountRealm(host, o);

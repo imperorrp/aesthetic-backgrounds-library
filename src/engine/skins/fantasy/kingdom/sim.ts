@@ -26,7 +26,7 @@
  */
 import { forkRng, type Rng } from '../../../rng';
 import { createBus, type Bus } from '../../../sim/bus';
-import { compose, createDirector, createGenome, ARCS, type Director, type Genome } from '../../../kit';
+import { compose, createDirector, createGenome, ARCS, WORLD_SCALE, type Director, type Genome } from '../../../kit';
 import { titled } from '../names';
 import { KINGDOM_CAST, KINGDOM_RULE } from './cast';
 
@@ -81,7 +81,7 @@ export type Label = { text: string; x: number; y: number; color: string; t0: num
 export type Highway = { a: number; b: number; floor: number; c0: number; c1: number; open: boolean };
 export type Dragon = { x: number; y: number; vx: number; vy: number; hp: number; target: number; t0: number; state: 'come' | 'burn' | 'leave' | 'fall'; breathing: boolean; wing: number; name: string; color: number };
 
-export type KingdomOptions = { mountain: string; holds: number | string; hazards: number; below: string; scale: number };
+export type KingdomOptions = { mountain: string; holds: number | string; hazards: number; below: string; scale: number; camera?: string };
 
 export type KingdomWorld = {
   t: number; W: number; H: number; GW: number; GH: number; CELL: number; cols: number; rows: number; bus: Bus; director: Director;
@@ -125,9 +125,15 @@ export function createKingdom(seed: string | number, W: number, H: number, opts:
   const scale = Math.max(0.5, Math.min(2, opts.scale ?? 1));
   const castDrawn = compose(g.fork('cast'), { mountain, hazards: hz, below: opts.below ?? 'any' }, KINGDOM_CAST, KINGDOM_RULE);
   const drew = (id: string) => castDrawn.some((c) => c.def.id === id);
-  const CELL = Math.max(5, Math.round(H / 105));
-  const cols = Math.ceil((W * g.range(2.4, 3.3) * Math.sqrt(scale)) / CELL);
-  const rows = Math.ceil((H * g.range(2.0, 2.5)) / CELL);
+  // The whole range on screen (the default): the world in the screen's proportions, a little
+  // larger; a bigger `scale` means smaller cells, not a world off the edge. Or the old range,
+  // two to three screens wide, for the director's camera to pan over.
+  const whole = opts.camera !== 'director';
+  const wide = g.range(2.4, 3.3);
+  const deep = g.range(2.0, 2.5);
+  const CELL = whole ? Math.max(4, Math.round(H / (105 * Math.sqrt(scale)))) : Math.max(5, Math.round(H / 105));
+  const cols = whole ? Math.ceil((W * WORLD_SCALE) / CELL) : Math.ceil((W * wide * Math.sqrt(scale)) / CELL);
+  const rows = whole ? Math.ceil((H * WORLD_SCALE) / CELL) : Math.ceil((H * deep) / CELL);
   const N = cols * rows;
   const mat = new Uint8Array(N);
   const water = new Float32Array(N);
@@ -213,7 +219,9 @@ export function createKingdom(seed: string | number, W: number, H: number, opts:
   const quake = (k: number) => (world.quake = Math.max(world.quake, k));
 
   // ---- the range -----------------------------------------------------------------------------------
-  const nHolds = Math.max(2, Math.min(4, Number(opts.holds) > 0 ? Math.round(Number(opts.holds)) : [2, 3, 4][Number(g.weighted({ 0: 1, 1: 2.2, 2: 1.3 }))]));
+  // As many holds as fit side by side (one on a phone), up to what was asked or drawn.
+  const room = Math.max(1, Math.floor(cols / 62));
+  const nHolds = Math.max(1, Math.min(4, room, Number(opts.holds) > 0 ? Math.round(Number(opts.holds)) : [2, 3, 4][Number(g.weighted({ 0: 1, 1: 2.2, 2: 1.3 }))]));
   const baseR = Math.round(rows * 0.24);
   const peaks: [number, number, number][] = [];
   for (let k = 0; k < nHolds; k++) peaks.push([((k + 0.5) / nHolds) * cols + g.normal(0, cols * 0.03), baseR - rows * g.range(0.12, 0.2), cols * g.range(0.22, 0.32) / nHolds * 1.6]);

@@ -19,3 +19,4 @@ export * from './light';
 export * from './director';
 export * from './caption';
 export * from './run';
+export * from './framing';
