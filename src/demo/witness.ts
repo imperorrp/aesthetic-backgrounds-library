@@ -442,7 +442,8 @@ export type JournalData = {
   v: 1;
   sightings: Record<string, Record<string, Sighting>>;
   chronicle: ChronicleEntry[];
-  prefs: { away: boolean; announce: boolean };
+  /** `moments`: keep a picture and a clip of each first sighting (uncommon or rarer). */
+  prefs: { away: boolean; moments: boolean };
 };
 
 export type Witnessed = { sight: Sight; first: boolean; entry?: ChronicleEntry };
@@ -452,14 +453,15 @@ const CHRONICLE_CAP = 250;
 /** Repeats of the same thing within this many sim seconds fold into one line. */
 const FOLD_SECONDS = 25;
 
-const empty = (): JournalData => ({ v: 1, sightings: {}, chronicle: [], prefs: { away: true, announce: true } });
+const empty = (): JournalData => ({ v: 1, sightings: {}, chronicle: [], prefs: { away: true, moments: true } });
 
 function load(storage: Storage | null): JournalData {
   if (!storage) return empty();
   try {
     const raw = JSON.parse(storage.getItem(KEY) ?? 'null') as JournalData | null;
     if (!raw || raw.v !== 1) return empty();
-    return { ...empty(), ...raw, prefs: { ...empty().prefs, ...raw.prefs } };
+    const { away, moments } = { ...empty().prefs, ...raw.prefs };
+    return { ...empty(), ...raw, prefs: { away, moments } };
   } catch {
     return empty();
   }
@@ -566,19 +568,24 @@ export function chronicleText(entries: readonly ChronicleEntry[], worldName: (id
     .join('\n');
 }
 
-/**
- * What happened while you were away, in a sentence: the rarest things first, counted.
- * `found` is a list of sights in the order they happened.
- */
-export function awaySummary(found: readonly Sight[], max = 4): string {
-  if (!found.length) return 'Nothing much. It was quiet.';
+/** What happened, counted: the rarest first, then the most frequent. */
+export function awayTally(found: readonly Sight[]): { sight: Sight; n: number }[] {
   const counts = new Map<string, { sight: Sight; n: number }>();
   for (const x of found) {
     const c = counts.get(x.type);
     if (c) c.n++;
     else counts.set(x.type, { sight: x, n: 1 });
   }
-  const ranked = [...counts.values()].sort((a, b) => RARITY_ORDER.indexOf(b.sight.rarity) - RARITY_ORDER.indexOf(a.sight.rarity) || b.n - a.n);
+  return [...counts.values()].sort((a, b) => RARITY_ORDER.indexOf(b.sight.rarity) - RARITY_ORDER.indexOf(a.sight.rarity) || b.n - a.n);
+}
+
+/**
+ * What happened while you were away, in a sentence: the rarest things first, counted.
+ * `found` is a list of sights in the order they happened.
+ */
+export function awaySummary(found: readonly Sight[], max = 4): string {
+  if (!found.length) return 'Nothing much. It was quiet.';
+  const ranked = awayTally(found);
   const parts = ranked.slice(0, max).map(({ sight, n }) => (n > 1 ? `${sight.name.toLowerCase()} ×${n}` : sight.name.toLowerCase()));
   const more = ranked.length - max;
   const text = parts.join(', ') + (more > 0 ? `, and ${more} more` : '');

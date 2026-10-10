@@ -41,7 +41,8 @@ import { listMechanics, type MechanicRef } from '../engine/skins/void-tactical/m
 import { instrumentSkins } from '../engine/skins/instruments';
 import { aiPrompt, compactConfig } from './ai-prompt';
 import { Icon } from './icons';
-import { HappeningNow, JournalTab, ToastStack, useJournal, useJournalData, useWitness, type FeedItem, type Toast } from './journal-ui';
+import { HappeningNow, JournalTab, MomentViewer, WelcomeBack, keepMoment, useJournal, useJournalData, useMomentList, useMoments, useWitness, type Away, type FeedItem } from './journal-ui';
+import type { Moment } from './moments';
 import { SIGHTS, clock, type Sighting } from './witness';
 import { offlineWallpaperHtml, wallpaperEngineProject, zip } from './wallpaper-files';
 import { wallpaperQuery, type WallpaperSettings } from '../wallpaper/codec';
@@ -101,6 +102,7 @@ const SHORTCUTS: [string, string][] = [
   ['1 2 3', 'Speed ×1, ×4, ×16'],
   ['M', 'Sound on or off'],
   ['J', 'Journal'],
+  ['K', 'Keep this moment (a picture and a clip)'],
   ['G', 'Gallery'],
   ['H', 'Hide or show the studio'],
   ['Ctrl Z', 'Undo (Shift for redo)'],
@@ -316,11 +318,24 @@ export default function DemoPage() {
   /** The journal's id for what is on screen; null for backgrounds that keep none (presets, custom packs). */
   const world = studio.source === 'void-tactical' ? (studio.skinOptions.pack ? null : activeUniverse) : SIGHTS[studio.source] ? studio.source : null;
   const [feed, setFeed] = useState<FeedItem[]>([]);
-  const [toasts, setToasts] = useState<Toast[]>([]);
+  const moments = useMoments();
+  const momentList = useMomentList(moments);
+  const unseenMoments = momentList.filter((m) => !m.seen).length;
+  const [away, setAway] = useState<Away | null>(null);
+  const [viewing, setViewing] = useState<Moment | null>(null);
+  const [keptNote, setKeptNote] = useState<string | null>(null);
   const pushFeed = useCallback((item: FeedItem) => setFeed((f) => [item, ...f].slice(0, 6)), []);
-  const pushToast = useCallback((t: Toast) => setToasts((all) => [...all.filter((x) => x.kind !== t.kind), t].slice(-2)), []);
-  const dismissToast = useCallback((key: number) => setToasts((all) => all.filter((x) => x.key !== key)), []);
-  useWitness({ handle, journal, world, source: studio.source, seed: studio.seed, speed, onFeed: pushFeed, onToast: pushToast });
+  const clockRef = useWitness({ handle, journal, moments, world, source: studio.source, seed: studio.seed, speed, onFeed: pushFeed, onAway: setAway });
+  /** K: keep what is on screen now. */
+  const keepNow = () => {
+    if (!handle) return;
+    const t = clockRef.current;
+    setKeptNote('Keeping this moment…');
+    void keepMoment(handle, moments, { world: world ?? studio.source, source: studio.source, seed: studio.seed, t, kind: 'kept', name: `${title} at ${clock(t)}` }, { clip: true, seen: true }).then((m) => {
+      setKeptNote(m ? 'Kept. It is in the journal.' : 'This background cannot be pictured.');
+      window.setTimeout(() => setKeptNote(null), 1800);
+    });
+  };
   useEffect(() => {
     setFeed([]);
   }, [handle]);
@@ -696,11 +711,11 @@ export default function DemoPage() {
     goToCard(ALL_CARDS[(i + dir + ALL_CARDS.length) % ALL_CARDS.length]);
   };
 
-  /** Back to where a sighting first happened: its world and seed, from the start, skipped to just before. */
-  const revisit = (w: string, s: Sighting) => {
+  /** A sighting with no picture: replay its world and seed from the start, to just before it. */
+  const replay = (w: string, s: Sighting) => {
     const card = cardForWorld(w);
     if (!card) return;
-    pendingSkip.current = Math.max(0, s.t - 8);
+    pendingSkip.current = Math.max(0, s.t - 6);
     setMountNonce((n) => n + 1);
     goToCard(card, s.seed);
   };
@@ -721,12 +736,15 @@ export default function DemoPage() {
     },
     g: () => setGalleryOpen((o) => !o),
     '?': () => setShortcutsOpen((o) => !o),
+    k: () => keepNow(),
     a: () => setAboutOpen((o) => !o),
     '/': () => setShortcutsOpen((o) => !o),
     Escape: () => {
       setGalleryOpen(false);
       setShortcutsOpen(false);
       closeAbout();
+      setAway(null);
+      setViewing(null);
     },
   };
 
@@ -893,8 +911,19 @@ export default function DemoPage() {
         />
       )}
 
-      {skipNote && <div className="demo-skip">{skipNote}</div>}
-      <ToastStack toasts={toasts} onDismiss={dismissToast} onOpenJournal={openJournal} />
+      {(skipNote || keptNote) && <div className="demo-skip">{skipNote ?? keptNote}</div>}
+      {away && !aboutOpen && (
+        <WelcomeBack
+          away={away}
+          worldName={worldName}
+          onClose={() => setAway(null)}
+          onOpenJournal={() => {
+            setAway(null);
+            openJournal();
+          }}
+        />
+      )}
+      {viewing && <MomentViewer key={viewing.id} moment={viewing} moments={moments} worldName={worldName} onClose={() => setViewing(null)} />}
       {shortcutsOpen && <ShortcutsCard onClose={() => setShortcutsOpen(false)} />}
       {aboutOpen && <AboutCard onClose={closeAbout} />}
 
@@ -975,6 +1004,11 @@ export default function DemoPage() {
                     <small>
                       {journal.progress(world).seen}/{journal.progress(world).total}
                     </small>
+                  )}
+                  {id === 'journal' && tab !== 'journal' && unseenMoments > 0 && (
+                    <span className="demo-new" title={`${unseenMoments} new moment${unseenMoments > 1 ? 's' : ''} in the journal`}>
+                      new
+                    </span>
                   )}
                 </button>
               ))}
@@ -1215,10 +1249,24 @@ export default function DemoPage() {
               </>
             )}
 
-            {tab === 'journal' && <JournalTab journal={journal} data={journalData} world={world} worldName={worldName} onRevisit={revisit} onGoWorld={(w) => {
-              const c = cardForWorld(w);
-              if (c) goToCard(c);
-            }} />}
+            {tab === 'journal' && (
+              <JournalTab
+                journal={journal}
+                data={journalData}
+                moments={moments}
+                world={world}
+                source={studio.source}
+                seed={studio.seed}
+                clockRef={clockRef}
+                worldName={worldName}
+                onOpenMoment={setViewing}
+                onReplay={replay}
+                onGoWorld={(w) => {
+                  const c = cardForWorld(w);
+                  if (c) goToCard(c);
+                }}
+              />
+            )}
 
             {tab === 'share' && (
               <>
@@ -1357,6 +1405,11 @@ export default function DemoPage() {
             {paused && <em>paused</em>}
             {speed > 1 && <em>×{speed}</em>}
           </button>
+          {unseenMoments > 0 && (
+            <button type="button" className="demo-pill demo-pill-new" onClick={openJournal} title="New moments in the journal (J)">
+              {unseenMoments} new in the journal
+            </button>
+          )}
           <div className="demo-fab">
             <button type="button" className="demo-icon-btn" onClick={() => setAboutOpen(true)} title="About Vivarium (A)" aria-label="About Vivarium">
               <Icon name="info" />

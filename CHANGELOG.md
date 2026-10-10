@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Moments, and no more popups.** First sightings no longer pop up over the world. Instead the journal keeps a picture and a two-second GIF clip of each uncommon-or-rarer first, or of anything when you press **K**. A moment opens large, with its picture, its clip, a link (the seed replayed to just before, with an honest note on how close a replay comes), and downloads. *Revisit* is gone; sightings with no picture offer *Replay*. A *new* mark on the Journal tab (and beside the pill when the studio is hidden) says when there is something to see.
+  - **This seed's history**: a ribbon of the current seed's events along its time, moments as rings.
+  - **While you were away** is a card now, not a toast: what happened, counted and ranked, over a picture of the world as it is now.
+  - A small GIF encoder (`src/demo/gif.ts`: median cut, LZW), and moment pictures in IndexedDB.
 - **The whole scene, on any screen.** Wyrmspire, Deephold and Leylines now show their whole world by default. Each is generated in the screen's proportions, a little larger than the screen. On a phone that means a smaller, complete world (one hold, fewer villages, a smaller realm), not one cut off at the sides.
   - New `camera` option: `drift` (the default) eases in slowly for the biggest moments only, `still` never moves, and `director` keeps the old wider world and its shot-by-shot camera (`kit/framing`).
   - HUD lines shorten to fit narrow screens; side columns step aside below 980 px. Shieldwall's score moves under the title on a phone, and Sonar's contact labels flip left near the edge.

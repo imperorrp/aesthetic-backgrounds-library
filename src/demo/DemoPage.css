@@ -811,25 +811,41 @@
 
 .demo-sightings li,
 .demo-chronicle li,
-.demo-toast {
+.demo-away-list li,
+.demo-moments li,
+.demo-moment-card,
+.demo-ribbon-tick,
+.demo-ribbon-moment {
   --r: var(--r-common);
 }
 
 .demo-sightings li.is-uncommon,
 .demo-chronicle li.is-uncommon,
-.demo-toast.is-uncommon {
+.demo-away-list li.is-uncommon,
+.demo-moments li.is-uncommon,
+.demo-moment-card.is-uncommon,
+.demo-ribbon-tick.is-uncommon,
+.demo-ribbon-moment.is-uncommon {
   --r: var(--r-uncommon);
 }
 
 .demo-sightings li.is-rare,
 .demo-chronicle li.is-rare,
-.demo-toast.is-rare {
+.demo-away-list li.is-rare,
+.demo-moments li.is-rare,
+.demo-moment-card.is-rare,
+.demo-ribbon-tick.is-rare,
+.demo-ribbon-moment.is-rare {
   --r: var(--r-rare);
 }
 
 .demo-sightings li.is-legendary,
 .demo-chronicle li.is-legendary,
-.demo-toast.is-legendary {
+.demo-away-list li.is-legendary,
+.demo-moments li.is-legendary,
+.demo-moment-card.is-legendary,
+.demo-ribbon-tick.is-legendary,
+.demo-ribbon-moment.is-legendary {
   --r: var(--r-legendary);
 }
 
@@ -908,86 +924,282 @@
   color: var(--ink-dim);
 }
 
-/* ---- toasts, the pill, overlays ----------------------------------------------------------- */
+/* ---- moments, the ribbon, coming back ------------------------------------------------- */
 
-.demo-toasts {
-  position: fixed;
-  left: 1rem;
-  bottom: 1rem;
-  z-index: 25;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: min(22rem, calc(100vw - 2rem));
+.demo-new {
+  margin-left: 0.35rem;
+  padding: 0 0.3rem;
+  font: 600 10px var(--ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bg, #05070b);
+  background: var(--accent);
+  border-radius: 4px;
+  vertical-align: middle;
 }
 
-.demo-toast {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.7rem 0.8rem 0.55rem;
-  font-size: 13px;
-  background: var(--glass);
+.demo-moments {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.6rem, 1fr));
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.demo-moments button {
+  position: relative;
+  display: grid;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0 0 0.35rem;
+  overflow: hidden;
+  font: 12px var(--ui);
+  text-align: left;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--line);
-  border-left: 3px solid var(--r);
-  border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  animation: demo-toast-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  border-bottom: 2px solid var(--r);
+  border-radius: 8px;
+  cursor: pointer;
 }
 
-.demo-toast.is-away {
+.demo-moments li.is-kept {
   --r: var(--accent);
 }
 
-.demo-toast-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.6rem;
+.demo-moments button:hover,
+.demo-moments button:focus-visible {
+  border-color: var(--line-strong);
+  outline: none;
 }
 
-.demo-toast strong {
-  font-size: 13.5px;
+.demo-moments img,
+.demo-moment-empty {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.demo-moments .demo-new {
+  position: absolute;
+  top: 0.3rem;
+  left: 0;
+}
+
+.demo-moment-name,
+.demo-moment-meta {
+  padding: 0 0.4rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.demo-moment-meta {
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+.demo-ribbon {
+  margin-top: 0.2rem;
+}
+
+.demo-ribbon-track {
+  position: relative;
+  height: 2.1rem;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) bottom / 100% 1px no-repeat;
+}
+
+.demo-ribbon-tick {
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  height: 0.55rem;
+  margin-left: -1px;
+  background: var(--r);
+  border-radius: 1px;
+  opacity: 0.75;
+}
+
+.demo-ribbon-tick.is-uncommon {
+  height: 0.8rem;
+}
+
+.demo-ribbon-tick.is-rare {
+  height: 1.05rem;
+  opacity: 0.9;
+}
+
+.demo-ribbon-tick.is-legendary {
+  height: 1.3rem;
+  opacity: 1;
+}
+
+.demo-ribbon-tick.is-away {
+  opacity: 0.4;
+}
+
+.demo-ribbon-moment {
+  position: absolute;
+  top: 0;
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-left: -0.3rem;
+  padding: 0;
+  background: var(--glass);
+  border: 1.5px solid var(--r);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.demo-ribbon-moment.is-kept {
+  --r: var(--accent);
+}
+
+.demo-ribbon-moment:hover,
+.demo-ribbon-moment:focus-visible {
+  background: var(--r);
+  outline: none;
+}
+
+.demo-ribbon-now {
+  position: absolute;
+  bottom: -0.15rem;
+  width: 1px;
+  height: 1.7rem;
+  background: var(--ink);
+  opacity: 0.35;
+}
+
+.demo-ribbon-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.2rem;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+.demo-shortcuts-card.demo-moment-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(15rem, 1fr);
+  gap: 1rem;
+  width: min(62rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+}
+
+.demo-moment-frame {
+  position: relative;
+  align-self: start;
+  display: grid;
+  place-items: center;
+  max-height: calc(100vh - 4rem);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.demo-moment-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.demo-moment-toggle {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background: var(--glass);
+}
+
+.demo-moment-text p {
+  margin: 0 0 0.6rem;
+}
+
+.demo-moment-text .demo-h {
+  margin: 0;
+  font-size: 16px;
+}
+
+.demo-moment-text .demo-sighting-meta {
+  color: var(--r);
+}
+
+.demo-moment-detail {
+  display: block;
+  margin-bottom: 0.6rem;
+  color: var(--ink-dim);
+}
+
+.demo-btn-primary {
+  color: var(--bg, #05070b);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.demo-btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.demo-shortcuts-card.demo-away-card {
+  width: min(28rem, calc(100vw - 2rem));
+}
+
+.demo-away-picture {
+  display: block;
+  width: calc(100% + 2.8rem);
+  margin: -1.3rem -1.4rem 1rem;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 14px 14px 0 0;
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+
+.demo-away-list {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.demo-away-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding: 0.25rem 0;
+}
+
+.demo-away-list li .demo-rarity-dot {
+  background: var(--r);
+}
+
+.demo-away-list b {
   font-weight: 600;
   color: var(--ink);
 }
 
-.demo-toast-head em {
-  flex-shrink: 0;
-  font-size: 11.5px;
+.demo-away-list small {
+  color: var(--ink-dim);
+}
+
+.demo-away-list em {
+  display: block;
   font-style: normal;
-  color: var(--r);
-}
-
-.demo-toast > span:nth-child(2) {
+  font-size: 12.5px;
   color: var(--ink-dim);
 }
 
-.demo-toast-actions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.2rem;
-}
-
-.demo-toast-actions button {
-  padding: 0;
-  font: 12px var(--ui);
-  color: var(--accent);
-  background: none;
-  border: 0;
-  cursor: pointer;
-}
-
-.demo-toast-actions button:last-child {
+.demo-away-more {
+  padding-left: 1.1rem !important;
+  font-size: 12.5px;
   color: var(--ink-dim);
 }
 
-@keyframes demo-toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-}
+/* ---- the pill, overlays ---------------------------------------------------------------- */
 
 .demo-pill {
   position: fixed;
@@ -1013,6 +1225,12 @@
 .demo-pill:hover,
 .demo-pill:focus-visible {
   opacity: 1;
+}
+
+.demo-pill-new {
+  top: 3.5rem;
+  font-size: 12px;
+  color: var(--accent);
 }
 
 .demo-pill em {
@@ -1475,16 +1693,14 @@
     max-height: 72vh;
   }
 
-  .demo-toasts {
-    bottom: auto;
-    top: 0.75rem;
+  .demo-shortcuts-card.demo-moment-card {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .demo-world img,
   .demo-feed li,
-  .demo-toast,
   .demo-pill {
     animation: none;
     transition: none;

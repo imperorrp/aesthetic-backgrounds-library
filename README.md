@@ -402,15 +402,17 @@ Explosions boom where they happen across the screen. A raid brings a siren and a
 
 ## The journal
 
-Things happen whether you are watching or not, so the studio keeps a journal.
+Things happen whether you are watching or not, so the studio keeps a journal. It keeps it quietly: nothing pops up over the world while it plays. The worlds tell their own story on the canvas, and the Journal tab gets a *new* mark when there is something to look at.
 
 ![The studio over the Cradle of Suns, its Journal tab open: ten of eleven sightings found, from common collapses to a legendary supernova, with progress for every world below](docs/media/studio-journal.jpg)
 
-- **Sightings.** Every world has its own list of things that can happen in it, from common to legendary: a supernova in the Cradle, a gate surge in the Void, Mayday on the approach radar. The first time you see one, it is kept with its seed and the moment, and **Revisit** takes you back to that seed, skipped to just before. The everyday ones are named up front; the rare ones stay hidden until you have seen them.
+- **Sightings.** Every world has its own list of things that can happen in it, from common to legendary: a supernova in the Cradle, a gate surge in the Void, Mayday on the approach radar. The first time you see one, it is kept with its seed and the time. The everyday ones are named up front; the rare ones stay hidden until you have seen them.
+- **Moments.** The first time something uncommon or rarer happens, the journal keeps a picture of it and a two-second clip. Press **K** to keep one yourself. Open a moment to see it large, download the picture (JPEG) or the clip (GIF), or copy its link. The link replays the seed from the start to just before the moment. A replay comes close to the picture, but not always frame for frame: worlds are made for their window size, and live frames are not fixed steps. The viewer says when your window differs from the one the moment was seen in.
+- **This seed's history.** A ribbon along the world's time: every chronicled event as a tick (taller for rarer), moments as rings you can open.
 - **The chronicle.** The uncommon and rarer events, written down as a line of history next to the map's own log line: *A ship fell behind.* `STRAGGLER · LANTERN 153 · ENGINE FAILURE`, then later *A tug went back for them, and brought them home.* `TUG 8 HAS THEM · LANTERN 153`. Copy it out as text.
-- **While you were away.** Leave the tab and come back, and the world catches up on what it missed (up to five minutes), then tells you: *They found us, ship lost ×6, straggler ×3, rescue ×2.*
+- **While you were away.** Leave the tab and come back, and the world catches up on what it missed (up to five minutes), then shows you what happened in a card, with a picture of the world as it is now: *They found us, ship lost ×6, straggler ×3, rescue ×2.*
 
-It all stays in your browser (localStorage). Press **J** in the studio.
+It all stays in your browser (localStorage; the pictures in IndexedDB, the last forty). Press **J** in the studio.
 
 ## As your wallpaper
 

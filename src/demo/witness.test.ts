@@ -66,11 +66,11 @@ describe('journal', () => {
     const storage = memoryStorage();
     const j = createJournal(storage);
     j.witness('undercity', 'breach', at(77, { source: 'undercity' }));
-    j.setPref('announce', false);
+    j.setPref('moments', false);
     await new Promise((r) => setTimeout(r, 900));
     const again = createJournal(storage);
     expect(again.data.sightings.undercity.breach.n).toBe(1);
-    expect(again.data.prefs).toEqual({ away: true, announce: false });
+    expect(again.data.prefs).toEqual({ away: true, moments: false });
     storage.setItem('bge.journal.v1', '{not json');
     expect(createJournal(storage).data.chronicle).toEqual([]);
   });
