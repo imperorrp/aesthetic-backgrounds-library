@@ -986,6 +986,18 @@ The repository ships a skill, `skills/background-designer/SKILL.md`, that turns 
 
 Claude Code picks it up from `.claude/skills/`. For other tools, paste the skill file and its `references/` into the agent's context. Every option is declared in a schema and every render is deterministic. So an agent can propose a `mount()` call, you can paste it, and the result is exactly what it described.
 
+## Making a world
+
+A *world* is a seeded simulation with a painter, built on the kit (`src/engine/kit`): the kind of thing Wyrmspire and Deephold are. [docs/AUTHORING.md](docs/AUTHORING.md) has the kit for making one: the bar a world must clear (the wallpaper test), a brief to fill in, and the house rules.
+
+```bash
+pnpm create-world tidepool --label "Tide pool"   # copies the template world (the Pond) and registers it
+pnpm world:check tidepool                        # busy, never quiet, varied by seed, replays, runs on a phone
+pnpm lab tidepool t=10,60,300,900                # look at it
+```
+
+`world:check` runs the world headless over four seeds for ten simulated minutes each and reports how soon the first event comes, events a minute, the longest quiet, how alike the seeds are, a replay, and a phone-sized run. A draft that is not registered yet works with `module=/src/.../index.ts`, in `world:check` and in the lab.
+
 ## Writing your own skin
 
 ```bash

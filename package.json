@@ -145,6 +145,8 @@
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "create-skin": "node scripts/create-skin.mjs",
+    "create-world": "node scripts/create-world.mjs",
+    "world:check": "node scripts/world-check.mjs",
     "skin:check": "node scripts/skin-check.mjs",
     "registry": "node scripts/build-registry.mjs",
     "registry:check": "node scripts/build-registry.mjs --check",

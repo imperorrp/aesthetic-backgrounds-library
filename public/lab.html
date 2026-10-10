@@ -13,6 +13,8 @@
         ?seek=RAID|TAKING%20FIRE&after=0.5,2,5&max=240   first log line matching a regex, then captures after it
         &crop=600,250,500,320                            zoom into a region (CSS px of the w x h stage)
         &w=1280&h=800&tile=0.5&cols=2&seed=orion-7&options={...}&palette=...
+        &module=/src/engine/skins/worlds/template/index.ts  register the skins a module exports first
+                                                         (a world not registered yet: the template, a draft)
         ?view=1                                          no sheet: the live page (canvas and DOM layers) is
                                                          shown, and window.__lab.goto(t) / .seek(regex, max)
                                                          move it; scripts/media.mjs screenshots it
@@ -27,9 +29,14 @@
     <div id="stage"></div>
     <canvas id="sheet"></canvas>
     <script type="module">
-      import { mount, createManualScheduler, getUniverse, loadUniverse, prepareVoidTactical, prepareUndercity, resolvePalette, getSkin } from '/src/lib.ts';
+      import { mount, createManualScheduler, getUniverse, loadUniverse, prepareVoidTactical, prepareUndercity, resolvePalette, getSkin, registerSkin } from '/src/lib.ts';
 
       const q = new URLSearchParams(location.search);
+      // A module's skins, registered before anything looks them up.
+      if (q.has('module')) {
+        const m = await import(/* @vite-ignore */ q.get('module'));
+        for (const v of Object.values(m)) if (v && typeof v === 'object' && typeof v.mount === 'function' && typeof v.id === 'string' && !getSkin(v.id)) registerSkin(v);
+      }
       const num = (k, d) => (q.has(k) ? Number(q.get(k)) : d);
       const skinId = q.get('skin') ?? 'void-tactical';
       const seed = q.get('seed') ?? 'orion-7';
