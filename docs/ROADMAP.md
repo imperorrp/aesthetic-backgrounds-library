@@ -465,6 +465,9 @@ Void-tactical's own evolution (factions, lanes, events, sensor model) has its ow
 
 ## To do later
 
+- **Per-style lazy loading.** Deephold, Leylines and Wyrmspire each ship every style in one chunk (58 to 88 KB gzipped). Let a world load only the style in use (an option-aware loader for `lazySkin`, with `prepare(options)`).
+- **Split the studio bundle.** The studio's main script is about 530 KB (176 KB gzipped). Code-split it, and load each world's audio palette with the world.
+- **A "how this was built" page.** Which models and prompts made which world, what failed, and the conventions they work to (the wallpaper test, the world kit).
 - **Camera in the big worlds (Wyrmspire, Deephold, Leylines).** The director's camera pans and zooms constantly and shows only part of each scene. The maintainer dislikes this (2026-10-06). Fix: show the whole scene by default (fit the world to the screen, or a fixed wide framing that pans very slowly at most), and make close-ups rare, slow, and optional (an option such as `camera: 'still' | 'drift' | 'director'`, default `still` or `drift`). Make sure the HUD and labels stay legible at the wide framing.
 
 ---

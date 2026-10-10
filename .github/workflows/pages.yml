@@ -1,8 +1,8 @@
 name: Showcase
 
+# The site is hosted on Vercel. This GitHub Pages mirror runs only when started by hand
+# (enable Pages for the repo first, or the deploy step fails).
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

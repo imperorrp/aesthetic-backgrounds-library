@@ -14,11 +14,13 @@ export default defineConfig({
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
-  // Missing snapshots are written rather than failed, so a new platform (CI's Linux vs
-  // a developer's Windows) bootstraps its own baselines on first run. Existing
-  // baselines for the current platform are compared strictly.
+  // Baselines are per platform: font rasterization differs between Windows and Linux, so
+  // a Windows baseline can never match a Linux render. The committed baselines (Windows,
+  // where they are made; the README and the gallery use them) live in `chromium/`; other
+  // platforms keep theirs in `chromium-<platform>/`. Missing snapshots are written rather
+  // than failed, so CI bootstraps its own on first run; existing ones compare strictly.
   updateSnapshots: 'missing',
-  snapshotPathTemplate: '{testDir}/__screenshots__/{projectName}/{arg}{ext}',
+  snapshotPathTemplate: process.platform === 'win32' ? '{testDir}/__screenshots__/{projectName}/{arg}{ext}' : '{testDir}/__screenshots__/{projectName}-{platform}/{arg}{ext}',
   expect: {
     toHaveScreenshot: { maxDiffPixelRatio: 0.005, animations: 'disabled' },
   },
