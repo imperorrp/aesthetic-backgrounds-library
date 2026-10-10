@@ -17,6 +17,7 @@
  * Time: a month every `MONTH` seconds.
  */
 import { forkRng, type Rng } from '../../rng';
+import { createGenome } from '../../kit/genome';
 import { createBus, type Bus } from '../../sim/bus';
 import type { Noise2D } from '../../noise';
 import { placeName, titled } from './names';
@@ -119,6 +120,20 @@ const ARMS: Realm['arms'][] = ['lion', 'tower', 'star', 'oak'];
 export function createTableWorld(seed: string | number, W: number, H: number, noise: Noise2D, opts: TableOptions): TableWorld {
   const bus = createBus(() => world.t);
   let r: Rng = forkRng(seed, 'table-0');
+  /**
+   * The seed's character: what kind of war this map keeps. A northern war has long winters;
+   * a southern one, none. Some councils are plagued by forgers, some lords turn their coats
+   * easily, some camps fall sick; most maps never see a dragon. Drawn from its own fork, so
+   * the map and the realms come out as before.
+   */
+  const character = createGenome(seed, 'table-character');
+  const climate = character.weighted({ temperate: 5, northern: 2, southern: 2 });
+  const winterMonths = climate === 'northern' ? new Set([10, 11, 0, 1, 2]) : climate === 'southern' ? new Set<number>() : WINTER;
+  const forgers = character.chance(0.6) ? 0.1 * character.lognormal(1, 0.6) : 0;
+  const sickly = character.chance(0.7) ? 0.04 * character.lognormal(1, 0.6) : 0;
+  const fickle = character.chance(0.6) ? 0.03 * character.lognormal(1, 0.6) : 0;
+  const dragons = character.chance(0.5) ? character.lognormal(1, 0.5) : 0;
+  const levies = character.lognormal(1, 0.3);
   let ids = 1;
   let off = 0;
   let nextMonth = MONTH;
@@ -390,7 +405,7 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
       const goal = enemy[0] ?? null;
       // A forgery: an enemy writes it, naming a town where its own strength waits.
       const foes = world.realms.filter((x) => x !== realm && !x.out);
-      const forger = foes.length && r() < 0.1 ? foes[Math.floor(r() * foes.length)] : null;
+      const forger = foes.length && r() < forgers ? foes[Math.floor(r() * foes.length)] : null;
       const trapAt = forger ? world.towns.filter((t) => t.owner === forger).sort((a, b) => garrison(b) - garrison(a))[0] ?? goal : goal;
       const dist = Math.hypot(to.x - seat.x, to.y - seat.y);
       world.dispatches.push({ id: ids++, realm, to, x: seat.x, y: seat.y, x0: seat.x, y0: seat.y, t0: world.t, dur: Math.max(2.4, dist / 95), forger, taken: null, takenAt: -1, opened: -1, goal: trapAt, seed: Math.floor(r() * 1e6) });
@@ -557,7 +572,7 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
     world.month = (world.month + 1) % 12;
     if (world.month === 0) world.year++;
     monthsAtWar++;
-    const winter = WINTER.has(world.month);
+    const winter = winterMonths.has(world.month);
     if (winter && !world.winter) {
       note('Winter quarters', world.W * 0.5, world.H * 0.86, '#334155', 'medium');
       emit('winter', world.W / 2, world.H / 2, 0.4);
@@ -572,13 +587,13 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
     for (const realm of world.realms) {
       if (realm.out || !realm.capital || realm.capital.owner !== realm) continue;
       const held = world.towns.filter((t) => t.owner === realm).length;
-      if (r() < 0.12 + held * 0.015 && live().filter((k) => k.realm === realm).length < 8) {
+      if (r() < (0.12 + held * 0.015) * levies && live().filter((k) => k.realm === realm).length < 8) {
         token(realm, realm.capital, 1 + Math.floor(r() * 2), r() < 0.35 ? 'horse' : 'foot');
         emit('levy', realm.capital.x, realm.capital.y, 0.25);
       }
     }
     // Now and then: plague in a camp, a town that turns its coat, a dragon.
-    if (r() < 0.04) {
+    if (r() < sickly) {
       const camp = live().filter((k) => k.strength > 1)[Math.floor(r() * live().length)];
       if (camp) {
         camp.strength -= 1;
@@ -586,7 +601,7 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
         note('Sickness in the camp', camp.x, camp.y + 32, '#3b2a1a', 'low');
         emit('sickness', camp.x, camp.y, 0.35);
       }
-    } else if (r() < 0.03) {
+    } else if (r() < fickle) {
       const t = world.towns.filter((x) => !x.capital && x.siege > 0)[0] ?? world.towns.filter((x) => !x.capital)[Math.floor(r() * world.towns.length)];
       const to = world.realms.filter((x) => t && x !== t.owner && !x.out)[0];
       if (t && to) {
@@ -596,7 +611,7 @@ export function createTableWorld(seed: string | number, W: number, H: number, no
         note(`${titled(t.name)} turns its coat`, t.x, t.y - 30, to.ink, 'high');
         emit('betrayal', t.x, t.y, 0.6);
       }
-    } else if (r() < 0.012 * opts.dragons && !world.dragon) {
+    } else if (r() < 0.012 * opts.dragons * dragons && !world.dragon) {
       const prey = world.towns[Math.floor(r() * world.towns.length)];
       if (prey) {
         const fromLeft = r() < 0.5;

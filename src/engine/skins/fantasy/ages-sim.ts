@@ -24,6 +24,7 @@
  * Time: `year` advances `speed` years per second.
  */
 import { forkRng, type Rng } from '../../rng';
+import { createGenome } from '../../kit/genome';
 import { createBus, type Bus } from '../../sim/bus';
 import { createHexGrid, type Cell, type HexGrid } from '../../sim/cells';
 import type { Noise2D } from '../../noise';
@@ -886,13 +887,44 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
     }
   }
 
+  /**
+   * Each age's land has its own troubles: one is plague country, the next is raided from the
+   * steppe, the next never sees a dragon. Drawn per age from its own fork of the seed, so the
+   * rest of the world draws the same as before.
+   */
+  // Which troubles a land knows at all is the seed's (its character, age after age); how
+  // often each comes changes a little with every age.
+  const character = createGenome(seed, 'ages-character');
+  const has = { plague: character.chance(0.65), horde: character.chance(0.6), volcano: character.chance(0.45), flood: character.chance(0.55), dragon: character.chance(0.55) };
+  const temperFor = (gen: number) => {
+    const g = createGenome(seed, `ages-troubles-${gen}`);
+    const keep = (on: boolean, w: number) => (on ? w * g.lognormal(1, 0.45) : 0);
+    const w = { plague: keep(has.plague, 0.18), fire: keep(true, 0.32), horde: keep(has.horde, 0.22), schism: keep(true, 0.08), volcano: keep(has.volcano, 0.05), flood: keep(has.flood, 0.05), dragon: keep(has.dragon, 0.1) };
+    const total = Object.values(w).reduce((s, v) => s + v, 0);
+    return Object.fromEntries(Object.entries(w).map(([k, v]) => [k, v / total])) as typeof w;
+  };
+  let temper = temperFor(0);
+  let temperGen = 0;
   let nextTrouble = 30;
   function troubles() {
     if (world.year < nextTrouble) return;
     nextTrouble = world.year + (25 + r() * 40) / Math.max(0.2, opts.disasters);
+    if (temperGen !== world.gen) {
+      temperGen = world.gen;
+      temper = temperFor(world.gen);
+    }
     const live = world.towns.filter((t) => !t.ruined);
-    const roll = r();
-    if (roll < 0.18 && live.length > 4) {
+    // One roll against this land's own odds.
+    let roll = r();
+    const pickTrouble = (): keyof typeof temper => {
+      for (const [k, v] of Object.entries(temper) as [keyof typeof temper, number][]) {
+        roll -= v;
+        if (roll <= 0) return k;
+      }
+      return 'fire';
+    };
+    const kind = pickTrouble();
+    if (kind === 'plague' && live.length > 4) {
       // Plague, carried by the roads, from some crowded town.
       const crowded = live.filter((t) => t.tier >= 2 && t.plague === 0);
       const start = crowded[Math.floor(r() * crowded.length)];
@@ -909,7 +941,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       emit('plague', start.tile.x, start.tile.y, 0.7);
       chronicle(`Plague came to ${T(start.name)} and spread along the roads.`);
       remember('plague', '#84cc16', `Plague in ${T(start.name)}`);
-    } else if (roll < 0.5) {
+    } else if (kind === 'fire' || kind === 'plague') {
       const t = live[Math.floor(r() * live.length)];
       if (!t || t.tier < 1) return;
       t.burning = world.year + 5;
@@ -917,7 +949,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       mark('fire', t.tile.x, t.tile.y, 6, '#f97316');
       say(`${t.name} BURNS`, t.tile.x, t.tile.y - 20, '#fdba74', 'medium');
       emit('fire', t.tile.x, t.tile.y, 0.55);
-    } else if (roll < 0.72) {
+    } else if (kind === 'horde') {
       // A horde from the edge of the map.
       const edge = world.tiles.filter((t) => onLand(t) && inView(t) && (t.x < world.W * 0.12 || t.x > world.W * 0.88 || t.y < world.H * 0.12 || t.y > world.H * 0.88) && !t.kingdom);
       const from = edge[Math.floor(r() * edge.length)];
@@ -931,14 +963,14 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       emit('horde', from.x, from.y, 0.6);
       chronicle(`${T(k.name)} came out of the wild.`);
       remember('horde', k.color, `${T(k.name)} comes out of the wild`);
-    } else if (roll < 0.8) {
+    } else if (kind === 'schism') {
       // Civil war in a kingdom grown too big.
       const big = world.kingdoms.filter((k) => !k.fallen && !k.horde && k.towns.length >= 8).sort((a, b) => b.unrest - a.unrest)[0];
       if (big) schism(big);
-    } else if (roll < 0.9) {
-      // The land itself: a volcano wakes, or a river floods.
-      if (r() < 0.45) volcano();
-      else flood();
+    } else if (kind === 'volcano') {
+      volcano();
+    } else if (kind === 'flood') {
+      flood();
     } else if (r() < 0.6 * opts.dragons) {
       // A dragon from the mountains.
       const peaks = world.tiles.filter((t) => t.terrain === 'mountain' && inView(t));
