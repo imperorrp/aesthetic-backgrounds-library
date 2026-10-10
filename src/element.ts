@@ -5,10 +5,12 @@ import { builtInSkins } from './engine/skins';
 import { presets } from './engine/presets';
 
 /**
- * Drop-in custom element.
+ * Drop-in custom element, as `<vivarium-bg>` or (the first name) `<bg-engine>`. Both are the
+ * same element.
  *
  * @example
  * <script type="module" src="https://unpkg.com/space-background-engine/dist/element.js"></script>
+ * <vivarium-bg skin="wyrmspire" seed="vale-7"></vivarium-bg>
  * <bg-engine seed="orion-7" detail="low"></bg-engine>
  * <bg-engine skin="matrix-rain" palette="#ff7a1a" intensity="0.6" motion="auto" fonts></bg-engine>
  */
@@ -86,8 +88,14 @@ class BgEngineElement extends HTMLElement {
   }
 }
 
+/** The same element under the project's name. A tag needs its own class, so this one adds nothing. */
+class VivariumElement extends BgEngineElement {}
+
 if (!customElements.get('bg-engine')) {
   customElements.define('bg-engine', BgEngineElement);
 }
+if (!customElements.get('vivarium-bg')) {
+  customElements.define('vivarium-bg', VivariumElement);
+}
 
-export { BgEngineElement };
+export { BgEngineElement, VivariumElement };

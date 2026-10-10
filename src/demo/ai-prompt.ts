@@ -5,7 +5,7 @@
 export function aiPrompt(config: Record<string, unknown>, hasPackFile = false): string {
   const cfg = JSON.stringify(config);
   return [
-    'Add this animated background to my site using the npm package `space-background-engine` (docs: https://github.com/imperorrp/aesthetic-backgrounds-library).',
+    'Add this animated background to my site using the npm package `space-background-engine` (Vivarium; docs: https://github.com/imperorrp/aesthetic-backgrounds-library).',
     hasPackFile ? "`import universe from './universe.json'` (the file I'm attaching), then:" : '',
     `mount(document.body, ${cfg})`,
     'Mount it once at the app root, behind all content (content gets position: relative; z-index: 1). Keep these exact values; do not restyle or replace it.',

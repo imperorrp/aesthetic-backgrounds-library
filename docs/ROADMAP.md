@@ -482,7 +482,7 @@ Void-tactical's own evolution (factions, lanes, events, sensor model) has its ow
 
 ## Open decisions
 
-1. **Name.** Decided 2026-09-27: keep `space-background-engine` on npm with the "Aesthetic Background Engine" title and the `<bg-engine>` tag. Candidates considered and set aside: Wallflower, Scrim, Cyclorama, Skybox, Farfield, Nightglass. Updated 2026-10-06: the project is called **Vivarium** in the README and on the site; the npm package name and the `<bg-engine>` tag stay unchanged for now.
+1. **Name.** Decided 2026-09-27: keep `space-background-engine` on npm with the "Aesthetic Background Engine" title and the `<bg-engine>` tag. Candidates considered and set aside: Wallflower, Scrim, Cyclorama, Skybox, Farfield, Nightglass. Updated 2026-10-06: the project is called **Vivarium** in the README and on the site; the npm package name and the `<bg-engine>` tag stay unchanged for now. Updated 2026-10-10: `<vivarium-bg>` is an alias of `<bg-engine>`, the package description and the wallpaper page say Vivarium. Renaming the npm package or the GitHub repository is still open (both break links and installs).
 2. **Fonts.** Ship no web fonts and use system stacks (privacy, zero requests), or opt-in Google Fonts injection. Recommendation: system stacks by default; a `fonts` option for skins that need a display face.
 3. **Light mode as first-class.** Most premium landing pages are light. Recommendation: yes, via palette derivation in M1, with `calm-mesh` as the first light preset.
 4. **WebGL now or later.** Later. Canvas 2D covers every niche above at acceptable frame budgets once culling and batching are consistent; WebGL is a `Layer.kind`, not a rewrite.

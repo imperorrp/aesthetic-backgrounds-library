@@ -783,7 +783,7 @@ export default function DemoPage() {
       const html = offlineWallpaperHtml(wallpaperSettings(), runtime, sourceLabel);
       const bytes = zip([
         { name: 'index.html', data: html },
-        { name: 'project.json', data: wallpaperEngineProject(sourceLabel, `A living background. Seed ${studio.seed}. Made with space-background-engine.`) },
+        { name: 'project.json', data: wallpaperEngineProject(sourceLabel, `A living background. Seed ${studio.seed}. Made with Vivarium.`) },
         { name: 'preview.jpg', data: new Uint8Array(await preview.arrayBuffer()) },
       ]);
       download(new Blob([bytes], { type: 'application/zip' }), `${fileStem}-wallpaper-engine.zip`);
@@ -1348,6 +1348,12 @@ export default function DemoPage() {
                     </li>
                     <li>
                       <b>Linux.</b> KDE Plasma&apos;s web wallpaper plugins take the link or the offline file.
+                    </li>
+                    <li>
+                      <a href={`${REPO}/blob/main/docs/WALLPAPERS.md`} target="_blank" rel="noopener noreferrer">
+                        Step by step, for each app
+                      </a>
+                      , with settings that save battery.
                     </li>
                   </ul>
                   <div className="demo-btn-row">

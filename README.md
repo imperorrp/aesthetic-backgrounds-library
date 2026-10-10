@@ -423,6 +423,8 @@ Every world can run behind your desktop or on your phone. In the studio's **Shar
 - **Desktop, still.** A PNG at your screen's full resolution.
 - **Phone.** A still at 1170 × 2532, rendered at the phone's own pixel density so the small text stays sharp. Or a 10 second portrait video (MP4 where the browser can record it) for a video wallpaper app. Or open the wallpaper link on the phone and add it to the home screen: it opens full screen and alive, and remembers its world.
 
+Step-by-step guides for each app (Lively, Wallpaper Engine, Plash, KDE, Android, iPhone), with settings that save battery: [docs/WALLPAPERS.md](docs/WALLPAPERS.md).
+
 The wallpaper page reads the same configuration as `mount()`, base64url-encoded in `?c=`, plus `fps`, `pr` (pixel ratio), `skip` (seconds to simulate first, so the world starts busy), and `i=1` (wheel zoom and drag pan).
 
 ## Put one on your site
@@ -435,8 +437,10 @@ Or drop it in yourself.
 
 ```html
 <script type="module" src="https://unpkg.com/space-background-engine/dist/element.js"></script>
-<bg-engine skin="void-tactical" seed="orion-7"></bg-engine>
+<vivarium-bg skin="void-tactical" seed="orion-7"></vivarium-bg>
 ```
+
+The element has two names: `<vivarium-bg>`, and `<bg-engine>` from before the project had one. They are the same element and take the same attributes.
 
 Pick a skin, derive a palette from your brand color, and dial the presence down:
 

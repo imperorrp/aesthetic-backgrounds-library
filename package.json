@@ -5,8 +5,11 @@
   "type": "module",
   "license": "MIT",
   "packageManager": "pnpm@10.19.0",
-  "description": "Procedural background engine. Seeded skins, layered atmosphere. Drop onto any site via mount() or <bg-engine>.",
+  "description": "Vivarium: small worlds that run behind a web page. Seeded simulations and layered atmosphere as website backgrounds. Drop onto any site via mount(), <vivarium-bg> or <bg-engine>.",
   "keywords": [
+    "vivarium",
+    "simulation",
+    "generative-art",
     "background",
     "canvas",
     "procedural",
