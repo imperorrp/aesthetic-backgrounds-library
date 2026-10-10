@@ -881,7 +881,7 @@ export function createAgesWorld(seed: string | number, W: number, H: number, noi
       const home = k.towns.filter((t) => !t.ruined && t.pop > 40).sort((a, b) => b.pop - a.pop)[0];
       if (!settling && home && r() < dy * 0.14) sendSettlers(k, home);
       // Trade: caravans on the roads, and ships once there are ports (oared at first).
-      if (r() < dy * 0.07 && world.walkers.filter((w) => w.kind === 'caravan').length < 16) sendCaravan(k);
+      if (r() < dy * 0.1 && world.walkers.filter((w) => w.kind === 'caravan').length < 24) sendCaravan(k);
       if (world.era >= 1 && r() < dy * (0.025 + world.era * 0.01) && world.walkers.filter((w) => w.kind === 'ship').length < 10) sendShip(k);
     }
   }

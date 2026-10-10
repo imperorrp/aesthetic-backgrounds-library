@@ -515,7 +515,7 @@ export function mount(host: SkinHost): SkinInstance {
     g.fillRect(0, 0, W, H);
     const v = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.hypot(W, H) * 0.62);
     v.addColorStop(0, 'rgba(2,3,6,0)');
-    v.addColorStop(1, 'rgba(2,3,6,0.55)');
+    v.addColorStop(1, 'rgba(2,3,6,0.4)');
     g.fillStyle = v;
     g.fillRect(0, 0, W, H);
     shade = { W, H, c };
@@ -862,45 +862,75 @@ export function mount(host: SkinHost): SkinInstance {
     }
   }
 
+  /** Where a walker was a moment ago, along its path: for wakes and dust. */
+  function behind(w: (typeof world.walkers)[number], back: number): [number, number] {
+    const at = Math.max(0, w.at - back);
+    const i = Math.floor(at);
+    const a = w.path[Math.min(w.path.length - 1, i)];
+    const b = w.path[Math.min(w.path.length - 1, i + 1)];
+    const k = at - i;
+    return [X(a.x + (b.x - a.x) * k), Y(a.y + (b.y - a.y) * k)];
+  }
+
   function walkers(t: number, p: number) {
     const s = scenery!;
     const list = [...world.walkers].sort((a, b) => a.y - b.y);
     const shipProp: Prop = world.era <= 2 ? 'galley' : world.era === 3 ? 'ship' : 'galleon';
+    // Movers are drawn a little larger than the towns they travel between, so the roads and
+    // the sea read as busy at a glance.
+    const q = p * 1.25;
     for (const w of list) {
       const x = X(w.x);
       const y = Y(w.y);
       if (w.kind === 'ship') {
         const bob = Math.sin(t * 2 + w.id) * 0.8;
-        // A wake behind it.
-        ctx.strokeStyle = 'rgba(203,213,225,0.15)';
+        // A wake: two lines opening out behind it.
+        const [bx, by] = behind(w, 1.2);
+        ctx.strokeStyle = 'rgba(203,213,225,0.28)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(x - 8, y + 2);
-        ctx.lineTo(x + 8, y + 2);
+        for (const side of [-1, 1]) {
+          const nx = -(by - y);
+          const ny = bx - x;
+          const nl = Math.hypot(nx, ny) || 1;
+          ctx.moveTo(x, y + 2);
+          ctx.lineTo(bx + (nx / nl) * 5 * side, by + 2 + (ny / nl) * 5 * side);
+        }
         ctx.stroke();
-        stampProp(ctx, s, shipProp, 0, x, y + bob, p * 0.8);
+        stampProp(ctx, s, shipProp, 0, x, y + bob, q);
         ctx.fillStyle = w.owner.color;
-        ctx.fillRect(Math.round(x), Math.round(y - 10 * p + bob), 3, 2);
+        ctx.fillRect(Math.round(x), Math.round(y - 12 * q + bob), 4, 3);
         continue;
       }
       const next = w.path[Math.min(w.path.length - 1, Math.floor(w.at) + 1)];
       const flip = X(next.x) < x;
+      // Dust on the road behind carts and marching armies.
+      if (w.kind === 'caravan' || (w.kind === 'army' && w.state !== 'battle' && w.state !== 'siege')) {
+        for (let k = 1; k <= 3; k++) {
+          const [dx, dy] = behind(w, k * 0.18);
+          ctx.fillStyle = `rgba(214,200,170,${(0.22 - k * 0.05).toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(dx, dy + 1, 1.2 + k * 0.9, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       if (w.kind === 'caravan') {
         ctx.save();
         if (flip) {
           ctx.translate(x * 2, 0);
           ctx.scale(-1, 1);
         }
-        stampProp(ctx, s, 'cart', 0, x, y + Math.round(Math.sin(t * 6 + w.id) * 0.4), p * 0.65);
+        stampProp(ctx, s, 'cart', 0, x, y + Math.round(Math.sin(t * 6 + w.id) * 0.4), q * 0.85);
         ctx.restore();
         ctx.fillStyle = w.owner.color;
-        ctx.fillRect(Math.round(x + (flip ? -4 : 2)), Math.round(y - 7 * p), 2, 2);
+        ctx.fillRect(Math.round(x + (flip ? -5 : 2)), Math.round(y - 8 * q), 3, 3);
         continue;
       }
       const a = atlasFor(w.owner);
       const walk = Math.floor(t * 6 + w.id) % 2;
       if (w.kind === 'settlers') {
-        stamp(ctx, a, 'peasant', walk, flip, x - 4, y, p * 0.8, 0);
-        stamp(ctx, a, 'peasant', 1 - walk, flip, x + 4, y + 2, p * 0.8, 1);
+        stamp(ctx, a, 'peasant', walk, flip, x - 5, y, q * 0.9, 0);
+        stamp(ctx, a, 'peasant', 1 - walk, flip, x + 5, y + 2, q * 0.9, 1);
         continue;
       }
       // An army: a few men stand for many, a banner over them.
@@ -909,12 +939,16 @@ export function mount(host: SkinHost): SkinInstance {
       for (let i = 0; i < n; i++) {
         const kind = i === 0 && w.size > 120 ? 'cav' : i % 3 === 2 ? 'arch' : 'inf';
         const frame = fighting && hash(w.id, i, Math.floor(t * 3)) < 0.5 ? 2 : walk;
-        stamp(ctx, a, kind, kind === 'cav' ? Math.floor(t * 8) % 3 : frame, flip, x + ((i % 4) - 1.5) * 6, y + Math.floor(i / 4) * 5 - 2, p * 0.8, i);
+        stamp(ctx, a, kind, kind === 'cav' ? Math.floor(t * 8) % 3 : frame, flip, x + ((i % 4) - 1.5) * 7, y + Math.floor(i / 4) * 6 - 2, q * 0.9, i);
       }
+      // The banner over them, outlined so it reads on any land.
+      const fy = Math.round(y - 26 + Math.sin(t * 5 + w.id));
       ctx.fillStyle = '#3f2a17';
-      ctx.fillRect(Math.round(x), Math.round(y - 22), 1, 14);
+      ctx.fillRect(Math.round(x), Math.round(y - 26), 1, 18);
+      ctx.fillStyle = 'rgba(20,14,8,0.7)';
+      ctx.fillRect(Math.round(x), fy - 1, 11, 7);
       ctx.fillStyle = w.owner.color;
-      ctx.fillRect(Math.round(x) + 1, Math.round(y - 22 + Math.sin(t * 5 + w.id)), 7, 4);
+      ctx.fillRect(Math.round(x) + 1, fy, 9, 5);
       if (w.state === 'battle') {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
@@ -928,6 +962,57 @@ export function mount(host: SkinHost): SkinInstance {
         ctx.beginPath();
         ctx.ellipse(x, y, 22, 10, 0, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+  }
+
+  // ---- life between the events: smoke from the roofs, boats off the coast (drawn only) --------
+  let coastGen = -1;
+  const coast = new Map<number, [number, number] | null>();
+  let tileByKey: Map<string, (typeof world.tiles)[number]> | null = null;
+  /** A water tile next to a town, for its fishing boats (null inland). */
+  function waterBy(town: (typeof world.towns)[number]): [number, number] | null {
+    if (coastGen !== world.landVersion) {
+      coastGen = world.landVersion;
+      coast.clear();
+      tileByKey = new Map(world.tiles.map((x) => [`${x.q},${x.r}`, x]));
+    }
+    const known = coast.get(town.id);
+    if (known !== undefined) return known;
+    const wet = world.grid.neighbors(town.tile).map((c) => tileByKey!.get(`${c.q},${c.r}`)).find((x) => x && (x.terrain === 'sea' || x.terrain === 'coast'));
+    const at: [number, number] | null = wet ? [wet.x, wet.y] : null;
+    coast.set(town.id, at);
+    return at;
+  }
+  function life(t: number, p: number) {
+    for (const town of world.towns) {
+      if (town.ruined) continue;
+      const cx = X(town.tile.x);
+      const cy = Y(town.tile.y);
+      // Smoke, a wisp a house, rising and fading (thick when the town burns).
+      const n = Math.min(town.houses.length, Math.min(3, town.tier + 1) + (town.burning > world.year ? 3 : 0));
+      for (let i = 0; i < n; i++) {
+        const h = town.houses[i];
+        const ph = ((t / 3.5 + hash(town.seed, i)) % 1 + 1) % 1;
+        const drift = hash(town.seed, i, 7) < 0.5 ? -1 : 1;
+        ctx.fillStyle = `rgba(205,200,190,${(0.24 * (1 - ph)).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(cx + h[0] * 0.7 + ph * 5 * drift, cy + h[1] * 0.7 - 6 - ph * 16, 1.2 + ph * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Fishing boats off a coastal town, working the water by it.
+      const w = town.tier >= 1 ? waterBy(town) : null;
+      if (!w) continue;
+      for (let i = 0; i < Math.min(2, town.tier); i++) {
+        const ph = t * 0.12 + hash(town.seed, i, 3) * 6.28;
+        const bx = X(w[0]) + Math.cos(ph) * 6 + (hash(town.seed, i, 4) - 0.5) * 8;
+        const by = Y(w[1]) + Math.sin(ph) * 3 + Math.sin(t * 2 + i) * 0.5;
+        ctx.fillStyle = '#4a3020';
+        ctx.fillRect(Math.round(bx - 3 * p), Math.round(by), Math.round(6 * p), Math.max(1, Math.round(2 * p)));
+        ctx.fillStyle = 'rgba(231,229,228,0.9)';
+        ctx.fillRect(Math.round(bx), Math.round(by - 4 * p), Math.max(1, Math.round(p)), Math.round(4 * p));
+        ctx.fillStyle = 'rgba(203,213,225,0.18)';
+        ctx.fillRect(Math.round(bx - 5 * p), Math.round(by + 2 * p), Math.round(10 * p), 1);
       }
     }
   }
@@ -1162,6 +1247,7 @@ export function mount(host: SkinHost): SkinInstance {
       ctx.drawImage(features!.c, 0, 0, W, H);
       ctx.imageSmoothingEnabled = false;
       towns(t, p);
+      life(t, p);
       marks(t);
       walkers(t, p);
       dragon(t, p);

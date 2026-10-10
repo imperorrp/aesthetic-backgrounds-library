@@ -1247,21 +1247,31 @@ export function mount(host: SkinHost): SkinInstance {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.font = serif(13, true);
+    // Newest first: a new note has the place; an older one written at the same spot gives way
+    // (it fades as the new one is written), and an old one with no room left is not written.
     const placed: [number, number, number][] = [];
-    for (const n of world.notes) {
+    const spoken: { x: number; y: number; t0: number }[] = [];
+    const live = world.notes.filter((n) => t - n.t0 >= 0 && t - n.t0 < 26).reverse();
+    for (const [k, n] of live.entries()) {
       const age = t - n.t0;
-      const a = Math.min(1, age * 1.5) * Math.max(0, Math.min(1, (26 - age) / 6)) * level;
-      if (a <= 0) continue;
+      let a = Math.min(1, age * 1.5) * Math.max(0, Math.min(1, (26 - age) / 6)) * level;
+      const newer = spoken.find((s) => Math.hypot(s.x - n.x, s.y - n.y) < 110);
+      spoken.push({ x: n.x, y: n.y, t0: n.t0 });
+      if (newer) a *= Math.max(0, 1 - (t - newer.t0) / 1.5);
+      if (a <= 0.01 || k >= 6) continue;
       const chars = Math.floor(age * 24);
       const text = n.text.slice(0, chars);
-      // Written where there is room: below an earlier note, not over it.
       const w = ctx.measureText(n.text).width;
       const x = Math.max(w / 2 + 16, Math.min(W - w / 2 - 16, n.x));
-      let y = Math.max(70, Math.min(H - 40, n.y));
-      for (let tries = 0; tries < 8 && placed.some(([px, py, pw]) => Math.abs(px - x) < (pw + w) / 2 + 6 && Math.abs(py - y) < 17); tries++) y += 17;
-      placed.push([x, y, w]);
+      const y0 = Math.max(70, Math.min(H - 40, n.y));
+      const clash = (y: number) => placed.some(([px, py, pw]) => Math.abs(px - x) < (pw + w) / 2 + 8 && Math.abs(py - y) < 18);
+      // Where there is room: on the spot, then just above or below it.
+      const y = [0, -19, 19, -38, 38].map((d) => y0 + d).find((yy) => yy > 60 && yy < H - 30 && !clash(yy));
+      if (y === undefined && k > 0) continue;
+      const yy = y ?? y0;
+      placed.push([x, yy, w]);
       ctx.save();
-      ctx.translate(x, y);
+      ctx.translate(x, yy);
       ctx.rotate(n.angle);
       ctx.font = serif(13, true);
       ctx.fillStyle = hexA(n.ink, 0.92 * a);
