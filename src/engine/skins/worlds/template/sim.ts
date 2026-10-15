@@ -188,6 +188,9 @@ const RULE = { total: [2, 4] as [number, number], quota: { threat: [0, 1] as [nu
 export function createPond(seed: string | number, W: number, H: number, opts: PondOptions, accent = '#7dd3fc'): PondWorld {
   const bus = createBus(() => world.t);
   const r: Rng = forkRng(seed, 'pond');
+  const shotR: Rng = forkRng(seed, 'pond-shots');
+  // eslint-disable-next-line prefer-const
+  let world: PondWorld;
   const g: Genome = createGenome(seed, 'pond');
   // The whole pond on screen: the world in the screen's proportions, a little larger.
   const GW = Math.round(W * WORLD_SCALE);
@@ -196,9 +199,9 @@ export function createPond(seed: string | number, W: number, H: number, opts: Po
   const rx = GW * g.range(0.3, 0.4);
   const ry = Math.min(GH * 0.36, rx * g.range(0.45, 0.65));
 
-  const world: PondWorld = {
+  world = {
     t: 0, W, H, GW, GH, bus,
-    director: createDirector(forkRng(seed, 'pond-director'), { arc: g.pick(ARCS), period: g.range(300, 600), establish: () => ({ x: GW / 2, y: GH / 2, zoom: 1 }) }),
+    director: createDirector(forkRng(seed, 'pond-director'), { arc: g.pick(ARCS), period: g.range(300, 600), establish: () => establish() }),
     name: g.pick(PONDS), cast: [], castIds: [], hues: g.hues(accent, 3),
     cx: GW / 2 + g.range(-0.05, 0.05) * GW, cy: GH * g.range(0.52, 0.58), rx, ry,
     pads: [], frogs: [], ripples: [], heron: null, rain: 0, bloom: 0, labels: [], chronicle: [],
@@ -207,6 +210,12 @@ export function createPond(seed: string | number, W: number, H: number, opts: Po
     counts: () => ({ pads: world.pads.length, frogs: world.frogs.filter((f) => f.alive).length, ripples: world.ripples.length, ...Object.assign({}, ...systems.map((s) => s.counts?.() ?? {})) }),
   };
 
+  /** A quiet shot for a camera that follows: a frog up close. Its own rng, so the pond plays the same. */
+  function establish(): { x: number; y: number; zoom: number } {
+    const frogs = world?.frogs?.filter((f) => f.alive) ?? [];
+    const f = frogs[Math.floor(shotR() * frogs.length)];
+    return f ? { x: f.x, y: f.y, zoom: 2 } : { x: GW / 2, y: GH / 2, zoom: 1 };
+  }
   const say = (text: string, x: number, y: number, color = '#e7e5e4') => {
     if (world.labels.some((l) => l.text === text && world.t - l.t0 < 6)) return;
     world.labels.push({ text, x, y, t0: world.t, color });

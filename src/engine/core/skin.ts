@@ -171,6 +171,11 @@ export type SkinInstance = {
    * world's own way and return the line it said, or null to let the click pass unanswered.
    */
   nudge?(x: number, y: number): string | null;
+  /**
+   * Optional: switch the camera live between the whole scene and following the action up
+   * close, keeping the world as it is. Returns false when the skin has no such camera.
+   */
+  setCamera?(view: 'whole' | 'follow'): boolean;
   destroy(): void;
 };
 
@@ -239,5 +244,10 @@ export type BackgroundHandle = {
    * null. With `config.nudges`, clicks on empty page area call this.
    */
   nudge(x: number, y: number): string | null;
+  /**
+   * Switch the camera live between the whole scene and following the action up close
+   * (worlds with a `camera` option). The world goes on as it was. False when unsupported.
+   */
+  setCamera(view: 'whole' | 'follow'): boolean;
   destroy(): void;
 };

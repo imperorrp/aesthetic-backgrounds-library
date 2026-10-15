@@ -20,7 +20,7 @@ export function mountPond(host: SkinHost, o: PondPaintOptions): SkinInstance {
   let W = host.viewport.width;
   let H = host.viewport.height;
   const world: PondWorld = createPond(host.config.seed, W, H, { frogs: o.frogs, camera: o.camera }, host.palette.accent);
-  const framing = createFraming((o.camera === 'still' || o.camera === 'director' ? o.camera : 'drift') as CameraMode, world);
+  const framing = createFraming((o.camera === 'still' || o.camera === 'director' || o.camera === 'follow' ? o.camera : 'drift') as CameraMode, world);
   const cam = framing.cam;
   const SX = (x: number) => (x - cam.x) * cam.zoom + W / 2;
   const SY = (y: number) => (y - cam.y) * cam.zoom + H / 2;
@@ -159,6 +159,10 @@ export function mountPond(host: SkinHost, o: PondPaintOptions): SkinInstance {
   return runWorld(host, world, {
     dt: 1 / 30,
     project: (x, y) => [SX(x), SY(y)],
+    setCamera: (view) => {
+      framing.setView(view);
+      return true;
+    },
     unproject: (x, y) => [(x - W / 2) / cam.zoom + cam.x, (y - H / 2) / cam.zoom + cam.y],
     after: (dt) => framing.update(dt, world.t, world.director, W, H),
     paint: (t) => paint(t),

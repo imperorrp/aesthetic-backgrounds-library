@@ -28,6 +28,8 @@ export function runWorld(
     project(x: number, y: number): [number, number];
     /** The world point under a screen point now (for nudges). */
     unproject?(x: number, y: number): [number, number];
+    /** Switch the camera live (whole scene, or following the action). False when unsupported. */
+    setCamera?(view: 'whole' | 'follow'): boolean;
     paint(t: number, dt: number): void;
     /** 0..1 how loud the bed should be now. */
     ambience?(): number;
@@ -76,6 +78,7 @@ export function runWorld(
     advance(info) {
       step(info);
     },
+    setCamera: (view) => opts.setCamera?.(view) ?? false,
     nudge(x, y) {
       if (!sim.nudge || !opts.unproject || host.motion === 'off') return null;
       const [wx, wy] = opts.unproject(x, y);

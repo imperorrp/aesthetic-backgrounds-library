@@ -28,10 +28,13 @@ export function lazySkin<T = any>(meta: Omit<BackgroundSkin<T>, 'mount' | 'prepa
       let inner: SkinInstance | null = null;
       let size: Viewport = { width: host.viewport.width, height: host.viewport.height };
       let destroyed = false;
+      // A view asked for before the world arrived is applied when it does.
+      let view: 'whole' | 'follow' | null = null;
       void prepare().then(() => {
         if (destroyed || !world) return;
         inner = world.mount(host);
         inner.resize(size);
+        if (view) inner.setCamera?.(view);
       });
       return {
         resize(v) {
@@ -48,6 +51,10 @@ export function lazySkin<T = any>(meta: Omit<BackgroundSkin<T>, 'mount' | 'prepa
         advance: (info) => inner?.advance?.(info),
         inspect: () => inner?.inspect?.(),
         nudge: (x, y) => inner?.nudge?.(x, y) ?? null,
+        setCamera(v) {
+          view = v;
+          return inner ? inner.setCamera?.(v) ?? false : true;
+        },
         destroy() {
           destroyed = true;
           inner?.destroy();

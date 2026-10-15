@@ -521,6 +521,12 @@ export function createBackground<T = any>(
       return () => eventListeners.delete(listener);
     },
     nudge,
+    setCamera(view) {
+      if (destroyed) return false;
+      const ok = instance?.setCamera?.(view) ?? false;
+      if (ok && state.motion === 'off') renderOnce();
+      return ok;
+    },
     destroy() {
       if (destroyed) return;
       destroyed = true;

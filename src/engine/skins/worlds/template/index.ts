@@ -8,7 +8,7 @@ import { resolveOptions, type Schema } from '../../../core/schema';
 import { mountPond } from './paint';
 
 export const POND_SCHEMA = {
-  camera: { type: 'enum', values: ['drift', 'still', 'director'], default: 'drift', label: 'Camera: the whole scene drifting in for big moments, perfectly still, or following the action' },
+  camera: { type: 'enum', values: ['drift', 'still', 'follow', 'director'], default: 'drift', label: 'Camera: the whole scene (drifting in for big moments, or still), or following the action up close' },
   frogs: { type: 'number', min: 1, max: 12, step: 1, default: 6, label: 'Frogs to begin with' },
   labels: { type: 'boolean', default: true, label: 'Call-outs' },
   hud: { type: 'boolean', default: true, label: 'Chronicle' },

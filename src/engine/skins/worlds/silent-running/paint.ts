@@ -20,7 +20,7 @@ export function mountSea(host: SkinHost, o: SeaPaintOptions): SkinInstance {
   let W = host.viewport.width;
   let H = host.viewport.height;
   const world: SeaWorld = createSea(host.config.seed, W, H, { traffic: o.traffic, camera: o.camera });
-  const framing = createFraming((o.camera === 'still' || o.camera === 'director' ? o.camera : 'drift') as CameraMode, world, { push: 1.35 });
+  const framing = createFraming((o.camera === 'still' || o.camera === 'director' || o.camera === 'follow' ? o.camera : 'drift') as CameraMode, world, { push: 1.35 });
   const cam = framing.cam;
   const SX = (x: number) => (x - cam.x) * cam.zoom + W / 2;
   const SY = (y: number) => (y - cam.y) * cam.zoom + H / 2;
@@ -401,6 +401,10 @@ export function mountSea(host: SkinHost, o: SeaPaintOptions): SkinInstance {
   return runWorld(host, world, {
     dt: 1 / 30,
     project: (x, y) => [SX(x), SY(y)],
+    setCamera: (view) => {
+      framing.setView(view);
+      return true;
+    },
     unproject: (x, y) => [(x - W / 2) / cam.zoom + cam.x, (y - H / 2) / cam.zoom + cam.y],
     after: (dt) => framing.update(dt, world.t, world.director, W, H),
     paint: (t) => paint(t),

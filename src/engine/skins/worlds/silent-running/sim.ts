@@ -175,6 +175,9 @@ const RULE = { total: [2, 4] as [number, number], quota: { threat: [1, 2] as [nu
 export function createSea(seed: string | number, W: number, H: number, opts: SeaOptions): SeaWorld {
   const bus = createBus(() => world.t);
   const r: Rng = forkRng(seed, 'sea');
+  const shotR: Rng = forkRng(seed, 'sea-shots');
+  // eslint-disable-next-line prefer-const
+  let world: SeaWorld;
   const g: Genome = createGenome(seed, 'sea');
   const noise = createNoise2D(forkRng(seed, 'sea-noise'));
   const GW = Math.round(W * WORLD_SCALE);
@@ -235,9 +238,9 @@ export function createSea(seed: string | number, W: number, H: number, opts: Sea
     return pts;
   };
 
-  const world: SeaWorld = {
+  world = {
     t: 0, W, H, GW, GH, bus, u,
-    director: createDirector(forkRng(seed, 'sea-director'), { arc: g.pick(ARCS), period: g.range(360, 720), establish: () => ({ x: GW / 2, y: GH / 2, zoom: 1 }) }),
+    director: createDirector(forkRng(seed, 'sea-director'), { arc: g.pick(ARCS), period: g.range(360, 720), establish: () => establish() }),
     name: g.pick(SEAS), cast: [], castIds: [],
     landAt, heightAt, ports: [], lanes: [],
     ships: [], torpedoes: [], rings: [], whales: [], wrecks: [], buoys: [], slicks: [], storm: null, ice: [],
@@ -254,6 +257,20 @@ export function createSea(seed: string | number, W: number, H: number, opts: Sea
     }),
   };
 
+  /** The ship a quiet shot is on: the shot sails with it. */
+  let tracked: Ship | null = null;
+  /** A quiet shot for a camera that follows: a ship up close (a heard contact first), or a port. Its own rng. */
+  function establish(): { x: number; y: number; zoom: number } {
+    if (!world?.ships) return { x: GW / 2, y: GH / 2, zoom: 1 };
+    const heard = world.ships.filter((s) => s.alive && s.kind === 'sub' && s.heard > world.t);
+    const afloat = world.ships.filter((s) => s.alive && s.kind !== 'sub' && s.kind !== 'fisher');
+    const pool = heard.length ? heard : afloat;
+    const s = pool[Math.floor(shotR() * pool.length)];
+    tracked = s ?? null;
+    if (s) return { x: s.x, y: s.y, zoom: 1.8 + shotR() * 0.5 };
+    const p = world.ports[0];
+    return p ? { x: p.x, y: p.y, zoom: 1.8 } : { x: GW / 2, y: GH / 2, zoom: 1 };
+  }
   const say = (text: string, x: number, y: number, color = '#e2e8f0') => {
     if (world.labels.some((l) => l.text === text && world.t - l.t0 < 6)) return;
     world.labels.push({ text, x, y, t0: world.t, color });
@@ -632,6 +649,12 @@ export function createSea(seed: string | number, W: number, H: number, opts: Sea
     world.t += dt;
     world.director.step(world.t, dt);
     world.sweep = (world.sweep + dt * ((Math.PI * 2) / 6)) % (Math.PI * 2);
+    // A quiet shot stays on its ship as it sails (the camera only reads the shot).
+    const shot = world.director.shot;
+    if (shot.why === 'establish' && tracked?.alive) {
+      shot.x = tracked.x;
+      shot.y = tracked.y;
+    }
     if (world.t > nextConvoy) {
       nextConvoy = world.t + (22 + r() * 22) / Math.max(0.3, opts.traffic);
       if (world.ships.filter((s) => s.alive && (s.kind === 'merchant' || s.kind === 'tanker')).length < 14) convoy();

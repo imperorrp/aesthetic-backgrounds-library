@@ -110,6 +110,7 @@ export function mount<T = any>(
     inspect: () => loop.inspect(),
     onEvent: (listener) => loop.onEvent(listener),
     nudge: (x, y) => loop.nudge(x, y),
+    setCamera: (view) => loop.setCamera(view),
     destroy() {
       if (destroyed) return;
       destroyed = true;

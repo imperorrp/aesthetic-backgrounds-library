@@ -33,7 +33,7 @@ export function mountFoundry(host: SkinHost, o: FoundryPaintOptions): SkinInstan
   let W = host.viewport.width;
   let H = host.viewport.height;
   const world: FoundryWorld = createFoundry(host.config.seed, W, H, { pace: o.pace, camera: o.camera });
-  const framing = createFraming((o.camera === 'still' || o.camera === 'director' ? o.camera : 'drift') as CameraMode, world, { push: 1.4 });
+  const framing = createFraming((o.camera === 'still' || o.camera === 'director' || o.camera === 'follow' ? o.camera : 'drift') as CameraMode, world, { push: 1.4 });
   const cam = framing.cam;
   const T = world.T;
   const SX = (x: number) => (x - cam.x) * cam.zoom + W / 2;
@@ -549,6 +549,10 @@ export function mountFoundry(host: SkinHost, o: FoundryPaintOptions): SkinInstan
   return runWorld(host, world, {
     dt: 1 / 30,
     project: (x, y) => [SX(x), SY(y)],
+    setCamera: (view) => {
+      framing.setView(view);
+      return true;
+    },
     unproject: (x, y) => [(x - W / 2) / cam.zoom + cam.x, (y - H / 2) / cam.zoom + cam.y],
     after: (dt) => framing.update(dt, world.t, world.director, W, H),
     paint: (t) => paint(t),

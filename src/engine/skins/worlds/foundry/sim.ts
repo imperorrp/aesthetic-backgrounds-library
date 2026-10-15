@@ -192,6 +192,9 @@ const RULE = { total: [1, 3] as [number, number], quota: { threat: [0, 1] as [nu
 export function createFoundry(seed: string | number, W: number, H: number, opts: FoundryOptions): FoundryWorld {
   const bus = createBus(() => world.t);
   const r: Rng = forkRng(seed, 'foundry');
+  const shotR: Rng = forkRng(seed, 'foundry-shots');
+  // eslint-disable-next-line prefer-const
+  let world: FoundryWorld;
   const g: Genome = createGenome(seed, 'foundry');
   const noise = createNoise2D(forkRng(seed, 'foundry-noise'));
   const T = 16;
@@ -208,9 +211,9 @@ export function createFoundry(seed: string | number, W: number, H: number, opts:
   const pcols = Math.ceil(cols / pc);
   const prows = Math.ceil(rows / pc);
 
-  const world: FoundryWorld = {
+  world = {
     t: 0, W, H, GW: cols * T, GH: rows * T, T, cols, rows, bus,
-    director: createDirector(forkRng(seed, 'foundry-director'), { arc: g.pick(ARCS), period: g.range(360, 720), establish: () => ({ x: (cols * T) / 2, y: (rows * T) / 2, zoom: 1 }) }),
+    director: createDirector(forkRng(seed, 'foundry-director'), { arc: g.pick(ARCS), period: g.range(360, 720), establish: () => establish() }),
     name: g.pick(PLANETS), cast: [], castIds: [],
     ground: new Uint8Array(N), tree: new Uint8Array(N), oreType: new Uint8Array(N), oreAmt: new Float32Array(N), occ: new Int32Array(N).fill(-1), groundVersion: 0,
     fields: [], machines: [], lines: [], bots: [], jobs: [], biters: [], nests: [], fx: [], fires: new Map(),
@@ -231,6 +234,13 @@ export function createFoundry(seed: string | number, W: number, H: number, opts:
     }),
   };
 
+  /** A quiet shot for a camera that follows: a busy machine up close, or the headquarters. Its own rng, so the factory grows the same. */
+  function establish(): { x: number; y: number; zoom: number } {
+    if (!world?.hq) return { x: (cols * T) / 2, y: (rows * T) / 2, zoom: 1 };
+    const busy = world.machines.filter((m) => m.state === 'work' && m.kind !== 'turret');
+    const m = busy[Math.floor(shotR() * busy.length)] ?? world.hq;
+    return { x: (m.c + m.n / 2) * T, y: (m.r + m.n / 2) * T, zoom: 1.9 + shotR() * 0.6 };
+  }
   const say = (text: string, x: number, y: number, color = '#e7e5e4') => {
     if (world.labels.some((l) => l.text === text && world.t - l.t0 < 6)) return;
     world.labels.push({ text, x, y, t0: world.t, color });

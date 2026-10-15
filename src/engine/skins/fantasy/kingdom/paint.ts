@@ -61,7 +61,7 @@ export function mountKingdom(host: SkinHost, o: KingdomPaintOptions): SkinInstan
 
   // ---- the camera --------------------------------------------------------------------------------
   // The whole range, still or drifting in for the big moments; or the old director's camera.
-  const framing = o.camera === 'director' ? null : createFraming(o.camera === 'still' ? 'still' : 'drift', world);
+  const framing = o.camera === 'director' ? null : createFraming(o.camera === 'still' ? 'still' : o.camera === 'follow' ? 'follow' : 'drift', world);
   const cam = framing ? framing.cam : { x: world.GW / 2, y: world.GH * 0.3, zoom: 0.6 };
   const minZoom = () => Math.max(W / world.GW, H / world.GH);
   let shake: [number, number] = [0, 0];
@@ -1661,6 +1661,11 @@ export function mountKingdom(host: SkinHost, o: KingdomPaintOptions): SkinInstan
   return runWorld(host, world, {
     dt: 1 / 30,
     project: (x, y) => [SX(x), SY(y)],
+    setCamera: (view) => {
+      if (!framing) return false;
+      framing.setView(view);
+      return true;
+    },
     unproject: (x, y) => [(x - W / 2) / cam.zoom + cam.x, (y - H / 2) / cam.zoom + cam.y],
     after: (dt) => camera(dt),
     paint: (t) => paint(t),

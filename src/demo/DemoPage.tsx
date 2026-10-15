@@ -105,6 +105,7 @@ const SHORTCUTS: [string, string][] = [
   ['M', 'Sound on or off'],
   ['J', 'Journal'],
   ['K', 'Keep this moment (a picture and a clip)'],
+  ['V', 'Follow the action up close, or see the whole scene'],
   ['Click', 'Nudge the world (Wyrmspire, Deephold, Leylines)'],
   ['G', 'Gallery'],
   ['H', 'Hide or show the studio'],
@@ -115,6 +116,8 @@ const SHORTCUTS: [string, string][] = [
 
 const REPO = 'https://github.com/imperorrp/aesthetic-backgrounds-library';
 const ABOUT_SEEN = 'vivarium.about-seen';
+/** Whether the studio follows the action up close (worlds with a camera), remembered between visits. */
+const FOLLOW_KEY = 'vivarium.follow';
 
 type PaletteMode = PaletteId | 'custom';
 
@@ -477,6 +480,27 @@ export default function DemoPage() {
   }, []);
 
   const sceneMode = isSceneSource(studio.source);
+  // ---- the camera: the whole scene, or following the action up close ----------------------
+  const [follow, setFollow] = useState(() => {
+    try {
+      return localStorage.getItem(FOLLOW_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(FOLLOW_KEY, follow ? '1' : '0');
+    } catch {
+      // Private mode: the choice lasts this visit.
+    }
+  }, [follow]);
+  const cameraValues = (getSkin(studio.source)?.schema as Record<string, { values?: readonly string[] }> | undefined)?.camera?.values;
+  /** Worlds whose camera can follow the action (switched live, the world going on as it was). */
+  const canFollow = !sceneMode && !!cameraValues?.includes('follow');
+  useEffect(() => {
+    if (handle && canFollow) handle.setCamera(follow ? 'follow' : 'whole');
+  }, [handle, follow, canFollow]);
   const skin = sceneMode ? null : getSkin(studio.source);
   const palette = paletteOf(studio);
 
@@ -492,12 +516,14 @@ export default function DemoPage() {
     if (studio.legibility === 'off') cfg.legibility = 'off';
     if (sceneMode) cfg.options = studio.scene;
     else {
-      if (Object.keys(studio.skinOptions).length) cfg.options = studio.skinOptions;
+      // Following the action in the studio: the exported world starts that way too.
+      const opts = canFollow && follow && studio.skinOptions.camera !== 'director' ? { ...studio.skinOptions, camera: 'follow' } : studio.skinOptions;
+      if (Object.keys(opts).length) cfg.options = opts;
       cfg.density = studio.density;
       if (studio.source === 'void-tactical') cfg.detail = studio.detail;
     }
     return cfg;
-  }, [studio, sceneMode, palette]);
+  }, [studio, sceneMode, palette, canFollow, follow]);
 
   const snippet = `import { mount } from 'space-background-engine';\n\nmount(document.body, ${JSON.stringify(exportConfig, null, 2)});`;
   const sourceLabel = (() => {
@@ -741,6 +767,7 @@ export default function DemoPage() {
     '?': () => setShortcutsOpen((o) => !o),
     k: () => keepNow(),
     a: () => setAboutOpen((o) => !o),
+    v: () => canFollow && setFollow((f) => !f),
     '/': () => setShortcutsOpen((o) => !o),
     Escape: () => {
       setGalleryOpen(false);
@@ -979,6 +1006,18 @@ export default function DemoPage() {
                   </button>
                 ))}
               </span>
+              {canFollow && (
+                <button
+                  type="button"
+                  className="demo-icon-btn"
+                  aria-pressed={follow}
+                  onClick={() => setFollow((f) => !f)}
+                  title={follow ? 'See the whole scene (V)' : 'Follow the action up close (V)'}
+                  aria-label={follow ? 'See the whole scene' : 'Follow the action up close'}
+                >
+                  <Icon name="focus" />
+                </button>
+              )}
               <span className="demo-sound">
                 <button
                   type="button"
@@ -1422,6 +1461,11 @@ export default function DemoPage() {
             </button>
           )}
           <div className="demo-fab">
+            {canFollow && (
+              <button type="button" className="demo-icon-btn" aria-pressed={follow} onClick={() => setFollow((f) => !f)} title={follow ? 'See the whole scene (V)' : 'Follow the action up close (V)'} aria-label={follow ? 'See the whole scene' : 'Follow the action up close'}>
+                <Icon name="focus" />
+              </button>
+            )}
             <button type="button" className="demo-icon-btn" onClick={() => setAboutOpen(true)} title="About Vivarium (A)" aria-label="About Vivarium">
               <Icon name="info" />
             </button>
