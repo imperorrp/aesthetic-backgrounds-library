@@ -5,6 +5,7 @@
  */
 import { lazySkin } from '../lazy';
 import { SILENT_RUNNING_SCHEMA } from './silent-running/schema';
+import { FOUNDRY_SCHEMA } from './foundry/schema';
 
 export const silentRunningSkin = lazySkin(
   {
@@ -20,4 +21,18 @@ export const silentRunningSkin = lazySkin(
   () => import('./silent-running'),
 );
 
-export const worldSkins = [silentRunningSkin] as const;
+export const foundrySkin = lazySkin(
+  {
+    id: 'foundry',
+    label: 'Foundry',
+    description:
+      'A factory that builds itself: miners on the ore fields, furnaces, assemblers and labs, belts full of ore and plates, construction bots, research, and in time a rocket.',
+    tags: ['world', 'factory', 'automation'],
+    crisp: true,
+    schema: FOUNDRY_SCHEMA,
+    defaults: { palette: { from: '#f59e0b' }, intensity: 0.8 },
+  },
+  () => import('./foundry'),
+);
+
+export const worldSkins = [silentRunningSkin, foundrySkin] as const;

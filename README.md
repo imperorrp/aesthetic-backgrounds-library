@@ -307,6 +307,19 @@ Each seed draws its sea (which coasts, which islands, which ports) and a cast: r
 mount(document.body, { skin: 'silent-running', options: { traffic: 1.5 } });
 ```
 
+### Foundry
+
+![Foundry: a factory from above, with miners on the ore fields, furnaces, assemblers and labs around the headquarters, red belts full of ore and plates, turrets facing a biter nest, lakes and woods](docs/media/worlds/foundry.jpg)
+
+A factory that builds itself, seen from above. A headquarters lands on a seeded planet of grass, lakes, woods, and ore fields: iron, copper, coal and stone. Construction bots fly out from it, lay belts tile by tile, and raise machines. The belts fill with ore, plates, gears and circuits.
+
+One rule does most of the growing: a machine missing an input gets a supplier. A lab needs gears and circuits, so assemblers go up beside it. An assembler needs plates, so furnaces follow. A furnace needs ore, so a miner goes up on the nearest field, with a belt back. The headquarters keeps its own supply lines, because everything is paid for from its stock. The boilers keep up with the machines, more labs come with research and with iron to spare, and a rocket silo comes when enough has been researched. Ore runs out under a miner, so it is taken down and another goes up elsewhere, and the belts are rerouted all the time. Research never ends, and fast and express belts change colour as they arrive. Rockets launch.
+
+Each seed draws its land and a cast: biters in nests at the edge, drawn by the pollution (they wreck what they reach and go home; the factory answers with turrets), wildfires in the woods, and meteors that leave new ore in their craters. Smoke rises from the furnaces, and at night the factory is lit. A click on an ore field orders a new mine; a click on a machine puts it on overtime.
+```ts
+mount(document.body, { skin: 'foundry', options: { pace: 1.5 } });
+```
+
 ### Instruments from other worlds
 
 The same idea, applied to other screens.
@@ -999,6 +1012,17 @@ mount(document.body, {
 | `traffic` | `1` | How busy the lanes are (`0.4` to `2`): how often convoys sail, and how big they are. |
 | `labels` | `true` | Call-outs for contacts, torpedoes, sinkings, and the rest. |
 | `hud` | `true` | The sea, ships at sea, contacts, wrecks, and a short chronicle. |
+
+## Foundry's options
+
+`skin: 'foundry'`. A lazy chunk, built on the world kit.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `camera` | `'drift'` | `drift`: the whole factory, easing in slowly for the biggest moments only. `still`: never moving. `director`: following each moment. |
+| `pace` | `1` | How fast it works and grows (`0.5` to `3`). |
+| `labels` | `true` | Call-outs for research, new mines, biters, launches, and the rest. |
+| `hud` | `true` | The planet, machines, items on the belts, power, research, stock, the cast, and a short chronicle. |
 
 ## Using it with an AI agent
 

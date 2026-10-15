@@ -60,11 +60,11 @@ const BUDGETS_KB = {
   // 89 with the overhauled sector map and the instruments, 107 with mechanics and events,
   // 109 with the v3 camera, 110 with skin events and the Undercity shell, 111 with the
   // instruments reporting their events (for sound), 113.5 with the fantasy and Petri shells,
-  // 115 with the three newest worlds' shells
-  'element.js': 115,
-  'react.js': 115,
-  'vue.js': 115,
-  'svelte.js': 115,
+  // 115 with the three newest worlds' shells, 116 with Silent Running's and Foundry's shells and nudges
+  'element.js': 116,
+  'react.js': 116,
+  'vue.js': 116,
+  'svelte.js': 116,
 };
 
 function walk(dir, out = []) {

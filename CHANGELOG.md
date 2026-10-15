@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Foundry**, a new world (`skin: 'foundry'`): a factory that builds itself, from above. Miners, furnaces, assemblers, labs, boilers and a rocket silo, belts full of items, construction bots, research that unlocks faster belts, ore that runs out and mines that move, pollution, biters and turrets, wildfires and meteors. A machine missing an input gets a supplier, and that one rule grows the factory. A click orders a new mine, or puts a machine on overtime. Sightings, a sound palette, a card, tests, and a screenshot gate. Size budgets for the framework entries: 116 KB.
 - **Silent Running**, a new world (`skin: 'silent-running'`): the sonar instrument grown into a sea at war on a listening station's chart. Convoys on the lanes between ports, destroyers that ping and hunt, raiders unheard until they are, torpedoes, depth charges, decoys, wrecks that stay, whales, gales, ice, a wolfpack, and, very rarely, something too large for a boat. A click drops a sonobuoy. Built on the kit (genome, cast, director, framing), with its own sightings, sound palette, tests, and screenshot gate. The sonar instrument is unchanged for now.
 - **Per-seed character** in Ages (which troubles a land knows) and the War table (climate, forgers, sickness, turncoats, dragons). The War table's notes give way to newer ones at the same place, and Ages' carts, ships and armies are drawn larger, with dust, wakes, smoke and fishing boats.
 - `world:check` prints failures after the table, where they cannot scroll away.

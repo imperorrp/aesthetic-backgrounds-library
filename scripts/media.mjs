@@ -82,6 +82,17 @@ const IMAGES = [
     ],
   },
   {
+    file: 'worlds/foundry.jpg',
+    cols: 2,
+    tile: [960, 600],
+    shots: [
+      { skin: 'foundry', seed: 'foundry-6', t: [900], captions: ['FIFTEEN MINUTES IN'] },
+      { skin: 'foundry', seed: 'foundry-6', seek: 'BITERS COME OUT', max: 1500, after: [7], captions: ['BITERS, DRAWN BY THE POLLUTION'] },
+      { skin: 'foundry', seed: 'foundry-2', t: [120], captions: ['THE FIRST BELTS'] },
+      { skin: 'foundry', seed: 'foundry-1', t: [1500], captions: ['A ROCKET SILO, AND EXPRESS BELTS'] },
+    ],
+  },
+  {
     file: 'worlds/wyrmspire.jpg',
     cols: 2,
     tile: [960, 600],

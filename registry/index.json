@@ -364,6 +364,59 @@
     },
     {
       "kind": "skin",
+      "id": "foundry",
+      "label": "Foundry",
+      "description": "A factory that builds itself: miners on the ore fields, furnaces, assemblers and labs, belts full of ore and plates, construction bots, research, and in time a rocket.",
+      "tags": [
+        "world",
+        "factory",
+        "automation"
+      ],
+      "themes": [
+        "dark"
+      ],
+      "cost": "medium",
+      "schema": {
+        "camera": {
+          "type": "enum",
+          "values": [
+            "drift",
+            "still",
+            "director"
+          ],
+          "default": "drift",
+          "label": "Camera: the whole factory drifting in for big moments, perfectly still, or following the action"
+        },
+        "pace": {
+          "type": "number",
+          "min": 0.5,
+          "max": 3,
+          "step": 0.1,
+          "default": 1,
+          "label": "How fast the factory works and grows"
+        },
+        "labels": {
+          "type": "boolean",
+          "default": true,
+          "label": "Call-outs"
+        },
+        "hud": {
+          "type": "boolean",
+          "default": true,
+          "label": "Chronicle"
+        }
+      },
+      "defaults": {
+        "palette": {
+          "from": "#f59e0b"
+        },
+        "intensity": 0.8
+      },
+      "preview": "gallery/foundry.png",
+      "source": "builtin"
+    },
+    {
+      "kind": "skin",
       "id": "leylines",
       "label": "Leylines",
       "description": "A realm seen from high up, drawn like a fantasy map: orders of mages of seven schools raise towers on the wells of the ley lines, walk the land to claim, bless, and search ruins, duel with fireballs, lightning, ice, and vines, and go to war with summoned elementals; storms, a dragon, rifts, falling stars, and great rituals under the converging moons.",
