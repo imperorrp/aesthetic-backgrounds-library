@@ -4,10 +4,13 @@
  * How it looks the way it does: every chunk of every plane of the city is painted once, in values
  * only (see ./planes), as it comes into view, then tinted by the hour and the fog: the near planes
  * in the dark ink of the time of day, the far ones fading into the haze, every plane's streets
- * lost in its own ground fog. The edges toward the sun (or the moon) catch a rim of light;
- * windows, lamps and foundry mouths are light added on top. Between the planes drift smoke, fog,
- * ships, fighters, walkers, islands and air platforms, each toned for its depth. The view drifts
- * rightward forever: near planes pass faster than far ones.
+ * lost in its own ground fog. Over the values go the materials (brick, limestone, verdigris,
+ * slate: hue and saturation only, so the light and shade stay), strongest near and by day. The
+ * edges toward the sun (or the moon) catch a rim of light; windows, lamps and foundry mouths are
+ * light added on top. Between the planes drift smoke, fog, ships, fighters, walkers, islands and
+ * air platforms, each toned for its depth. The view drifts rightward forever: near planes pass
+ * faster than far ones. The city's mood (amber, verdigris, ashen, rust) is the same day in another
+ * air: the whole palette of the hours turned toward its hue.
  *
  * Back to front: the sky; stars, the sun (and its shafts) or the moon; the clouds; then for each
  * plane, the things beyond it (islands, platforms and their people, the sea and its shipping,
@@ -54,13 +57,53 @@ const KEYS: [number, Light][] = [
   [0.86, { top: '#090c16', mid: '#121828', low: '#222636', fog: '#1a1e2a', ink: '#07080c', sun: '#9aaccc', rim: 0.3 }],
   [1.0, { top: '#070a12', mid: '#0e1420', low: '#1a2030', fog: '#161b27', ink: '#06070b', sun: '#8fa6c8', rim: 0.3 }],
 ];
-const MOODS: Record<Mood, { tint: string; k: number; fogK: number }> = {
-  amber: { tint: '#c88a46', k: 0.16, fogK: 0.82 },
-  verdigris: { tint: '#7d957f', k: 0.3, fogK: 0.9 },
-  ashen: { tint: '#8592a6', k: 0.26, fogK: 0.88 },
-  rust: { tint: '#b4523a', k: 0.2, fogK: 0.8 },
+/**
+ * The moods: the same day, in another city's air. Each turns the amber keys toward its own hue
+ * (`hue`, by `pull`), with its own saturation and lightness; `mat` is how much the materials show.
+ */
+const MOODS: Record<Mood, { tint: string; k: number; fogK: number; hue: number; pull: number; sat: number; lum: number; mat: number }> = {
+  amber: { tint: '#c88a46', k: 0.16, fogK: 0.82, hue: 30, pull: 0, sat: 1, lum: 1, mat: 1 },
+  verdigris: { tint: '#6f8f7f', k: 0.22, fogK: 0.9, hue: 160, pull: 0.55, sat: 0.75, lum: 1.02, mat: 1.15 },
+  ashen: { tint: '#8592a6', k: 0.24, fogK: 0.88, hue: 215, pull: 0.7, sat: 0.55, lum: 1.06, mat: 0.7 },
+  rust: { tint: '#b4523a', k: 0.2, fogK: 0.8, hue: 12, pull: 0.55, sat: 1.3, lum: 0.88, mat: 1 },
 };
+const toHsl = (hex: string): [number, number, number] => {
+  const h = hex.replace('#', '');
+  const n = parseInt(h, 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const hue = max === r ? ((g - b) / d + (g < b ? 6 : 0)) / 6 : max === g ? ((b - r) / d + 2) / 6 : ((r - g) / d + 4) / 6;
+  return [hue * 360, s, l];
+};
+const fromHsl = (h: number, s: number, l: number) => {
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  return `#${[f(0), f(8), f(4)].map((v) => Math.round(clamp01(v) * 255).toString(16).padStart(2, '0')).join('')}`;
+};
+const shiftHue = (hex: string, M: (typeof MOODS)[Mood], k = 1) => {
+  const [h, s, l] = toHsl(hex);
+  let dh = ((M.hue - h + 540) % 360) - 180;
+  if (s < 0.04) dh = 0;
+  return fromHsl((h + dh * M.pull * k + 360) % 360, clamp01(s * (1 + (M.sat - 1) * k)), clamp01(l * (1 + (M.lum - 1) * k)));
+};
+const MOOD_KEYS: Record<Mood, [number, Light][]> = Object.fromEntries(
+  (Object.keys(MOODS) as Mood[]).map((m) => {
+    const M = MOODS[m];
+    return [m, KEYS.map(([d, L]) => [d, { ...L, top: shiftHue(L.top, M), mid: shiftHue(L.mid, M), low: shiftHue(L.low, M), fog: shiftHue(L.fog, M), ink: shiftHue(L.ink, M, 0.6), sun: shiftHue(L.sun, M, 0.5) }] as [number, Light])];
+  }),
+) as Record<Mood, [number, Light][]>;
 function lightAt(d: number, mood: Mood, storm: number, fog: number): Light {
+  const KEYS = MOOD_KEYS[mood];
   let a = KEYS[0];
   let b = KEYS[KEYS.length - 1];
   for (let i = 0; i < KEYS.length - 1; i++)
@@ -213,6 +256,17 @@ export function mountHaze(host: SkinHost, o: HazePaintOptions): SkinInstance {
     t.globalAlpha = 1;
     t.clearRect(0, 0, w, h);
     shadeInto(t, P.shade, P.i === 4 ? mix(light.ink, light.fog, 0.08) : mix(light.ink, light.fog, 0.1 + (1 - L.f) * 0.15), w, h);
+    // The materials: their hue and saturation over the values (the light and shade stay), fainter at
+    // night and in the far planes, then masked back to the picture.
+    const mat = (P.i === 4 ? 0.7 : 0.55 + L.f * 0.4) * (1 - night * 0.55) * MOODS[world.mood].mat;
+    if (mat > 0.02) {
+      t.globalCompositeOperation = 'color';
+      t.globalAlpha = mat;
+      t.drawImage(P.paint, 0, 0);
+      t.globalAlpha = 1;
+      t.globalCompositeOperation = 'destination-in';
+      t.drawImage(P.shade, 0, 0);
+    }
     t.globalCompositeOperation = 'source-atop';
     const hz = P.i === 4 ? world.fog * 0.25 : hazeOf(L.f);
     if (hz > 0.01) {
@@ -647,9 +701,9 @@ export function mountHaze(host: SkinHost, o: HazePaintOptions): SkinInstance {
     const gy = world.groundAt(f);
     enter(f);
     const [l, r] = span(f);
-    const top = gy - GH * (0.16 + world.fog * 0.2);
+    const top = gy - GH * (0.13 + world.fog * 0.2);
     const g = ctx.createLinearGradient(0, top, 0, gy + GH * 0.04);
-    const a = 0.3 + hz * 0.3 + world.fog * 0.35;
+    const a = 0.22 + hz * 0.26 + world.fog * 0.4;
     const fc = mix(hazeColor(f), '#7a5232', night * 0.42 + world.pour * 0.2);
     g.addColorStop(0, hexA(fc, 0));
     g.addColorStop(0.75, hexA(fc, a * 0.65));
@@ -1178,7 +1232,20 @@ export function mountHaze(host: SkinHost, o: HazePaintOptions): SkinInstance {
       if (k <= 4) drawPlane(k, t);
       if (k === 5) framePeople(false);
     }
-    if (world.storm > 0.15) {
+    const winter = world.season === 3;
+    if (winter) {
+      // Snow: a little always, in winter; a lot in a storm. Drifting down slowly, the nearer flakes bigger.
+      const n = Math.floor(160 + 520 * world.storm);
+      for (let k = 0; k < n; k++) {
+        const z = 0.4 + hash(k, 4) * 0.6;
+        const sway = Math.sin(t * (0.6 + hash(k, 5)) + k) * 14 * z;
+        const x = posmod(hash(k, 1) * W * 1.2 + sway + world.wind * t * 0.4 * z, W * 1.2) - W * 0.1;
+        const y = (hash(k, 2) * H + t * (22 + 40 * z) * (1 + world.storm)) % H;
+        ctx.fillStyle = hexA(mix('#f4f4f8', light.fog, 0.25), (0.35 + 0.4 * z) * (0.6 + 0.4 * world.storm));
+        const sz = (0.8 + z * 1.6) * u;
+        ctx.fillRect(x, y, sz, sz);
+      }
+    } else if (world.storm > 0.15) {
       ctx.strokeStyle = hexA(mix('#c8ccd0', light.fog, 0.3), 0.3 * world.storm);
       ctx.lineWidth = 1;
       ctx.beginPath();

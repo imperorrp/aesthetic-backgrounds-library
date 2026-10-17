@@ -139,10 +139,12 @@ export function mountBrass(host: SkinHost, o: BrassPaintOptions): SkinInstance {
     puffs: Array.from({ length: 22 }, () => [cr() * GW * 1.4, (cr() - 0.5) * 30 * u, (40 + cr() * 70) * u] as [number, number, number]),
     dark: k >= 2,
   }));
-  // A grain tile, printed once.
-  const grain = document.createElement('canvas');
-  grain.width = grain.height = 160;
-  {
+  // A grain tile, printed once, on the first paint (a headless run never paints, and has no document).
+  let grain: HTMLCanvasElement | null = null;
+  const grainTile = () => {
+    if (grain) return grain;
+    grain = document.createElement('canvas');
+    grain.width = grain.height = 160;
     const g = grain.getContext('2d')!;
     const img = g.createImageData(160, 160);
     for (let i = 0; i < 160 * 160; i++) {
@@ -153,7 +155,8 @@ export function mountBrass(host: SkinHost, o: BrassPaintOptions): SkinInstance {
       img.data[i * 4 + 3] = 255;
     }
     g.putImageData(img, 0, 0);
-  }
+    return grain;
+  };
 
   // ---- the city, cached -------------------------------------------------------------------------
   const K = 1.25;
@@ -975,32 +978,109 @@ export function mountBrass(host: SkinHost, o: BrassPaintOptions): SkinInstance {
     pistons = [];
     furnaces = [];
     if (world.site === 'crag') {
-      g.fillStyle = '#2a221c';
-      g.beginPath();
-      g.moveTo(0, GH);
+      // The rock: a mesa in strata, its face toward the light lit, every ledge in shadow, moss along
+      // the top, scree and boulders at its foot.
+      const GY = world.GY;
+      const rough = (x: number, y: number) => (y < GY - 4 ? Math.sin(x * 0.09) * 3 * u + Math.sin(x * 0.31) * 2 * u : 0);
+      const rock = new Path2D();
+      rock.moveTo(0, GH);
+      let top = GY;
       for (let x = 0; x <= GW; x += 5) {
         const y = world.groundAt(x);
-        const rough = y < world.GY - 4 ? Math.sin(x * 0.09) * 3 * u + Math.sin(x * 0.31) * 2 * u : 0;
-        g.lineTo(x, y + 2 + rough);
+        top = Math.min(top, y);
+        rock.lineTo(x, y + 2 + rough(x, y));
       }
-      g.lineTo(GW, GH);
-      g.fill();
-      const rg = g.createLinearGradient(0, world.GY - GH * 0.4, 0, world.GY);
-      rg.addColorStop(0, 'rgba(160,120,80,0.18)');
-      rg.addColorStop(1, 'rgba(0,0,0,0.3)');
+      rock.lineTo(GW, GH);
+      rock.closePath();
+      g.fillStyle = '#3e3226';
+      g.fill(rock);
+      g.save();
+      g.clip(rock);
+      // Strata: beds of sandstone and shale, each a little wavy, thicker toward the foot.
+      const BEDS = ['#5a4634', '#4a3a2c', '#64503a', '#42342a', '#56442f', '#3a2e24'];
+      let k = 0;
+      for (let y = top - 10 * u; y < GH; k++) {
+        const th = (7 + hash(k, 11) * 9) * u * (1 + ((y - top) / (GH - top)) * 0.6);
+        g.fillStyle = BEDS[k % BEDS.length];
+        g.beginPath();
+        g.moveTo(-10, y + Math.sin(y) * 2 * u);
+        for (let x = 0; x <= GW + 10; x += 12) g.lineTo(x, y + Math.sin(x * 0.012 + k) * 2.5 * u + Math.sin(x * 0.05 + k * 3) * 1 * u);
+        g.lineTo(GW + 10, y + th + 4 * u);
+        g.lineTo(-10, y + th + 4 * u);
+        g.fill();
+        y += th;
+      }
+      // The light across it: the face toward the sun's side lit, the other in shade.
+      const lit = world.side > 0 ? 0 : 1;
+      const xg = g.createLinearGradient(GW * lit, 0, GW * (1 - lit), 0);
+      xg.addColorStop(0, 'rgba(200,160,110,0.16)');
+      xg.addColorStop(0.5, 'rgba(0,0,0,0)');
+      xg.addColorStop(1, 'rgba(0,0,0,0.3)');
+      g.fillStyle = xg;
+      g.fillRect(0, 0, GW, GH);
+      const rg = g.createLinearGradient(0, top, 0, GH);
+      rg.addColorStop(0, 'rgba(220,180,120,0.12)');
+      rg.addColorStop(0.6, 'rgba(0,0,0,0)');
+      rg.addColorStop(1, 'rgba(0,0,0,0.45)');
       g.fillStyle = rg;
-      g.fillRect(0, world.GY - GH * 0.4, GW, GH * 0.4);
-      g.strokeStyle = 'rgba(0,0,0,0.35)';
+      g.fillRect(0, 0, GW, GH);
+      // Under every ledge, its shadow; over it, the moss and the grass that found a hold.
+      let prev = world.groundAt(0);
+      for (let x = 0; x <= GW; x += 4) {
+        const y = world.groundAt(x);
+        if (y < GY - 4) {
+          g.fillStyle = `rgba(70,90,40,${(0.35 + hash(Math.round(x / 4), 7) * 0.3).toFixed(2)})`;
+          g.fillRect(x, y + rough(x, y) - 0.5 * u, 4, (2.5 + hash(Math.round(x / 4), 8) * 2.5) * u);
+        }
+        if (y !== prev) {
+          const yy = Math.min(y, prev);
+          const h = Math.abs(y - prev);
+          const sg = g.createLinearGradient(0, yy, 0, yy + Math.min(h, 22 * u));
+          sg.addColorStop(0, 'rgba(0,0,0,0.42)');
+          sg.addColorStop(1, 'rgba(0,0,0,0)');
+          g.fillStyle = sg;
+          g.fillRect(x - 60 * u, yy, 120 * u, Math.min(h, 22 * u));
+          // The face of the step, cracked.
+          g.strokeStyle = 'rgba(0,0,0,0.4)';
+          g.lineWidth = 1 * u;
+          g.beginPath();
+          g.moveTo(x, yy);
+          g.lineTo(x + (hash(x, 3) - 0.5) * 6 * u, yy + h);
+          g.stroke();
+        }
+        prev = y;
+      }
+      // Cracks and seams down the faces.
+      g.strokeStyle = 'rgba(0,0,0,0.32)';
       g.lineWidth = 1.2 * u;
-      for (let k = 0; k < 60; k++) {
-        const x = hash(k, 1) * GW;
+      for (let q = 0; q < 70; q++) {
+        const x = hash(q, 1) * GW;
         const y0 = world.groundAt(x);
-        if (y0 >= world.GY - 6) continue;
-        const y = y0 + hash(k, 2) * (world.GY - y0);
+        if (y0 >= GY - 6) continue;
+        const y = y0 + hash(q, 2) * (GY - y0);
         g.beginPath();
         g.moveTo(x, y);
-        g.lineTo(x + (hash(k, 3) - 0.5) * 30 * u, y + 10 * u + hash(k, 4) * 20 * u);
+        g.lineTo(x + (hash(q, 3) - 0.5) * 14 * u, y + 10 * u + hash(q, 4) * 24 * u);
+        g.lineTo(x + (hash(q, 5) - 0.5) * 20 * u, y + 24 * u + hash(q, 6) * 30 * u);
         g.stroke();
+      }
+      g.restore();
+      // Scree and boulders where the rock meets the ground.
+      for (let q = 0; q < 40; q++) {
+        const x = hash(q, 21) * GW;
+        const y0 = world.groundAt(x);
+        const near = world.groundAt(x - 40 * u) < GY - 4 || world.groundAt(x + 40 * u) < GY - 4;
+        if (y0 < GY - 4 || !near) continue;
+        const r = (3 + hash(q, 22) * 9) * u;
+        g.fillStyle = hash(q, 23) < 0.5 ? '#4a3a2c' : '#5a4836';
+        g.beginPath();
+        g.moveTo(x - r, GY + 2);
+        g.lineTo(x - r * 0.5, GY + 2 - r * 0.9);
+        g.lineTo(x + r * 0.4, GY + 2 - r);
+        g.lineTo(x + r, GY + 2);
+        g.fill();
+        g.fillStyle = 'rgba(0,0,0,0.3)';
+        g.fillRect(x - r, GY + 1, r * 2, 2 * u);
       }
       for (let x = 0; x < GW; x += 46 * u) {
         const y = world.groundAt(x);
@@ -2299,7 +2379,7 @@ export function mountBrass(host: SkinHost, o: BrassPaintOptions): SkinInstance {
     ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'overlay';
     ctx.globalAlpha = 0.06;
-    const pat = ctx.createPattern(grain, 'repeat');
+    const pat = ctx.createPattern(grainTile(), 'repeat');
     if (pat) {
       ctx.fillStyle = pat;
       ctx.fillRect(0, 0, W, H);

@@ -1,8 +1,9 @@
 /**
  * Ironhaze's planes, built: each plane of the city painted once in values only (a grey picture:
  * 128 is the plane's own colour, lighter is lit stone and iron, darker is shadow and the dark of a
- * window), with its lit windows on a picture of their own, and its rims (the edges toward the
- * light). The painter tints them by the hour and the fog.
+ * window), with its lit windows on a picture of their own, its materials (what each thing is built
+ * of, in colour, by its footprint) on another, and its rims (the edges toward the light). The
+ * painter tints them by the hour and the fog.
  *
  * What is built here: gothic towers, tenements, shanty stacks, art-deco towers, domes, cathedrals,
  * arcologies, observatories, lift towers, skydocks with their berths, factories, refineries,
@@ -32,6 +33,8 @@ export type Tinted = { d: number; fog: number; storm: number };
 export type Tile = {
   i: number; k: number; x0: number; x1: number; res: number; y0: number; h: number;
   shade: HTMLCanvasElement; win: HTMLCanvasElement; tint: HTMLCanvasElement; rimT: HTMLCanvasElement; at: Tinted;
+  /** The materials: what each thing is made of, in colour (brick, verdigris, limestone, slate), laid over the values. */
+  paint: HTMLCanvasElement;
   /** Foundry mouths and furnaces: x, y, w, h. */
   glows: [number, number, number, number][];
   lamps: [number, number][];
@@ -2190,15 +2193,25 @@ export function createTiles(world: HazeWorld) {
         P.lamps.push([lx, ly + 4 * s]);
       }
     };
-    const column = (cx: number, from: number) => {
-      g.fillStyle = V(112);
-      g.fillRect(cx - 22 * s, from, 44 * s, GH + 40 - from);
-      g.fillStyle = V(94);
-      g.fillRect(cx + 6 * s, from, 16 * s, GH + 40 - from);
-      g.fillStyle = V(150);
+    // A built-up iron column: two riveted flanges and the lacing between them, so the city shows through.
+    const column = (cx: number, from: number, half = 20 * s) => {
+      const bot = GH + 40;
+      lattice(g, cx - half + 4 * s, cx + half - 4 * s, from, bot, s, 104, 22);
+      for (const side of [-1, 1]) {
+        const fx = cx + side * half;
+        g.fillStyle = V(118);
+        g.fillRect(fx - 4 * s, from, 8 * s, bot - from);
+        g.fillStyle = V(side < 0 ? 150 : 92);
+        g.fillRect(fx - 4 * s + (side < 0 ? 0 : 6 * s), from, 2 * s, bot - from);
+        g.fillStyle = V(66);
+        for (let yy = from + 10 * s; yy < bot; yy += 11 * s) g.fillRect(fx - 1 * s, yy, 2 * s, 2 * s);
+      }
+      g.fillStyle = V(126);
       for (let yy = from + 40 * s; yy < GH; yy += 120 * s) {
-        g.fillRect(cx - 26 * s, yy, 52 * s, 5 * s);
-        for (let k = -2; k <= 2; k++) g.fillRect(cx + k * 8 * s - 0.8 * s, yy + 8 * s, 1.6 * s, 1.6 * s);
+        g.fillRect(cx - half - 6 * s, yy, half * 2 + 12 * s, 6 * s);
+        g.fillStyle = V(160);
+        g.fillRect(cx - half - 6 * s, yy, half * 2 + 12 * s, 1.2 * s);
+        g.fillStyle = V(126);
       }
     };
     if (world.frame === 'balcony') {
@@ -2291,10 +2304,7 @@ export function createTiles(world: HazeWorld) {
         g.stroke();
       }
       for (const cx of [GW * 0.03, GW * 0.97]) {
-        g.fillStyle = V(116);
-        g.fillRect(cx - 14 * s, ry, 28 * s, GH);
-        g.fillStyle = V(94);
-        g.fillRect(cx + 4 * s, ry, 10 * s, GH);
+        column(cx, ry, 12 * s);
         g.fillStyle = V(150);
         g.fillRect(cx - 20 * s, ry + 4 * s, 40 * s, 8 * s);
         const dir = cx < GW / 2 ? 1 : -1;
@@ -2452,11 +2462,89 @@ export function createTiles(world: HazeWorld) {
     const w = (x1 - x0) * res;
     return {
       i, k, x0, x1, res, y0, h,
-      shade: mk(w, h * res), win: mk(w, h * res), tint: mk(w, h * res), rimT: mk(w / 2, (h * res) / 2), at: { d: -1, fog: 0, storm: 0 },
+      shade: mk(w, h * res), win: mk(w, h * res), tint: mk(w, h * res), rimT: mk(w / 2, (h * res) / 2), paint: mk(w, h * res), at: { d: -1, fog: 0, storm: 0 },
       glows: [], lamps: [], spots: [], falls: [], lifts: [], flares: [],
     };
   }
-  const sinkOf = (): Tile => ({ i: 0, k: 0, x0: 0, x1: 0, res: 1, y0: 0, h: 0, shade: null!, win: null!, tint: null!, rimT: null!, at: { d: 0, fog: 0, storm: 0 }, glows: [], lamps: [], spots: [], falls: [], lifts: [], flares: [] });
+  const sinkOf = (): Tile => ({ i: 0, k: 0, x0: 0, x1: 0, res: 1, y0: 0, h: 0, shade: null!, win: null!, tint: null!, rimT: null!, paint: null!, at: { d: 0, fog: 0, storm: 0 }, glows: [], lamps: [], spots: [], falls: [], lifts: [], flares: [] });
+
+  // ---- materials -----------------------------------------------------------------------------------
+  // What the city is built of. Each building gets a wall and a roof: the colours are laid over the
+  // value picture (hue and saturation only; the light and shade stay), so a crude footprint is enough.
+  const BRICK = ['#8a3f2e', '#7a3a30', '#96503a', '#6e3a2c'];
+  const STONE = ['#b8a88c', '#a89880', '#c4b096', '#9c907c'];
+  const PLASTER = ['#c8b090', '#b89c80', '#d0b898', '#a89078'];
+  const SOOT = ['#3a3430', '#443a34', '#30302e'];
+  const SLATE = ['#5a6878', '#4e5a68', '#66707e'];
+  const VERD = ['#4f8a78', '#5a9a84', '#3e7a6a', '#6aa08c'];
+  const COPPER = ['#9a5a34', '#a8683c', '#8a5030'];
+  const IRON_C = ['#4a4e58', '#545862', '#40444c'];
+  const CREAM = ['#d8c8a0', '#e0ccaa', '#ccb890'];
+  const pickC = (R: () => number, a: readonly string[]) => a[Math.floor(R() * a.length)];
+  function materials(pg: G, b: Building, s: number) {
+    const R = mulberry(b.seed + 11);
+    const top = b.base - b.h;
+    const k = b.kind;
+    let wall: string;
+    let roof: string | null = null;
+    let roofH = 0;
+    let a = 0.75;
+    if (k === 'factory') {
+      wall = R() < 0.7 ? pickC(R, BRICK) : pickC(R, SOOT);
+      roof = pickC(R, IRON_C);
+      roofH = 10 * s;
+    } else if (k === 'blast' || k === 'refinery') {
+      wall = R() < 0.6 ? pickC(R, IRON_C) : pickC(R, COPPER);
+      a = 0.65;
+    } else if (k === 'gasholder') {
+      wall = R() < 0.5 ? pickC(R, BRICK) : R() < 0.5 ? pickC(R, VERD) : pickC(R, IRON_C);
+      a = 0.6;
+    } else if (k === 'dome') {
+      wall = pickC(R, STONE);
+      roof = R() < 0.75 ? pickC(R, VERD) : pickC(R, COPPER);
+      roofH = b.h * 0.62;
+      a = 0.85;
+    } else if (k === 'gothic' || k === 'cathedral') {
+      wall = R() < 0.55 ? pickC(R, STONE) : pickC(R, SOOT);
+      roof = R() < 0.5 ? pickC(R, VERD) : pickC(R, SLATE);
+      roofH = b.h * 0.3 + b.w;
+    } else if (k === 'deco') {
+      wall = R() < 0.6 ? pickC(R, CREAM) : pickC(R, STONE);
+      roof = R() < 0.5 ? pickC(R, COPPER) : pickC(R, VERD);
+      roofH = b.h * 0.14 + b.w * 0.6;
+      a = 0.8;
+    } else if (k === 'spire' || k === 'clock') {
+      wall = pickC(R, STONE);
+      roof = R() < 0.6 ? pickC(R, VERD) : pickC(R, SLATE);
+      roofH = b.h * 0.35 + b.w * 1.5;
+      a = 0.85;
+    } else if (k === 'block' || k === 'stack') {
+      const q = R();
+      wall = q < 0.4 ? pickC(R, BRICK) : q < 0.7 ? pickC(R, PLASTER) : q < 0.85 ? pickC(R, STONE) : pickC(R, SOOT);
+      roof = R() < 0.6 ? pickC(R, SLATE) : pickC(R, IRON_C);
+      roofH = Math.min(b.h * 0.1, 12 * s);
+      a = 0.7;
+    } else if (k === 'arcology' || k === 'skydock' || k === 'lift' || k === 'quay') {
+      wall = R() < 0.6 ? pickC(R, IRON_C) : pickC(R, COPPER);
+      a = 0.6;
+    } else if (k === 'observatory') {
+      wall = pickC(R, STONE);
+      roof = pickC(R, COPPER);
+      roofH = b.h * 0.4;
+      a = 0.85;
+    } else {
+      wall = pickC(R, STONE);
+      a = 0.5;
+    }
+    pg.globalAlpha = a;
+    pg.fillStyle = wall;
+    pg.fillRect(b.x - 2 * s, top, b.w + 4 * s, b.h + 60 * u);
+    if (roof) {
+      pg.fillStyle = roof;
+      pg.fillRect(b.x - 8 * s, top - roofH - 50 * s, b.w + 16 * s, roofH + 50 * s);
+    }
+    pg.globalAlpha = 1;
+  }
 
   /** A chunk of a plane, painted with its neighbours (so what crosses its edges is whole). */
   function tile(ch: Chunk, around: Chunk[]): Tile {
@@ -2485,23 +2573,34 @@ export function createTiles(world: HazeWorld) {
     const own = (c: Chunk) => (c === ch ? P : sink);
     const g = P.shade.getContext('2d')!;
     const wg = P.win.getContext('2d')!;
+    const pg = P.paint.getContext('2d')!;
     g.setTransform(res, 0, 0, res, -ch.x0 * res, -y0 * res);
     wg.setTransform(res, 0, 0, res, -ch.x0 * res, -y0 * res);
+    pg.setTransform(res, 0, 0, res, -ch.x0 * res, -y0 * res);
     const litP = [0.07, 0.11, 0.17, 0.26, 0][i];
     const tiers = world.layout === 'tiers' && i === 3;
     if (tiers) {
       underWall(g, ch.x0, ch.x1);
       for (const c of around) underChunk(g, wg, c, own(c));
       underDeck(g, ch.x0, ch.x1);
+      pg.globalAlpha = 0.55;
+      pg.fillStyle = '#5a4a3c';
+      pg.fillRect(ch.x0 - 20, y0, ch.x1 - ch.x0 + 40, GH);
+      pg.globalAlpha = 1;
     } else if (!(world.layout === 'heights' && (i === 1 || i === 2)) && !(world.layout === 'harbour' && i === 3)) {
       g.fillStyle = V(112);
       g.fillRect(ch.x0 - 20, L.base - 4 * u, ch.x1 - ch.x0 + 40, GH);
     }
     for (const c of around) cliffs(g, c.cliffs, s, own(c));
+    pg.globalAlpha = 0.6;
+    pg.fillStyle = '#6a5a48';
+    for (const c of around) for (const [cx0, cx1, cy] of c.cliffs) pg.fillRect(cx0 - 10 * s, cy - 30 * u, cx1 - cx0 + 20 * s, GH);
+    pg.globalAlpha = 1;
     const order = (k: string) => (k === 'factory' || k === 'refinery' || k === 'blast' ? -1 : 0);
     const all = around.flatMap((c) => near(c).map((b) => [b, c] as const)).sort(([a], [b]) => order(a.kind) - order(b.kind) || a.h - b.h);
     for (const [b, c] of all) {
       const T = own(c);
+      materials(pg, b, s);
       if (b.kind === 'gothic') gothic(g, wg, b, s, litP);
       else if (b.kind === 'block') block(g, wg, b, s, litP);
       else if (b.kind === 'stack') stack(g, wg, b, s, litP);
@@ -2528,8 +2627,18 @@ export function createTiles(world: HazeWorld) {
       bridges(g, wg, c.bridges, s, own(c));
       walkways(g, c.walkways, s, own(c));
       cables(g, c.cables, s);
+      pg.globalAlpha = 0.6;
+      pg.fillStyle = '#4a4e58';
+      for (const [bx0, bx1, by] of c.bridges) pg.fillRect(bx0, by - 30 * s, bx1 - bx0, 36 * s);
+      pg.globalAlpha = 1;
     }
     viaduct(g, L, s, P, ch.x0, ch.x1);
+    if (L.viaduct !== null) {
+      pg.globalAlpha = 0.45;
+      pg.fillStyle = '#7a4a3a';
+      pg.fillRect(ch.x0 - 20, L.viaduct - 6 * u, ch.x1 - ch.x0 + 40, 28 * u);
+      pg.globalAlpha = 1;
+    }
     // Painted: strokes over the stone, lighter above, darker toward the street.
     g.globalCompositeOperation = 'source-atop';
     const R = mulberry(i * 977 + ch.k * 31 + 13);
@@ -2565,6 +2674,13 @@ export function createTiles(world: HazeWorld) {
     wg.setTransform(RES[4], 0, 0, RES[4], 0, 0);
     frame(g, wg, P);
     compress(P.shade, 0.8);
+    // Wrought iron, with the brass of its rails and fittings.
+    const pg = P.paint.getContext('2d')!;
+    pg.setTransform(RES[4], 0, 0, RES[4], 0, 0);
+    pg.globalAlpha = 0.55;
+    pg.fillStyle = '#464a54';
+    pg.fillRect(-GW * 0.2, -40, GW * 1.4, GH + 80);
+    pg.globalAlpha = 1;
     return P;
   }
 
