@@ -8,6 +8,8 @@ import { SILENT_RUNNING_SCHEMA } from './silent-running/schema';
 import { FOUNDRY_SCHEMA } from './foundry/schema';
 import { BRASSWIND_SCHEMA } from './brasswind/schema';
 import { IRONHAZE_SCHEMA } from './ironhaze/schema';
+import { SANDSEA_SCHEMA } from './sandsea/schema';
+import { WINDTRAP_SCHEMA } from './windtrap/schema';
 
 export const silentRunningSkin = lazySkin(
   {
@@ -65,4 +67,32 @@ export const ironhazeSkin = lazySkin(
   () => import('./ironhaze'),
 );
 
-export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin] as const;
+export const sandseaSkin = lazySkin(
+  {
+    id: 'sandsea',
+    label: 'Sandsea',
+    description:
+      'The open sand from a rock ledge: a spice crawler working a dark stain of spice under its carryall and spotters, wormsign running at it across the dunes, the lift that makes it or does not; sandstorms, smugglers by night, the Company\'s patrols, the desert folk crossing without rhythm, and at dawn, riders on a worm.',
+    tags: ['world', 'desert', 'worms', 'machines'],
+    crisp: true,
+    schema: SANDSEA_SCHEMA,
+    defaults: { palette: { from: '#d8a860' }, intensity: 0.85 },
+  },
+  () => import('./sandsea'),
+);
+
+export const windtrapSkin = lazySkin(
+  {
+    id: 'windtrap',
+    label: 'Windtrap',
+    description:
+      'A hold of the desert folk cut into a cliff, in cutaway: the windtrap breathing on the cliff top, dew dripping into the cistern, the water count rising and falling, people at their work in the chambers and tunnels, raiders out at dusk and back by dawn, the water of the dead, smugglers at the gate, storms that seal the doors, and the desert beyond.',
+    tags: ['world', 'desert', 'cutaway', 'people'],
+    crisp: true,
+    schema: WINDTRAP_SCHEMA,
+    defaults: { palette: { from: '#c89a5a' }, intensity: 0.85 },
+  },
+  () => import('./windtrap'),
+);
+
+export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin] as const;

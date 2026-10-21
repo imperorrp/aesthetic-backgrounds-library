@@ -75,6 +75,8 @@ const WORLD_CARDS: WorldCard[] = [
   { key: 'foundry', source: 'foundry', name: 'Foundry', tagline: getSkin('foundry')?.description, thumb: 'foundry' },
   { key: 'brasswind', source: 'brasswind', name: 'Brasswind', tagline: getSkin('brasswind')?.description, thumb: 'brasswind' },
   { key: 'ironhaze', source: 'ironhaze', name: 'Ironhaze', tagline: getSkin('ironhaze')?.description, thumb: 'ironhaze' },
+  { key: 'sandsea', source: 'sandsea', name: 'Sandsea', tagline: getSkin('sandsea')?.description, thumb: 'sandsea' },
+  { key: 'windtrap', source: 'windtrap', name: 'Windtrap', tagline: getSkin('windtrap')?.description, thumb: 'windtrap' },
 ];
 const INSTRUMENT_CARDS: WorldCard[] = [
   ...instrumentSkins.map((s) => ({ key: s.id, source: s.id, name: s.label ?? s.id, tagline: s.description, thumb: s.id })),
