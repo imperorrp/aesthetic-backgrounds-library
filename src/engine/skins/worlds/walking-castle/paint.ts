@@ -404,7 +404,7 @@ export function mountWalkingCastle(host: SkinHost, o: CastlePaintOptions): SkinI
   // ---- words: a film's title cards and subtitles --------------------------------------------------------
   function words(t: number) {
     const small = W < 600;
-    if (o.hud) {
+    if (o.hud && !isMap) {
       const cd = world.cards[world.cards.length - 1];
       if (cd) {
         const age = t - cd.t0;
@@ -470,7 +470,7 @@ export function mountWalkingCastle(host: SkinHost, o: CastlePaintOptions): SkinI
         const nw = ctx.measureText(name).width + ns * 0.8;
         const total = nw + lw;
         const x0 = Math.round(W / 2 - total / 2);
-        const y = Math.round(H - Math.max(26, H * 0.055));
+        const y = Math.round(isMap && mapP ? mapP.subY() : H - Math.max(26, H * 0.055));
         ctx.fillStyle = `rgba(12,8,12,${(0.5 * a).toFixed(3)})`;
         ctx.beginPath();
         ctx.roundRect(x0 - fs * 0.8, y - fs * 1.05, total + fs * 1.6, fs * 1.55, fs * 0.4);
@@ -501,7 +501,7 @@ export function mountWalkingCastle(host: SkinHost, o: CastlePaintOptions): SkinI
       framing.setView(view);
       return true;
     },
-    unproject: (x, y) => [(x - W / 2) / cam.zoom + cam.x, (y - H / 2) / cam.zoom + cam.y],
+    unproject: (x, y) => (isMap && mapP ? mapP.unproject(x, y) : [(x - W / 2) / cam.zoom + cam.x, (y - H / 2) / cam.zoom + cam.y]),
     after: (dt) => {
       framing.update(dt, world.t, world.director, W, H);
       world.view = { x: cam.x, y: cam.y, zoom: cam.zoom, fit: framing.fit(W, H) };

@@ -295,7 +295,7 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
               arc('war', 'peak');
               const side: 1 | -1 = r() < 0.5 ? 1 : -1;
               const tw = visibleFarTown();
-              town = tw ? { L: tw.L, name: tw.name } : null;
+              town = tw ? { L: tw.L, name: titled(tw.name) } : null;
               // The bombers far off over the far hills, for the town, with their escort.
               const nb = phone ? 2 : 3;
               for (let k = 0; k < nb; k++) spawnShip('bomber', 0, edge(side, (80 + k * 80) * u), land.HY - GH * (0.1 + r() * 0.08), PLANES.far.s, -side * (16 + r() * 4) * u, { target: town ? town.L : NaN });
@@ -1201,7 +1201,7 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
           sh.t0 = world.t;
           if (!world.burning.some((b) => Math.abs(b.L - sh.target) < 40 * u)) {
             const town = land.farTownsIn(sh.target - 1, sh.target + 1)[0];
-            const name = town?.name ?? 'the town';
+            const name = town ? titled(town.name) : 'The town';
             card(`${name} Is Burning`);
             emit('bombing', tx, land.HY, 0.8);
             look('bombing', tx, land.HY - 30 * u, 1.8, 14, 7);
