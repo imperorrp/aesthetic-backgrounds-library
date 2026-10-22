@@ -666,11 +666,11 @@ export function createMap(E: Env, world: WarWorld, land: Land, seed: number) {
     const L = kind === 'rig' ? RIG.L : KINDS[kind].L;
     const Wd = kind === 'rig' ? 46 : kind === 'bike' ? 12 : 34;
     const [sdx, sdy] = shadowDir();
-    const h = (kind === 'rig' ? 110 : KINDS[kind].H) * 0.5 + alt / U;
+    const h = Math.min(kind === 'rig' ? 70 : 30, (kind === 'rig' ? 110 : KINDS[kind].H) * 0.35) + alt / U;
     c.save();
-    c.translate(x + sdx * h * s * 0.5, y + sdy * h * s * 0.5);
+    c.translate(x + sdx * h * s * 0.45, y + sdy * h * s * 0.45);
     c.rotate(rot);
-    c.fillStyle = hexA(E.tone('#0e1c22', 0.2), 0.45 * (1 - E.night * 0.45) * clamp01(1 - alt / (500 * U)));
+    c.fillStyle = hexA(E.tone('#0e1c22', 0.2), 0.34 * (1 - E.night * 0.45) * clamp01(1 - alt / (500 * U)));
     c.beginPath();
     c.roundRect((-L / 2) * s, (-Wd / 2) * s, L * s, Wd * s, 6 * s);
     c.fill();
@@ -869,6 +869,14 @@ export function createMap(E: Env, world: WarWorld, land: Land, seed: number) {
   }
   /** Hand-lettered on the ground: the stretch's name, and a kilometre post every half kilometre by the road. */
   const KM = (330 * u) / 0.024;
+  /** Lettering that reads the right way round on a mirrored seed. */
+  const upright = (text: string, x: number, y: number) => {
+    c.save();
+    c.translate(x, y);
+    if (world.flip) c.scale(-1, 1);
+    fillCrisp(c, text, 0, 0);
+    c.restore();
+  };
   function lettering() {
     const step = KM / 2;
     const g0 = world.dist + (-60 - cx) / k;
@@ -887,13 +895,13 @@ export function createMap(E: Env, world: WarWorld, land: Land, seed: number) {
       c.font = `italic ${Math.round(Math.max(11, 14 * u))}px "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif`;
       c.fillStyle = hexA(ink, 0.8);
       const whole = Math.floor(km + 1e-6);
-      fillCrisp(c, `km ${whole}${km - whole > 0.25 ? '½' : ''}`, x, y + 16 * u);
+      upright(`km ${whole}${km - whole > 0.25 ? '½' : ''}`, x, y + 16 * u);
     }
     // The name of the stretch, lettered large and spaced across the ground beyond the road.
     c.font = `italic ${Math.round(Math.max(16, 30 * u))}px "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif`;
     const name = world.regionName.split('').join(' ');
     c.fillStyle = hexA(ink, 0.32);
-    fillCrisp(c, name, GW * 0.5, my(-0.62));
+    upright(name, GW * 0.5, my(-0.62));
     c.textAlign = 'left';
   }
   return { paint, mx, my, k, clear: () => tex.clear() };
