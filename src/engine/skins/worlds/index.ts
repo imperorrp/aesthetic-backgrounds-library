@@ -10,6 +10,7 @@ import { BRASSWIND_SCHEMA } from './brasswind/schema';
 import { IRONHAZE_SCHEMA } from './ironhaze/schema';
 import { SANDSEA_SCHEMA } from './sandsea/schema';
 import { WINDTRAP_SCHEMA } from './windtrap/schema';
+import { TRACTION_SCHEMA } from './traction/schema';
 
 export const silentRunningSkin = lazySkin(
   {
@@ -95,4 +96,18 @@ export const windtrapSkin = lazySkin(
   () => import('./windtrap'),
 );
 
-export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin] as const;
+export const tractionSkin = lazySkin(
+  {
+    id: 'traction',
+    label: 'Traction',
+    description:
+      'Predator cities on tracks hunting across a churned-up plain: a colossal city of stacked tiers grinding through the mud, its jaws open for the small towns that flee it, airships and trader balloons overhead, raids by the anti-traction Accord, rival cities, weather fronts, searchlights by night, a sky harbour, and relics of the ancient world coming up out of the mud.',
+    tags: ['world', 'steampunk', 'cities', 'machines'],
+    crisp: true,
+    schema: TRACTION_SCHEMA,
+    defaults: { palette: { from: '#b07a48' }, intensity: 0.85 },
+  },
+  () => import('./traction'),
+);
+
+export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, tractionSkin] as const;
