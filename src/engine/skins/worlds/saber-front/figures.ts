@@ -1,0 +1,515 @@
+/**
+ * The people of the battle, drawn as themselves: troopers in white armour with their legion's
+ * markings (T-visored helmets, belts, carbines; officers with a coloured pauldron, heavies with a
+ * repeater and pack, commandos in grey), the Confederacy's tan battle droids (long snouted heads on
+ * thin necks, skinny limbs, backpacks; commanders with yellow markings; bulky super droids with
+ * wrist guns), knights in robes with their blades, and the rolling shield droids.
+ *
+ * Each figure is drawn in its own frame: the foot at (x, y), `h` tall, facing `f` (+1 right). The
+ * light comes from `E.lx`; the colours are toned for the figure's distance `d`.
+ */
+import type { Env } from './scene';
+import { hexA, mix } from './scene';
+
+type G = CanvasRenderingContext2D;
+export type Pose = { ph: number; moving: number; crouch: number; fall: number; dead: boolean; firing: number; seed: number };
+
+const limb = (g: G, x0: number, y0: number, x1: number, y1: number, w: number, col: string) => {
+  g.strokeStyle = col;
+  g.lineWidth = w;
+  g.beginPath();
+  g.moveTo(x0, y0);
+  g.lineTo(x1, y1);
+  g.stroke();
+};
+const limb2 = (g: G, x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, w: number, col: string) => {
+  g.strokeStyle = col;
+  g.lineWidth = w;
+  g.beginPath();
+  g.moveTo(x0, y0);
+  g.lineTo(x1, y1);
+  g.lineTo(x2, y2);
+  g.stroke();
+};
+
+/** Where a figure's gun points from (for the muzzle flash), relative to its foot, in units of h. */
+export const MUZZLE = { trooper: [0.44, -0.62], droid: [0.42, -0.6], super: [0.36, -0.58] } as const;
+
+/** Falling and lying: the frame rotates about the foot. */
+function fallFrame(g: G, x: number, y: number, h: number, f: number, p: Pose) {
+  g.translate(x, y);
+  if (p.fall > 0 || p.dead) {
+    const k = p.dead ? 1 : p.fall;
+    const ease = k * k;
+    g.translate(-f * ease * h * 0.25, 0);
+    g.rotate(-f * ease * Math.PI * 0.5 * ((p.seed % 2) * 2 - 1 > 0 ? 1 : 1));
+  }
+  g.scale(f, 1);
+}
+
+export function drawTrooper(E: Env, x: number, y: number, h: number, f: number, d: number, p: Pose, o: { legion: string; kind: string }) {
+  const g = E.ctx;
+  if (h < 2) return;
+  const armor = E.tone(o.kind === 'commando' ? '#8a8e84' : '#e8e6de', d, 0.05);
+  const armorLit = E.tone(o.kind === 'commando' ? '#b0b4a8' : '#ffffff', d, 0.4);
+  const armorDark = E.tone(o.kind === 'commando' ? '#4a4e48' : '#a4a6a4', d, 0);
+  const under = E.tone('#1e1e22', d, 0);
+  const visor = E.tone('#101418', d, 0);
+  const mark = E.tone(o.legion, d, 0.15);
+  const lit = E.lx * f;
+  g.save();
+  fallFrame(g, x, y, h, f, p);
+  if (p.dead) {
+    // Lying where he fell: a body on its back, armour catching the light.
+    g.restore();
+    g.save();
+    g.translate(x, y);
+    g.scale(f, 1);
+    const lw = h * 0.95;
+    g.fillStyle = hexA('#000000', 0.25 * (1 - E.hazeOf(d)));
+    g.beginPath();
+    g.ellipse(0, 0, lw * 0.55, h * 0.06, 0, 0, Math.PI * 2);
+    g.fill();
+    limb(g, -lw * 0.45, -h * 0.03, -lw * 0.05, -h * 0.05, h * 0.1, armor);
+    g.fillStyle = armor;
+    g.beginPath();
+    g.ellipse(lw * 0.12, -h * 0.07, lw * 0.2, h * 0.08, 0, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = mark;
+    g.fillRect(lw * 0.04, -h * 0.13, lw * 0.08, h * 0.04);
+    g.fillStyle = armorDark;
+    g.beginPath();
+    g.arc(lw * 0.42, -h * 0.07, h * 0.08, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = visor;
+    g.fillRect(lw * 0.42, -h * 0.1, h * 0.06, h * 0.035);
+    limb(g, lw * 0.25, -h * 0.12, lw * 0.5, -h * 0.02, h * 0.04, under);
+    g.restore();
+    return;
+  }
+  const c = p.crouch;
+  const sw = Math.sin(p.ph) * p.moving;
+  const legL = h * 0.46;
+  const hipY = -legL * (1 - c * 0.42) - Math.abs(Math.cos(p.ph)) * p.moving * h * 0.025;
+  const torsoH = h * 0.3;
+  const shY = hipY - torsoH;
+  const lean = p.moving * 0.12 + c * 0.05;
+  const shX = lean * torsoH;
+  // Legs: the far one first (darker), then the near one.
+  const knee = (s: number) => {
+    if (c > 0.5) return s > 0 ? [h * 0.18, hipY + h * 0.02, h * 0.17, 0] : [-h * 0.04, hipY + h * 0.16, -h * 0.2, 0];
+    const a = s * sw * 0.55;
+    const kx = Math.sin(a) * legL * 0.5;
+    const ky = hipY + Math.cos(a) * legL * 0.5;
+    const fx2 = kx + Math.sin(a - Math.max(0, -s * sw) * 0.6) * legL * 0.5;
+    return [kx, ky, fx2, 0];
+  };
+  for (const s of [-1, 1]) {
+    const [kx, ky, fx2, fy] = knee(s);
+    const col = s < 0 ? armorDark : armor;
+    limb2(g, 0, hipY, kx, ky, fx2, fy - h * 0.03, h * 0.105, col);
+    g.fillStyle = s < 0 ? under : armorDark;
+    g.fillRect(fx2 - h * 0.04, -h * 0.05, h * 0.12, h * 0.05);
+    g.fillStyle = under;
+    g.beginPath();
+    g.arc(kx, ky, h * 0.035, 0, Math.PI * 2);
+    g.fill();
+  }
+  // A heavy's pack; the far arm.
+  if (o.kind === 'heavy' || o.kind === 'commando') {
+    g.fillStyle = armorDark;
+    g.fillRect(shX - h * 0.2, shY + h * 0.02, h * 0.1, torsoH * 0.75);
+  }
+  limb2(g, shX - h * 0.02, shY + h * 0.05, shX + h * 0.1, shY + h * 0.14, shX + h * 0.22, shY + h * 0.1, h * 0.075, armorDark);
+  // The torso: chest plate, abdomen, belt.
+  g.fillStyle = armor;
+  g.beginPath();
+  g.moveTo(-h * 0.1, hipY);
+  g.lineTo(shX - h * 0.12, shY + h * 0.02);
+  g.quadraticCurveTo(shX, shY - h * 0.03, shX + h * 0.12, shY + h * 0.03);
+  g.lineTo(h * 0.09, hipY);
+  g.closePath();
+  g.fill();
+  // Shade the side away from the light; light the near edge.
+  g.fillStyle = hexA(armorDark, 0.75);
+  g.beginPath();
+  if (lit > 0) {
+    g.moveTo(-h * 0.1, hipY);
+    g.lineTo(shX - h * 0.12, shY + h * 0.02);
+    g.lineTo(shX - h * 0.04, shY + h * 0.03);
+    g.lineTo(-h * 0.03, hipY);
+  } else {
+    g.moveTo(h * 0.09, hipY);
+    g.lineTo(shX + h * 0.12, shY + h * 0.03);
+    g.lineTo(shX + h * 0.04, shY + h * 0.03);
+    g.lineTo(h * 0.02, hipY);
+  }
+  g.fill();
+  g.fillStyle = under;
+  g.fillRect(-h * 0.1, hipY - h * 0.035, h * 0.2, h * 0.045);
+  g.fillStyle = hexA(under, 0.6);
+  g.fillRect(-h * 0.06, shY + torsoH * 0.5, h * 0.13, h * 0.012);
+  // The legion's mark on the chest; an officer's pauldron.
+  g.fillStyle = mark;
+  if (o.kind === 'officer') {
+    g.beginPath();
+    g.ellipse(shX - h * 0.02, shY + h * 0.03, h * 0.09, h * 0.05, -0.2, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.fillRect(shX - h * 0.05, shY + h * 0.08, h * 0.12, h * 0.03);
+  if (o.kind !== 'commando') g.fillRect(-h * 0.02, hipY - h * 0.1, h * 0.03, h * 0.08);
+  // The rifle and the near arm.
+  const gunL = o.kind === 'heavy' ? h * 0.44 : h * 0.34;
+  const gunY = shY + h * (c > 0.5 ? 0.11 : 0.12);
+  g.fillStyle = under;
+  g.fillRect(shX - h * 0.04, gunY - h * 0.025, gunL, o.kind === 'heavy' ? h * 0.06 : h * 0.042);
+  g.fillRect(shX + gunL * 0.35, gunY, h * 0.03, h * 0.07);
+  limb2(g, shX + h * 0.02, shY + h * 0.05, shX + h * 0.08, shY + h * 0.16, shX + h * 0.16, gunY + h * 0.01, h * 0.08, armor);
+  // The helmet: a dome with the T of the visor toward the enemy, the legion's stripe on top.
+  const hx = shX + h * 0.03;
+  const hy = shY - h * 0.1;
+  const hr = h * 0.095;
+  g.fillStyle = armor;
+  g.beginPath();
+  g.ellipse(hx, hy, hr * 1.05, hr * 1.1, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = hexA(armorLit, 0.85);
+  g.beginPath();
+  g.ellipse(hx + lit * hr * 0.3, hy - hr * 0.45, hr * 0.5, hr * 0.32, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = armorDark;
+  g.fillRect(hx - hr * 1.05, hy + hr * 0.4, hr * 1.4, hr * 0.5);
+  g.fillStyle = visor;
+  g.fillRect(hx + hr * 0.25, hy - hr * 0.15, hr * 0.85, hr * 0.32);
+  g.fillRect(hx + hr * 0.62, hy - hr * 0.1, hr * 0.3, hr * 0.85);
+  g.fillStyle = mark;
+  g.fillRect(hx - hr * 0.7, hy - hr * 0.95, hr * 1.2, hr * 0.28);
+  if (o.kind === 'commando') {
+    g.fillStyle = under;
+    g.fillRect(hx - hr * 0.2, hy - hr * 1.6, hr * 0.12, hr * 0.7);
+  }
+  g.restore();
+}
+
+export function drawDroid(E: Env, x: number, y: number, h: number, f: number, d: number, p: Pose, o: { kind: string }) {
+  const g = E.ctx;
+  if (h < 2) return;
+  if (o.kind === 'super') return drawSuper(E, x, y, h, f, d, p);
+  const tan = E.tone('#b8945e', d, 0.08);
+  const tanLit = E.tone('#ead0a0', d, 0.45);
+  const tanDark = E.tone('#5a4630', d, 0);
+  const joint = E.tone('#3a3024', d, 0);
+  const mark = E.tone('#e8c030', d, 0.2);
+  const lit = E.lx * f;
+  const W = Math.max(0.8, h * 0.045);
+  g.save();
+  if (p.dead) {
+    // In pieces: the body on its side, the head apart from it, an arm.
+    g.translate(x, y);
+    g.scale(f, 1);
+    const k = (p.seed % 5) / 5;
+    g.fillStyle = hexA('#000000', 0.2 * (1 - E.hazeOf(d)));
+    g.beginPath();
+    g.ellipse(0, 0, h * 0.4, h * 0.05, 0, 0, Math.PI * 2);
+    g.fill();
+    limb(g, -h * 0.35, -h * 0.02, -h * 0.02, -h * 0.04, W, tanDark);
+    g.fillStyle = tan;
+    g.save();
+    g.translate(h * 0.08, -h * 0.07);
+    g.rotate(1.3 + k * 0.3);
+    g.fillRect(-h * 0.06, -h * 0.11, h * 0.12, h * 0.2);
+    g.restore();
+    g.fillStyle = tanDark;
+    g.fillRect(h * 0.2, -h * 0.12, h * 0.06, h * 0.08);
+    g.fillStyle = tan;
+    g.beginPath();
+    g.ellipse(h * (0.42 + k * 0.2), -h * 0.045, h * 0.1, h * 0.04, 0.3, 0, Math.PI * 2);
+    g.fill();
+    limb(g, h * 0.1, -h * 0.1, h * 0.3, -h * 0.02, W * 0.8, tanDark);
+    g.restore();
+    return;
+  }
+  fallFrame(g, x, y, h, f, p);
+  const sw = Math.sin(p.ph) * p.moving;
+  const hipY = -h * 0.44;
+  // Thin legs, the knees a little bent, lockstep.
+  for (const s of [-1, 1]) {
+    const a = s * sw * 0.5;
+    const kx = Math.sin(a) * h * 0.22 + h * 0.03;
+    const ky = hipY + h * 0.22;
+    const fx2 = Math.sin(a) * h * 0.3 - h * 0.02;
+    limb2(g, 0, hipY, kx, ky, fx2, -h * 0.02, W, s < 0 ? tanDark : tan);
+    g.fillStyle = s < 0 ? tanDark : tan;
+    g.fillRect(fx2 - h * 0.02, -h * 0.03, h * 0.09, h * 0.03);
+  }
+  // Pelvis, spine, chest plate (wide at the top), the pack behind.
+  g.fillStyle = tanDark;
+  g.fillRect(-h * 0.05, hipY - h * 0.03, h * 0.1, h * 0.05);
+  limb(g, 0, hipY, h * 0.02, hipY - h * 0.1, W, joint);
+  g.fillStyle = tanDark;
+  g.fillRect(-h * 0.16, hipY - h * 0.27, h * 0.09, h * 0.16);
+  g.fillStyle = tan;
+  g.beginPath();
+  g.moveTo(-h * 0.08, hipY - h * 0.28);
+  g.lineTo(h * 0.11, hipY - h * 0.26);
+  g.lineTo(h * 0.05, hipY - h * 0.09);
+  g.lineTo(-h * 0.03, hipY - h * 0.09);
+  g.closePath();
+  g.fill();
+  g.fillStyle = hexA(lit > 0 ? tanLit : tanDark, 0.7);
+  g.fillRect(lit > 0 ? h * 0.02 : -h * 0.07, hipY - h * 0.27, h * 0.06, h * 0.06);
+  if (o.kind === 'commander') {
+    g.fillStyle = mark;
+    g.fillRect(-h * 0.06, hipY - h * 0.25, h * 0.14, h * 0.04);
+  }
+  // Arms out to the rifle.
+  const gy = hipY - h * 0.2;
+  limb2(g, h * 0.02, hipY - h * 0.25, h * 0.09, gy + h * 0.06, h * 0.2, gy, W * 0.9, tanDark);
+  g.fillStyle = joint;
+  g.fillRect(h * 0.08, gy - h * 0.02, h * 0.32, h * 0.035);
+  g.fillRect(h * 0.14, gy, h * 0.03, h * 0.06);
+  limb2(g, h * 0.05, hipY - h * 0.25, h * 0.14, gy + h * 0.07, h * 0.24, gy + h * 0.01, W * 0.9, tan);
+  // The neck, and the long head pointing forward and down.
+  const nx = h * 0.04;
+  const ny = hipY - h * 0.28;
+  limb(g, nx, ny, nx + h * 0.02, ny - h * 0.12, W * 0.9, joint);
+  const hx = nx + h * 0.02;
+  const hy = ny - h * 0.14;
+  g.fillStyle = tan;
+  g.beginPath();
+  g.moveTo(hx - h * 0.05, hy - h * 0.03);
+  g.quadraticCurveTo(hx, hy - h * 0.07, hx + h * 0.06, hy - h * 0.03);
+  g.lineTo(hx + h * 0.17, hy + h * 0.03);
+  g.lineTo(hx + h * 0.15, hy + h * 0.05);
+  g.lineTo(hx - h * 0.03, hy + h * 0.03);
+  g.closePath();
+  g.fill();
+  g.fillStyle = hexA(tanLit, 0.6);
+  g.fillRect(hx - h * 0.03, hy - h * 0.05, h * 0.08, h * 0.02);
+  g.fillStyle = joint;
+  g.beginPath();
+  g.arc(hx + h * 0.03, hy, h * 0.017, 0, Math.PI * 2);
+  g.fill();
+  if (o.kind === 'commander') {
+    g.fillStyle = mark;
+    g.fillRect(hx - h * 0.04, hy - h * 0.045, h * 0.05, h * 0.06);
+  }
+  g.restore();
+}
+
+function drawSuper(E: Env, x: number, y: number, h: number, f: number, d: number, p: Pose) {
+  const g = E.ctx;
+  const body = E.tone('#3e4656', d, 0.1);
+  const lit = E.tone('#7a8498', d, 0.45);
+  const dark = E.tone('#1e222a', d, 0);
+  g.save();
+  if (p.dead) {
+    g.translate(x, y);
+    g.scale(f, 1);
+    g.fillStyle = body;
+    g.beginPath();
+    g.ellipse(0, -h * 0.08, h * 0.32, h * 0.1, 0.1, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = dark;
+    g.fillRect(h * 0.25, -h * 0.06, h * 0.15, h * 0.06);
+    g.restore();
+    return;
+  }
+  fallFrame(g, x, y, h, f, p);
+  const sw = Math.sin(p.ph) * p.moving;
+  const hipY = -h * 0.42;
+  for (const s of [-1, 1]) {
+    const a = s * sw * 0.45;
+    limb2(g, 0, hipY, Math.sin(a) * h * 0.2 + h * 0.04, hipY + h * 0.22, Math.sin(a) * h * 0.26, -h * 0.03, h * 0.09, s < 0 ? dark : body);
+  }
+  // The great chest, hunched; the small head sunk in it.
+  g.fillStyle = body;
+  g.beginPath();
+  g.moveTo(-h * 0.14, hipY);
+  g.quadraticCurveTo(-h * 0.24, hipY - h * 0.3, -h * 0.02, hipY - h * 0.4);
+  g.quadraticCurveTo(h * 0.2, hipY - h * 0.38, h * 0.16, hipY - h * 0.12);
+  g.lineTo(h * 0.08, hipY);
+  g.fill();
+  g.fillStyle = hexA(lit, 0.6);
+  g.beginPath();
+  g.ellipse(E.lx * f * h * 0.05, hipY - h * 0.33, h * 0.12, h * 0.05, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = dark;
+  g.fillRect(h * 0.02, hipY - h * 0.47, h * 0.09, h * 0.08);
+  // Arms with the guns in the wrists.
+  limb2(g, h * 0.06, hipY - h * 0.3, h * 0.14, hipY - h * 0.16, h * 0.3, hipY - h * 0.18, h * 0.08, body);
+  g.fillStyle = dark;
+  g.fillRect(h * 0.24, hipY - h * 0.215, h * 0.14, h * 0.06);
+  g.restore();
+}
+
+export function drawKnight(E: Env, x: number, y: number, h: number, f: number, d: number, p: Pose, o: { robe: string; blade: string; swing: number; lead: boolean; twin: boolean; dark: boolean }): [number, number, number, number][] {
+  const g = E.ctx;
+  const robe = E.tone(o.robe, d, 0.1);
+  const robeDark = E.tone(mix(o.robe, '#000000', 0.4), d, 0);
+  const tunic = E.tone(o.dark ? '#3a3238' : '#c8b898', d, 0.2);
+  const skin = E.tone(o.dark ? '#b8b0a8' : '#c89a78', d, 0.2);
+  const hair = E.tone(o.dark ? '#2a2a2a' : '#4a3424', d, 0);
+  const sw = Math.sin(p.ph) * p.moving;
+  const hipY = -h * 0.47;
+  const shY = hipY - h * 0.3;
+  const blades: [number, number, number, number][] = [];
+  g.save();
+  g.translate(x, y);
+  g.scale(f, 1);
+  // The legs, in boots, under the robe.
+  for (const s of [-1, 1]) {
+    const a = s * sw * 0.7;
+    limb2(g, 0, hipY, Math.sin(a) * h * 0.24, hipY + h * 0.24, Math.sin(a) * h * 0.34, -h * 0.03, h * 0.07, s < 0 ? robeDark : hair);
+  }
+  // The cloak flying out behind when they run.
+  g.fillStyle = robeDark;
+  g.beginPath();
+  g.moveTo(-h * 0.04, shY);
+  g.quadraticCurveTo(-h * (0.2 + p.moving * 0.25), hipY, -h * (0.18 + p.moving * 0.35), -h * (0.08 + p.moving * 0.12));
+  g.lineTo(h * 0.04, hipY + h * 0.1);
+  g.fill();
+  // The robe and the tunic.
+  g.fillStyle = robe;
+  g.beginPath();
+  g.moveTo(-h * 0.1, shY);
+  g.lineTo(h * 0.1, shY);
+  g.lineTo(h * 0.13, hipY + h * 0.18);
+  g.lineTo(-h * 0.15, hipY + h * 0.16);
+  g.closePath();
+  g.fill();
+  g.fillStyle = tunic;
+  g.beginPath();
+  g.moveTo(-h * 0.02, shY);
+  g.lineTo(h * 0.07, shY);
+  g.lineTo(h * 0.03, hipY);
+  g.fill();
+  g.fillStyle = hair;
+  g.fillRect(-h * 0.1, hipY - h * 0.02, h * 0.2, h * 0.035);
+  // The head, the hair.
+  g.fillStyle = skin;
+  g.beginPath();
+  g.ellipse(h * 0.02, shY - h * 0.08, h * 0.06, h * 0.07, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = hair;
+  g.beginPath();
+  g.ellipse(-h * 0.005, shY - h * 0.11, h * 0.06, h * 0.05, 0, Math.PI * 0.9, Math.PI * 2.1);
+  g.fill();
+  // The arms and the blade: held high and forward on the charge, across the body in guard, swinging when it turns a bolt.
+  const sx = h * 0.05;
+  const sy = shY + h * 0.05;
+  const guard = o.lead ? -1.25 : -0.55;
+  const ang = guard + o.swing * 0.9;
+  const hx = sx + Math.cos(ang + 0.6) * h * 0.18;
+  const hy = sy + Math.sin(ang + 0.6) * h * 0.18 + h * 0.06;
+  limb2(g, sx, sy, (sx + hx) / 2 + h * 0.03, (sy + hy) / 2 + h * 0.05, hx, hy, h * 0.065, robe);
+  g.fillStyle = E.tone('#8a8a90', d, 0.3);
+  g.fillRect(hx - h * 0.02, hy - h * 0.02, h * 0.04, h * 0.05);
+  const bl = h * 0.62;
+  const bx = hx + Math.cos(ang) * bl;
+  const by = hy + Math.sin(ang) * bl;
+  g.strokeStyle = '#ffffff';
+  g.lineWidth = Math.max(1, h * 0.03);
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(hx, hy);
+  g.lineTo(bx, by);
+  g.stroke();
+  blades.push([x + f * hx, y + hy, x + f * bx, y + by]);
+  if (o.twin) {
+    const a2 = ang + 2.4 + o.swing * 0.5;
+    const b2x = hx + Math.cos(a2) * bl * 0.9;
+    const b2y = hy + Math.sin(a2) * bl * 0.9;
+    g.beginPath();
+    g.moveTo(hx, hy);
+    g.lineTo(b2x, b2y);
+    g.stroke();
+    blades.push([x + f * hx, y + hy, x + f * b2x, y + b2y]);
+  }
+  g.lineCap = 'butt';
+  g.restore();
+  return blades;
+}
+
+export function drawRoller(E: Env, x: number, y: number, s: number, f: number, d: number, o: { state: string; k: number; spin: number; shield: number }): void {
+  const g = E.ctx;
+  const bronze = E.tone('#8a6a44', d, 0.15);
+  const lit = E.tone('#d0a868', d, 0.5);
+  const dark = E.tone('#3a2c20', d, 0);
+  g.save();
+  g.translate(x, y);
+  g.scale(f, 1);
+  if (o.state === 'roll' || (o.state === 'deploy' && o.k < 0.3)) {
+    const r = s * 0.3;
+    g.fillStyle = bronze;
+    g.beginPath();
+    g.arc(0, -r, r, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = dark;
+    g.lineWidth = Math.max(0.6, s * 0.03);
+    for (let i = 0; i < 3; i++) {
+      const a = o.spin + (i * Math.PI) / 3;
+      g.beginPath();
+      g.moveTo(Math.cos(a) * r, -r + Math.sin(a) * r);
+      g.lineTo(-Math.cos(a) * r, -r - Math.sin(a) * r);
+      g.stroke();
+    }
+    g.fillStyle = hexA(lit, 0.55);
+    g.beginPath();
+    g.ellipse(-E.lx * f * r * -0.3, -r * 1.45, r * 0.45, r * 0.22, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    return;
+  }
+  const k = o.state === 'deploy' ? Math.min(1, (o.k - 0.3) / 0.7) : 1;
+  const bodyY = -s * (0.25 + 0.4 * k);
+  // Three spindly legs.
+  for (const [lx, w] of [[-0.25, 1], [0.05, 0.8], [0.3, 1]] as [number, number][]) limb2(g, lx * s * 0.3, bodyY, lx * s * 0.8, bodyY + s * 0.25 * k, lx * s * 1.1, 0, Math.max(0.8, s * 0.05 * w), lx < 0 ? dark : bronze);
+  // The curled shell, the head tucked under it, the twin guns.
+  g.fillStyle = bronze;
+  g.beginPath();
+  g.moveTo(-s * 0.25, bodyY + s * 0.05);
+  g.quadraticCurveTo(-s * 0.3, bodyY - s * 0.35, s * 0.05, bodyY - s * 0.36);
+  g.quadraticCurveTo(s * 0.3, bodyY - s * 0.32, s * 0.25, bodyY - s * 0.06);
+  g.lineTo(s * 0.05, bodyY + s * 0.08);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = hexA(dark, 0.7);
+  g.lineWidth = Math.max(0.5, s * 0.02);
+  for (let i = 1; i < 4; i++) {
+    g.beginPath();
+    g.arc(s * 0.0, bodyY + s * 0.02, s * (0.1 * i), Math.PI * 1.1, Math.PI * 1.9);
+    g.stroke();
+  }
+  g.fillStyle = hexA(lit, 0.6);
+  g.beginPath();
+  g.ellipse(-s * 0.05, bodyY - s * 0.3, s * 0.15, s * 0.05, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = dark;
+  g.fillRect(s * 0.15, bodyY - s * 0.08, s * 0.35 * k, s * 0.045);
+  g.fillRect(s * 0.15, bodyY + s * 0.0, s * 0.35 * k, s * 0.045);
+  g.fillStyle = hexA('#ff4030', 0.9);
+  g.fillRect(s * 0.2, bodyY - s * 0.17, s * 0.04, s * 0.04);
+  g.restore();
+}
+
+/** A roller's bubble shield: a shimmering dome round it. */
+export function drawBubble(E: Env, x: number, y: number, s: number, a: number) {
+  if (a <= 0.02) return;
+  const g = E.ctx;
+  const r = s * 0.85;
+  const gr = g.createRadialGradient(x, y - r * 0.5, r * 0.2, x, y - r * 0.5, r);
+  gr.addColorStop(0, 'rgba(120,180,255,0)');
+  gr.addColorStop(0.75, `rgba(120,180,255,${(0.1 * a).toFixed(3)})`);
+  gr.addColorStop(1, `rgba(170,215,255,${(0.45 * a).toFixed(3)})`);
+  g.fillStyle = gr;
+  g.beginPath();
+  g.ellipse(x, y - r * 0.45, r, r * 0.9, 0, Math.PI, Math.PI * 2);
+  g.ellipse(x, y - r * 0.45, r, r * 0.25, 0, 0, Math.PI);
+  g.fill();
+  g.strokeStyle = `rgba(190,225,255,${(0.6 * a * (0.7 + 0.3 * Math.sin(E.t * 9 + x))).toFixed(3)})`;
+  g.lineWidth = Math.max(0.6, s * 0.02);
+  g.beginPath();
+  g.ellipse(x, y - r * 0.45, r, r * 0.9, 0, Math.PI, Math.PI * 2);
+  g.stroke();
+}
