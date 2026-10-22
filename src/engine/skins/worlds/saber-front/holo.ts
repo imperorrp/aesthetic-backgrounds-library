@@ -137,7 +137,7 @@ export function createHolo(host: SkinHost, world: SaberWorld, o: { labels: boole
       g.stroke();
     }
     // The field's own features, in outline.
-    const F = world.field;
+    const F = world.style;
     const R = host.fork('holo-table');
     g.strokeStyle = hexA(HOLO, 0.28);
     g.fillStyle = hexA(HOLO, 0.05);

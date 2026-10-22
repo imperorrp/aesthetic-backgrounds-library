@@ -12,10 +12,13 @@
  */
 import type { Bus } from '../../../sim/bus';
 import type { Director } from '../../../kit';
-import type { FieldKind } from './fields';
+import type { FieldKind, FieldStyle } from './fields';
+import type { Terrain } from './terrain';
 
 export type Side = 'ga' | 'cf';
-export type SoldierKind = 'trooper' | 'heavy' | 'officer' | 'commando' | 'droid' | 'commander' | 'super';
+export type SoldierKind =
+  | 'trooper' | 'heavy' | 'officer' | 'commando' | 'arc' | 'jet' | 'wookiee' | 'twilek'
+  | 'droid' | 'commander' | 'super' | 'bx' | 'geonosian' | 'magna';
 export type SoldierState = 'march' | 'line' | 'charge' | 'retreat' | 'drop' | 'fall' | 'dead' | 'sneak';
 export type Soldier = {
   id: number; side: Side; kind: SoldierKind; x: number; d: number; alt: number;
@@ -26,6 +29,8 @@ export type Soldier = {
   crouch: number; face: 1 | -1;
   /** When it last fired (for the muzzle flash). */
   fireT: number;
+  /** The cover it is fighting from (an id, or -1); a jump trooper's leap (when it began, or 0). */
+  cov: number; jump: number;
 };
 export type Squad = { id: number; side: Side; name: string; leader: string; line: string; lineT: number; size: number };
 
@@ -43,7 +48,7 @@ export type Walker = {
 export type RollerState = 'roll' | 'deploy' | 'shield' | 'dead';
 export type Roller = { id: number; x: number; d: number; tx: number; state: RollerState; t0: number; hp: number; cool: number; seed: number; spin: number; shield: number; fireT: number };
 
-export type CraftKind = 'gunship' | 'carrier' | 'lander';
+export type CraftKind = 'gunship' | 'carrier' | 'lander' | 'trident';
 export type CraftState = 'inbound' | 'descend' | 'drop' | 'climb' | 'strafe' | 'away' | 'falling' | 'off';
 export type Craft = {
   id: number; side: Side; kind: CraftKind; name: string; x: number; d: number; alt: number; face: 1 | -1;
@@ -58,11 +63,13 @@ export type Knight = {
   state: 'stand' | 'lead' | 'duel' | 'withdraw' | 'away'; t0: number; ph: number; face: 1 | -1; seed: number;
   /** The blade's swing, -1..1, and when it last turned a bolt. */
   swing: number; parryT: number; robe: string; line: string; lineT: number; twin: boolean;
+  /** Grievous fights with four. */
+  four: boolean;
 };
 
 export type BoltKind = 'rifle' | 'cannon' | 'turret' | 'shield';
 /** What a bolt was fired at: a soldier, a knight (who may turn it), a walker, a roller, a craft, or the ground. */
-export type BoltAim = 'soldier' | 'knight' | 'walker' | 'roller' | 'craft' | 'none';
+export type BoltAim = 'soldier' | 'knight' | 'walker' | 'roller' | 'craft' | 'vehicle' | 'facility' | 'none';
 export type Bolt = {
   x0: number; d0: number; a0: number; x1: number; d1: number; a1: number; t0: number; dur: number;
   side: Side; kind: BoltKind; aim: BoltAim; target: number; hit: boolean; shooter: number;
@@ -72,7 +79,20 @@ export type Shell = { x0: number; d0: number; x1: number; d1: number; t0: number
 export type FxKind = 'smoke' | 'fire' | 'flash' | 'spark' | 'dust' | 'debris' | 'blast' | 'scrap';
 export type Fx = { kind: FxKind; x: number; d: number; alt: number; vx: number; vd: number; valt: number; t0: number; dur: number; r: number; color: string; seed: number };
 export type Scorch = { x: number; d: number; r: number; t0: number };
-export type Wreck = { id: number; kind: 'hexa' | 'spider' | 'gunship' | 'lander' | 'roller' | 'generator'; x: number; d: number; t0: number; seed: number; face: 1 | -1; smoke: number };
+export type Wreck = { id: number; kind: string; x: number; d: number; t0: number; seed: number; face: 1 | -1; smoke: number };
+
+/** The ground war's machines besides the walkers: tanks, scout walkers, speeders, artillery, droid war machines. */
+export type VehicleKind = 'atrt' | 'saber' | 'barc' | 'spha' | 'aat' | 'dsd' | 'mtt' | 'hailfire' | 'crab';
+export type VehicleState = 'enter' | 'move' | 'deploy' | 'leave' | 'dead';
+export type Vehicle = {
+  id: number; side: Side; kind: VehicleKind; name: string; x: number; d: number; alt: number; hx: number; hd: number;
+  state: VehicleState; t0: number; hp: number; cool: number; fireT: number; aimX: number; aimD: number; aimA: number;
+  ph: number; face: 1 | -1; cargo: number; seed: number; line: string; lineT: number; doors: number;
+};
+/** A great beam (the SPHA-T's) from the ground into the sky or across the field, in world pixels. */
+export type Beam = { x0: number; y0: number; x1: number; y1: number; t0: number; dur: number; color: string; w: number };
+/** A rocket (a hailfire droid's) on its arc toward a gunship or a vehicle. */
+export type Missile = { x0: number; d0: number; a0: number; x1: number; d1: number; a1: number; t0: number; dur: number; side: Side; target: number; aim: 'craft' | 'vehicle' | 'ground' };
 
 /** The sky's things, in world pixels. A dogfight: the chased and the chaser on one looping path. */
 export type Dogfight = {
@@ -107,7 +127,14 @@ export type SaberOptions = { traffic: number; camera?: string; field?: string };
 
 export type SaberWorld = {
   t: number; W: number; H: number; GW: number; GH: number; u: number; phone: boolean; bus: Bus; director: Director;
-  field: FieldKind; hour: number; place: string; legion: { name: string; color: string; word: string }; cast: string[]; castIds: string[];
+  field: FieldKind; style: FieldStyle; battle: string; hour: number; place: string;
+  legion: { name: string; color: string; word: string; commander: string; jedi: string[]; men: string[]; squads: string[] };
+  /** Who leads the droids here. */
+  leader: string;
+  cast: string[]; castIds: string[];
+  /** The ground: rises, cover, the armies' works. */
+  terrain: Terrain;
+  vehicles: Vehicle[]; beams: Beam[]; missiles: Missile[];
   /** The horizon and the foot of the ridge, in world y. */
   HY: number; NY: number;
   yOf(d: number): number;

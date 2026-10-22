@@ -193,7 +193,7 @@ export function bakeSky(world: SaberWorld, E: Env, R: R): HTMLCanvasElement {
   sg.addColorStop(1, L.low);
   g.fillStyle = sg;
   g.fillRect(0, 0, GW, H);
-  const field = world.field;
+  const field = world.style;
   // Stars, and the nebula's band, by night.
   if (L.night > 0.35) {
     const n = Math.round(GW * HY / (1800 * u * u));
@@ -348,7 +348,7 @@ export function bakeBackdrop(world: SaberWorld, E: Env, R: R): HTMLCanvasElement
   /** The colour of rock (or glass, or wood) at a far layer k (0 farthest). */
   const far = (base: string, k: number) => mix(mix(base, L.ink, 0.25 + L.night * 0.4), mix(L.haze, L.low, 0.4), 0.78 - k * 0.24);
   const lit = (base: string, k: number) => mix(far(base, k), L.sun, (0.25 + L.rim * 0.3) * (1 - L.night * 0.6));
-  const field = world.field;
+  const field = world.style;
   if (field === 'arena') {
     // Low mesas far off, then fields of spires, and the arena itself.
     for (const k of [0, 1]) {
@@ -782,7 +782,7 @@ export function bakeGround(world: SaberWorld, E: Env, seed: number): GroundBake 
   const sun = rgbOf(L.sun);
   const acc = rgbOf(L.accent);
   const sky = rgbOf(mix(L.low, L.mid, 0.5));
-  const field = world.field;
+  const field = world.style;
   const S = 1 / u;
   const fOf = (d: number) => 0.3 + 0.7 * Math.pow(1 - clamp01(d), 2);
   const deckEnd = 0.8;

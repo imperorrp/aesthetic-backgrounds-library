@@ -76,7 +76,7 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
       const x = GW / 2 + (sx - GW / 2) / (0.3 + 0.7 * Math.pow(1 - d, 2));
       if (Math.abs(x - world.front) < world.gap * 0.9) continue;
       const kinds: Record<string, string[]> = { arena: ['spire', 'rock', 'rock'], crystal: ['crystal', 'crystal', 'pillar'], jungle: ['trunk', 'fern', 'fungus'], platform: ['crate', 'pylon', 'crate'], canyon: ['rock', 'rock', 'wall'] };
-      const ks = kinds[world.field];
+      const ks = kinds[world.style] ?? ['rock'];
       props.push({ x, d, kind: ks[Math.floor(lr() * ks.length)], s: 0.7 + lr() * 0.7, seed: Math.floor(lr() * 1e6) });
     }
   }
@@ -92,8 +92,8 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
       const tall = p.kind === 'spire';
       const w = (tall ? 26 : 40) * s;
       const h = (tall ? 120 : 26) * s * (0.7 + h1(1) * 0.6);
-      const base = E.tone(world.field === 'canyon' ? '#7a4a34' : '#8a5a3c', p.d, 0.05);
-      const lit = E.tone(world.field === 'canyon' ? '#d08a5a' : '#e0a068', p.d, 0.5);
+      const base = E.tone(world.style === 'canyon' ? '#7a4a34' : '#8a5a3c', p.d, 0.05);
+      const lit = E.tone(world.style === 'canyon' ? '#d08a5a' : '#e0a068', p.d, 0.5);
       const dark = E.tone('#2a1810', p.d, 0);
       g.fillStyle = hexA(dark, 0.35 * (1 - E.hazeOf(p.d)));
       g.beginPath();

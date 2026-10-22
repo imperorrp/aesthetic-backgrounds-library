@@ -55,44 +55,65 @@
 import { createBus } from '../../../sim/bus';
 import { forkRng, type Rng } from '../../../rng';
 import { ARCS, compose, createDirector, createGenome, WORLD_SCALE, type Genome, type SystemDef } from '../../../kit';
-import { BLADES, FIELDS, LEGIONS, type FieldKind } from './fields';
+import { FIELDS, LEGIONS, SABERS, TWIN, type FieldKind } from './fields';
+import { layTerrain } from './terrain';
+import type { Cover } from './terrain';
 import type {
-  Bolt, BoltAim, BoltKind, Capital, Craft, CraftKind, Dogfight, Fx, FxKind, Knight, SaberOptions, SaberWorld, Side, Soldier, SoldierKind, Squad, Walker,
+  Bolt, BoltAim, BoltKind, Capital, Craft, CraftKind, Vehicle, VehicleKind, Dogfight, Fx, FxKind, Knight, SaberOptions, SaberWorld, Side, Soldier, SoldierKind, Squad, Walker,
 } from './types';
 
-const GA_SQUADS = ['TORRENT', 'HAMMER', 'SHRIKE', 'LANTERN', 'IRONSIDE', 'BRAMBLE', 'COMET', 'VANGUARD', 'ANVIL', 'WARDEN', 'FLINTLOCK', 'GRIFFIN', 'TALON', 'BULWARK'];
-const GA_LEADERS = ['SERGEANT TALLON', 'CAPTAIN BRASK', 'SERGEANT KEEL', 'LIEUTENANT OSK', 'SERGEANT DUNE', 'CAPTAIN HARROW', 'SERGEANT FLINT', 'SERGEANT RUSK', 'CAPTAIN VANTO', 'SERGEANT MOSS', 'LIEUTENANT CORR', 'SERGEANT PIKE'];
-const CF_UNITS = ['UNIT 4-4-7', 'BATTALION 9', 'COLUMN T-12', 'UNIT 3-3-9', 'COMPANY K-2', 'UNIT 8-0-1', 'COLUMN B-7', 'UNIT 6-6-2'];
-const CF_LEADERS = ['COMMANDER K-77', 'COMMANDER R-3', 'TACTICAL DROID VX-9', 'COMMANDER T-14', 'COMMANDER Q-5', 'TACTICAL DROID ZN-2'];
-const KNIGHTS = ['GENERAL ORIN VAEL', 'GENERAL SERA TALLO', 'GENERAL DUSAN KOR', 'GENERAL IRIS MERROW', 'GENERAL BAEL ODUNN', 'GENERAL NAHLI ROSK', 'GENERAL TEMO AXIRE'];
-const DUELISTS = ['KHERAX THE COLLECTOR', 'THE PALE DUELIST', 'LADY VORRANE', 'GENERAL OSSK OF THE CONFEDERACY'];
-const HEXA_NAMES = ['IRONHOOF', 'THE MULE', 'BIG SISTER', 'OLD STEADY', 'TORTOISE TWO', 'BULWARK', 'THE OX', 'GRANITE', 'PATIENCE', 'MOUNTAIN'];
-const SPIDER_NAMES = ['SPIDER 11', 'SPIDER 4-0', 'THE WIDOW', 'SPIDER 7-7', 'THE HUNTSMAN', 'SPIDER 2-9'];
-const GUNSHIP_NAMES = ['LANTERN ONE', 'HAWK TWO', 'GANNET SIX', 'OSPREY FOUR', 'CONDOR', 'KESTREL THREE', 'HERON FIVE', 'SWIFT ONE', 'PELICAN', 'MERLIN TWO'];
-const LANDER_NAMES = ['LANDER K-9', 'LANDER 3-3', 'LANDER V-12', 'LANDER 0-8', 'LANDER R-4'];
-const GA_SHIPS = ['THE VIGILANT', 'THE STEADFAST', 'THE IRON LANCE', 'THE BRIGHT SPEAR', 'THE RESOLUTE', 'THE LONG WATCH', 'THE CONSTANT'];
-const CF_SHIPS = ['THE MALICE', 'THE GRAVE INTENT', 'THE LONG HUNGER', 'THE TALLY', 'THE COLD LEDGER', 'THE UNKIND', 'THE PROFIT'];
+const DROID_UNITS = ['B1 PLATOON 4-4', 'B1 PLATOON 7', 'SECURITY BATTALION 2', 'B1 COMPANY 9', 'INFANTRY BATTALION 3', 'B1 PLATOON 12', 'ASSAULT GROUP 6', 'GARRISON PLATOON 1'];
+const DROID_LEADERS = ['OOM-224', 'OOM-9', 'OOM-312', 'OOM-14', 'AAB-2', 'OOM-60', 'OOM-77', 'OOM-41'];
+const GUNSHIP_NAMES = ['HAWK', 'GOLD SIX', 'BRICK', 'CHATTER', 'SWOOP', 'CLUTCH', 'ROCKET', 'BLITZ', 'GOOD LUCK', 'SPARROW'];
+const PILOTS_GA = ['ODD BALL', 'BROADSIDE', 'MATCHSTICK', 'AXE', 'KICKBACK', 'WARTHOG', 'TUCK', 'BLUE LEADER'];
 
+/** What they say: lines in the voices of the war. */
 export const LINES = {
-  gaHold: ['HOLD THE LINE!', 'KEEP FIRING!', 'STAY IN COVER', 'WATCH YOUR SPACING', 'THEY JUST KEEP COMING', 'STEADY, STEADY', 'PICK YOUR TARGETS', 'EYES FRONT', 'CHANGE YOUR CHARGE PACK', 'SHIELDS? WHAT SHIELDS?'],
-  gaHit: ['MEDIC!', 'MAN DOWN!', 'I\'M HIT!', 'MEDIC! OVER HERE!', 'WE LOST HOLLIS', 'GET HIM OUT OF THERE', 'WE NEED A MEDIC!'],
-  gaPush: ['FORWARD! FORWARD!', 'PUSH THEM BACK!', 'MOVE UP, MOVE UP', 'GO, GO, GO!', 'FOR THE LEGION!'],
-  gaRetreat: ['FALL BACK! FALL BACK!', 'PULL BACK TO THE SECOND LINE', 'WE CAN\'T HOLD HERE', 'GET BACK, GET BACK!'],
+  gaHold: ['HOLD THE LINE!', 'KEEP FIRING!', 'CLANKERS, DEAD AHEAD', 'STAY IN COVER', 'HERE THEY COME!', 'FIRE AT WILL!', 'THEY JUST KEEP COMING', 'WATCH YOUR FLANK!', 'CONCENTRATE YOUR FIRE!', 'GOOD SOLDIERS FOLLOW ORDERS', 'WE NEED REINFORCEMENTS!', 'THERE\'S TOO MANY OF THEM!'],
+  gaHit: ['MEDIC!', 'MAN DOWN!', 'I\'M HIT!', 'MEDIC! OVER HERE!', 'TROOPER DOWN!', 'GET HIM OUT OF THERE', 'WE NEED A MEDIC!'],
+  gaPush: ['MOVE, MOVE, MOVE!', 'PUSH THEM BACK!', 'FORWARD!', 'GO, GO, GO!', 'TAKE THAT POSITION!', 'FOR THE REPUBLIC!'],
+  gaRetreat: ['FALL BACK! FALL BACK!', 'PULL BACK TO THE GUNSHIPS', 'WE CAN\'T HOLD HERE', 'GET BACK, GET BACK!'],
   gaRegroup: ['REGROUP ON ME!', 'FORM UP!', 'DIG IN HERE', 'COUNT OFF!', 'WE HOLD HERE'],
-  cfHold: ['ROGER, ROGER', 'BLAST THEM', 'TARGET ACQUIRED', 'MOVE, MOVE', 'RIGHT AWAY, COMMANDER', 'SURRENDER, PLEASE', 'I HATE THIS JOB', 'ROGER, ROGER', 'ADVANCE'],
-  cfHit: ['UH OH', 'OW', 'WE ARE TAKING LOSSES', 'THAT WAS NOT IN THE PLAN', 'ROGER, ROG—'],
+  cfHold: ['ROGER, ROGER', 'BLAST THEM!', 'TARGET ACQUIRED', 'UH OH', 'SURRENDER, JEDI!', 'I HATE THIS JOB', 'ROGER, ROGER', 'KILL THEM!', 'THEY\'RE EVERYWHERE!', 'WHAT? WHO TURNED OUT THE LIGHTS?'],
+  cfHit: ['UH OH', 'OUCH, THAT HURT', 'WE\'RE TAKING LOSSES', 'HEY, YOU CAN\'T DO THAT!', 'ROGER, ROG—'],
   cfRetreat: ['RETREAT! RETREAT!', 'FALL BACK. ROGER, ROGER', 'THIS IS NOT IN THE PROGRAM'],
-  cfPush: ['ADVANCE, ADVANCE', 'CRUSH THEM', 'ROLL OUT', 'ROGER, ROGER'],
+  cfPush: ['ADVANCE, ADVANCE', 'CRUSH THEM!', 'ROLL OUT', 'ROGER, ROGER'],
   gunshipIn: ['THIRTY SECONDS!', 'HOLD ON, IT\'S GONNA GET HOT', 'DROP ZONE IS HOT', 'TEN SECONDS, LOCK AND LOAD'],
   gunshipDrop: ['GREEN LIGHT! GO, GO, GO!', 'EVERYBODY OUT!', 'GO! GO!'],
   gunshipStrafe: ['STRAFING RUN, HEADS DOWN', 'TURRETS FREE', 'TAKING FIRE!', 'MAKING ANOTHER PASS'],
   gunshipDown: ['WE\'RE HIT! WE\'RE GOING DOWN!', 'MAYDAY, MAYDAY', 'BRACE! BRACE!'],
-  lander: ['UNLOADING', 'BATTALION, DEPLOY', 'ROGER, ROGER', 'MORE OF US. ROGER, ROGER'],
-  walker: ['MAIN GUN READY', 'FIRING!', 'TARGET THAT SPIDER', 'ADJUST TEN DEGREES', 'REARMING', 'GOOD HIT, GOOD HIT'],
-  walkerHurt: ['WE\'VE BEEN HIT!', 'LEGS FOUR AND FIVE ARE GONE', 'SHE WON\'T HOLD MUCH LONGER', 'FIRE IN THE DRIVE'],
+  lander: ['UNLOADING', 'BATTALION, DEPLOY', 'ROGER, ROGER', 'REINFORCEMENTS. ROGER, ROGER'],
+  walker: ['GET THOSE AT-TES MOVING!', 'FIRING!', 'TARGET THAT SPIDER DROID', 'MAIN GUN READY', 'REARMING', 'GOOD HIT, GOOD HIT'],
+  walkerHurt: ['WE\'VE BEEN HIT!', 'WE\'VE LOST A LEG!', 'SHE WON\'T HOLD MUCH LONGER', 'FIRE IN THE DRIVE'],
   spider: ['TARGETING', 'ENEMY WALKER LOCATED', 'FIRING. ROGER, ROGER'],
-  knight: ['WITH ME!', 'HOLD YOUR GROUND', 'STAY BEHIND ME', 'KEEP THEM OFF THE WALKERS', 'THERE ARE TOO MANY OF THEM', 'TRUST YOUR TRAINING'],
-  duelist: ['YOUR ARMY IS FINISHED, KNIGHT', 'ANOTHER BLADE FOR MY COLLECTION', 'WE WILL MEET AGAIN'],
+  tank: ['TANKS ADVANCING', 'TARGET THAT TANK!', 'CONCENTRATE ALL FIRE ON THAT TANK!', 'FIRE!'],
+  jedi: {
+    'ANAKIN SKYWALKER': ['THIS IS WHERE THE FUN BEGINS', 'REX, WITH ME!', 'I\'VE GOT A BAD FEELING ABOUT THIS', 'SNIPS, COVER THE LEFT!'],
+    'OBI-WAN KENOBI': ['HELLO THERE', 'CODY, BRING UP THE WALKERS', 'WELL, THAT WASN\'T SO HARD', 'I HAVE A BAD FEELING ABOUT THIS'],
+    'AHSOKA TANO': ['SKYGUY, THEY\'RE FLANKING US!', 'I\'VE GOT THIS ONE', 'COME ON, CLANKERS!'],
+    'MACE WINDU': ['THIS PARTY\'S OVER', 'HOLD THE LINE!', 'FORWARD!'],
+    YODA: ['THROUGH THE FORCE, THINGS YOU WILL SEE', 'MOVE FORWARD WE MUST', 'BEGUN, THE CLONE WAR HAS'],
+    'PLO KOON': ['WOLFFE, THE LEFT FLANK', 'WE LEAVE NO ONE BEHIND'],
+    'AAYLA SECURA': ['BLY, BRING YOUR MEN UP', 'STAY TOGETHER!'],
+    'LUMINARA UNDULI': ['GREE, THE TREES!', 'HOLD THE BEACH'],
+    default: ['WITH ME!', 'HOLD YOUR GROUND', 'STAY BEHIND ME', 'MAY THE FORCE BE WITH US', 'KEEP THEM OFF THE WALKERS'],
+  } as Record<string, string[]>,
+  grievous: ['CRUSH THEM! MAKE THEM SUFFER!', 'KENOBI...', 'YOUR LIGHTSABER WILL MAKE A FINE ADDITION TO MY COLLECTION', 'TIME TO ABANDON SHIP'],
+  ventress: ['YOU\'RE NOT WORTHY OF THOSE SABERS', 'I WILL END YOU, JEDI', 'ANOTHER TIME'],
+  dooku: ['YOU DISAPPOINT ME', 'TWICE THE PRIDE, DOUBLE THE FALL', 'THIS IS NOT OVER'],
+  wookiee: ['RAAAWWRGH!', 'AARGH! AARGH!', 'WRRAAHH!'],
+  twilek: ['FOR RYLOTH!', 'FREE LESSU!', 'TAKE BACK OUR HOME!'],
+};
+/** The Separatist duelist who comes out to meet a Jedi, by battle. */
+/** What each Jedi wears over the armour of the war. */
+const ROBES: Record<string, string> = {
+  'ANAKIN SKYWALKER': '#2a2226', 'OBI-WAN KENOBI': '#a8906a', 'AHSOKA TANO': '#6a3a32', 'MACE WINDU': '#6a5644', YODA: '#8a7a5a', 'PLO KOON': '#5a4632',
+  'AAYLA SECURA': '#4a3a2a', 'LUMINARA UNDULI': '#2a2a3a', 'KI-ADI-MUNDI': '#8a7a5a', 'KIT FISTO': '#5a4a3a', 'SHAAK TI': '#7a5a4a', 'QUINLAN VOS': '#3a3028', 'PONG KRELL': '#4a4a3a',
+};
+const DUELIST: Record<string, { name: string; twin: boolean; four: boolean; lines: string[] }> = {
+  grievous: { name: 'GENERAL GRIEVOUS', twin: false, four: true, lines: LINES.grievous },
+  ventress: { name: 'ASAJJ VENTRESS', twin: true, four: false, lines: LINES.ventress },
+  dooku: { name: 'COUNT DOOKU', twin: false, four: false, lines: LINES.dooku },
 };
 
 /** Where a dogfighter is at time t: the chased one on its looping path, the chaser `lag` seconds behind it. */
@@ -134,7 +155,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
   const pick = <T>(a: readonly T[], R: Rng = r) => a[Math.floor(R() * a.length)];
   let ids = 1;
 
-  const drawnField = g.weighted<FieldKind>({ arena: 3, crystal: 2, jungle: 2, platform: 2, canyon: 2 });
+  const drawnField = g.weighted<FieldKind>({ geonosis: 3, christophsis: 2, felucia: 2, umbara: 2, kamino: 2, ryloth: 2, kashyyyk: 2, coruscant: 2 });
   const field: FieldKind = opts.field && opts.field in FIELDS ? (opts.field as FieldKind) : drawnField;
   const F = FIELDS[field];
   const hour = g.fork('hour').int(0, F.hours.length - 1);
@@ -151,14 +172,17 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
   const DEPTH = 1400 * u;
   const N = Math.max(8, Math.round((phone ? 18 : 46) * Math.pow(traffic, 0.7)));
   const NC = Math.round(N * 1.35);
-  const legion = g.pick(LEGIONS);
+  const style = F.style;
+  const legion = LEGIONS[g.pick(F.legions)];
+  const leader = g.pick(F.leaders);
 
   // eslint-disable-next-line prefer-const
   let world: SaberWorld;
   world = {
     t: 0, W, H, GW, GH, u, phone, bus,
     director: createDirector(forkRng(seed, 'saber-director'), { arc: g.pick(ARCS), period: g.range(300, 600), establish: () => establish() }),
-    field, hour, place: g.pick(F.places), legion, cast: [], castIds: [],
+    field, style, battle: F.battle, hour, place: g.pick(F.places), legion, leader, cast: [], castIds: [],
+    terrain: { hills: [], cover: [], facilities: [], height: () => 0 }, vehicles: [], beams: [], missiles: [],
     HY, NY, yOf, mOf, xOf, gaDir,
     front: GW / 2 + g.range(-0.05, 0.05) * GW, gap: 240 * u,
     soldiers: [], squads: [], walkers: [], rollers: [], crafts: [], knights: [],
@@ -177,6 +201,8 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       ga: gaAlive.length,
       cf: cfAlive.length,
       walkers: world.walkers.filter((w) => w.state !== 'fall').length,
+      vehicles: world.vehicles.length,
+      cover: world.terrain.cover.filter((c) => c.hp > 0).length,
       rollers: world.rollers.length,
       crafts: world.crafts.length,
       knights: world.knights.filter((k) => k.state !== 'away').length,
@@ -266,24 +292,43 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
   const ctx: Ctx = { world, r, say, emit, chronicle, speak, look, after, climax, phase: () => world.act.phase };
 
   // ---- the armies ------------------------------------------------------------------------------------
-  let squadNo = { ga: Math.floor(r() * GA_SQUADS.length), cf: Math.floor(r() * CF_UNITS.length) };
-  function newSquad(side: Side, size: number): Squad {
-    const name = side === 'ga' ? `${GA_SQUADS[squadNo.ga++ % GA_SQUADS.length]} SQUAD` : CF_UNITS[squadNo.cf++ % CF_UNITS.length];
-    const sq: Squad = { id: ids++, side, name, leader: side === 'ga' ? pick(GA_LEADERS) : pick(CF_LEADERS), line: '', lineT: -99, size };
+  let squadNo = { ga: Math.floor(r() * legion.squads.length), cf: Math.floor(r() * DROID_UNITS.length) };
+  let gaLeaders = 0;
+  /** A squad's name and its leader: the legion's own companies and men; the droids' platoons under their OOM commanders. */
+  function newSquad(side: Side, size: number, kind?: 'wookiee' | 'twilek'): Squad {
+    let name = side === 'ga' ? legion.squads[squadNo.ga++ % legion.squads.length] : DROID_UNITS[squadNo.cf++ % DROID_UNITS.length];
+    let leader = side === 'ga' ? (gaLeaders++ === 0 ? legion.commander : r() < 0.6 ? pick(legion.men) : `SERGEANT ${pick(legion.men)}`) : pick(DROID_LEADERS);
+    if (kind === 'wookiee') {
+      name = 'WOOKIEE WARRIORS';
+      leader = pick(['TARFFUL', 'CHEWBACCA', 'WULLFFWARRO']);
+    } else if (kind === 'twilek') {
+      name = 'TWI\'LEK FREEDOM FIGHTERS';
+      leader = 'CHAM SYNDULLA';
+    }
+    const sq: Squad = { id: ids++, side, name, leader, line: '', lineT: -99, size };
     world.squads.push(sq);
     return sq;
   }
   function spawnSoldier(side: Side, kind: SoldierKind, x: number, d: number, hx: number, hd: number, state: Soldier['state'], squad: number, alt = 0): Soldier {
     const s: Soldier = {
       id: ids++, side, kind, x, d, alt, hx, hd, state, t0: world.t, cool: 0.5 + r() * 2.5, ph: r() * 6, seed: Math.floor(r() * 1e6), squad,
-      crouch: state === 'line' && side === 'ga' && r() < 0.4 ? 1 : 0, face: fwd(side), fireT: -9,
+      crouch: state === 'line' && side === 'ga' && r() < 0.4 ? 1 : 0, face: fwd(side), fireT: -9, cov: -1, jump: 0,
     };
     world.soldiers.push(s);
     byId.set(s.id, s);
     return s;
   }
-  const kindFor = (side: Side, i: number): SoldierKind =>
-    side === 'ga' ? (i === 0 ? 'officer' : i === 3 ? 'heavy' : 'trooper') : i === 0 ? 'commander' : r() < (world.castIds?.includes('spiders') ? 0.18 : 0.1) ? 'super' : 'droid';
+  /** Who is in a squad: a leader (sometimes an ARC trooper), a heavy gunner, a jump trooper; droid units with their OOM, B2s and commando droids, MagnaGuards aboard ship. */
+  const kindFor = (side: Side, i: number, special?: 'wookiee' | 'twilek'): SoldierKind => {
+    if (special) return special;
+    if (side === 'ga') return i === 0 ? (r() < 0.25 ? 'arc' : 'officer') : i === 3 ? 'heavy' : i === 4 && r() < 0.5 ? 'jet' : 'trooper';
+    if (i === 0) return 'commander';
+    if (style === 'hangar' && i === 1) return 'magna';
+    if (i % 5 === 3 && r() < 0.35) return 'bx';
+    return r() < (world.castIds?.includes('spiders') ? 0.18 : 0.11) ? 'super' : 'droid';
+  };
+  /** Allies who fight beside the clones: Wookiees on Kashyyyk, Cham Syndulla's fighters on Ryloth. */
+  const allies = (): 'wookiee' | 'twilek' | undefined => (F.cast.wookiees && r() < 0.4 ? 'wookiee' : F.cast.twileks && r() < 0.3 ? 'twilek' : undefined);
   /** A squad's slots: a centre behind the front and a spread around it. */
   function slots(side: Side, n: number, hd0 = pickD()) {
     const mh = maxHx(side, hd0);
@@ -297,8 +342,9 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     let left = total;
     while (left > 0) {
       const n = Math.min(left, side === 'ga' ? 5 + Math.floor(r() * 3) : 7 + Math.floor(r() * 4));
-      const sq = newSquad(side, n);
-      slots(side, n).forEach((sl, i) => spawnSoldier(side, kindFor(side, i), lineX(side, sl.hx), sl.hd, sl.hx, sl.hd, 'line', sq.id));
+      const special = side === 'ga' ? allies() : undefined;
+      const sq = newSquad(side, n, special);
+      slots(side, n).forEach((sl, i) => spawnSoldier(side, kindFor(side, i, special), lineX(side, sl.hx), sl.hd, sl.hx, sl.hd, 'line', sq.id));
       left -= n;
     }
   }
@@ -315,7 +361,8 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     if (!alive(s)) return;
     s.state = 'fall';
     s.t0 = world.t;
-    s.alt = 0;
+    if (s.kind !== 'geonosian') s.alt = 0;
+    s.jump = 0;
     world.fallen[s.side]++;
     kills++;
     if (s.side === 'cf') for (let k = 0; k < (cause === 'blast' ? 4 : 2); k++) fx('spark', s.x, s.d, 16 * u, { vx: (r() - 0.5) * 60 * u, valt: (20 + r() * 40) * u, dur: 0.5 + r() * 0.4, r: 2 * u, color: '#ffd080' });
@@ -333,6 +380,12 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     for (let k = 0; k < 4 * big; k++) fx('dust', x + (r() - 0.5) * R, d + (r() - 0.5) * 0.015, 0, { vx: (r() - 0.5) * 40 * u + world.wind, valt: (10 + r() * 20) * u, dur: 2.5 + r() * 2, r: (16 + r() * 18) * u * big });
     for (let k = 0; k < 3 * big; k++) fx('smoke', x + (r() - 0.5) * R * 0.5, d, (10 + r() * 20) * u, { vx: world.wind * 0.6, valt: (18 + r() * 14) * u, dur: 5 + r() * 4, r: (12 + r() * 12) * u * big, color: '#3a3430' });
     world.scorches.push({ x, d, r: R * 0.8 * big, t0: world.t });
+    // Barricades and crates are blown apart; rock and trench stay.
+    for (const c of world.terrain.cover) {
+      if (c.hp > 900 || c.hp <= 0 || distOf(c, { x, d }) > R * 0.8 + c.w * 0.5) continue;
+      c.hp -= 30 * power * big;
+      if (c.hp <= 0) for (let k = 0; k < 6; k++) fx('debris', c.x, c.d, 10 * u, { vx: (r() - 0.5) * 160 * u, valt: (40 + r() * 120) * u, dur: 1.2, r: 3 * u, color: '#4a4440' });
+    }
     if (world.scorches.length > 140) world.scorches.shift();
     for (const s of world.soldiers) {
       if (!alive(s) || s.alt > 30 * u) continue;
@@ -342,6 +395,8 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     const wd = opts.walkerDmg ?? 6;
     for (const w of world.walkers) if (w.state === 'walk' && distOf(w, { x, d }) < R * 1.6) w.hp -= wd * (0.6 + r() * 0.8);
     for (const ro of world.rollers) if (ro.state !== 'dead' && distOf(ro, { x, d }) < R * 1.2) ro.hp -= wd * 4;
+    for (const v of world.vehicles) if (v.state !== 'dead' && distOf(v, { x, d }) < R * 1.4) v.hp -= (wd + 4) * (v.kind === 'dsd' || v.kind === 'atrt' || v.kind === 'barc' ? 3 : 1) * (0.6 + r() * 0.8);
+    for (const fc of world.terrain.facilities) if (fc.state === 'up' && distOf(fc, { x, d }) < R + 70 * u * fc.s) fc.hp -= 10 * power * big;
   }
 
   function fire(s: Soldier) {
@@ -358,6 +413,10 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       const ro = world.rollers.find((q) => q.state === 'shield' && distOf(q, s) < 1000 * u);
       if (ro) return bolt('ga', 'rifle', mx, s.d, ma, ro.x - fwd('cf') * 26 * u, ro.d, (8 + r() * 26) * u, 'roller', ro.id, false, s.id);
     }
+    if (r() < 0.07) {
+      const v = world.vehicles.find((q) => q.side !== s.side && q.state !== 'dead' && distOf(q, s) < 900 * u);
+      if (v) return bolt(s.side, 'rifle', mx, s.d, ma, v.x + (r() - 0.5) * 30 * u, v.d, v.alt + (8 + r() * 20) * u, 'vehicle', v.id, true, s.id);
+    }
     if (r() < 0.06) {
       const wk = world.walkers.find((q) => q.side !== s.side && q.state === 'walk' && distOf(q, s) < 1100 * u);
       if (wk) return bolt(s.side, 'rifle', mx, s.d, ma, wk.x + (r() - 0.5) * 50 * u, wk.d, (30 + r() * 50) * u, 'walker', wk.id, true, s.id);
@@ -367,7 +426,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     let bd = Infinity;
     for (let k = 0; k < 5; k++) {
       const e = enemies[Math.floor(r() * enemies.length)];
-      if (e.alt > 20 * u) continue;
+      if (e.alt > 20 * u && e.kind !== 'geonosian') continue;
       const dd = distOf(e, s) * (0.8 + r() * 0.4);
       if (dd < bd) {
         bd = dd;
@@ -378,6 +437,8 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     let p = s.side === 'ga' ? 0.024 : 0.022;
     if (s.kind === 'heavy' || s.kind === 'super') p *= 1.6;
     if (best.crouch > 0.5) p *= 0.55;
+    if (best.cov >= 0) p *= 0.45;
+    if (best.kind === 'bx' || s.kind === 'bx' || s.kind === 'arc') p *= 1.4;
     if (s.state === 'charge') p *= 1.3;
     if (best.state === 'charge') p *= 1.7;
     if (best.state === 'retreat' || best.state === 'march') p *= 1.4;
@@ -418,6 +479,15 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
           return;
         }
       }
+      if (b.aim === 'vehicle') {
+        const v = world.vehicles.find((q) => q.id === b.target);
+        if (v && v.state !== 'dead' && b.hit) {
+          v.hp -= 32 + r() * 26;
+          fx('flash', v.x, v.d, b.a1, { dur: 0.3, r: 36 * u });
+          for (let k = 0; k < 4; k++) fx('spark', v.x, v.d, b.a1, { vx: (r() - 0.5) * 160 * u, valt: (r() - 0.2) * 140 * u, dur: 0.5, r: 2 * u, color: '#ffc070' });
+          return;
+        }
+      }
       explode(b.x1, b.d1, 46 * u, 0.6, { walkerDmg: 8 });
       return;
     }
@@ -449,6 +519,12 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       fx('spark', b.x1, b.d1, b.a1, { dur: 0.3, r: 4 * u, color: '#9ad0ff' });
       return;
     }
+    if (b.aim === 'vehicle') {
+      const v = world.vehicles.find((q) => q.id === b.target);
+      if (v && b.hit) v.hp -= 0.8;
+      if (r() < 0.3) fx('spark', b.x1, b.d1, b.a1, { vx: (r() - 0.5) * 60 * u, valt: (r() - 0.5) * 60 * u, dur: 0.3, r: 2 * u, color: '#ffd8a0' });
+      return;
+    }
     if (b.aim === 'walker' || b.aim === 'craft') {
       if (r() < 0.3) fx('spark', b.x1, b.d1, b.a1, { vx: (r() - 0.5) * 60 * u, valt: (r() - 0.5) * 60 * u, dur: 0.3, r: 2 * u, color: '#ffd8a0' });
       if (b.aim === 'walker') {
@@ -463,7 +539,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
   // ---- walkers ------------------------------------------------------------------------------------------
   function spawnWalker(side: Side, x: number, d: number, extra: Partial<Walker> = {}): Walker {
     const w: Walker = {
-      id: ids++, side, kind: side === 'ga' ? 'hexa' : 'spider', name: side === 'ga' ? pick(HEXA_NAMES) : pick(SPIDER_NAMES), x, d,
+      id: ids++, side, kind: side === 'ga' ? 'hexa' : 'spider', name: side === 'ga' ? `AT-TE ${pick(['ONE', 'TWO', 'THREE', 'FOUR', 'SEVEN', 'NINE', 'ELEVEN', 'TWELVE'])}` : `OG-9 SPIDER DROID ${Math.floor(r() * 90) + 10}`, x, d,
       hx: (side === 'ga' ? 230 : 200) * u + r() * 160 * u, state: 'walk', t0: world.t, hp: side === 'ga' ? 120 : 130, cool: 3 + r() * 4, ph: r() * 6, seed: Math.floor(r() * 1e6), face: fwd(side),
       aimX: 0, aimD: 0, fireT: -9, line: '', lineT: -99, alt: 0, ...extra,
     };
@@ -556,7 +632,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     const d = kind === 'lander' ? 0.28 + r() * 0.26 : 0.1 + r() * 0.32;
     const dropX = kind === 'lander' ? lineX(side, Math.min(maxHx(side, d) * 0.8, (360 + r() * 200) * u)) : lineX(side, Math.min(maxHx(side, d) * 0.7, (120 + r() * 260) * u));
     const c: Craft = {
-      id: ids++, side, kind, name: kind === 'lander' ? pick(LANDER_NAMES) : pick(GUNSHIP_NAMES), x: rearX(side, d, 260 * u), d,
+      id: ids++, side, kind, name: kind === 'lander' ? 'C-9979 LANDING CRAFT' : kind === 'trident' ? 'TRIDENT ASSAULT SHIP' : `LAAT ${pick(GUNSHIP_NAMES)}`, x: rearX(side, d, 260 * u), d,
       alt: (kind === 'lander' ? 340 : 230) * u, face: fwd(side), tx: dropX, td: d, talt: (kind === 'lander' ? 300 : 210) * u, state: 'inbound', t0: world.t,
       seed: Math.floor(r() * 1e6), cargo, walker: -1, hp: 100, cool: 0, fireT: -9, bank: 0, doors: 0, line: '', lineT: -99, spin: 0,
     };
@@ -726,6 +802,323 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     world.crafts = world.crafts.filter((c) => c.state !== 'off');
   }
 
+  // ---- the war machines: tanks, scout walkers, speeders, artillery, droid war machines -------------------
+  type VSpec = { side: Side; hp: number; speed: number; hx: [number, number]; d: [number, number]; cool: [number, number]; gun: 'blaster' | 'cannon' | 'beam' | 'missile' | 'none'; alt: number; hit: number };
+  const VSPEC: Record<VehicleKind, VSpec> = {
+    atrt: { side: 'ga', hp: 45, speed: 48, hx: [30, 150], d: [0.05, 0.5], cool: [1, 1.6], gun: 'blaster', alt: 0, hit: 0.07 },
+    saber: { side: 'ga', hp: 130, speed: 26, hx: [140, 280], d: [0.1, 0.45], cool: [3.5, 5], gun: 'cannon', alt: 9, hit: 0 },
+    barc: { side: 'ga', hp: 20, speed: 300, hx: [0, 0], d: [0.03, 0.12], cool: [0.25, 0.4], gun: 'blaster', alt: 6, hit: 0.18 },
+    spha: { side: 'ga', hp: 170, speed: 5, hx: [540, 700], d: [0.5, 0.64], cool: [8, 12], gun: 'beam', alt: 0, hit: 0 },
+    aat: { side: 'cf', hp: 140, speed: 22, hx: [110, 300], d: [0.1, 0.5], cool: [3.5, 5], gun: 'cannon', alt: 7, hit: 0 },
+    dsd: { side: 'cf', hp: 35, speed: 30, hx: [30, 140], d: [0.05, 0.55], cool: [1.5, 2.3], gun: 'blaster', alt: 0, hit: 0.05 },
+    mtt: { side: 'cf', hp: 240, speed: 34, hx: [300, 380], d: [0.15, 0.45], cool: [99, 99], gun: 'none', alt: 10, hit: 0 },
+    hailfire: { side: 'cf', hp: 60, speed: 36, hx: [240, 420], d: [0.12, 0.55], cool: [4, 7], gun: 'missile', alt: 0, hit: 0 },
+    crab: { side: 'cf', hp: 75, speed: 30, hx: [40, 190], d: [0.05, 0.5], cool: [1.3, 2], gun: 'blaster', alt: 0, hit: 0.06 },
+  };
+  const VNAME: Record<VehicleKind, string> = { atrt: 'AT-RT', saber: 'TX-130 SABER TANK', barc: 'BARC SPEEDER', spha: 'SPHA-T', aat: 'AAT BATTLE TANK', dsd: 'DWARF SPIDER DROID', mtt: 'MTT', hailfire: 'HAILFIRE DROID', crab: 'CRAB DROID' };
+  /** How many of each machine the battle keeps on its field, by what the battle has. */
+  const vq = (k: number) => Math.max(0, Math.round(k * (phone ? 0.5 : 1) * Math.min(1.5, traffic)));
+  const VQUOTA: Partial<Record<VehicleKind, number>> = style === 'hangar'
+    ? { dsd: vq(2) }
+    : {
+        atrt: F.cast.speeders ? vq(2) : 0,
+        saber: F.cast.tanks ? vq(1) : 0,
+        aat: F.cast.tanks ? vq(2) : 0,
+        dsd: vq(2),
+        hailfire: F.cast.artillery ? vq(1) : 0,
+        crab: F.cast.crabs ? vq(2) : 0,
+        spha: F.cast.spha ? Math.max(1, vq(2)) : g.chance(0.35) ? vq(1) : 0,
+      };
+  const nextV: Partial<Record<VehicleKind, number>> = {};
+  function spawnVehicle(kind: VehicleKind, atEdge: boolean, extra: Partial<Vehicle> = {}): Vehicle {
+    const sp = VSPEC[kind];
+    const hd = sp.d[0] + r() * (sp.d[1] - sp.d[0]);
+    const hx = (sp.hx[0] + r() * (sp.hx[1] - sp.hx[0])) * u;
+    const v: Vehicle = {
+      id: ids++, side: sp.side, kind, name: VNAME[kind], x: atEdge ? rearX(sp.side, hd, 120 * u) : lineX(sp.side, hx), d: hd, alt: sp.alt * u, hx, hd,
+      state: kind === 'mtt' || atEdge ? 'enter' : 'move', t0: world.t, hp: sp.hp, cool: sp.cool[0] + r() * 2, fireT: -9, aimX: 0, aimD: 0, aimA: 0,
+      ph: r() * 6, face: fwd(sp.side), cargo: kind === 'mtt' ? (phone ? 7 : 12) : 0, seed: Math.floor(r() * 1e6), line: '', lineT: -99, doors: 0, ...extra,
+    };
+    world.vehicles.push(v);
+    return v;
+  }
+  const vAlive = (v: Vehicle) => v.state !== 'dead';
+  /** The nearest enemy machine worth a cannon shell: a tank, a walker, a war droid. */
+  function heavyTarget(side: Side, from: { x: number; d: number }, range: number): { x: number; d: number; a: number; aim: BoltAim; id: number } | null {
+    let best: { x: number; d: number; a: number; aim: BoltAim; id: number } | null = null;
+    let bd = range;
+    for (const v of world.vehicles) if (v.side !== side && vAlive(v) && v.kind !== 'barc') {
+      const dd = distOf(v, from);
+      if (dd < bd) {
+        bd = dd;
+        best = { x: v.x, d: v.d, a: v.alt + 14 * u, aim: 'vehicle', id: v.id };
+      }
+    }
+    for (const w of world.walkers) if (w.side !== side && w.state === 'walk') {
+      const dd = distOf(w, from) * 1.1;
+      if (dd < bd) {
+        bd = dd;
+        best = { x: w.x, d: w.d, a: 50 * u, aim: 'walker', id: w.id };
+      }
+    }
+    return best;
+  }
+  function softTarget(side: Side, from: { x: number; d: number }, range: number): Soldier | null {
+    const list = side === 'ga' ? cfAlive : gaAlive;
+    let best: Soldier | null = null;
+    let bd = range;
+    for (let k = 0; k < 6 && list.length; k++) {
+      const e = list[Math.floor(r() * list.length)];
+      const dd = distOf(e, from);
+      if (dd < bd) {
+        bd = dd;
+        best = e;
+      }
+    }
+    return best;
+  }
+  function vehicleDown(v: Vehicle) {
+    v.state = 'dead';
+    explode(v.x, v.d, (v.kind === 'mtt' || v.kind === 'spha' ? 90 : 60) * u, 0.5, { big: v.kind !== 'barc' && v.kind !== 'dsd', walkerDmg: 0 });
+    if (v.kind !== 'barc') world.wrecks.push({ id: ids++, kind: v.kind, x: v.x, d: v.d, t0: world.t, seed: v.seed, face: v.face, smoke: v.kind === 'dsd' ? 0.5 : 1 });
+    if (v.kind === 'saber' || v.kind === 'aat' || v.kind === 'mtt' || v.kind === 'spha') {
+      say(`THE ${v.name} IS DESTROYED`, v.x, v.d, 80 * u, v.side === 'ga' ? '#ffb4a0' : '#bfe0ff');
+      emit('tankdown', v.x, v.d, 0.7);
+      look('tankdown', v.x, v.d, 1.8, 7, 6);
+      chronicle(`${v.side === 'ga' ? 'A Republic' : 'A Separatist'} ${titled(v.name)} was knocked out and burned.`);
+    } else emit('vehicledown', v.x, v.d, 0.25);
+    nextV[v.kind] = world.t + 35 + r() * 45;
+  }
+  function vehicles(dt: number) {
+    for (const k of Object.keys(VQUOTA) as VehicleKind[]) {
+      const q = VQUOTA[k] ?? 0;
+      if (!q || world.t < (nextV[k] ?? 0)) continue;
+      if (world.vehicles.filter((v) => v.kind === k && vAlive(v)).length >= q) continue;
+      nextV[k] = world.t + 20 + r() * 30;
+      const v = spawnVehicle(k, world.t > 1);
+      if (k === 'aat' || k === 'saber') speak({ name: v.name, side: v.side, line: '', lineT: 0 } as never, v.side === 'ga' ? 'TANKS MOVING UP' : 'TANKS ADVANCING. ROGER, ROGER');
+    }
+    for (const v of world.vehicles) {
+      if (!vAlive(v)) continue;
+      const sp = VSPEC[v.kind];
+      const f = fwd(v.side);
+      const age = world.t - v.t0;
+      if (v.kind === 'barc') {
+        // A speeder run down the flank, shooting into the droid line as it passes.
+        v.x += f * sp.speed * u * dt;
+        v.ph += dt * 20;
+        if (r() < dt * 12) fx('dust', v.x - f * 20 * u, v.d, 0, { vx: -f * 40 * u, valt: 8 * u, dur: 1.2, r: 10 * u });
+        v.cool -= dt;
+        if (v.cool <= 0) {
+          v.cool = sp.cool[0] + r() * (sp.cool[1] - sp.cool[0]);
+          const tg = cfAlive.find((q) => Math.abs(q.x - (v.x + f * 120 * u)) < 120 * u && Math.abs(q.d - v.d) < 0.2);
+          if (tg) {
+            bolt('ga', 'turret', v.x + f * 16 * u, v.d, 12 * u, tg.x, tg.d, 14 * u, 'soldier', tg.id, r() < sp.hit, -1, 1800 * u);
+            v.fireT = world.t;
+          }
+        }
+        if ((f > 0 && xOf(v.x, v.d) > GW + 200 * u) || (f < 0 && xOf(v.x, v.d) < -200 * u)) v.state = 'dead';
+        continue;
+      }
+      if (v.kind === 'mtt') {
+        // The transport: in, stop, open the doors and push out its rack of droids, then back out.
+        const tx = v.state === 'leave' ? rearX('cf', v.d, 300 * u) : lineX('cf', v.hx);
+        const dx = tx - v.x;
+        if (v.state === 'enter' || v.state === 'leave') {
+          v.x += Math.sign(dx) * Math.min(Math.abs(dx), sp.speed * u * dt);
+          v.face = (v.state === 'leave' ? -f : f) as 1 | -1;
+          if (r() < dt * 6) fx('dust', v.x - v.face * 60 * u, v.d, 0, { vx: -v.face * 20 * u, valt: 6 * u, dur: 1.6, r: 14 * u });
+          if (v.state === 'enter' && Math.abs(dx) < 4 * u) {
+            v.state = 'deploy';
+            v.t0 = world.t;
+            say('AN MTT OPENS ITS DOORS', v.x, v.d, 90 * u, '#ffd0b8');
+            emit('mtt', v.x, v.d, 0.5);
+          }
+          if (v.state === 'leave' && Math.abs(dx) < 10 * u) v.state = 'dead';
+        } else if (v.state === 'deploy') {
+          v.doors = Math.min(1, v.doors + dt * 0.8);
+          if (v.doors >= 1 && v.cargo > 0) {
+            v.cool -= dt;
+            if (v.cool <= 0) {
+              v.cool = 0.28;
+              const sq = world.squads.find((q) => q.id === Math.round(v.aimA)) ?? newSquad('cf', v.cargo);
+              v.aimA = sq.id;
+              const sl = slots('cf', 1, Math.max(0.04, Math.min(0.62, v.d + (r() - 0.5) * 0.08)))[0];
+              spawnSoldier('cf', kindFor('cf', (phone ? 7 : 12) - v.cargo), v.x + f * 50 * u, v.d + (r() - 0.5) * 0.01, Math.min(sl.hx, maxHx('cf', sl.hd) * 0.6), sl.hd, 'march', sq.id);
+              v.cargo--;
+            }
+          }
+          if (v.cargo <= 0 && age > 8) {
+            v.state = 'leave';
+            v.doors = 0;
+          }
+        }
+        continue;
+      }
+      // Everything else holds a place behind its line and fights from it.
+      const tx = lineX(v.side, v.hx);
+      const dx = tx - v.x;
+      if (Math.abs(dx) > 5 * u) {
+        v.x += Math.sign(dx) * Math.min(Math.abs(dx), sp.speed * u * dt);
+        v.ph += dt * (v.kind === 'atrt' ? 4 : v.kind === 'dsd' || v.kind === 'crab' ? 3 : 1);
+        if (v.state === 'enter' && Math.abs(dx) < 40 * u) v.state = 'move';
+        if (v.alt > 0 && r() < dt * 4) fx('dust', v.x, v.d, 0, { valt: 6 * u, dur: 1.4, r: 12 * u });
+      } else if (v.kind === 'hailfire' || v.kind === 'atrt') v.ph += dt * 0.5;
+      v.d += (v.hd - v.d) * Math.min(1, dt * 0.2);
+      v.face = f;
+      if (v.hp < sp.hp * 0.35 && r() < dt * 3) fx('smoke', v.x, v.d, (20 + r() * 10) * u, { vx: world.wind * 0.5, valt: 18 * u, dur: 4, r: 10 * u, color: '#2a2624' });
+      v.cool -= dt;
+      if (v.cool <= 0 && v.state !== 'enter') {
+        v.cool = (sp.cool[0] + r() * (sp.cool[1] - sp.cool[0])) * PACE[world.act.phase];
+        const muzzleA = (v.kind === 'atrt' ? 34 : v.kind === 'saber' || v.kind === 'aat' ? 24 : 16) * u + v.alt;
+        if (sp.gun === 'blaster') {
+          const tg = softTarget(v.side, v, 1200 * u);
+          if (tg) {
+            bolt(v.side, 'turret', v.x + f * 16 * u, v.d, muzzleA, tg.x, tg.d, 14 * u, 'soldier', tg.id, r() < sp.hit * (tg.cov >= 0 ? 0.5 : 1), -1, 1600 * u);
+            if (v.kind === 'dsd' || v.kind === 'crab') after(0.1, () => vAlive(v) && alive(tg) && bolt(v.side, 'turret', v.x + f * 16 * u, v.d, muzzleA, tg.x, tg.d, 14 * u, 'soldier', tg.id, r() < sp.hit, -1, 1600 * u));
+            v.fireT = world.t;
+            v.aimX = tg.x;
+            v.aimD = tg.d;
+          }
+        } else if (sp.gun === 'cannon') {
+          const hv = r() < 0.6 ? heavyTarget(v.side, v, 1800 * u) : null;
+          const tg = hv ?? (() => {
+            const s2 = softTarget(v.side, v, 1600 * u);
+            return s2 ? { x: s2.x, d: s2.d, a: 0, aim: 'none' as BoltAim, id: -1 } : null;
+          })();
+          if (tg) {
+            bolt(v.side, 'cannon', v.x + f * 30 * u, v.d, muzzleA, tg.x + (tg.aim === 'none' ? (r() - 0.5) * 40 * u : 0), tg.d, tg.a, tg.aim, tg.id, r() < 0.5, -1, 1100 * u);
+            v.fireT = world.t;
+            v.aimX = tg.x;
+            v.aimD = tg.d;
+            fx('smoke', v.x + f * 40 * u, v.d, muzzleA, { vx: f * 20 * u, valt: 8 * u, dur: 2, r: 9 * u, color: '#6a645c' });
+          }
+        } else if (sp.gun === 'beam') {
+          // The SPHA-T: a great red beam at the core ships overhead, or across the field into the droids' rear.
+          const core = world.capitals.find((c) => c.side === 'cf' && !c.falling);
+          const bx = xOf(v.x, v.d) + f * 30 * u * mOf(v.d);
+          const by = yOf(v.d) - 60 * u * mOf(v.d);
+          v.fireT = world.t;
+          if (core && (core.kind === 'core' || r() < 0.3)) {
+            world.beams.push({ x0: bx, y0: by, x1: core.x + (r() - 0.5) * 60 * u * core.s, y1: core.y, t0: world.t, dur: 1.3, color: '#ff4030', w: 5 });
+            after(0.3, () => {
+              core.hitT = world.t;
+            });
+            emitAt('spha', bx, by, 0.3);
+          } else {
+            const dd = 0.45 + r() * 0.3;
+            const x = rearX('cf', dd, -(150 + r() * 500) * u);
+            world.beams.push({ x0: bx, y0: by, x1: xOf(x, dd), y1: yOf(dd), t0: world.t, dur: 1.1, color: '#ff4030', w: 4 });
+            after(0.25, () => explode(x, dd, 80 * u, 0.6, { big: true, walkerDmg: 30 }));
+            emit('spha', x, dd, 0.3);
+          }
+        } else if (sp.gun === 'missile') {
+          // The hailfire: a salvo of rockets at a gunship overhead, or at a tank.
+          const air = world.crafts.find((c) => c.side === 'ga' && c.alt > 30 * u && c.state !== 'falling' && Math.abs(c.x - v.x) < 1400 * u);
+          const hv = air ? null : heavyTarget('cf', v, 1600 * u);
+          const n = 2 + Math.floor(r() * 3);
+          for (let k = 0; k < n; k++)
+            after(k * 0.25, () => {
+              if (!vAlive(v)) return;
+              if (air) world.missiles.push({ x0: v.x, d0: v.d, a0: 30 * u, x1: air.x, d1: air.d, a1: air.alt, t0: world.t, dur: 1.6 + r() * 0.4, side: 'cf', target: air.id, aim: 'craft' });
+              else if (hv) world.missiles.push({ x0: v.x, d0: v.d, a0: 30 * u, x1: hv.x, d1: hv.d, a1: hv.a, t0: world.t, dur: 2 + r() * 0.5, side: 'cf', target: hv.id, aim: 'vehicle' });
+            });
+          if (air || hv) {
+            v.fireT = world.t;
+            if (air && r() < 0.5) speak(air, 'MISSILES! EVASIVE!', true);
+          }
+        }
+      }
+      if (v.hp <= 0) vehicleDown(v);
+    }
+    world.vehicles = world.vehicles.filter(vAlive);
+    // Rockets in flight; their smoke; their hits.
+    for (let i = world.missiles.length - 1; i >= 0; i--) {
+      const m = world.missiles[i];
+      const k = (world.t - m.t0) / m.dur;
+      if (k < 1) {
+        if (r() < dt * 30) {
+          const d = m.d0 + (m.d1 - m.d0) * k;
+          fx('smoke', m.x0 + (m.x1 - m.x0) * k, d, m.a0 + (m.a1 - m.a0) * k + Math.sin(k * Math.PI) * 120 * u, { dur: 1.6, r: 5 * u, valt: 3 * u, color: '#8a847c' });
+        }
+        continue;
+      }
+      world.missiles.splice(i, 1);
+      if (m.aim === 'craft') {
+        const c = world.crafts.find((q) => q.id === m.target);
+        if (c && c.state !== 'falling' && r() < 0.55) {
+          c.hp -= 34;
+          fx('flash', c.x, c.d, c.alt, { dur: 0.3, r: 40 * u });
+          fx('fire', c.x, c.d, c.alt, { dur: 0.6, r: 12 * u });
+          if (c.hp <= 0 && c.kind !== 'lander' && world.director.want('gunshipdown', 0.6, 80)) downCraft(c, 'A HAILFIRE DROID BRINGS DOWN');
+        } else fx('flash', m.x1 + (r() - 0.5) * 60 * u, m.d1, m.a1 + 30 * u, { dur: 0.3, r: 30 * u, color: '#ffd090' });
+      } else {
+        const v = world.vehicles.find((q) => q.id === m.target);
+        if (v && r() < 0.6) v.hp -= 28;
+        const w = world.walkers.find((q) => q.id === m.target);
+        if (w && r() < 0.6) w.hp -= 14;
+        explode(m.x1, m.d1, 34 * u, 0.4, { walkerDmg: 0 });
+      }
+    }
+    world.beams = world.beams.filter((b) => world.t - b.t0 < b.dur);
+  }
+
+  // ---- the works behind the lines -----------------------------------------------------------------------
+  let towerDownUntil = -1;
+  function facilities(dt: number) {
+    for (const fc of world.terrain.facilities) {
+      if (fc.state === 'ruin') {
+        if (r() < dt * 2) fx('smoke', fc.x + (r() - 0.5) * 60 * u, fc.d, 30 * u, { vx: world.wind * 0.5, valt: 22 * u, dur: 9, r: (20 + r() * 12) * u, color: '#262220' });
+        // Rebuilt, in time: the droids land a new tower; the clones put up a new post.
+        if (world.t - fc.t0 > 360 && world.act.phase !== 'climax') {
+          fc.state = 'up';
+          fc.hp = 160;
+          if (fc.kind === 'tower' || fc.kind === 'factory') say(fc.kind === 'tower' ? 'THE DROIDS RAISE A NEW COMMAND TOWER' : 'THE FOUNDRY FIRES ITS FURNACES AGAIN', fc.x, fc.d, 140 * u, '#ffd0b8');
+        }
+        continue;
+      }
+      // A bunker's gun fires on the droids; an anti-air battery throws flak at what flies.
+      if (fc.kind === 'bunker' && r() < dt * 0.6) {
+        const tg = softTarget('ga', fc, 1100 * u);
+        if (tg) bolt('ga', 'turret', fc.x + fwd('ga') * 30 * u, fc.d, 18 * u, tg.x, tg.d, 14 * u, 'soldier', tg.id, r() < 0.08, -1, 1700 * u);
+      }
+      if (fc.kind === 'battery' && r() < dt * 1.4) {
+        const sx = xOf(fc.x, fc.d);
+        const sy = yOf(fc.d) - 40 * u * mOf(fc.d);
+        const tx = sx + (r() - 0.5) * GW * 0.6 - fwd('cf') * GW * 0.2;
+        const ty = HY * (0.15 + r() * 0.6);
+        world.skybolts.push({ x0: sx, y0: sy, x1: tx, y1: ty, t0: world.t, dur: 0.7, color: '#ff8a50', w: 1.2 });
+        after(0.7, () => fx('flash', gx(tx, 0.9), 0.9, (yOf(0.9) - ty) / mOf(0.9), { dur: 0.3, r: 30 * u, color: '#ffb070' }));
+      }
+      if (fc.kind === 'factory' && r() < dt * 0.6) fx('smoke', fc.x + (r() - 0.5) * 80 * u, fc.d, 120 * u, { vx: world.wind * 0.4, valt: 26 * u, dur: 12, r: 26 * u, color: '#3a3430' });
+      if (fc.hp <= 0) {
+        fc.state = 'ruin';
+        fc.t0 = world.t;
+        explode(fc.x, fc.d, 120 * u, 0.6, { big: true, walkerDmg: 0 });
+        world.scorches.push({ x: fc.x, d: fc.d, r: 160 * u, t0: world.t });
+        say(fc.kind === 'tower' ? 'THE COMMAND TOWER FALLS' : fc.kind === 'factory' ? 'THE DROID FOUNDRY BURNS' : fc.kind === 'post' ? 'THE COMMAND POST IS HIT' : `${fc.name.replace('THE ', 'THE ')} IS DESTROYED`, fc.x, fc.d, 160 * u, fc.side === 'ga' ? '#ffb4a0' : '#bfe0ff');
+        emit('facility', fc.x, fc.d, 0.9);
+        look('facility', fc.x, fc.d, 1.7, 10, 8);
+        chronicle(fc.kind === 'tower' ? 'The Separatist command tower came down, and for a while the droids fought without orders.' : `${titled(fc.name)} was destroyed.`);
+        if (fc.kind === 'tower') {
+          towerDownUntil = world.t + 50;
+          const sq = world.squads.find((q) => q.side === 'cf');
+          if (sq) after(2, () => speak(sq, 'WHAT? WHO TURNED OUT THE LIGHTS?', true));
+        }
+      }
+    }
+    droidPace = world.t < towerDownUntil ? 1.7 : 1;
+  }
+  function downCraft(c: Craft, why: string) {
+    c.state = 'falling';
+    c.t0 = world.t;
+    world.downed.gunships++;
+    speak(c, pick(LINES.gunshipDown), true);
+    say(`${why} ${c.name}`.replace('BRINGS DOWN LAAT', 'BRINGS DOWN THE LAAT'), c.x, c.d, c.alt + 40 * u, '#ffb4a0');
+    emit('gunshiphit', c.x, c.d, 0.8);
+    look('gunshipdown', c.x, c.d, 1.8, 9, 8);
+  }
+
   // ---- the reinforcements ---------------------------------------------------------------------------------
   let nextGunship = 6;
   let nextStrafe = 40 + r() * 20;
@@ -757,15 +1150,39 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       if (short < (phone ? 4 : 8) || world.t - lastMarch[side] < 28) continue;
       lastMarch[side] = world.t;
       const n = Math.min(short - 2, side === 'ga' ? 5 : 8);
-      const sq = newSquad(side, n);
+      const special = side === 'ga' ? allies() : undefined;
+      const sq = newSquad(side, n, special);
       const sl = slots(side, n);
-      sl.forEach((q, i) => spawnSoldier(side, kindFor(side, i), rearX(side, q.hd, (40 + i * 20) * u), q.hd, q.hx, q.hd, 'march', sq.id));
+      // Droids come out of their foundry or through the blast doors when there is one; everyone else from the edge.
+      const door = side === 'cf' ? world.terrain.facilities.find((q) => (q.kind === 'factory' || q.kind === 'hangar-door') && q.state === 'up') : undefined;
+      sl.forEach((q, i) => spawnSoldier(side, kindFor(side, i, special), door ? door.x + (r() - 0.5) * 40 * u : rearX(side, q.hd, (40 + i * 20) * u), door ? door.d + (r() - 0.5) * 0.02 : q.hd, q.hx, q.hd, 'march', sq.id));
       if (r() < 0.6) speak(sq, side === 'ga' ? 'REINFORCEMENTS, COMING UP ON THE LEFT' : 'REINFORCEMENTS. ROGER, ROGER');
       emit('march', rearX(side, sl[0].hd, -100 * u), sl[0].hd, 0.15);
     }
   }
 
   let nextSweep = 5;
+  /** Droids fire slower when their command tower is down. */
+  let droidPace = 1;
+  const coverById = new Map<number, Cover>();
+  /** The cover a soldier should fight from: the nearest piece on its own side of the front, near its place in the line. */
+  function coverFor(s: Soldier, tx: number): number {
+    const f = fwd(s.side);
+    let best = -1;
+    let bd = 110 * u;
+    for (const c of world.terrain.cover) {
+      if (c.hp <= 0 || c.kind === 'spire' || c.kind === 'fighter') continue;
+      if (c.side && c.side !== s.side) continue;
+      // It must stand between us and them, on our side of the front.
+      if ((world.front - c.x) * f < world.gap * 0.25) continue;
+      const dd = Math.abs(c.x - tx) + Math.abs(c.d - s.hd) * 900 * u;
+      if (dd < bd) {
+        bd = dd;
+        best = c.id;
+      }
+    }
+    return best;
+  }
   /** How hot the fighting runs in each part of an engagement (a multiplier on the time between shots). */
   const PACE: Record<string, number> = { buildup: 1.45, clash: 1, climax: 0.8, aftermath: 2.6 };
   // ---- the infantry -------------------------------------------------------------------------------------
@@ -777,6 +1194,10 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       const age = world.t - s.t0;
       if (s.state === 'dead') continue;
       if (s.state === 'fall') {
+        if (s.alt > 0) {
+          s.alt = Math.max(0, s.alt - dt * (60 + age * 300) * u);
+          if (s.alt > 0) continue;
+        }
         if (age > 0.8) {
           s.state = 'dead';
           s.t0 = world.t;
@@ -795,31 +1216,73 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       }
       const f = fwd(s.side);
       const droid = s.side === 'cf';
+      const flyer = s.kind === 'geonosian';
       let tx = lineX(s.side, s.hx);
-      let speed = (droid ? 24 : 34) * u;
+      let td = s.hd;
+      let speed = (droid ? 24 : s.kind === 'wookiee' ? 40 : 34) * u * (s.kind === 'bx' ? 1.5 : 1);
+      // In the line, fight from cover: the nearest piece on our side of the front, near where we would stand.
+      if (s.state === 'line' || s.state === 'march') {
+        if (s.cov < 0 ? (Math.floor(world.t * 4) + s.id) % 4 === 0 : (Math.floor(world.t * 2) + s.id) % 12 === 0) s.cov = coverFor(s, tx);
+        const cv = s.cov >= 0 ? coverById.get(s.cov) : undefined;
+        if (cv && cv.hp > 0) {
+          tx = cv.kind === 'trench' ? cv.x + (s.seed % 7 - 3) * 6 * u : cv.x - f * (cv.w * 0.5 + 8 * u);
+          td = cv.d + (cv.kind === 'trench' ? 0.002 : 0.008) + ((s.seed % 5) - 2) * 0.004;
+        } else s.cov = -1;
+      } else s.cov = -1;
       if (s.state === 'charge') {
         tx = world.front + f * (world.gap * 0.15 + s.hx * 0.25);
-        speed = 78 * u;
+        speed = (s.kind === 'magna' ? 70 : 78) * u;
       } else if (s.state === 'retreat') {
         tx = lineX(s.side, s.hx + 320 * u);
         speed = (droid ? 50 : 70) * u;
+      }
+      // Jump troopers leap forward on their packs, and come back down to the line.
+      if (s.kind === 'jet') {
+        if (!s.jump && s.state === 'line' && r() < dt * 0.05) s.jump = world.t;
+        if (s.jump) {
+          const k = (world.t - s.jump) / 2.4;
+          if (k >= 1) s.jump = 0;
+          else {
+            s.alt = Math.sin(k * Math.PI) * 95 * u;
+            tx = s.x + f * 70 * u * (k < 0.5 ? 1 : -1);
+            speed = 70 * u;
+            if (r() < dt * 20) fx('smoke', s.x, s.d, s.alt, { valt: -10 * u, dur: 1, r: 5 * u, color: '#8a8478' });
+          }
+        } else s.alt = 0;
+      }
+      // Geonosians fly: they hang and dart over the front on their wings.
+      if (flyer) {
+        s.alt += ((40 + Math.sin(world.t * 1.3 + s.seed) * 30) * u - s.alt) * Math.min(1, dt * 2);
+        tx = world.front + f * (Math.sin(world.t * 0.4 + s.seed) * 120 - 60) * u;
+        speed = 60 * u;
+        s.ph += dt * 30;
       }
       const dx = tx - s.x;
       if (Math.abs(dx) > 4 * u) {
         const st = Math.min(Math.abs(dx), speed * dt);
         s.x += Math.sign(dx) * st;
-        s.ph += (st / (9 * u)) * (droid ? 1 : 1.1);
-        if (s.state === 'line' && Math.abs(dx) > 50 * u) s.state = 'march';
+        if (!flyer) s.ph += (st / (9 * u)) * (droid ? 1 : 1.1);
+        if (s.state === 'line' && Math.abs(dx) > 50 * u && !s.jump && !flyer) s.state = 'march';
       } else if (s.state === 'march') s.state = 'line';
-      s.d += (s.hd - s.d) * Math.min(1, dt * 0.4);
+      s.d += (td - s.d) * Math.min(1, dt * 0.5);
       s.face = s.state === 'retreat' ? (-f as 1 | -1) : f;
-      // Troopers take a knee and get up; droids stand in the open.
-      const crouchTo = s.state === 'line' && !droid && Math.abs(dx) < 20 * u ? (Math.sin(world.t * 0.07 + s.seed) > -0.1 ? 1 : 0) : 0;
+      // Troopers take a knee behind low cover, or now and then in the open; droids stand.
+      const cv = s.cov >= 0 ? coverById.get(s.cov) : undefined;
+      const low = cv && cv.h < 34 * u;
+      const crouchTo = s.state === 'line' && !droid && !s.jump && Math.abs(dx) < 20 * u ? (low ? 1 : Math.sin(world.t * 0.07 + s.seed) > 0.2 ? 1 : 0) : 0;
       s.crouch += (crouchTo - s.crouch) * Math.min(1, dt * 4);
+      // Melee: Wookiees, MagnaGuards (and a Jedi, elsewhere) cut down whoever is close.
+      if ((s.kind === 'wookiee' || s.kind === 'magna') && r() < dt * 1.2) {
+        const foes = s.side === 'ga' ? cfAlive : gaAlive;
+        for (const e of foes) if (Math.abs(e.x - s.x) < 26 * u && Math.abs(e.d - s.d) < 0.03 && e.alt < 10 * u) {
+          kill(e, 'blade');
+          break;
+        }
+      }
       s.cool -= dt;
       if (s.cool <= 0 && s.state !== 'retreat') {
-        s.cool = ((droid ? 1.3 : 1.5) + r() * (droid ? 2.2 : 2.6) - (s.kind === 'heavy' || s.kind === 'super' ? 0.6 : 0)) * PACE[world.act.phase];
-        fire(s);
+        s.cool = ((droid ? 1.3 : 1.5) + r() * (droid ? 2.2 : 2.6) - (s.kind === 'heavy' || s.kind === 'super' ? 0.6 : 0)) * PACE[world.act.phase] * (droid ? droidPace : 1);
+        if (s.kind !== 'magna') fire(s);
         // Heavies and supers fire in bursts.
         if ((s.kind === 'heavy' || s.kind === 'super') && r() < 0.7) after(0.12, () => alive(s) && fire(s));
       }
@@ -939,6 +1402,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
           world.skyfalls.push({ x: p.x, y: p.y, vx: Math.cos(p.ang) * 120 * u * df.s, vy: Math.sin(p.ang) * 60 * u - 10 * u, t0: world.t, side: loser, s: df.s, seed: df.seed });
           world.downed.fighters++;
           emitAt('fighterdown', p.x, p.y, 0.25);
+          pilot.name = pick(PILOTS_GA);
           if (world.director.want('fighterline', 0.15, 20)) speak(pilot, loser === 'ga' ? pick(['ARROW THREE IS DOWN!', 'I\'M HIT, I\'M HIT—', 'LOST HIM. HE\'S GONE IN']) : pick(['SPLASH ONE VULTURE', 'GOT HIM! GOT HIM!', 'ONE LESS DROID UP HERE']));
         }
       }
@@ -980,7 +1444,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
           sayAt('SHE GOES DOWN BEYOND THE HORIZON', c.x, HY - 40 * u, '#ffe0c0');
           // Another of her side's ships jumps in, in time.
           after(120 + r() * 120, () => {
-            const ns: Capital = { ...c, id: ids++, name: c.side === 'ga' ? pick(GA_SHIPS) : pick(CF_SHIPS), falling: 0, descent: 0, fireUntil: 0, x: c.x0, y: c.y0, s: c.s0, hitT: -9, seed: Math.floor(r() * 1e6) };
+            const ns: Capital = { ...c, id: ids++, name: shipName(c.side), falling: 0, descent: 0, fireUntil: 0, x: c.x0, y: c.y0, s: c.s0, hitT: -9, seed: Math.floor(r() * 1e6) };
             world.capitals.push(ns);
             world.capitals.sort((p, q) => p.s - q.s);
             sayAt(`${ns.name} DROPS OUT OF HYPERSPACE`, ns.x, ns.y + 60 * u * ns.s, '#e8f0ff');
@@ -1029,17 +1493,26 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       });
     }
   }
+  const usedShips = new Set<string>();
+  /** A capital ship's name: the battle's own ships first, then a class. */
+  function shipName(side: Side, kind?: string): string {
+    if (kind === 'core') return pick(['A LUCREHULK CORE SHIP', 'A TRADE FEDERATION CORE SHIP', 'A CORE SHIP']);
+    const own = (side === 'ga' ? F.ships.ga : F.ships.cf).filter((n) => !usedShips.has(n) && !n.startsWith('THE LUCREHULK'));
+    const name = own.length ? pick(own) : side === 'ga' ? pick(['A VENATOR-CLASS STAR DESTROYER', 'AN ACCLAMATOR ASSAULT SHIP', 'THE GUARLARA', 'THE INTEGRITY']) : pick(['A MUNIFICENT-CLASS FRIGATE', 'A RECUSANT-CLASS DESTROYER', 'A PROVIDENCE-CLASS CARRIER']);
+    usedShips.add(name);
+    return name;
+  }
   function setupCapitals() {
     const n = phone ? 2 : 3 + (r() < 0.3 ? 1 : 0);
     for (let i = 0; i < n; i++) {
       const side: Side = i === 0 ? 'ga' : i === 1 ? 'cf' : r() < 0.5 ? 'ga' : 'cf';
-      const kind = side === 'ga' ? 'wedge' : r() < 0.7 ? 'frigate' : 'core';
+      const kind = side === 'ga' ? 'wedge' : F.cast.coreships ? 'core' : 'frigate';
       // Each side's ships hang over its own half of the sky.
       const half = fwd(side) > 0 ? 0 : 0.5;
       const s = (phone ? 0.38 : 0.45) + r() * (phone ? 0.35 : 0.55);
       const x0 = GW * (half + 0.08 + r() * 0.34);
       const y0 = skyTop + (HY - skyTop) * (0.06 + (1 - s) * 0.22 + r() * 0.14);
-      world.capitals.push({ id: ids++, side, kind, name: side === 'ga' ? pick(GA_SHIPS) : pick(CF_SHIPS), x: x0, y: y0, s, x0, y0, s0: s, face: fwd(side), seed: Math.floor(r() * 1e6), fireUntil: 0, cool: 0, descent: 0, descentT: -999, hitT: -9, drift: r() * 6, falling: 0 });
+      world.capitals.push({ id: ids++, side, kind, name: shipName(side, kind), x: x0, y: y0, s, x0, y0, s0: s, face: fwd(side), seed: Math.floor(r() * 1e6), fireUntil: 0, cool: 0, descent: 0, descentT: -999, hitT: -9, drift: r() * 6, falling: 0 });
     }
     // Far ones first (smaller), so the near overlap them.
     world.capitals.sort((a, b) => a.s - b.s);
@@ -1160,6 +1633,10 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       const sd = 0.12 + r() * 0.3;
       world.standards.push({ x: world.front + fwd(won) * 30 * u, d: sd, side: won, t0: world.t, seed: Math.floor(r() * 1e6) });
       if (world.standards.length > 8) world.standards.shift();
+      // In the lull they dig in again: blown barricades and sandbags are put back.
+      after(12, () => {
+        for (const c of world.terrain.cover) if (c.hp <= 0) c.hp = 60;
+      });
       sayAt(won === a.attacker ? `${sideName(won)} TAKES THE GROUND` : `${sideName(won)} HOLDS`, GW / 2, HY - 30 * u, won === 'ga' ? '#d8ecff' : '#ffd0b8');
       emit('aftermath', world.front, sd, 0.5);
       chronicle(`Engagement ${roman(a.n)}: ${won === 'ga' ? `the ${titled(legion.name.replace('THE ', ''))}` : 'the droid army'} ${won === a.attacker ? 'took the ground it attacked' : 'held its ground'}.`);
@@ -1224,8 +1701,8 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     world.lightning = Math.max(0, world.lightning - dt * 3);
     world.wind += (Math.sin(world.t * 0.03) * 10 + Math.sin(world.t * 0.011) * 6 - world.wind) * dt * 0.2;
     const base = F.rain * (0.55 + 0.35 * Math.sin(world.t * 0.02 + swell));
-    world.rain += (Math.max(base, storm * (field === 'arena' || field === 'canyon' ? 0 : 1)) - world.rain) * dt * 0.1;
-    world.dust += (F.dust * 0.3 + storm * (field === 'arena' || field === 'canyon' ? 0.9 : 0) - world.dust) * dt * 0.1;
+    world.rain += (Math.max(base, storm * (style === 'arena' || style === 'canyon' ? 0 : 1)) - world.rain) * dt * 0.1;
+    world.dust += (F.dust * 0.3 + storm * (style === 'arena' || style === 'canyon' ? 0.9 : 0) - world.dust) * dt * 0.1;
     world.fog = F.fog * (0.75 + 0.25 * Math.sin(world.t * 0.015 + swell * 2));
     if (F.lightning && r() < dt * (0.03 + storm * 0.2)) {
       world.lightning = 1;
@@ -1269,15 +1746,18 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
   const night = F.hours[hour].night > 0.6;
   const LIBRARY: SystemDef<Ctx>[] = [
     {
-      id: 'knights', label: 'a knight in the line', weight: 6, tags: ['hero'],
+      id: 'knights', label: 'the Jedi', weight: 7, tags: ['hero'],
       create: (c) => {
         const w = c.world;
-        const n = phone ? 1 : r() < 0.4 ? 2 : 1;
-        const blades = g.shuffle(BLADES);
+        const n = phone ? 1 : r() < 0.5 ? 2 : 1;
+        // The legion's own Jedi first, if they fought here; then the others who did.
+        const own = legion.jedi.filter((j) => F.jedi.includes(j));
+        const names = [...g.shuffle(own), ...g.shuffle(F.jedi.filter((j) => !own.includes(j)))];
         for (let i = 0; i < n; i++) {
           const hd = 0.08 + r() * 0.35;
           const hx = 30 * u + r() * 60 * u;
-          w.knights.push({ id: ids++, side: 'ga', name: KNIGHTS[(Math.floor(r() * KNIGHTS.length) + i) % KNIGHTS.length], blade: blades[i], x: lineX('ga', hx), d: hd, hx, hd, state: 'stand', t0: 0, ph: 0, face: fwd('ga'), seed: Math.floor(r() * 1e6), swing: 0, parryT: -9, robe: pick(['#5a4232', '#6a5644', '#3e3430', '#7a6a58']), line: '', lineT: -99, twin: false });
+          const name = names[i % names.length];
+          w.knights.push({ id: ids++, side: 'ga', name, blade: SABERS[name] ?? '#5aa8ff', x: lineX('ga', hx), d: hd, hx, hd, state: 'stand', t0: 0, ph: 0, face: fwd('ga'), seed: Math.floor(r() * 1e6), swing: 0, parryT: -9, robe: ROBES[name] ?? '#6a5644', line: '', lineT: -99, twin: TWIN.has(name), four: false });
         }
         let charging: Knight | null = null;
         return {
@@ -1340,9 +1820,10 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       },
     },
     {
-      id: 'duelist', label: 'the blade-master', weight: 3, tags: ['hero', 'legendary'], requires: ['knights'],
+      id: 'duelist', label: field === 'geonosis' ? 'Count Dooku' : field === 'christophsis' ? 'Asajj Ventress' : 'General Grievous', weight: 3, tags: ['hero', 'legendary'], requires: ['knights'],
       create: (c) => {
         const w = c.world;
+        const who = DUELIST[field === 'geonosis' ? 'dooku' : field === 'christophsis' || (field === 'kamino' && r() < 0.5) ? 'ventress' : 'grievous'];
         let duelist: Knight | null = null;
         let knight: Knight | null = null;
         let clash = 0;
@@ -1354,14 +1835,14 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
               if (!kn || !c.climax('duel')) return;
               knight = kn;
               const d = Math.max(0.08, Math.min(0.4, kn.d));
-              duelist = { id: ids++, side: 'cf', name: pick(DUELISTS), blade: '#ff3a30', x: rearX('cf', d, 60 * u), d, hx: 0, hd: d, state: 'duel', t0: w.t, ph: 0, face: fwd('cf'), seed: Math.floor(c.r() * 1e6), swing: 0, parryT: -9, robe: '#2a2228', line: '', lineT: -99, twin: true };
+              duelist = { id: ids++, side: 'cf', name: who.name, blade: who.four ? '#5cff86' : '#ff3a30', x: rearX('cf', d, 60 * u), d, hx: 0, hd: d, state: 'duel', t0: w.t, ph: 0, face: fwd('cf'), seed: Math.floor(c.r() * 1e6), swing: 0, parryT: -9, robe: who.four ? '#8a8478' : '#2a2228', line: '', lineT: -99, twin: who.twin || who.four, four: who.four };
               w.knights.push(duelist);
               kn.state = 'duel';
               kn.t0 = w.t;
-              c.say(`${duelist.name} COMES TO MEET THE KNIGHT`, w.front, d, 90 * u, '#ffb4a0');
+              c.say(`${duelist.name} COMES TO MEET ${kn.name}`, w.front, d, 90 * u, '#ffb4a0');
               c.emit('duel', w.front, d, 1);
               c.look('duel', w.front, d, 2.1, 30, 9);
-              c.speak(duelist, LINES.duelist[0]);
+              c.speak(duelist, who.lines[0], true);
               c.chronicle(`${titled(duelist.name)} came out between the lines to fight ${titled(kn.name)} blade to blade.`);
               return;
             }
@@ -1390,7 +1871,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
                   duelist.parryT = kn.parryT = w.t;
                   for (let k = 0; k < 3; k++) fx('spark', mid, duelist.d, 26 * u, { vx: (c.r() - 0.5) * 120 * u, valt: (c.r() - 0.2) * 100 * u, dur: 0.4, r: 2 * u, color: c.r() < 0.5 ? '#ffffff' : kn.blade });
                 }
-                if (c.r() < dt * 0.15) c.speak(c.r() < 0.5 ? duelist : kn, c.r() < 0.5 ? pick(LINES.duelist) : pick(['YOU WON\'T PASS THIS LINE', 'GIVE IT UP', 'IS THAT ALL?']));
+                if (c.r() < dt * 0.15) c.speak(c.r() < 0.5 ? duelist : kn, c.r() < 0.5 ? pick(who.lines) : pick(['YOU WON\'T PASS THIS LINE', 'GIVE IT UP', 'IS THAT ALL?']));
               }
               duelist.swing *= Math.exp(-dt * 4);
               kn.swing *= Math.exp(-dt * 4);
@@ -1401,7 +1882,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
               kn.t0 = w.t;
               c.say(`${duelist.name} WITHDRAWS`, duelist.x, duelist.d, 80 * u, '#d8ecff');
               c.emit('duelend', duelist.x, duelist.d, 0.6);
-              c.speak(duelist, LINES.duelist[2]);
+              c.speak(duelist, who.lines[who.lines.length - 1], true);
               c.chronicle(`The duel ended with neither down; ${titled(duelist.name)} withdrew behind the droid line.`);
             } else {
               const tx = rearX('cf', duelist.d, 200 * u);
@@ -1483,7 +1964,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       create: () => ({ id: 'spiders' }),
     },
     {
-      id: 'shield', label: 'the dome shield', weight: (gg: Genome) => (field === 'platform' ? 3 : 5) + gg.unit(), tags: ['objective'],
+      id: 'shield', label: 'the dome shield', weight: (gg: Genome) => (style === 'hangar' ? 0 : style === 'platform' ? 3 : 5) + (style === 'hangar' ? 0 : gg.unit()), tags: ['objective'],
       create: (c) => {
         const w = c.world;
         const placeShield = () => {
@@ -1700,8 +2181,8 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       },
     },
     {
-      id: 'storm', label: field === 'arena' || field === 'canyon' ? 'sandstorms' : field === 'platform' ? 'the storm breaking' : 'downpours',
-      weight: () => (field === 'crystal' ? 0 : field === 'platform' ? 6 : 4), tags: ['weather'],
+      id: 'storm', label: style === 'arena' || style === 'canyon' ? 'sandstorms' : style === 'platform' ? 'the storm breaking' : 'downpours',
+      weight: () => (style === 'crystal' || style === 'hangar' ? 0 : style === 'platform' ? 6 : 4), tags: ['weather'],
       create: (c) => {
         const w = c.world;
         let until = 0;
@@ -1710,7 +2191,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
           step(dt) {
             if (storm <= 0.01 && w.t > 70 && w.director.want('storm', 0.45, 300)) {
               until = w.t + 50 + c.r() * 40;
-              const line = field === 'arena' || field === 'canyon' ? 'A SANDSTORM ROLLS OVER THE FIELD' : field === 'platform' ? 'THE STORM BREAKS OVER THE PLATFORM' : 'THE RAIN COMES DOWN IN SHEETS';
+              const line = style === 'arena' || style === 'canyon' ? 'A SANDSTORM ROLLS OVER THE FIELD' : style === 'platform' ? 'THE STORM BREAKS OVER THE PLATFORM' : 'THE RAIN COMES DOWN IN SHEETS';
               sayAt(line, GW / 2, HY - 40 * u, '#e8e0d0');
               emitAt('storm', GW / 2, HY, 0.5);
               c.chronicle(`${line.charAt(0)}${line.slice(1).toLowerCase()}, and the fighting went on in it.`);
@@ -1747,6 +2228,8 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
   world.castIds = drawn.map((d) => d.def.id);
 
   // ---- the battle as we find it --------------------------------------------------------------------------
+  world.terrain = layTerrain(forkRng(seed, 'saber-ground'), { style, GW, u, front0: world.front, gap: world.gap, fwdGA: gaDir, gx, nextId: () => ids++, geonosis: field === 'geonosis' });
+  for (const c of world.terrain.cover) coverById.set(c.id, c);
   deploy('ga', N);
   deploy('cf', NC);
   for (let i = 0; i < walkerQuota('ga'); i++) {
@@ -1789,7 +2272,10 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       }
     } else if (roll < 0.9) {
       const kn = world.knights.filter((k) => k.state === 'stand' && world.t - k.lineT > 12);
-      if (kn.length) speak(pick(kn), pick(LINES.knight));
+      if (kn.length) {
+        const k = pick(kn);
+        speak(k, pick(LINES.jedi[k.name] ?? LINES.jedi.default));
+      }
     } else {
       const cr = world.crafts.filter((c) => c.kind === 'gunship' && world.t - c.lineT > 6);
       if (cr.length) speak(pick(cr), pick(LINES.gunshipStrafe));
@@ -1828,6 +2314,8 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       }
     infantry(dt);
     walkers(dt);
+    vehicles(dt);
+    facilities(dt);
     crafts(dt);
     shots(dt);
     artillery();
