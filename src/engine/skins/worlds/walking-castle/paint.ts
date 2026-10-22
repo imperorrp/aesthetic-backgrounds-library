@@ -14,7 +14,7 @@ import type { SkinHost, SkinInstance, Viewport } from '../../../core/skin';
 import { createFraming, fitText, runWorld, type CameraMode } from '../../../kit';
 import { fillCrisp } from '../../instruments/kit';
 import { createCastlePainter } from './castle';
-import { drawBomber, drawFlock, drawGunboat, drawHen, drawPuddle, drawRuin, drawSheep, drawStain, drawStruck, drawTarMan, drawWalker, drawWreck } from './figures';
+import { drawBomber, drawFlock, drawGunboat, drawHen, drawWalkingHouse, drawPuddle, drawRuin, drawSheep, drawStain, drawStruck, drawTarMan, drawWalker, drawWreck } from './figures';
 import { clamp01, hash, midS, MIDS, PLANES } from './land';
 import { createMapPainter } from './map';
 import { createScenery } from './scenery';
@@ -229,6 +229,13 @@ export function mountWalkingCastle(host: SkinHost, o: CastlePaintOptions): SkinI
     if (k === 2) for (const m of world.wrecks) {
       const x = world.xOf(m.L, s);
       if (x > -40 && x < GW + 40) drawWreck(E, x, land.midRidge(2, m.L)[0] + 2 * u, 12 * u * ph, m.seed, 0.1);
+    }
+    for (const nb of world.neighbours) {
+      if (nb.k !== k) continue;
+      const x = world.xOf(nb.L, s);
+      if (x < -200 * u || x > GW + 200 * u) continue;
+      const [t] = land.midRidge(k, nb.L);
+      drawWalkingHouse(E, nb.kind, x, t + 4 * u, 120 * u * ph * Math.pow(s / 0.31, 0.9), E.t + nb.seed, k === 3 ? 0.06 : 0.03, nb.seed, world.sunSide);
     }
     if (k !== 4) return;
     for (const m of world.struck) {

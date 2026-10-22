@@ -246,6 +246,13 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
     } else if (kind === 'dome') {
       g.ellipse(x + w / 2, y, w / 2 + over * 0.5, h, 0, Math.PI, 0);
       g.closePath();
+    } else if (kind === 'thatch') {
+      // A thick thatch: a rounded hump that hangs over the eaves.
+      g.moveTo(x - over * 1.6, y + 3);
+      g.bezierCurveTo(x - over, y - h * 0.9, x + w * 0.2, y - h * 1.25, x + w / 2, y - h * 1.25);
+      g.bezierCurveTo(x + w * 0.8, y - h * 1.25, x + w + over, y - h * 0.9, x + w + over * 1.6, y + 3);
+      g.quadraticCurveTo(x + w / 2, y + 7, x - over * 1.6, y + 3);
+      g.closePath();
     } else {
       g.rect(x - over * 0.5, y - h, w + over, h);
     }
@@ -253,8 +260,23 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
     g.fill();
     outline(g, 1, 0.65);
     g.clip();
+    if (kind === 'thatch') {
+      // Straw: combed strokes down the slope, a ridge of darker straw on top.
+      for (let k = 0; k < w * 1.4; k++) {
+        const q = k / (w * 1.4);
+        const sx = x - over * 1.4 + q * (w + over * 2.8);
+        g.strokeStyle = rgba(R(seed, k + 70) < 0.5 ? mix(col, '#3a2a14', 0.35) : mix(col, '#fff0c0', 0.25), 0.5);
+        g.lineWidth = 0.6;
+        g.beginPath();
+        g.moveTo(sx, y - h * 1.25 * Math.sin(q * Math.PI) * 0.95);
+        g.lineTo(sx + (q - 0.5) * 6, y + 4);
+        g.stroke();
+      }
+      g.fillStyle = rgba(mix(col, '#3a2a14', 0.4), 0.8);
+      g.fillRect(x + w * 0.15, y - h * 1.28, w * 0.7, 3);
+    }
     // Tiles or shingles in rows, each row a shadow line; the lit slope and the dark one.
-    for (let yy = y - h, row = 0; yy < y + 2; yy += 3.2, row++) {
+    for (let yy = y - h, row = 0; yy < y + 2 && kind !== 'thatch'; yy += 3.2, row++) {
       g.strokeStyle = rgba(dark, 0.55);
       g.lineWidth = 0.7;
       g.beginPath();
@@ -390,10 +412,13 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
       g.stroke();
     }
     // The skirt: iron plates hanging over the hips like feathers.
-    for (let i = 0; i < 13; i++) {
-      const x = -70 + i * 11 + (R(D.seed, i) - 0.5) * 4;
-      const top = -40 + Math.abs(x) * 0.08;
-      const len = 30 + R(D.seed, i + 20) * 16 - Math.abs(x) * 0.12;
+    const hipXs = [...new Set(D.legs.map((l) => Math.round(l.hip[0] / 40) * 40))];
+    const skirt = hipXs.flatMap((hx) => Array.from({ length: 13 }, (_, i) => [hx, i] as [number, number]));
+    for (const [hx, i] of skirt) {
+      const x = hx - 70 + i * 11 + (R(D.seed, i + hx) - 0.5) * 4;
+      const dxh = x - hx;
+      const top = Math.max(-40 + Math.abs(dxh) * 0.08, D.hull.length ? -40 : -40);
+      const len = 30 + R(D.seed, i + 20 + hx) * 16 - Math.abs(dxh) * 0.12;
       g.beginPath();
       g.moveTo(x - 6, top);
       g.lineTo(x + 7, top);
@@ -450,6 +475,104 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
       g.moveTo(x, deck(x));
       g.lineTo(x, deck(x) - 6);
       g.stroke();
+    }
+    // A barge's mast: the yard, a great patched sail bellied by the wind, the stays to bow and stern.
+    if (D.mast) {
+      const m = D.mast;
+      const mb = deck(m.x);
+      const front = Math.max(...D.hull.map((p) => p[0]));
+      g.strokeStyle = rgba('#3a2a1e', 0.85);
+      g.lineWidth = 0.6;
+      g.beginPath();
+      g.moveTo(m.x, m.top + 6);
+      g.lineTo(front - 6, deck(front - 6) - 2);
+      g.moveTo(m.x, m.top + 6);
+      g.lineTo(back + 8, deck(back + 8) - 2);
+      for (let k = 1; k < 5; k++) {
+        g.moveTo(m.x, m.top + k * 30);
+        g.lineTo(m.x + (k % 2 ? 1 : -1) * m.yard * 0.5, m.top + 22);
+      }
+      g.stroke();
+      const sy = m.top + 22;
+      const sw = m.yard;
+      g.beginPath();
+      g.moveTo(m.x - sw / 2, sy);
+      g.lineTo(m.x + sw / 2, sy);
+      g.quadraticCurveTo(m.x + sw * 0.62, sy + m.sail * 0.5, m.x + sw * 0.48, sy + m.sail);
+      g.lineTo(m.x - sw * 0.48, sy + m.sail);
+      g.quadraticCurveTo(m.x - sw * 0.4, sy + m.sail * 0.5, m.x - sw / 2, sy);
+      g.closePath();
+      g.fillStyle = shadeX(g, m.x - sw / 2, m.x + sw / 2, '#e4d6b8', 0.3);
+      g.fill();
+      outline(g, 1, 0.6);
+      g.save();
+      g.clip();
+      g.strokeStyle = rgba('#8a7a60', 0.35);
+      g.lineWidth = 0.7;
+      for (let k = 1; k < 7; k++) {
+        g.beginPath();
+        g.moveTo(m.x - sw / 2 + (sw * k) / 7, sy);
+        g.quadraticCurveTo(m.x - sw / 2 + (sw * k) / 7 + 5, sy + m.sail * 0.5, m.x - sw / 2 + (sw * k) / 7, sy + m.sail);
+        g.stroke();
+      }
+      for (let k = 0; k < m.patches; k++) {
+        g.fillStyle = rgba(['#c8784a', '#8aa0b8', '#b8a868', '#a85a5a'][k % 4], 0.75);
+        const px = m.x - sw * 0.4 + R(D.seed, k + 300) * sw * 0.7;
+        const py = sy + 10 + R(D.seed, k + 310) * (m.sail - 34);
+        g.fillRect(px, py, 14 + R(D.seed, k + 320) * 10, 12 + R(D.seed, k + 330) * 8);
+        g.strokeStyle = rgba('#5a4a3a', 0.6);
+        g.setLineDash([1.5, 1.5]);
+        g.strokeRect(px, py, 14 + R(D.seed, k + 320) * 10, 12 + R(D.seed, k + 330) * 8);
+        g.setLineDash([]);
+      }
+      g.restore();
+      g.fillStyle = shadeX(g, m.x - 3, m.x + 3, '#6a4a32', 0.4);
+      g.fillRect(m.x - 3, m.top, 6, mb - m.top);
+      g.fillRect(m.x - sw / 2 - 4, sy - 3, sw + 8, 4);
+      g.fillStyle = '#6a4a32';
+      g.fillRect(m.x - 7, m.top + 2, 14, 7);
+    }
+    if (D.tank) {
+      const t = D.tank;
+      g.strokeStyle = '#4a3828';
+      g.lineWidth = 2;
+      g.beginPath();
+      for (const dx of [-t.r * 0.8, t.r * 0.8, -t.r * 0.3, t.r * 0.3]) {
+        g.moveTo(t.x + dx, t.y);
+        g.lineTo(t.x + dx * 1.2, t.y + 44);
+      }
+      g.moveTo(t.x - t.r, t.y + 18);
+      g.lineTo(t.x + t.r, t.y + 30);
+      g.moveTo(t.x + t.r, t.y + 18);
+      g.lineTo(t.x - t.r, t.y + 30);
+      g.stroke();
+      g.beginPath();
+      g.rect(t.x - t.r, t.y - t.r * 1.5, t.r * 2, t.r * 1.5);
+      g.save();
+      g.clip();
+      texture(g, 'wood', t.x - t.r, t.y - t.r * 1.5, t.r * 2, t.r * 1.5, D.seed + 9);
+      g.restore();
+      g.beginPath();
+      g.rect(t.x - t.r, t.y - t.r * 1.5, t.r * 2, t.r * 1.5);
+      outline(g);
+      g.fillStyle = '#3a3a40';
+      for (const q of [0.2, 0.75]) g.fillRect(t.x - t.r - 1, t.y - t.r * 1.5 * (1 - q) - 1, t.r * 2 + 2, 2);
+      coneRoof(g, t.x, t.y - t.r * 1.5, t.r * 0.9, t.r * 1.1, 'cone', '#6a5040');
+    }
+    if (D.mill) {
+      const m = D.mill;
+      const tw0 = m.r * 0.5;
+      const tw1 = m.r * 0.3;
+      g.beginPath();
+      g.moveTo(m.x - tw0 / 2, m.y + m.r * 0.9);
+      g.lineTo(m.x - tw1 / 2, m.y);
+      g.lineTo(m.x + tw1 / 2, m.y);
+      g.lineTo(m.x + tw0 / 2, m.y + m.r * 0.9);
+      g.closePath();
+      g.fillStyle = shadeX(g, m.x - tw0 / 2, m.x + tw0 / 2, P.plaster, 0.35);
+      g.fill();
+      outline(g);
+      roof(g, 'dome', m.x - tw1 * 0.7, m.y + 2, tw1 * 1.4, 9, '#6a4a3a', 2, D.seed + 4);
     }
     // The upper works, back to front: blocks, turrets (sorted by depth), chimneys, pipes, balconies.
     for (const b of D.blocks) {
@@ -730,7 +853,7 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
   // ---- the legs ----------------------------------------------------------------------------------------
   const L = D.leg;
   type Pose = { hip: [number, number]; knee: [number, number]; hock: [number, number]; foot: [number, number]; curl: number };
-  function pose(k: 0 | 1): Pose {
+  function pose(k: number): Pose {
     const f = c.feet[k];
     const fx = world.xOf(f.L, 1);
     const fy = world.land.nearY(f.L) - f.lift * c.cs;
@@ -741,7 +864,7 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
     let x = (dx * co + dy * si) / c.cs;
     const y = (-dx * si + dy * co) / c.cs;
     x *= c.dir;
-    const hip = (k ? D.hips.far : D.hips.near) as [number, number];
+    const hip = D.legs[k].hip;
     const foot: [number, number] = [x, y - 9];
     const a = 0.32 + 0.22 * Math.max(-1, Math.min(1, (foot[0] - hip[0]) / 90));
     const knee: [number, number] = [hip[0] + Math.sin(a) * L.thigh, hip[1] + Math.cos(a) * L.thigh];
@@ -798,9 +921,9 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
     g.arc(p[0], p[1], r * 0.35, 0, Math.PI * 2);
     g.fill();
   }
-  function drawLeg(g: CanvasRenderingContext2D, k: 0 | 1) {
+  function drawLeg(g: CanvasRenderingContext2D, k: number) {
     const p = pose(k);
-    const far = k === 1;
+    const far = D.legs[k].far;
     const base = E.lit(far ? mix(L.col, '#101018', 0.35) : L.col);
     const dark = E.lit(mix(L.col, '#08060a', 0.6));
     const lit = rgba(E.lit(mix(L.col, '#fff0d8', 0.45)), 0.9);
@@ -1094,7 +1217,7 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
     const h = (m.role === 'apprentice' ? 11 : m.role === 'wizard' ? 15 : 12.5) * s;
     const sway = Math.sin(E.t * 1.3 + m.seed) * 0.6;
     const col = (c0: string) => (silhouette ? '#1a1418' : E.lit(c0));
-    const coat = m.role === 'keeper' ? '#5a6a8a' : m.role === 'apprentice' ? '#3a6aa8' : '#2e2a3a';
+    const coat = m.coat;
     // Body.
     g.fillStyle = col(coat);
     g.beginPath();
@@ -1108,15 +1231,23 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
       g.fillRect(x - h * 0.1, y - h * 0.55, h * 0.2, h * 0.5);
     }
     if (m.role === 'wizard' && !silhouette) {
-      g.fillStyle = E.lit('#c84a6a');
-      g.fillRect(x - h * 0.06, y - h * 0.66, h * 0.12, h * 0.4);
+      // A flamboyant jacket over the waistcoat, and the long coat's tails in the wind.
+      g.fillStyle = E.lit(m.accent);
+      g.fillRect(x - h * 0.07, y - h * 0.66, h * 0.14, h * 0.4);
+      const flap = Math.sin(E.t * 4 + m.seed) * h * 0.06 + (world.wind * c.dir) / (30 * world.u) * h * 0.08;
+      g.fillStyle = col(coat);
+      g.beginPath();
+      g.moveTo(x - h * 0.2, y - h * 0.3);
+      g.quadraticCurveTo(x - h * 0.35 - flap, y - h * 0.1, x - h * 0.3 - flap * 1.6, y + h * 0.02);
+      g.lineTo(x - h * 0.12, y);
+      g.fill();
     }
     // Head and hair.
     g.fillStyle = col('#f0c8a8');
     g.beginPath();
     g.arc(x + sway * 0.25, y - h * 0.8, h * 0.13, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = col(m.role === 'keeper' ? '#d8d4cc' : m.role === 'apprentice' ? '#8a5a2a' : '#e8d070');
+    g.fillStyle = col(m.hair);
     g.beginPath();
     g.arc(x + sway * 0.25, y - h * 0.84, h * 0.13, Math.PI, 0);
     g.fill();
@@ -1162,10 +1293,13 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
   }
   function household(g: CanvasRenderingContext2D) {
     for (const m of world.household) {
-      if (m.role === 'spirit' || (m.where !== 'balcony' && m.where !== 'deck')) continue;
+      if (m.role === 'spirit' || (m.where !== 'balcony' && m.where !== 'deck' && m.where !== 'head')) continue;
       let x = 0;
       let y = 0;
-      if (m.where === 'balcony' && D.balconies.length) {
+      if (m.where === 'head') {
+        x = D.face.cx - D.face.r * 0.15;
+        y = D.face.cy - D.face.r * 0.98;
+      } else if (m.where === 'balcony' && D.balconies.length) {
         const b = D.balconies[m.spot % D.balconies.length];
         x = b.x + b.w * (0.3 + (m.id % 3) * 0.2);
         y = b.y;
@@ -1174,7 +1308,7 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
         x = back + 28 + (m.id % 3) * 14;
         y = D.deck(x) - 1;
       }
-      figure(g, m, x, y, 1);
+      figure(g, m, x, y, 1.4);
     }
   }
   function flagsAndWashing(g: CanvasRenderingContext2D) {
@@ -1232,6 +1366,40 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
         g.restore();
       }
     }
+  }
+  function millSails(g: CanvasRenderingContext2D) {
+    const m = D.mill;
+    if (!m) return;
+    const a0 = E.t * (0.5 + Math.abs(world.wind) / (40 * world.u));
+    g.save();
+    g.translate(m.x, m.y + 2);
+    for (let k = 0; k < 4; k++) {
+      const a = a0 + (k * Math.PI) / 2;
+      g.save();
+      g.rotate(a);
+      g.strokeStyle = E.lit('#4a3424');
+      g.lineWidth = 1.4;
+      g.beginPath();
+      g.moveTo(0, 0);
+      g.lineTo(m.r, 0);
+      g.stroke();
+      g.fillStyle = E.lit('#e8dcc4');
+      g.fillRect(m.r * 0.2, 0, m.r * 0.8, m.r * 0.22);
+      g.strokeStyle = E.lit('#6a5440');
+      g.lineWidth = 0.4;
+      for (let q = 0.3; q < 1; q += 0.14) {
+        g.beginPath();
+        g.moveTo(m.r * q, 0);
+        g.lineTo(m.r * q, m.r * 0.22);
+        g.stroke();
+      }
+      g.restore();
+    }
+    g.fillStyle = E.lit('#3a2a1e');
+    g.beginPath();
+    g.arc(0, 0, 2.4, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
   }
   function wheel(g: CanvasRenderingContext2D) {
     const w = D.rear.wheel;
@@ -1363,7 +1531,7 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
     ctx.rotate(c.tilt);
     ctx.scale(c.dir * c.cs, c.cs);
     ctx.lineJoin = 'round';
-    drawLeg(ctx, 1);
+    for (let k = 0; k < D.legs.length; k++) if (D.legs[k].far) drawLeg(ctx, k);
     wheel(ctx);
     ctx.drawImage(out!, minX, minY, maxX - minX, maxY - minY);
     marks(ctx);
@@ -1372,7 +1540,8 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
     doorway(ctx);
     household(ctx);
     flagsAndWashing(ctx);
-    drawLeg(ctx, 0);
+    millSails(ctx);
+    for (let k = 0; k < D.legs.length; k++) if (!D.legs[k].far) drawLeg(ctx, k);
     ctx.restore();
   }
   /** Its shadow on the hill, cast away from the sun. */

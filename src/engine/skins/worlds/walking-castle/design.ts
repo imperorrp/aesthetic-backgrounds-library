@@ -10,7 +10,9 @@
 import type { Genome } from '../../../kit';
 
 export type Mat = 'iron' | 'rust' | 'bronze' | 'wood' | 'plaster' | 'brick' | 'stone' | 'tin';
-export type RoofKind = 'gable' | 'cone' | 'dome' | 'onion' | 'flat' | 'mansard' | 'lean';
+export type RoofKind = 'gable' | 'cone' | 'dome' | 'onion' | 'flat' | 'mansard' | 'lean' | 'thatch';
+export type CastleKind = 'heap' | 'tower' | 'barge' | 'farm';
+export type Leg = { hip: [number, number]; off: number; far: boolean };
 export type Win = { x: number; y: number; w: number; h: number; round: boolean; lit: number };
 export type Block = { x: number; y: number; w: number; h: number; mat: Mat; roof: RoofKind; roofH: number; roofCol: string; wins: Win[]; seed: number; overhang: number };
 export type Turret = { x: number; y: number; r: number; h: number; mat: Mat; roof: RoofKind; roofH: number; roofCol: string; wins: Win[]; seed: number; flag: boolean; ring: boolean };
@@ -22,6 +24,8 @@ export type Flag = { x: number; y: number; h: number; col: string; seed: number 
 
 export type Design = {
   seed: number;
+  /** What kind of castle: a round heap, a teetering tower, a beached barge on four legs, a thatched farm. */
+  kind: CastleKind;
   /** The hull's outline (closed), its deck line (top) as samples, and its plates. */
   hull: [number, number][];
   deck: (x: number) => number;
@@ -43,8 +47,15 @@ export type Design = {
   /** The rear: a dinghy on davits, barrels, a water wheel. */
   rear: { boat: boolean; wheel: { x: number; y: number; r: number } | null; barrels: [number, number][]; cage: [number, number] | null };
   vane: { x: number; y: number };
-  hips: { near: [number, number]; far: [number, number] };
+  /** The legs: where each meets the hull, its place in the gait (0 or 0.5), and whether it is the far one. */
+  legs: Leg[];
   leg: { thigh: number; shin: number; foot: number; toe: number; w: number; col: string };
+  /** How high the belly rides above the ground, and how long a stride is (castle units). */
+  stand: number; stride: number;
+  /** A barge's mast and sail; a farm's water tower and windmill. */
+  mast: { x: number; top: number; yard: number; sail: number; patches: number } | null;
+  tank: { x: number; y: number; r: number } | null;
+  mill: { x: number; y: number; r: number } | null;
   palette: { iron: string; rust: string; bronze: string; wood: string; plaster: string; brick: string; stone: string; tin: string; ink: string };
   width: number;
   top: number;
@@ -71,13 +82,22 @@ export function createDesign(g: Genome): Design {
     tin: '#8a949c',
     ink: '#2a2022',
   };
-  const roofCol = () => g.pick(roofSet);
-  const wallMats: Mat[] = theme === 'pastel' ? ['plaster', 'wood', 'plaster', 'brick', 'tin'] : theme === 'sooty' ? ['iron', 'brick', 'wood', 'stone', 'rust'] : ['wood', 'plaster', 'brick', 'rust', 'stone', 'tin'];
+  const roofCol0 = () => g.pick(roofSet);
+  const wallMats0: Mat[] = theme === 'pastel' ? ['plaster', 'wood', 'plaster', 'brick', 'tin'] : theme === 'sooty' ? ['iron', 'brick', 'wood', 'stone', 'rust'] : ['wood', 'plaster', 'brick', 'rust', 'stone', 'tin'];
 
   // ---- the hull: a heavy round-bottomed mass, the face at the front ---------------------------------
-  const back = -g.range(180, 205);
-  const front = g.range(150, 170);
-  const deckBase = -g.range(112, 130);
+  const kind = g.weighted<CastleKind>({ heap: 4, tower: 2, barge: 2, farm: 2 } as Record<CastleKind, number>);
+  const KIND = {
+    heap: { back: [180, 205], front: [150, 170], deck: [112, 130], face: [58, 70], blocks: [6, 9], bh: [34, 70], bw: [42, 88], maxH: 330, turrets: [3, 5], th: [40, 100], maxT: 380 },
+    tower: { back: [105, 125], front: [95, 108], deck: [100, 115], face: [44, 52], blocks: [10, 14], bh: [42, 82], bw: [34, 62], maxH: 600, turrets: [3, 5], th: [70, 150], maxT: 680 },
+    barge: { back: [255, 285], front: [220, 240], deck: [64, 78], face: [38, 46], blocks: [5, 8], bh: [30, 54], bw: [44, 80], maxH: 210, turrets: [1, 2], th: [30, 60], maxT: 250 },
+    farm: { back: [140, 160], front: [118, 132], deck: [96, 110], face: [42, 50], blocks: [4, 6], bh: [46, 72], bw: [64, 100], maxH: 270, turrets: [1, 2], th: [40, 70], maxT: 300 },
+  }[kind];
+  const wallMats: Mat[] = kind === 'farm' ? ['plaster', 'wood', 'stone', 'plaster', 'brick'] : kind === 'barge' ? ['wood', 'wood', 'tin', 'plaster', 'rust'] : wallMats0;
+  const roofCol = () => (kind === 'farm' && g.chance(0.6) ? '#c8a45c' : roofCol0());
+  const back = -g.range(KIND.back[0], KIND.back[1]);
+  const front = g.range(KIND.front[0], KIND.front[1]);
+  const deckBase = -g.range(KIND.deck[0], KIND.deck[1]);
   const deckBumps = Array.from({ length: 8 }, () => g.range(-14, 14));
   const deck = (x: number) => {
     const q = (x - back) / (front - back);
@@ -122,7 +142,7 @@ export function createDesign(g: Genome): Design {
   }
 
   // ---- the face: a round head at the bow, one great eye, a jaw of iron teeth -----------------------
-  const faceR = g.range(58, 70);
+  const faceR = g.range(KIND.face[0], KIND.face[1]);
   const face = {
     cx: front - faceR * 0.55, cy: deck(front) - faceR * 0.15, r: faceR,
     eyeX: front - faceR * 0.25, eyeY: deck(front) - faceR * 0.45, eyeR: faceR * g.range(0.24, 0.3),
@@ -159,16 +179,16 @@ export function createDesign(g: Genome): Design {
     return out;
   };
   const blocks: Block[] = [];
-  const nBlocks = g.int(6, 9);
+  const nBlocks = g.int(KIND.blocks[0], KIND.blocks[1]);
   for (let k = 0; k < nBlocks; k++) {
-    const w = g.range(42, 88);
+    const w = g.range(KIND.bw[0], KIND.bw[1]);
     const cx = g.range(x0 + w / 2, x1 - w / 2);
     const a = cx - w / 2;
     const b = cx + w / 2;
     const base = topAt(a + w * 0.2, b - w * 0.2) + g.range(2, 8);
-    const h = g.range(34, 70) * (k < 3 ? 1.1 : 0.85);
-    if (base - h < -330) continue;
-    const roof: RoofKind = g.weighted({ gable: 5, mansard: 2, flat: 1.4, lean: 1.5, dome: 0.8 });
+    const h = g.range(KIND.bh[0], KIND.bh[1]) * (k < 3 ? 1.1 : 0.85);
+    if (base - h < -KIND.maxH) continue;
+    const roof: RoofKind = kind === 'farm' ? (g.weighted({ thatch: 5, gable: 2, lean: 1 }) as RoofKind) : (g.weighted({ gable: 5, mansard: 2, flat: 1.4, lean: 1.5, dome: 0.8 }) as RoofKind);
     const roofH = roof === 'flat' ? 6 : roof === 'dome' ? w * 0.38 : roof === 'mansard' ? g.range(16, 24) : g.range(22, 40);
     const mat = g.pick(wallMats);
     blocks.push({ x: a, y: base - h, w, h, mat, roof, roofH, roofCol: roofCol(), wins: windows(a + 4, base - h + 4, w - 8, h - 10), seed: Math.floor(g.unit() * 1e6), overhang: g.range(3, 8) });
@@ -176,13 +196,13 @@ export function createDesign(g: Genome): Design {
   }
   // Turrets: round towers on the heap, tall roofs.
   const turrets: Turret[] = [];
-  const nTur = g.int(3, 5);
+  const nTur = g.int(KIND.turrets[0], KIND.turrets[1]);
   for (let k = 0; k < nTur; k++) {
     const r = g.range(13, 24);
     const cx = g.range(x0 + r, x1 + 30 - r);
     const base = topAt(cx - r * 0.6, cx + r * 0.6) + g.range(6, 14);
-    const h = g.range(40, 100) * (k === 0 ? 1.3 : 1);
-    if (base - h < -380) continue;
+    const h = g.range(KIND.th[0], KIND.th[1]) * (k === 0 ? 1.3 : 1);
+    if (base - h < -KIND.maxT) continue;
     const roof: RoofKind = g.weighted({ cone: 6, onion: 1.2, dome: 1.2, flat: 0.6 });
     turrets.push({ x: cx, y: base - h, r, h, mat: g.pick(wallMats.concat(['stone', 'iron'])), roof, roofH: roof === 'cone' ? r * g.range(1.8, 2.8) : roof === 'flat' ? 6 : r * 1.3, roofCol: roofCol(), wins: windows(cx - r * 0.6, base - h + 6, r * 1.2, h - 14, g.chance(0.4)), seed: Math.floor(g.unit() * 1e6), flag: g.chance(0.7), ring: g.chance(0.5) });
     raise(cx - r, cx + r, base - h - 4);
@@ -249,11 +269,22 @@ export function createDesign(g: Genome): Design {
   };
   const tall = turrets[turrets.length - 1];
   const vane = tall ? { x: tall.x, y: tall.y - tall.roofH - 6 } : { x: 0, y: -300 };
-  const top = Math.min(...turrets.map((t) => t.y - t.roofH), ...chimneys.map((c) => c.y), -200);
+  // The barge's mast and its patched sail; the farm's water tower and windmill.
+  const mast = kind === 'barge' ? { x: g.range(-40, 20), top: deckBase - g.range(300, 360), yard: g.range(110, 150), sail: g.range(150, 200), patches: g.int(2, 5) } : null;
+  const tank = kind === 'farm' ? { x: g.range(x0 + 20, x0 + 70), y: topAt(x0 + 20, x0 + 70) - 40, r: g.range(16, 22) } : null;
+  const mill = kind === 'farm' || (kind === 'heap' && g.chance(0.25)) ? { x: g.range(x0 + 60, x1 - 20), y: topAt(x0 + 60, x1 - 20) - 26, r: g.range(36, 50) } : null;
+  const legCol = theme === 'rust' ? '#5a4436' : theme === 'verdigris' ? '#4a5650' : '#4a4a52';
+  const LEGS: Record<CastleKind, { legs: Leg[]; leg: Design['leg']; stand: number; stride: number }> = {
+    heap: { legs: [{ hip: [8, -18], off: 0.5, far: true }, { hip: [-6, -14], off: 0, far: false }], leg: { thigh: 50, shin: 72, foot: 58, toe: 30, w: g.range(15, 19), col: legCol }, stand: 138, stride: 120 },
+    tower: { legs: [{ hip: [8, -18], off: 0.5, far: true }, { hip: [-6, -14], off: 0, far: false }], leg: { thigh: 66, shin: 96, foot: 74, toe: 30, w: g.range(12, 14), col: legCol }, stand: 186, stride: 150 },
+    barge: { legs: [{ hip: [back + 70, -14], off: 0.5, far: true }, { hip: [front - 90, -14], off: 0, far: true }, { hip: [back + 56, -10], off: 0, far: false }, { hip: [front - 104, -10], off: 0.5, far: false }], leg: { thigh: 40, shin: 58, foot: 46, toe: 24, w: g.range(13, 15), col: legCol }, stand: 108, stride: 96 },
+    farm: { legs: [{ hip: [10, -18], off: 0.5, far: true }, { hip: [-8, -14], off: 0, far: false }], leg: { thigh: 40, shin: 56, foot: 44, toe: 32, w: g.range(19, 23), col: legCol }, stand: 98, stride: 88 },
+  };
+  const lg = LEGS[kind];
+  const top = Math.min(...turrets.map((t) => t.y - t.roofH), ...chimneys.map((c) => c.y), mast ? mast.top : 0, tank ? tank.y - tank.r * 2 : 0, mill ? mill.y - mill.r : 0, -200);
   return {
     seed, hull, deck, plates, face, blocks, turrets, chimneys, pipes, balconies, lines, flags, door, dial, vents, hearth, rear, vane,
-    hips: { near: [-6, -14], far: [8, -18] },
-    leg: { thigh: 50, shin: 72, foot: 58, toe: 30, w: g.range(15, 19), col: theme === 'rust' ? '#5a4436' : theme === 'verdigris' ? '#4a5650' : '#4a4a52' },
+    kind, legs: lg.legs, leg: lg.leg, stand: lg.stand, stride: lg.stride, mast, tank, mill,
     palette, width: front - back + 40, top,
   };
 }

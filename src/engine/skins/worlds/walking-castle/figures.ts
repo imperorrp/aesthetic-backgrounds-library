@@ -545,3 +545,127 @@ export function drawPuddle(E: Env, x: number, y: number, s: number, seed: number
     }
   }
 }
+
+/** Another walking house, met on the road: a spidery keep, a windmill on hen's legs, a cottage, a show-tent on stilts. */
+export function drawWalkingHouse(E: Env, kind: 'keep' | 'mill' | 'cottage' | 'tent', x: number, y: number, s: number, t: number, haze: number, seed: number, lx: number) {
+  if (kind === 'cottage') {
+    drawHen(E, x, y, s * 0.7, t, haze);
+    return;
+  }
+  const g = E.ctx;
+  const H = (c: string) => E.lit(mix(c, '#b8cee4', haze));
+  const ph = t * (kind === 'keep' ? 1.6 : 2.2);
+  const ink = H('#2a2228');
+  const leg = (hx: number, hy: number, o: number, len: number, insect: boolean) => {
+    const sw = Math.sin(ph + o);
+    const fx = hx + sw * len * 0.35;
+    const lift = Math.max(0, Math.cos(ph + o)) * len * 0.12;
+    const kx = insect ? hx + (fx - hx) * 0.5 + (hx < x ? -1 : 1) * len * 0.35 : hx + (fx - hx) * 0.3 - len * 0.18;
+    const ky = insect ? hy - len * 0.1 : hy + len * 0.5;
+    g.strokeStyle = ink;
+    g.lineWidth = Math.max(0.7, s * (insect ? 0.05 : 0.08));
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(hx, hy);
+    g.lineTo(kx, ky);
+    g.lineTo(fx, y - lift);
+    g.stroke();
+  };
+  const bob = Math.abs(Math.sin(ph)) * s * 0.04;
+  if (kind === 'keep') {
+    // Four spider legs, knees up; a tall stone tower with a slate spire and one lit window.
+    const by = y - s * 0.85 - bob;
+    for (const [o, dx] of [[0, -0.3], [Math.PI, -0.15], [Math.PI * 0.5, 0.15], [Math.PI * 1.5, 0.3]] as const) leg(x + dx * s, by, o, s * 0.95, true);
+    const w = s * 0.34;
+    const h = s * 1.1;
+    g.fillStyle = H('#8a8478');
+    g.fillRect(x - w / 2, by - h, w, h);
+    g.fillStyle = H(lx > 0 ? '#5a564e' : '#aaa496');
+    g.fillRect(lx > 0 ? x - w / 2 : x, by - h, w / 2, h);
+    g.fillStyle = H('#3a4252');
+    g.beginPath();
+    g.moveTo(x - w * 0.7, by - h);
+    g.lineTo(x, by - h - s * 0.75);
+    g.lineTo(x + w * 0.7, by - h);
+    g.fill();
+    g.fillStyle = E.night > 0.3 ? rgba('#ffc870', 0.95) : H('#1e1c24');
+    g.fillRect(x - w * 0.12, by - h * 0.7, w * 0.24, h * 0.14);
+    g.strokeStyle = ink;
+    g.lineWidth = Math.max(0.5, s * 0.02);
+    g.strokeRect(x - w / 2, by - h, w, h);
+    g.fillStyle = H('#6a4a6a');
+    g.fillRect(x - w * 0.55, by - h * 0.45, w * 1.1, s * 0.05);
+    return;
+  }
+  if (kind === 'mill') {
+    const by = y - s * 0.7 - bob;
+    leg(x - s * 0.08, by, 0, s * 0.7, false);
+    leg(x + s * 0.08, by, Math.PI, s * 0.7, false);
+    const w0 = s * 0.42;
+    const w1 = s * 0.26;
+    const h = s * 0.95;
+    g.fillStyle = H('#e6dcc6');
+    g.beginPath();
+    g.moveTo(x - w0 / 2, by);
+    g.lineTo(x - w1 / 2, by - h);
+    g.lineTo(x + w1 / 2, by - h);
+    g.lineTo(x + w0 / 2, by);
+    g.fill();
+    g.fillStyle = rgba(H('#3a3440'), 0.35);
+    g.beginPath();
+    g.moveTo(x - lx * w0 / 2, by);
+    g.lineTo(x - lx * w1 / 2, by - h);
+    g.lineTo(x, by - h);
+    g.lineTo(x, by);
+    g.fill();
+    g.fillStyle = H('#6a4a3a');
+    g.beginPath();
+    g.ellipse(x, by - h, w1 * 0.7, s * 0.1, 0, Math.PI, 0);
+    g.fill();
+    const a0 = t * 1.1 + seed;
+    g.strokeStyle = H('#5a4434');
+    g.fillStyle = H('#f0e8d8');
+    g.lineWidth = Math.max(0.6, s * 0.025);
+    for (let k = 0; k < 4; k++) {
+      const a = a0 + (k * Math.PI) / 2;
+      const ex = x + Math.cos(a) * s * 0.62;
+      const ey = by - h + Math.sin(a) * s * 0.62;
+      g.beginPath();
+      g.moveTo(x, by - h);
+      g.lineTo(ex, ey);
+      g.stroke();
+      g.save();
+      g.translate(x, by - h);
+      g.rotate(a);
+      g.fillRect(s * 0.14, 0, s * 0.46, s * 0.12);
+      g.restore();
+    }
+    return;
+  }
+  // The show-tent: striped canvas on four stilts, pennants, a lamp.
+  const by = y - s * 0.9 - bob;
+  for (const [o, dx] of [[0, -0.3], [Math.PI, -0.1], [Math.PI * 0.5, 0.1], [Math.PI * 1.5, 0.3]] as const) leg(x + dx * s, by, o, s * 0.9, false);
+  const w = s * 0.8;
+  for (let k = 0; k < 6; k++) {
+    g.fillStyle = H(k % 2 ? '#f0e6d2' : '#c8443a');
+    g.beginPath();
+    g.moveTo(x - w / 2 + (k * w) / 6, by);
+    g.lineTo(x, by - s * 0.6);
+    g.lineTo(x - w / 2 + ((k + 1) * w) / 6, by);
+    g.fill();
+  }
+  g.fillStyle = H('#c8443a');
+  g.fillRect(x - w / 2, by, w, s * 0.1);
+  g.strokeStyle = ink;
+  g.lineWidth = Math.max(0.5, s * 0.02);
+  g.beginPath();
+  g.moveTo(x, by - s * 0.6);
+  g.lineTo(x, by - s * 0.8);
+  g.stroke();
+  g.fillStyle = H('#f0c040');
+  g.beginPath();
+  g.moveTo(x, by - s * 0.8);
+  g.lineTo(x + s * 0.18, by - s * 0.75 + Math.sin(t * 5) * s * 0.02);
+  g.lineTo(x, by - s * 0.7);
+  g.fill();
+}

@@ -95,9 +95,7 @@ const HOMELANDS: Record<string, { fav: Partial<Record<Region, number>>; temper: 
 };
 
 const DAY_LEN = 840;
-const STRIDE = 120;
 const BETA = 0.64;
-const STAND = 138;
 export const nightOf = (d: number) => clamp01(d > 0.3 && d < 0.7 ? 0 : d <= 0.2 || d >= 0.82 ? 1 : d < 0.5 ? (0.3 - d) / 0.1 : (d - 0.7) / 0.12);
 const titled = (s: string) => s.toLowerCase().replace(/(^|\s)([a-z])/g, (_, a: string, b: string) => a + b.toUpperCase()).replace(/\b(Of|The|At|On|Below|Over|Above|To)\b(?!$)/g, (q) => q.toLowerCase()).replace(/^./, (q) => q.toUpperCase());
 
@@ -125,21 +123,33 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
   });
   const design = createDesign(g.fork('design'));
   const dir: 1 | -1 = g.chance(0.6) ? 1 : -1;
-  const cs = u * (phone ? 1.6 : 1.0) * g.range(0.92, 1.08);
+  // Big enough to be the hero; a tall castle is drawn smaller so its top stays on the screen.
+  const tall = design.stand - design.top;
+  const cs = Math.min(u * (phone ? 1.6 : 1.0) * g.range(0.92, 1.08) * (design.kind === 'farm' ? 1.18 : 1), (land.GY * 0.84) / tall);
   const pace = Math.max(0.4, Math.min(2.2, opts.pace));
   const PACE = 34 * cs * pace;
   const fav = Object.fromEntries((Object.keys(home.fav) as Region[]).map((k) => [k, (home.fav[k] ?? 1) * g.range(0.7, 1.3)])) as Record<Region, number>;
   const places: Place[] = DOOR.map((d) => ({ ...d, name: d.kind === 'port' ? g.pick(PORTS) : d.kind === 'royal' ? g.pick(ROYALS) : d.kind === 'war' ? g.pick(WARS) : g.pick(FIELDS) }));
-  const member = (role: Member['role'], name: string): Member => ({ id: ids++, name, role, where: 'in', spot: 0, act: '', t0: 0, line: '', lineT: -99, seed: Math.floor(g.unit() * 1e6) });
+  // Each of them has a look of their own, by the seed: the wizard's hair and his coat above all.
+  const LOOKS: Record<Member['role'], { hair: string[]; coat: string[]; accent: string[] }> = {
+    wizard: { hair: ['#e8d070', '#2a2224', '#d8d8e0', '#a8502a', '#e0b0c8'], coat: ['#2e2a3a', '#4a2a4a', '#2a3a4a', '#5a3a2a', '#e8e0d0'], accent: ['#c84a6a', '#4a8ac8', '#e0b040', '#5aa06a'] },
+    apprentice: { hair: ['#8a5a2a', '#3a2a22', '#c88a4a'], coat: ['#3a6aa8', '#6a8a3a', '#a85a3a'], accent: ['#e8d8b0'] },
+    keeper: { hair: ['#d8d4cc', '#b8b4ac', '#e8e4dc'], coat: ['#5a6a8a', '#7a5a6a', '#5a7a5a'], accent: ['#ece4d4'] },
+    spirit: { hair: ['#ffb040'], coat: ['#ff7a28'], accent: ['#ffe090'] },
+  };
+  const member = (role: Member['role'], name: string): Member => {
+    const lk = LOOKS[role];
+    return { id: ids++, name, role, where: 'in', spot: 0, act: '', t0: 0, line: '', lineT: -99, seed: Math.floor(g.unit() * 1e6), hair: g.pick(lk.hair), coat: g.pick(lk.coat), accent: g.pick(lk.accent) };
+  };
   const wizard = g.pick(WIZARDS);
   const household = [member('spirit', g.pick(SPIRITS)), member('wizard', wizard), member('apprentice', g.pick(APPRENTICES)), member('keeper', g.pick(KEEPERS))];
   const spirit = () => household[0];
 
   const castle: Castle = {
     name: g.pick(CASTLE_NAMES), wizard,
-    x: GW / 2, y: land.GY - STAND * cs, cs, dir, tilt: 0, bob: 0,
+    x: GW / 2, y: land.GY - design.stand * cs, cs, dir, tilt: 0, bob: 0,
     phase: g.unit(), speed: PACE, want: 1, pace,
-    feet: [{ L: 0, L0: 0, lift: 0, planted: true }, { L: 0, L0: 0, lift: 0, planted: true }],
+    feet: design.legs.map(() => ({ L: 0, L0: 0, lift: 0, planted: true })),
     steps: 0, miles: 0,
     door: { state: 'shut', t0: 0, place: 0, dial: 0, open: 0, next: 14 + g.range(0, 10), who: -1 },
     flare: 0, belch: 0, stopped: false, stopUntil: 0, why: '', limp: 0, washing: true,
@@ -157,7 +167,7 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
     day: g.pick([0.3, 0.34, 0.42, 0.5, 0.56, 0.62, 0.67, 0.9]),
     dayLen: DAY_LEN, days: 0,
     X: 0, region: 'meadow', seg: null,
-    sheep: [], flocks: [], ships: [], tar: [], fx: [], stars: [], gusts: [], walkers: [],
+    sheep: [], flocks: [], ships: [], tar: [], fx: [], stars: [], gusts: [], walkers: [], neighbours: [],
     burning: [], ruins: [], wrecks: [], struck: [], stains: [], puddles: [], arcs: [],
     rain: 0, storm: 0, flash: 0, bolt: null, rainbow: 0, wind: g.range(10, 26) * u * (g.chance(0.5) ? 1 : -1), wet: 0, mist: 0, guns: 0,
     drift: 0, bloom: 0, hen: null, market: null,
@@ -714,6 +724,44 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
       },
     },
     {
+      id: 'neighbours', label: 'other walking houses', weight: 5, tags: ['wonder'],
+      create: (c) => {
+        const w = c.world;
+        const NAMES = { keep: ['the keep of the Wizard of the Fens', 'a rival wizard\u2019s keep', 'the Spider Tower'], mill: ['the windmill that walks', 'old Grindle\u2019s mill'], cottage: ['a hedge-witch\u2019s cottage', 'the cottage on hen\u2019s legs'], tent: ['a travelling show on stilts', 'the walking circus'] };
+        return {
+          id: 'neighbours',
+          step(dt) {
+            for (const nb of w.neighbours) nb.L += nb.v * dt;
+            w.neighbours = w.neighbours.filter((nb) => Math.abs(w.xOf(nb.L, midS(nb.k)) - GW / 2) < GW * 0.75);
+            for (const nb of w.neighbours) {
+              const x = w.xOf(nb.L, midS(nb.k));
+              if (!nb.whistled && Math.abs(x - castle.x) < GW * 0.18) {
+                nb.whistled = true;
+                castle.belch = Math.max(castle.belch, 0.3);
+                for (const [vx, vy] of design.vents) {
+                  const [px, py] = at(vx, vy);
+                  for (let k = 0; k < 3; k++) c.fx('steam', px, py, { vx: (r() - 0.5) * 30 * u, vy: -(40 + r() * 30) * u, dur: 2, r: 7 * cs, color: '#ffffff' });
+                }
+                c.speak(spirit(), nb.kind === 'keep' ? 'Don\u2019t look at it. Don\u2019t whistle. Oh, I whistled.' : 'Wheeep! Morning, neighbour!');
+                c.after(3, () => c.speak(household[1].where !== 'out' ? household[1] : someone(), nb.kind === 'keep' ? 'Show-off. Ours has a better face.' : nb.kind === 'mill' ? 'Still grinding, after all these years.' : 'Wave, everyone. Wave!'));
+                c.emit('whistle', castle.x, castle.y, 0.4);
+                c.chronicle(`On the road we passed ${nb.name}, walking the other way; we whistled to each other.`);
+              }
+            }
+            if (w.neighbours.length || w.t < 90 || w.storm > 0.3 || !w.director.want('neighbour', 0.45, 360)) return;
+            const kind = pick(['keep', 'mill', 'cottage', 'tent'] as const, r);
+            const k = 3 + Math.floor(r() * 2);
+            const s = midS(k);
+            const L = w.X * s + GW * 0.7;
+            w.neighbours.push({ id: ids++, kind, name: pick(NAMES[kind], r), L, k, v: -(26 + r() * 8) * u * s * 2.2, t0: w.t, seed: Math.floor(r() * 1e6), whistled: false });
+            c.card('A Neighbour on the Road', pick(NAMES[kind], r));
+            c.emit('neighbour', GW / 2 + dir * GW * 0.5, land.HY, 0.6);
+          },
+          counts: () => ({ neighbours: w.neighbours.length }),
+        };
+      },
+    },
+    {
       id: 'hencottage', label: 'the hen-legged cottage', weight: 1.2, tags: ['legendary'],
       create: (c) => {
         const w = c.world;
@@ -811,9 +859,13 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
   const regionName = () => world.seg?.name ?? 'the country';
 
   // ---- the castle -------------------------------------------------------------------------------------
-  const hipL = (k: 0 | 1) => landL(castle.x + dir * (k ? design.hips.far[0] : design.hips.near[0]) * cs);
-  for (const k of [0, 1] as const) {
-    const p = (castle.phase + k * 0.5) % 1;
+  const STRIDE = design.stride;
+  const STAND = design.stand;
+  const LEGS = design.legs;
+  const nearLeg = Math.max(0, LEGS.findIndex((l) => !l.far));
+  const hipL = (k: number) => landL(castle.x + dir * LEGS[k].hip[0] * cs);
+  for (let k = 0; k < LEGS.length; k++) {
+    const p = (castle.phase + LEGS[k].off) % 1;
     const f = castle.feet[k];
     const S = STRIDE * cs;
     if (p < BETA) {
@@ -868,9 +920,9 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
     const ground = dX + dir * (castle.x - x0);
     if (ground > 0) castle.phase = (castle.phase + ((ground * BETA) / (STRIDE * cs)) * (1 + lim)) % 1;
     const S = STRIDE * cs;
-    for (const k of [0, 1] as const) {
+    for (let k = 0; k < LEGS.length; k++) {
       const f = castle.feet[k];
-      const p = (castle.phase + k * 0.5) % 1;
+      const p = (castle.phase + LEGS[k].off) % 1;
       const hl = hipL(k);
       if (p < BETA) {
         if (!f.planted) {
@@ -887,10 +939,10 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
         const q = (p - BETA) / (1 - BETA);
         const e = q * q * (3 - 2 * q);
         f.L = f.L0 + (hl + S / 2 - f.L0) * e;
-        f.lift = Math.sin(q * Math.PI) * 34 * (0.6 + 0.4 * Math.min(1.5, castle.speed / PACE)) * (k === 0 ? 1 - castle.limp * 0.4 : 1);
+        f.lift = Math.sin(q * Math.PI) * 34 * (0.6 + 0.4 * Math.min(1.5, castle.speed / PACE)) * (k === nearLeg ? 1 - castle.limp * 0.4 : 1);
       }
     }
-    const gy = (land.nearY(castle.feet[0].L) + land.nearY(castle.feet[1].L)) / 2;
+    const gy = castle.feet.reduce((a, f) => a + land.nearY(f.L), 0) / castle.feet.length;
     groundY += (gy - groundY) * Math.min(1, dt * 2.5);
     const moving = castle.stopped ? 0 : Math.min(1, castle.speed / (PACE * 0.5));
     const bob = Math.cos(4 * Math.PI * (castle.phase - 0.06)) * 5 * moving + castle.limp * 4 * Math.max(0, Math.sin(castle.phase * Math.PI * 2)) * moving;
@@ -922,7 +974,7 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
     }
     door(dt);
   }
-  function touchdown(k: 0 | 1) {
+  function touchdown(k: number) {
     castle.steps++;
     const f = castle.feet[k];
     const x = world.xOf(f.L, 1);
@@ -937,7 +989,7 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
       const [px, py] = at(vx, vy);
       fx('steam', px, py, { vx: -dir * (20 + r() * 16) * u + world.wind * 0.3, vy: -(16 + r() * 12) * u, dur: 1.8, r: 5 * cs, color: '#f4f2ee', grow: 3 });
     }
-    const [kx, ky] = at(k ? design.hips.far[0] + 30 : design.hips.near[0] + 30, 60);
+    const [kx, ky] = at(LEGS[k].hip[0] + 30, STAND * 0.4);
     if (r() < 0.6) fx('steam', kx, ky, { vx: -dir * (14 + r() * 10) * u, vy: -(6 + r() * 6) * u, dur: 1.2, r: 4 * cs, color: '#ffffff', grow: 2.5 });
     for (const sh of world.sheep) {
       if (sh.plane !== 'near' || sh.state === 'flee') continue;
@@ -1042,7 +1094,7 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
     m.t0 = world.t;
   }
   function goIn(m: Member) {
-    if (m.where === 'deck' || m.where === 'balcony') {
+    if (m.where === 'deck' || m.where === 'balcony' || m.where === 'head') {
       m.where = 'in';
       m.t0 = world.t;
     }
@@ -1054,12 +1106,19 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
     if (nextOut < 0) {
       nextOut = 25 + r() * 30;
       const m = pick(household.slice(1), r);
-      if (m.where === 'in' && world.rain < 0.3 && world.storm < 0.4) {
+      // The wizard climbs up onto the castle's head to watch the war go over, or the sun come up.
+      const wiz = household[1];
+      if (wiz.where === 'in' && world.rain < 0.3 && (world.ships.length > 0 || world.guns > 0.3 || (world.day > 0.24 && world.day < 0.3)) && r() < 0.7) {
+        wiz.where = 'head';
+        wiz.act = 'watch';
+        wiz.t0 = world.t;
+        after(2, () => speak(wiz, world.ships.length || world.guns > 0.3 ? pick(['Fools. Every one of them.', 'They\u2019ll want me for this war. Let them want.', 'Not tonight. Not my war.'], r) : 'Look at that. A whole new day.'));
+      } else if (m.where === 'in' && world.rain < 0.3 && world.storm < 0.4) {
         const act = m.role === 'keeper' ? pick(['wash', 'sweep', 'beat'], r) : m.role === 'apprentice' ? pick(['spyglass', 'wave', 'fish'], r) : pick(['look', 'pipe'], r);
         goOut(m, m.role === 'keeper' && act === 'wash' ? 'balcony' : r() < 0.5 ? 'deck' : 'balcony', act);
-      } else if ((m.where === 'deck' || m.where === 'balcony') && !castle.stopped) goIn(m);
+      } else if ((m.where === 'deck' || m.where === 'balcony' || m.where === 'head') && !castle.stopped) goIn(m);
     }
-    if (world.rain > 0.4) for (const m of household) if ((m.where === 'deck' || m.where === 'balcony') && r() < dt * 0.5) goIn(m);
+    if (world.rain > 0.4) for (const m of household) if ((m.where === 'deck' || m.where === 'balcony' || m.where === 'head') && r() < dt * 0.5) goIn(m);
     // Something said every so often (subtitles keep themselves apart).
     nextVoice -= dt;
     if (nextVoice > 0) return;
@@ -1338,7 +1397,7 @@ export function createWalkingCastle(seed: string | number, W: number, H: number,
           tm.t0 = world.t;
         }
       } else if (tm.state === 'cling') {
-        const f = castle.feet[0];
+        const f = castle.feet[nearLeg];
         tm.x = world.xOf(f.L, 1);
         if (age > 3 && f.lift > 20) {
           tm.state = 'melt';

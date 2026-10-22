@@ -24,7 +24,7 @@ export type Castle = {
   tilt: number; bob: number;
   /** The gait: 0..1 through one stride of both legs; the speed now, and the speed it wants (a factor of its pace). */
   phase: number; speed: number; want: number; pace: number;
-  feet: [Foot, Foot];
+  feet: Foot[];
   steps: number; miles: number;
   door: { state: DoorState; t0: number; place: number; dial: number; open: number; next: number; who: number };
   /** The fire flaring (0..1), and the smoke it is putting out (to hide in). */
@@ -36,7 +36,9 @@ export type Castle = {
   marks: { scorch: number; patches: number; tar: number; flowers: number; bunting: number; soot: number };
   line: string; lineT: number;
 };
-export type Member = { id: number; name: string; role: 'wizard' | 'apprentice' | 'keeper' | 'spirit'; where: 'in' | 'out' | 'balcony' | 'deck'; spot: number; act: string; t0: number; line: string; lineT: number; seed: number };
+export type Member = { id: number; name: string; role: 'wizard' | 'apprentice' | 'keeper' | 'spirit'; where: 'in' | 'out' | 'balcony' | 'deck' | 'head'; spot: number; act: string; t0: number; line: string; lineT: number; seed: number; hair: string; coat: string; accent: string };
+/** Another walking house met on the road: on one of the middle ridges, walking the other way. */
+export type Neighbour = { id: number; kind: 'keep' | 'mill' | 'cottage' | 'tent'; name: string; L: number; k: number; v: number; t0: number; seed: number; whistled: boolean };
 export type Sheep = { id: number; x: number; dz: number; plane: 'near' | 'mid'; dir: 1 | -1; ph: number; state: 'graze' | 'walk' | 'flee'; t0: number; seed: number; black: boolean; lamb: boolean; vx: number };
 export type Bird = { x: number; y: number; ph: number; dx: number; dy: number };
 export type Flock = { id: number; kind: 'rooks' | 'geese' | 'swallows' | 'gulls' | 'starlings'; x: number; y: number; vx: number; vy: number; s: number; m: number; birds: Bird[]; t0: number; seed: number };
@@ -71,7 +73,7 @@ export type CastleWorld = {
   day: number; dayLen: number; days: number;
   /** How far the castle has walked, in near-plane units; and the region it is in now. */
   X: number; region: Region; seg: Segment | null;
-  sheep: Sheep[]; flocks: Flock[]; ships: Ship[]; tar: TarMan[]; fx: Fx[]; stars: Star[]; gusts: Gust[]; walkers: Walker[];
+  sheep: Sheep[]; flocks: Flock[]; ships: Ship[]; tar: TarMan[]; fx: Fx[]; stars: Star[]; gusts: Gust[]; walkers: Walker[]; neighbours: Neighbour[];
   /** Marks on the land: towns burning and burnt (far plane), wrecks and struck trees (mid plane), tar and puddles (near plane). */
   burning: Mark[]; ruins: Mark[]; wrecks: Mark[]; struck: Mark[]; stains: Mark[]; puddles: Mark[];
   /** The stories under way (build-up, climax, aftermath), for the painters' moods. */
