@@ -10,6 +10,7 @@ import { BRASSWIND_SCHEMA } from './brasswind/schema';
 import { IRONHAZE_SCHEMA } from './ironhaze/schema';
 import { SANDSEA_SCHEMA } from './sandsea/schema';
 import { WINDTRAP_SCHEMA } from './windtrap/schema';
+import { LAST_LOOP_SCHEMA } from './last-loop/schema';
 
 export const silentRunningSkin = lazySkin(
   {
@@ -95,4 +96,18 @@ export const windtrapSkin = lazySkin(
   () => import('./windtrap'),
 );
 
-export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin] as const;
+export const lastLoopSkin = lazySkin(
+  {
+    id: 'last-loop',
+    label: 'Last Loop',
+    description:
+      'A tiny handmade solar system in its last twenty-two minutes: a wooden ship flying between a wooded homeworld, the hourglass twins pouring sand, a crumbling world with a black hole at its heart, a stormy ocean giant and a planet of thorns; campfires and music, the probe cannon, a moon that moves when unseen, and at the end the supernova, the dark, and waking by the fire again.',
+    tags: ['world', 'space', 'time loop', 'planets'],
+    crisp: true,
+    schema: LAST_LOOP_SCHEMA,
+    defaults: { palette: { from: '#f0a860' }, intensity: 0.85 },
+  },
+  () => import('./last-loop'),
+);
+
+export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, lastLoopSkin] as const;
