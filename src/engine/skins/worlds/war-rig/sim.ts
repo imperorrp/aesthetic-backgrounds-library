@@ -115,10 +115,10 @@ export function createWarRig(seed: string | number, W: number, H: number, opts: 
   let ids = 1;
 
   const grade = g.weighted<Grade>({ blaze: 6, crimson: 3, umber: 2, chrome: 1 });
-  const HY = Math.round(GH * (phone ? g.range(0.5, 0.58) : g.range(0.34, 0.47)));
+  const HY = Math.round(GH * (phone ? g.range(0.42, 0.5) : g.range(0.34, 0.47)));
   const ground = GH - HY;
-  const A = ground * 0.36;
-  const DB = Math.min(ground * 0.44, 300 * u);
+  const A = ground * (phone ? 0.3 : 0.36);
+  const DB = phone ? ground * 0.42 : Math.min(ground * 0.44, 300 * u);
   const VS = phone ? 2.4 : 2.85;
   const mOf = (z: number) => Math.max(0.02, (A + DB * z) / (A + DB));
   const yOf = (z: number) => HY + A + DB * z;
@@ -354,14 +354,14 @@ export function createWarRig(seed: string | number, W: number, H: number, opts: 
       },
     },
     {
-      id: 'crusher', label: 'the monster tank', weight: 4, tags: ['war'],
+      id: 'crusher', label: 'the monster tank', weight: 3, tags: ['war'],
       create: () => {
         roster.crusher = 1.2;
         return { id: 'crusher' };
       },
     },
     {
-      id: 'porcupine', label: 'the porcupines', weight: 4, tags: ['war'],
+      id: 'porcupine', label: 'the porcupines', weight: 3, tags: ['war'],
       create: () => {
         roster.porcupine = 2.5;
         return { id: 'porcupine' };
@@ -1290,6 +1290,7 @@ export function createWarRig(seed: string | number, W: number, H: number, opts: 
   // ---- the story: the war party stalks, harries, throws everything, falls back ----------------------
   const PHASE_LEN: Record<Phase, [number, number]> = { stalk: [22, 40], harry: [55, 100], assault: [32, 48], aftermath: [22, 34] };
   let phaseEnd = 20 + r() * 15;
+  let lastAssault = -60;
   function setPhase(p: Phase) {
     world.phase = p;
     world.phaseT = world.t;
@@ -1325,7 +1326,12 @@ export function createWarRig(seed: string | number, W: number, H: number, opts: 
     const p = world.phase;
     if (p === 'stalk') setPhase('harry');
     else if (p === 'harry') {
-      if (world.t > 60 && world.storm < 0.2 && world.director.want('assault', 0.55, 150)) setPhase('assault');
+      // The climax comes at the top of the arc, or at the latest when it has been too long.
+      const since = world.t - lastAssault;
+      if (world.t > 60 && world.storm < 0.2 && since > 140 && (world.director.tension() > 0.62 || since > 320)) {
+        lastAssault = world.t;
+        setPhase('assault');
+      }
       else phaseEnd = world.t + 10;
     } else if (p === 'assault') setPhase('aftermath');
     else setPhase('stalk');

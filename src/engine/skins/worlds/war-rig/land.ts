@@ -469,12 +469,19 @@ export function createLand(E: Env, world: WarWorld, seed: number) {
         } else if (reg === 'towers' || reg === 'canyon') {
           const big = reg === 'canyon' ? 1.6 : 1;
           v = 124 + (pnoise(X / 128, Z / 128, sd + 6, P / 128) - 0.5) * 50 * big + grain * 1.3;
-          const sx0 = Math.floor(X / (10 * big));
-          const sz0 = Math.floor(Z / (10 * big));
-          const hs = hash(posmod(sx0, Math.round(P / (10 * big))), sz0, sd + 7);
-          if (hs < 0.07 * big) {
-            const fy = (Z / (10 * big)) % 1;
-            v = fy < 0.45 ? 186 : 64;
+          // Pebbles and stones: round, lit on top, a shadow under.
+          const cs = 14 * big;
+          const sx0 = Math.floor(X / cs);
+          const sz0 = Math.floor(Z / cs);
+          const sxw = posmod(sx0, Math.round(P / cs));
+          const hs = hash(sxw, sz0, sd + 7);
+          if (hs < 0.16 * big) {
+            const pr = cs * (0.18 + hash(sxw, sz0, sd + 17) * 0.22);
+            const pcx = (sx0 + 0.5) * cs;
+            const pcz = (sz0 + 0.5) * cs;
+            const dd = Math.hypot(X - pcx, (Z - pcz) * 0.8) / pr;
+            if (dd < 1) v = 150 + (pcz - Z) / pr * 30 - dd * 20;
+            else if (dd < 1.5 && Z > pcz) v -= 26 * (1.5 - dd);
           }
           const crack = Math.abs(pnoise(X / 70, Z / 70, sd + 8, Math.round(P / 70)) - 0.5);
           if (crack < 0.012) v -= 50;

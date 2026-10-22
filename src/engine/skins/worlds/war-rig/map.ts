@@ -25,7 +25,7 @@ export function createMap(E: Env, world: WarWorld, land: Land, seed: number) {
   const cx = GW / 2;
   const phone = GW < GH;
   /** Map pixels per ground unit; the road's lanes spread across the map. */
-  const k = (phone ? 0.74 : 0.64) * world.mOf(0.5);
+  const k = (phone ? 1.05 : 0.64) * world.mOf(0.5);
   const LY = GH * (phone ? 0.3 : 0.4);
   const Y0 = GH * (phone ? 0.52 : 0.56);
   const U = u * world.VS;
