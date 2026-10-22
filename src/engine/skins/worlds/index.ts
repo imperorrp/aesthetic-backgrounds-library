@@ -10,6 +10,7 @@ import { BRASSWIND_SCHEMA } from './brasswind/schema';
 import { IRONHAZE_SCHEMA } from './ironhaze/schema';
 import { SANDSEA_SCHEMA } from './sandsea/schema';
 import { WINDTRAP_SCHEMA } from './windtrap/schema';
+import { SABER_FRONT_SCHEMA } from './saber-front/schema';
 
 export const silentRunningSkin = lazySkin(
   {
@@ -95,4 +96,18 @@ export const windtrapSkin = lazySkin(
   () => import('./windtrap'),
 );
 
-export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin] as const;
+export const saberFrontSkin = lazySkin(
+  {
+    id: 'saber-front',
+    label: 'Saber Front',
+    description:
+      'A ground battle of a galactic civil war seen from a ridge: troopers in white armour and ranks of battle droids trading bolts, walkers duelling, gunships dropping squads, knights with light-blades turning bolts and leading charges, dogfights overhead, and capital ships hanging in the sky.',
+    tags: ['world', 'war', 'sci-fi', 'battle'],
+    crisp: true,
+    schema: SABER_FRONT_SCHEMA,
+    defaults: { palette: { from: '#58b8ff' }, intensity: 0.85 },
+  },
+  () => import('./saber-front'),
+);
+
+export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, saberFrontSkin] as const;
