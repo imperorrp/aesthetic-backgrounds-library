@@ -539,7 +539,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
   // ---- walkers ------------------------------------------------------------------------------------------
   function spawnWalker(side: Side, x: number, d: number, extra: Partial<Walker> = {}): Walker {
     const w: Walker = {
-      id: ids++, side, kind: side === 'ga' ? 'hexa' : 'spider', name: side === 'ga' ? `AT-TE ${pick(['ONE', 'TWO', 'THREE', 'FOUR', 'SEVEN', 'NINE', 'ELEVEN', 'TWELVE'])}` : `OG-9 SPIDER DROID ${Math.floor(r() * 90) + 10}`, x, d,
+      id: ids++, side, kind: side === 'ga' ? 'hexa' : 'spider', name: side === 'ga' ? `AT-TE ${pick(['ONE', 'TWO', 'THREE', 'FOUR', 'SEVEN', 'NINE', 'ELEVEN', 'TWELVE'])}` : `SPIDER DROID ${Math.floor(r() * 90) + 10}`, x, d,
       hx: (side === 'ga' ? 230 : 200) * u + r() * 160 * u, state: 'walk', t0: world.t, hp: side === 'ga' ? 200 : 220, cool: 3 + r() * 4, ph: r() * 6, seed: Math.floor(r() * 1e6), face: fwd(side),
       aimX: 0, aimD: 0, fireT: -9, line: '', lineT: -99, alt: 0, ...extra,
     };

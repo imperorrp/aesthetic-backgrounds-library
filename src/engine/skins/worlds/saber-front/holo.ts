@@ -383,6 +383,81 @@ export function createHolo(host: SkinHost, world: SaberWorld, o: { labels: boole
         ctx.stroke();
       }
     }
+    // The ground's works: cover as short strokes, the armies' facilities as plotted outlines with their names.
+    for (const c of world.terrain.cover) {
+      if (c.hp <= 0) continue;
+      const x = MX(c.x);
+      const y = MY(c.d);
+      const w = Math.max(3, ML(c.w));
+      ctx.strokeStyle = hexA(c.side === 'ga' ? GA : c.side === 'cf' ? CF : HOLO, c.side ? 0.55 : 0.3);
+      ctx.lineWidth = c.kind === 'trench' ? 2.5 : 1.2;
+      ctx.beginPath();
+      if (c.kind === 'rock' || c.kind === 'boulder' || c.kind === 'spire' || c.kind === 'crystal' || c.kind === 'fungus' || c.kind === 'stump' || c.kind === 'reef') ctx.arc(x, y, w * 0.35, 0, Math.PI * 2);
+      else {
+        ctx.moveTo(x - w / 2, y);
+        ctx.lineTo(x + w / 2, y);
+      }
+      ctx.stroke();
+    }
+    ctx.font = SANS(Math.round(8 + Z * 2), 700);
+    ctx.textAlign = 'center';
+    for (const fc of world.terrain.facilities) {
+      const x = MX(fc.x);
+      const y = MY(fc.d);
+      const col = fc.side === 'ga' ? GA : CF;
+      const ruin = fc.state === 'ruin';
+      ctx.strokeStyle = hexA(ruin ? '#9ab4c4' : col, ruin ? 0.4 : 0.85 * flick);
+      ctx.lineWidth = 1.4;
+      const r = 9 * Z * fc.s;
+      ctx.beginPath();
+      if (fc.kind === 'tower') {
+        ctx.moveTo(x, y - r * 1.4);
+        ctx.lineTo(x + r, y + r * 0.6);
+        ctx.lineTo(x - r, y + r * 0.6);
+        ctx.closePath();
+      } else ctx.rect(x - r, y - r * 0.6, r * 2, r * 1.2);
+      ctx.stroke();
+      if (ruin) {
+        ctx.beginPath();
+        ctx.moveTo(x - r, y - r * 0.6);
+        ctx.lineTo(x + r, y + r * 0.6);
+        ctx.stroke();
+      }
+      ctx.fillStyle = hexA(col, ruin ? 0.4 : 0.8);
+      fillCrisp(ctx, fc.name.replace(/^THE /, ''), x, y + r + 12);
+    }
+    // The war machines.
+    for (const v of world.vehicles) {
+      const x = MX(v.x);
+      const y = MY(v.d);
+      const col = sideC(v.side);
+      ctx.fillStyle = hexA(col, 0.9 * flick);
+      ctx.strokeStyle = hexA(col, 0.9 * flick);
+      ctx.lineWidth = 1.3;
+      const r = (v.kind === 'mtt' || v.kind === 'spha' ? 8 : v.kind === 'aat' || v.kind === 'saber' ? 6 : 4) * Z;
+      if (v.kind === 'aat' || v.kind === 'saber' || v.kind === 'mtt') {
+        ctx.strokeRect(x - r, y - r * 0.6, r * 2, r * 1.2);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + v.face * r * 1.6, y);
+        ctx.stroke();
+      } else if (v.kind === 'spha') {
+        ctx.strokeRect(x - r, y - r * 0.4, r * 2, r * 0.8);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + v.face * r * 2, y - r);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    for (const m of world.missiles) {
+      const k = (world.t - m.t0) / m.dur;
+      if (k < 0 || k > 1) continue;
+      glow(MX(m.x0 + (m.x1 - m.x0) * k), MY(m.d0 + (m.d1 - m.d0) * k), 5 * Z, '#ffb070', 0.9);
+    }
     // Walkers: their glyphs, their guns' reach, where they last fired.
     for (const wk of world.walkers) {
       if (wk.state === 'enter') continue;

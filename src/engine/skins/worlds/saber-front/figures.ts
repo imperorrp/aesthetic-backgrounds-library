@@ -116,6 +116,23 @@ export function drawTrooper(E: Env, x: number, y: number, h: number, f: number, 
     g.fill();
   }
   // A heavy's pack; the far arm.
+  if (o.kind === 'jet') {
+    // The jetpack, its twin nozzles.
+    g.fillStyle = armorDark;
+    g.fillRect(shX - h * 0.22, shY + h * 0.0, h * 0.11, torsoH * 0.8);
+    g.fillStyle = under;
+    g.fillRect(shX - h * 0.2, shY + torsoH * 0.78, h * 0.08, h * 0.05);
+  }
+  if (o.kind === 'arc') {
+    // The kama, a cloth skirt in the legion's colour over the thighs.
+    g.fillStyle = hexA(mark, 0.9);
+    g.beginPath();
+    g.moveTo(-h * 0.12, hipY - h * 0.02);
+    g.lineTo(h * 0.11, hipY - h * 0.02);
+    g.lineTo(h * 0.08, hipY + h * 0.18);
+    g.lineTo(-h * 0.16, hipY + h * 0.16);
+    g.fill();
+  }
   if (o.kind === 'heavy' || o.kind === 'commando') {
     g.fillStyle = armorDark;
     g.fillRect(shX - h * 0.2, shY + h * 0.02, h * 0.1, torsoH * 0.75);
@@ -151,7 +168,7 @@ export function drawTrooper(E: Env, x: number, y: number, h: number, f: number, 
   g.fillRect(-h * 0.06, shY + torsoH * 0.5, h * 0.13, h * 0.012);
   // The legion's mark on the chest; an officer's pauldron.
   g.fillStyle = mark;
-  if (o.kind === 'officer') {
+  if (o.kind === 'officer' || o.kind === 'arc') {
     g.beginPath();
     g.ellipse(shX - h * 0.02, shY + h * 0.03, h * 0.09, h * 0.05, -0.2, 0, Math.PI * 2);
     g.fill();
@@ -195,9 +212,10 @@ export function drawDroid(E: Env, x: number, y: number, h: number, f: number, d:
   const g = E.ctx;
   if (h < 2) return;
   if (o.kind === 'super') return drawSuper(E, x, y, h, f, d, p);
-  const tan = E.tone('#b8945e', d, 0.08);
-  const tanLit = E.tone('#ead0a0', d, 0.45);
-  const tanDark = E.tone('#5a4630', d, 0);
+  const bx = o.kind === 'bx';
+  const tan = E.tone(bx ? '#7a7466' : '#b8945e', d, 0.08);
+  const tanLit = E.tone(bx ? '#c8c0b0' : '#ead0a0', d, 0.45);
+  const tanDark = E.tone(bx ? '#3a3830' : '#5a4630', d, 0);
   const joint = E.tone('#3a3024', d, 0);
   const mark = E.tone('#e8c030', d, 0.2);
   const lit = E.lx * f;
@@ -275,6 +293,17 @@ export function drawDroid(E: Env, x: number, y: number, h: number, f: number, d:
   limb(g, nx, ny, nx + h * 0.02, ny - h * 0.12, W * 0.9, joint);
   const hx = nx + h * 0.02;
   const hy = ny - h * 0.14;
+  if (bx) {
+    // A commando droid's small round head, its eye.
+    g.fillStyle = tan;
+    g.beginPath();
+    g.arc(hx + h * 0.02, hy, h * 0.055, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#ffd080';
+    g.fillRect(hx + h * 0.04, hy - h * 0.01, h * 0.02, h * 0.02);
+    g.restore();
+    return;
+  }
   g.fillStyle = tan;
   g.beginPath();
   g.moveTo(hx - h * 0.05, hy - h * 0.03);
@@ -343,13 +372,38 @@ function drawSuper(E: Env, x: number, y: number, h: number, f: number, d: number
   g.restore();
 }
 
-export function drawKnight(E: Env, x: number, y: number, h: number, f: number, d: number, p: Pose, o: { robe: string; blade: string; swing: number; lead: boolean; twin: boolean; dark: boolean }): [number, number, number, number][] {
+/** How each Jedi and Separatist leader looks: skin, hair or headgear, and anything that marks them out at a glance. */
+type Look = { skin: string; hair: string; head: 'hair' | 'bald' | 'montrals' | 'lekku' | 'tentacles' | 'mask' | 'cone' | 'yoda' | 'beard' | 'grievous' | 'ventress' | 'dooku' | 'krell'; tunic?: string };
+const LOOKS: Record<string, Look> = {
+  'ANAKIN SKYWALKER': { skin: '#d8a888', hair: '#5a3a22', head: 'hair', tunic: '#2a2226' },
+  'OBI-WAN KENOBI': { skin: '#e0b090', hair: '#9a5a2a', head: 'beard' },
+  'AHSOKA TANO': { skin: '#d8743a', hair: '#e8e8f0', head: 'montrals', tunic: '#7a3a32' },
+  'MACE WINDU': { skin: '#5a3a28', hair: '#2a1c14', head: 'bald' },
+  YODA: { skin: '#8aa868', hair: '#d8d8c8', head: 'yoda' },
+  'KI-ADI-MUNDI': { skin: '#e0b090', hair: '#e8e0d0', head: 'cone' },
+  'PLO KOON': { skin: '#c8783a', hair: '#2a2a2a', head: 'mask' },
+  'LUMINARA UNDULI': { skin: '#a8b078', hair: '#1a1a2a', head: 'hair' },
+  'KIT FISTO': { skin: '#4a9a5a', hair: '#3a8a4a', head: 'tentacles' },
+  'AAYLA SECURA': { skin: '#5a9ad8', hair: '#5a9ad8', head: 'lekku' },
+  'SHAAK TI': { skin: '#d84a3a', hair: '#e8e8f0', head: 'montrals' },
+  'QUINLAN VOS': { skin: '#c89868', hair: '#3a2a1a', head: 'hair' },
+  'PONG KRELL': { skin: '#7a8a6a', hair: '#5a6a4a', head: 'krell' },
+  'GENERAL GRIEVOUS': { skin: '#e8e0d0', hair: '#c8a878', head: 'grievous' },
+  'ASAJJ VENTRESS': { skin: '#d8d8d0', hair: '#1a1a1a', head: 'ventress', tunic: '#1a1a20' },
+  'COUNT DOOKU': { skin: '#d8b8a0', hair: '#c8c8c8', head: 'dooku', tunic: '#2a2228' },
+};
+export const isSmall = (name: string) => name === 'YODA';
+
+export function drawKnight(E: Env, x: number, y: number, h: number, f: number, d: number, p: Pose, o: { name: string; robe: string; blade: string; swing: number; lead: boolean; twin: boolean; four?: boolean; dark: boolean }): [number, number, number, number][] {
   const g = E.ctx;
+  const look = LOOKS[o.name] ?? { skin: o.dark ? '#b8b0a8' : '#c89a78', hair: '#4a3424', head: 'hair' };
   const robe = E.tone(o.robe, d, 0.1);
   const robeDark = E.tone(mix(o.robe, '#000000', 0.4), d, 0);
-  const tunic = E.tone(o.dark ? '#3a3238' : '#c8b898', d, 0.2);
-  const skin = E.tone(o.dark ? '#b8b0a8' : '#c89a78', d, 0.2);
-  const hair = E.tone(o.dark ? '#2a2a2a' : '#4a3424', d, 0);
+  const tunic = E.tone(look.tunic ?? (o.dark ? '#3a3238' : '#c8b898'), d, 0.2);
+  const skin = E.tone(look.skin, d, 0.25);
+  const hair = E.tone(look.hair, d, 0.05);
+  const boot = E.tone('#2a2420', d, 0);
+  const grievous = look.head === 'grievous';
   const sw = Math.sin(p.ph) * p.moving;
   const hipY = -h * 0.47;
   const shY = hipY - h * 0.3;
@@ -357,78 +411,469 @@ export function drawKnight(E: Env, x: number, y: number, h: number, f: number, d
   g.save();
   g.translate(x, y);
   g.scale(f, 1);
-  // The legs, in boots, under the robe.
-  for (const s of [-1, 1]) {
-    const a = s * sw * 0.7;
-    limb2(g, 0, hipY, Math.sin(a) * h * 0.24, hipY + h * 0.24, Math.sin(a) * h * 0.34, -h * 0.03, h * 0.07, s < 0 ? robeDark : hair);
+  if (grievous) {
+    // The general: a hunched cyborg, bone-white armour on grey limbs, a cape, the mask.
+    const bone = E.tone('#e8e0d0', d, 0.3);
+    const metal = E.tone('#5a5a60', d, 0.1);
+    for (const sd of [-1, 1]) {
+      const a = sd * sw * 0.6;
+      limb2(g, 0, hipY, Math.sin(a) * h * 0.2 + h * 0.06, hipY + h * 0.26, Math.sin(a) * h * 0.3, -h * 0.02, h * 0.05, metal);
+      g.fillStyle = metal;
+      g.beginPath();
+      g.moveTo(Math.sin(a) * h * 0.3 - h * 0.06, 0);
+      g.lineTo(Math.sin(a) * h * 0.3 + h * 0.08, 0);
+      g.lineTo(Math.sin(a) * h * 0.3, -h * 0.05);
+      g.fill();
+    }
+    g.fillStyle = robeDark;
+    g.beginPath();
+    g.moveTo(-h * 0.06, shY);
+    g.quadraticCurveTo(-h * (0.26 + p.moving * 0.2), hipY, -h * (0.22 + p.moving * 0.3), -h * 0.06);
+    g.lineTo(-h * 0.02, hipY);
+    g.fill();
+    g.fillStyle = bone;
+    g.beginPath();
+    g.moveTo(-h * 0.08, hipY);
+    g.lineTo(-h * 0.06, shY + h * 0.02);
+    g.quadraticCurveTo(h * 0.06, shY - h * 0.05, h * 0.12, shY + h * 0.05);
+    g.lineTo(h * 0.06, hipY);
+    g.fill();
+    g.fillStyle = metal;
+    g.fillRect(-h * 0.02, hipY - h * 0.12, h * 0.06, h * 0.12);
+    // The mask, the yellow eyes.
+    g.fillStyle = bone;
+    g.beginPath();
+    g.moveTo(h * 0.04, shY - h * 0.02);
+    g.lineTo(h * 0.13, shY - h * 0.08);
+    g.lineTo(h * 0.11, shY - h * 0.2);
+    g.lineTo(h * 0.02, shY - h * 0.2);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#ffe050';
+    g.fillRect(h * 0.08, shY - h * 0.15, h * 0.03, h * 0.015);
+  } else {
+    // The legs, in boots, under the robe.
+    for (const sd of [-1, 1]) {
+      const a = sd * sw * 0.7;
+      limb2(g, 0, hipY, Math.sin(a) * h * 0.24, hipY + h * 0.24, Math.sin(a) * h * 0.34, -h * 0.03, h * 0.07, sd < 0 ? robeDark : boot);
+    }
+    // The cloak flying out behind when they run.
+    g.fillStyle = robeDark;
+    g.beginPath();
+    g.moveTo(-h * 0.04, shY);
+    g.quadraticCurveTo(-h * (0.2 + p.moving * 0.25), hipY, -h * (0.18 + p.moving * 0.35), -h * (0.08 + p.moving * 0.12));
+    g.lineTo(h * 0.04, hipY + h * 0.1);
+    g.fill();
+    // The robe and the tunic, the belt.
+    g.fillStyle = robe;
+    g.beginPath();
+    g.moveTo(-h * 0.1, shY);
+    g.lineTo(h * 0.1, shY);
+    g.lineTo(h * 0.13, hipY + h * 0.18);
+    g.lineTo(-h * 0.15, hipY + h * 0.16);
+    g.closePath();
+    g.fill();
+    g.fillStyle = tunic;
+    g.beginPath();
+    g.moveTo(-h * 0.02, shY);
+    g.lineTo(h * 0.07, shY);
+    g.lineTo(h * 0.03, hipY);
+    g.fill();
+    g.fillStyle = boot;
+    g.fillRect(-h * 0.1, hipY - h * 0.02, h * 0.2, h * 0.035);
+    // The head: each to their own.
+    const hx0 = h * 0.02;
+    const hy0 = shY - h * 0.08;
+    const hr = h * 0.065;
+    g.fillStyle = skin;
+    g.beginPath();
+    g.ellipse(hx0, hy0, hr * 0.92, hr * 1.08, 0, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = hair;
+    switch (look.head) {
+      case 'hair':
+      case 'beard':
+        g.beginPath();
+        g.ellipse(hx0 - hr * 0.15, hy0 - hr * 0.45, hr, hr * 0.75, 0, Math.PI * 0.9, Math.PI * 2.1);
+        g.fill();
+        g.fillRect(hx0 - hr * 1.0, hy0 - hr * 0.5, hr * 0.5, hr * 1.4);
+        if (look.head === 'beard') {
+          g.beginPath();
+          g.ellipse(hx0 + hr * 0.25, hy0 + hr * 0.75, hr * 0.6, hr * 0.45, 0, 0, Math.PI);
+          g.fill();
+        }
+        break;
+      case 'montrals':
+        // Two horns up, lekku down, white and blue striped.
+        g.beginPath();
+        g.moveTo(hx0 - hr * 0.6, hy0 - hr * 0.6);
+        g.quadraticCurveTo(hx0 - hr * 0.9, hy0 - hr * 2.2, hx0 - hr * 0.1, hy0 - hr * 2.4);
+        g.quadraticCurveTo(hx0 - hr * 0.2, hy0 - hr * 1.4, hx0 + hr * 0.2, hy0 - hr * 0.8);
+        g.fill();
+        g.beginPath();
+        g.moveTo(hx0 - hr * 0.8, hy0);
+        g.quadraticCurveTo(hx0 - hr * 1.4, hy0 + hr * 1.8, hx0 - hr * 0.6, hy0 + hr * 2.6);
+        g.lineTo(hx0 - hr * 0.2, hy0 + hr * 0.6);
+        g.fill();
+        g.fillStyle = E.tone('#3a5aa8', d, 0.1);
+        g.fillRect(hx0 - hr * 0.7, hy0 - hr * 1.6, hr * 0.4, hr * 0.25);
+        break;
+      case 'lekku':
+        g.beginPath();
+        g.moveTo(hx0 - hr * 0.7, hy0 - hr * 0.2);
+        g.quadraticCurveTo(hx0 - hr * 1.8, hy0 + hr * 2, hx0 - hr * 1.2, hy0 + hr * 3.6);
+        g.lineTo(hx0 - hr * 0.6, hy0 + hr * 3.4);
+        g.quadraticCurveTo(hx0 - hr * 1.0, hy0 + hr * 1.6, hx0 - hr * 0.1, hy0 + hr * 0.4);
+        g.fill();
+        g.fillStyle = E.tone('#4a3424', d, 0);
+        g.fillRect(hx0 - hr * 0.8, hy0 - hr * 0.8, hr * 1.4, hr * 0.3);
+        break;
+      case 'tentacles':
+        for (let i = 0; i < 4; i++) {
+          g.beginPath();
+          g.moveTo(hx0 - hr * 0.5, hy0 - hr * 0.5 + i * hr * 0.2);
+          g.quadraticCurveTo(hx0 - hr * 1.6, hy0 + i * hr * 0.4, hx0 - hr * (1.1 + i * 0.15), hy0 + hr * (1.4 + i * 0.4));
+          g.lineWidth = hr * 0.35;
+          g.strokeStyle = hair;
+          g.stroke();
+        }
+        break;
+      case 'mask':
+        g.fillStyle = E.tone('#2a2a2a', d, 0.1);
+        g.fillRect(hx0 - hr * 0.1, hy0 - hr * 0.3, hr * 1.1, hr * 0.9);
+        g.fillStyle = E.tone('#8a8a90', d, 0.3);
+        g.fillRect(hx0 + hr * 0.6, hy0 - hr * 0.2, hr * 0.35, hr * 0.25);
+        break;
+      case 'cone':
+        g.fillStyle = skin;
+        g.beginPath();
+        g.ellipse(hx0 - hr * 0.1, hy0 - hr * 1.2, hr * 0.85, hr * 1.6, -0.15, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = hair;
+        g.beginPath();
+        g.ellipse(hx0 + hr * 0.3, hy0 + hr * 0.8, hr * 0.5, hr * 0.5, 0, 0, Math.PI);
+        g.fill();
+        break;
+      case 'yoda':
+        // Great ears out to the sides.
+        g.fillStyle = skin;
+        g.beginPath();
+        g.moveTo(hx0 - hr * 0.6, hy0 - hr * 0.1);
+        g.lineTo(hx0 - hr * 2.4, hy0 - hr * 0.9);
+        g.lineTo(hx0 - hr * 0.7, hy0 + hr * 0.4);
+        g.fill();
+        g.beginPath();
+        g.moveTo(hx0 + hr * 0.4, hy0 - hr * 0.1);
+        g.lineTo(hx0 + hr * 1.6, hy0 - hr * 0.8);
+        g.lineTo(hx0 + hr * 0.5, hy0 + hr * 0.4);
+        g.fill();
+        g.fillStyle = hair;
+        g.fillRect(hx0 - hr * 0.5, hy0 - hr * 1.0, hr * 0.8, hr * 0.2);
+        break;
+      case 'ventress':
+        g.fillStyle = E.tone('#e8e8e0', d, 0.4);
+        g.beginPath();
+        g.ellipse(hx0, hy0 - hr * 0.2, hr * 0.95, hr * 1.1, 0, Math.PI, Math.PI * 2);
+        g.fill();
+        break;
+      case 'dooku':
+        g.beginPath();
+        g.ellipse(hx0 - hr * 0.2, hy0 - hr * 0.5, hr * 0.9, hr * 0.6, 0, Math.PI, Math.PI * 2);
+        g.fill();
+        g.beginPath();
+        g.ellipse(hx0 + hr * 0.25, hy0 + hr * 0.7, hr * 0.45, hr * 0.5, 0, 0, Math.PI);
+        g.fill();
+        break;
+      case 'krell':
+        g.fillStyle = skin;
+        g.beginPath();
+        g.ellipse(hx0 + hr * 0.2, hy0 + hr * 0.4, hr * 1.1, hr * 0.8, 0, 0, Math.PI);
+        g.fill();
+        break;
+      default:
+        break;
+    }
   }
-  // The cloak flying out behind when they run.
-  g.fillStyle = robeDark;
-  g.beginPath();
-  g.moveTo(-h * 0.04, shY);
-  g.quadraticCurveTo(-h * (0.2 + p.moving * 0.25), hipY, -h * (0.18 + p.moving * 0.35), -h * (0.08 + p.moving * 0.12));
-  g.lineTo(h * 0.04, hipY + h * 0.1);
-  g.fill();
-  // The robe and the tunic.
-  g.fillStyle = robe;
-  g.beginPath();
-  g.moveTo(-h * 0.1, shY);
-  g.lineTo(h * 0.1, shY);
-  g.lineTo(h * 0.13, hipY + h * 0.18);
-  g.lineTo(-h * 0.15, hipY + h * 0.16);
-  g.closePath();
-  g.fill();
-  g.fillStyle = tunic;
-  g.beginPath();
-  g.moveTo(-h * 0.02, shY);
-  g.lineTo(h * 0.07, shY);
-  g.lineTo(h * 0.03, hipY);
-  g.fill();
-  g.fillStyle = hair;
-  g.fillRect(-h * 0.1, hipY - h * 0.02, h * 0.2, h * 0.035);
-  // The head, the hair.
-  g.fillStyle = skin;
-  g.beginPath();
-  g.ellipse(h * 0.02, shY - h * 0.08, h * 0.06, h * 0.07, 0, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = hair;
-  g.beginPath();
-  g.ellipse(-h * 0.005, shY - h * 0.11, h * 0.06, h * 0.05, 0, Math.PI * 0.9, Math.PI * 2.1);
-  g.fill();
   // The arms and the blade: held high and forward on the charge, across the body in guard, swinging when it turns a bolt.
   const sx = h * 0.05;
   const sy = shY + h * 0.05;
   const guard = o.lead ? -1.25 : -0.55;
   const ang = guard + o.swing * 0.9;
-  const hx = sx + Math.cos(ang + 0.6) * h * 0.18;
-  const hy = sy + Math.sin(ang + 0.6) * h * 0.18 + h * 0.06;
-  limb2(g, sx, sy, (sx + hx) / 2 + h * 0.03, (sy + hy) / 2 + h * 0.05, hx, hy, h * 0.065, robe);
-  g.fillStyle = E.tone('#8a8a90', d, 0.3);
-  g.fillRect(hx - h * 0.02, hy - h * 0.02, h * 0.04, h * 0.05);
+  const curved = look.head === 'dooku';
   const bl = h * 0.62;
-  const bx = hx + Math.cos(ang) * bl;
-  const by = hy + Math.sin(ang) * bl;
-  g.strokeStyle = '#ffffff';
-  g.lineWidth = Math.max(1, h * 0.03);
-  g.lineCap = 'round';
-  g.beginPath();
-  g.moveTo(hx, hy);
-  g.lineTo(bx, by);
-  g.stroke();
-  blades.push([x + f * hx, y + hy, x + f * bx, y + by]);
-  if (o.twin) {
-    const a2 = ang + 2.4 + o.swing * 0.5;
-    const b2x = hx + Math.cos(a2) * bl * 0.9;
-    const b2y = hy + Math.sin(a2) * bl * 0.9;
+  const arm = (a: number, reach: number, flip: number) => {
+    const hx = sx + Math.cos(a + 0.6 * flip) * h * reach;
+    const hy = sy + Math.sin(a + 0.6 * flip) * h * reach + h * 0.06;
+    limb2(g, sx, sy, (sx + hx) / 2 + h * 0.03, (sy + hy) / 2 + h * 0.05, hx, hy, h * 0.06, grievous ? E.tone('#5a5a60', d, 0.1) : robe);
+    g.fillStyle = E.tone('#8a8a90', d, 0.3);
+    g.fillRect(hx - h * 0.02, hy - h * 0.02, h * 0.04, h * 0.05);
+    const ba = a + (curved ? 0.15 : 0);
+    const bx = hx + Math.cos(ba) * bl;
+    const by = hy + Math.sin(ba) * bl;
+    g.strokeStyle = '#ffffff';
+    g.lineWidth = Math.max(1, h * 0.03);
+    g.lineCap = 'round';
     g.beginPath();
     g.moveTo(hx, hy);
-    g.lineTo(b2x, b2y);
+    g.lineTo(bx, by);
     g.stroke();
-    blades.push([x + f * hx, y + hy, x + f * b2x, y + b2y]);
+    blades.push([x + f * hx, y + hy, x + f * bx, y + by]);
+  };
+  arm(ang, 0.18, 1);
+  if (o.twin) arm(ang + 2.4 + o.swing * 0.5, 0.16, -1);
+  if (o.four) {
+    // Grievous's other two arms, wheeling.
+    const sp = p.ph * 2;
+    arm(-0.2 + Math.sin(sp) * 0.9, 0.2, 1);
+    arm(-2.6 + Math.cos(sp) * 0.9, 0.2, -1);
   }
   g.lineCap = 'butt';
   g.restore();
   return blades;
+}
+
+/** A Wookiee warrior: tall, shaggy, a bowcaster, a bandolier. */
+export function drawWookiee(E: Env, x: number, y: number, h: number, f: number, d: number, p: Pose, seed: number) {
+  const g = E.ctx;
+  const fur = E.tone(seed % 3 === 0 ? '#5a3e28' : seed % 3 === 1 ? '#6e5236' : '#4a3424', d, 0.1);
+  const furLit = E.tone('#a8865e', d, 0.45);
+  const dark = E.tone('#2a1c12', d, 0);
+  g.save();
+  if (p.dead) {
+    g.translate(x, y);
+    g.scale(f, 1);
+    g.fillStyle = fur;
+    g.beginPath();
+    g.ellipse(0, -h * 0.08, h * 0.45, h * 0.1, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    return;
+  }
+  fallFrame(g, x, y, h, f, p);
+  const sw = Math.sin(p.ph) * p.moving;
+  const hipY = -h * 0.42;
+  for (const s of [-1, 1]) {
+    const a = s * sw * 0.6;
+    limb2(g, 0, hipY, Math.sin(a) * h * 0.2, hipY + h * 0.22, Math.sin(a) * h * 0.28, -h * 0.02, h * 0.1, s < 0 ? dark : fur);
+  }
+  // The great shaggy body, ragged at the edges.
+  g.fillStyle = fur;
+  g.beginPath();
+  g.moveTo(-h * 0.12, hipY + h * 0.04);
+  for (let i = 0; i <= 8; i++) {
+    const q = i / 8;
+    g.lineTo(-h * 0.13 - Math.sin(q * 9 + seed) * h * 0.02, hipY - q * h * 0.36);
+  }
+  g.quadraticCurveTo(h * 0.02, hipY - h * 0.46, h * 0.14, hipY - h * 0.34);
+  for (let i = 8; i >= 0; i--) {
+    const q = i / 8;
+    g.lineTo(h * 0.13 + Math.sin(q * 7 + seed) * h * 0.02, hipY - q * h * 0.34);
+  }
+  g.closePath();
+  g.fill();
+  g.fillStyle = hexA(furLit, 0.45);
+  g.fillRect(E.lx * f > 0 ? h * 0.04 : -h * 0.1, hipY - h * 0.34, h * 0.06, h * 0.3);
+  // The bandolier.
+  g.strokeStyle = E.tone('#8a7a5a', d, 0.3);
+  g.lineWidth = h * 0.03;
+  g.beginPath();
+  g.moveTo(-h * 0.1, hipY - h * 0.34);
+  g.lineTo(h * 0.1, hipY - h * 0.04);
+  g.stroke();
+  // The head, the snout.
+  g.fillStyle = fur;
+  g.beginPath();
+  g.ellipse(h * 0.04, hipY - h * 0.45, h * 0.075, h * 0.085, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = dark;
+  g.fillRect(h * 0.08, hipY - h * 0.45, h * 0.04, h * 0.03);
+  // The bowcaster, held forward.
+  const gy = hipY - h * 0.25;
+  limb2(g, h * 0.05, hipY - h * 0.32, h * 0.12, gy + h * 0.04, h * 0.2, gy, h * 0.07, fur);
+  g.fillStyle = dark;
+  g.fillRect(h * 0.08, gy - h * 0.02, h * 0.32, h * 0.04);
+  g.strokeStyle = E.tone('#6a6a6a', d, 0.2);
+  g.lineWidth = Math.max(0.6, h * 0.015);
+  g.beginPath();
+  g.moveTo(h * 0.3, gy - h * 0.07);
+  g.quadraticCurveTo(h * 0.26, gy, h * 0.3, gy + h * 0.07);
+  g.stroke();
+  g.restore();
+}
+
+/** A Twi'lek freedom fighter: slim, in leathers, the head-tails hanging behind. */
+export function drawTwilek(E: Env, x: number, y: number, h: number, f: number, d: number, p: Pose, seed: number) {
+  const g = E.ctx;
+  const skins = ['#5a8ad0', '#6aa85a', '#c85a4a', '#d8a868', '#9a6ab8'];
+  const skin = E.tone(skins[seed % skins.length], d, 0.25);
+  const cloth = E.tone(seed % 2 ? '#8a6a48' : '#6a5a4a', d, 0.15);
+  const dark = E.tone('#2a2018', d, 0);
+  g.save();
+  if (p.dead) {
+    g.translate(x, y);
+    g.scale(f, 1);
+    g.fillStyle = cloth;
+    g.beginPath();
+    g.ellipse(0, -h * 0.06, h * 0.4, h * 0.07, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    return;
+  }
+  fallFrame(g, x, y, h, f, p);
+  const sw = Math.sin(p.ph) * p.moving;
+  const c = p.crouch;
+  const hipY = -h * 0.46 * (1 - c * 0.35);
+  for (const s of [-1, 1]) {
+    const a = s * sw * 0.6;
+    limb2(g, 0, hipY, Math.sin(a) * h * 0.22, hipY + h * 0.23 * (1 - c * 0.3), Math.sin(a) * h * 0.3, -h * 0.02, h * 0.06, s < 0 ? dark : cloth);
+  }
+  const shY = hipY - h * 0.28;
+  g.fillStyle = cloth;
+  g.beginPath();
+  g.moveTo(-h * 0.08, hipY);
+  g.lineTo(-h * 0.09, shY);
+  g.lineTo(h * 0.09, shY);
+  g.lineTo(h * 0.07, hipY);
+  g.fill();
+  g.fillStyle = dark;
+  g.fillRect(-h * 0.08, hipY - h * 0.03, h * 0.16, h * 0.03);
+  // Head and lekku.
+  g.fillStyle = skin;
+  g.beginPath();
+  g.ellipse(h * 0.02, shY - h * 0.08, h * 0.055, h * 0.065, 0, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.moveTo(-h * 0.02, shY - h * 0.1);
+  g.quadraticCurveTo(-h * 0.12, shY + h * 0.02, -h * 0.08, shY + h * 0.18);
+  g.lineTo(-h * 0.04, shY + h * 0.16);
+  g.quadraticCurveTo(-h * 0.06, shY + h * 0.02, h * 0.01, shY - h * 0.06);
+  g.fill();
+  // A rifle.
+  const gy = shY + h * 0.1;
+  limb2(g, h * 0.02, shY + h * 0.04, h * 0.1, gy + h * 0.04, h * 0.16, gy, h * 0.05, skin);
+  g.fillStyle = dark;
+  g.fillRect(h * 0.04, gy - h * 0.02, h * 0.3, h * 0.035);
+  g.restore();
+}
+
+/** A Geonosian warrior: a winged insect with a long head, thin limbs, a sonic blaster; wings a blur when it flies. */
+export function drawGeonosian(E: Env, x: number, y: number, h: number, f: number, d: number, p: Pose, flying: boolean) {
+  const g = E.ctx;
+  const shell = E.tone('#8a5a3a', d, 0.15);
+  const lit = E.tone('#d0905a', d, 0.45);
+  const dark = E.tone('#3a2418', d, 0);
+  g.save();
+  if (p.dead) {
+    g.translate(x, y);
+    g.scale(f, 1);
+    g.fillStyle = shell;
+    g.beginPath();
+    g.ellipse(0, -h * 0.06, h * 0.3, h * 0.07, 0.2, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    return;
+  }
+  fallFrame(g, x, y, h, f, p);
+  const hipY = -h * 0.42;
+  const shY = hipY - h * 0.24;
+  // Wings: two pairs, a translucent blur beating.
+  const beat = flying ? Math.sin(p.ph) : -0.6;
+  g.fillStyle = hexA(E.tone('#c8d8c0', d, 0.4), flying ? 0.35 : 0.6);
+  for (const k of [0, 0.4]) {
+    g.beginPath();
+    g.moveTo(-h * 0.04, shY + h * 0.04);
+    g.quadraticCurveTo(-h * 0.35, shY - h * (0.1 + beat * 0.25 + k * 0.2), -h * 0.5, shY + h * (0.1 - beat * 0.3 + k * 0.1));
+    g.quadraticCurveTo(-h * 0.3, shY + h * 0.12, -h * 0.04, shY + h * 0.08);
+    g.fill();
+  }
+  // Legs, dangling when it flies.
+  for (const s of [-1, 1]) {
+    const a = flying ? 0.3 + s * 0.1 : s * Math.sin(p.ph) * p.moving * 0.5;
+    limb2(g, 0, hipY, Math.sin(a) * h * 0.18 + h * 0.06, hipY + h * 0.22, Math.sin(a) * h * 0.24 - h * 0.02, -h * 0.02, h * 0.04, s < 0 ? dark : shell);
+  }
+  // Thorax, abdomen.
+  g.fillStyle = shell;
+  g.beginPath();
+  g.ellipse(-h * 0.03, hipY + h * 0.02, h * 0.08, h * 0.1, 0.3, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.ellipse(0, shY + h * 0.1, h * 0.07, h * 0.13, -0.2, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = hexA(lit, 0.6);
+  g.fillRect(h * 0.0, shY + h * 0.02, h * 0.03, h * 0.12);
+  // The long head forward, the eyes.
+  g.fillStyle = shell;
+  g.beginPath();
+  g.moveTo(h * 0.0, shY - h * 0.02);
+  g.quadraticCurveTo(h * 0.12, shY - h * 0.14, h * 0.2, shY - h * 0.05);
+  g.lineTo(h * 0.06, shY + h * 0.04);
+  g.fill();
+  g.fillStyle = dark;
+  g.fillRect(h * 0.08, shY - h * 0.09, h * 0.04, h * 0.03);
+  // The sonic blaster.
+  limb2(g, h * 0.02, shY + h * 0.06, h * 0.08, shY + h * 0.14, h * 0.16, shY + h * 0.12, h * 0.035, shell);
+  g.fillStyle = dark;
+  g.fillRect(h * 0.1, shY + h * 0.1, h * 0.18, h * 0.035);
+  g.restore();
+}
+
+/** A MagnaGuard: tall and dark, a ragged cape and head-wrap, the electrostaff glowing at both ends. Returns the staff's ends. */
+export function drawMagna(E: Env, x: number, y: number, h: number, f: number, d: number, p: Pose): [number, number, number, number] {
+  const g = E.ctx;
+  const body = E.tone('#3a3a40', d, 0.1);
+  const cape = E.tone('#2a2420', d, 0);
+  const lit = E.tone('#7a7a84', d, 0.4);
+  const sw = Math.sin(p.ph) * p.moving;
+  g.save();
+  if (p.dead) {
+    g.translate(x, y);
+    g.scale(f, 1);
+    g.fillStyle = body;
+    g.beginPath();
+    g.ellipse(0, -h * 0.07, h * 0.42, h * 0.08, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    return [x, y, x, y];
+  }
+  fallFrame(g, x, y, h, f, p);
+  const hipY = -h * 0.46;
+  const shY = hipY - h * 0.32;
+  for (const s of [-1, 1]) {
+    const a = s * sw * 0.7;
+    limb2(g, 0, hipY, Math.sin(a) * h * 0.22, hipY + h * 0.24, Math.sin(a) * h * 0.32, -h * 0.02, h * 0.05, body);
+  }
+  g.fillStyle = cape;
+  g.beginPath();
+  g.moveTo(-h * 0.06, shY);
+  g.quadraticCurveTo(-h * (0.2 + p.moving * 0.2), hipY, -h * (0.16 + p.moving * 0.25), -h * 0.12);
+  g.lineTo(h * 0.02, hipY);
+  g.fill();
+  g.fillStyle = body;
+  g.fillRect(-h * 0.07, shY, h * 0.14, h * 0.32);
+  g.fillStyle = hexA(lit, 0.5);
+  g.fillRect(-h * 0.02, shY + h * 0.02, h * 0.04, h * 0.25);
+  g.fillStyle = cape;
+  g.beginPath();
+  g.ellipse(h * 0.01, shY - h * 0.08, h * 0.06, h * 0.08, 0, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#ff4030';
+  g.fillRect(h * 0.03, shY - h * 0.09, h * 0.03, h * 0.015);
+  const a = -0.5 + Math.sin(p.ph * 0.5) * 0.4 * p.moving;
+  const len = h * 0.6;
+  const cx = h * 0.1;
+  const cy = shY + h * 0.12;
+  const x0 = cx - Math.cos(a) * len * 0.5;
+  const y0 = cy - Math.sin(a) * len * 0.5;
+  const x1 = cx + Math.cos(a) * len * 0.5;
+  const y1 = cy + Math.sin(a) * len * 0.5;
+  g.strokeStyle = E.tone('#5a5a60', d, 0.2);
+  g.lineWidth = Math.max(1, h * 0.025);
+  g.beginPath();
+  g.moveTo(x0, y0);
+  g.lineTo(x1, y1);
+  g.stroke();
+  g.restore();
+  return [x + f * x0, y + y0, x + f * x1, y + y1];
 }
 
 export function drawRoller(E: Env, x: number, y: number, s: number, f: number, d: number, o: { state: string; k: number; spin: number; shield: number }): void {

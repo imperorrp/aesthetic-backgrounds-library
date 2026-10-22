@@ -14,12 +14,15 @@ import type { SkinHost, SkinInstance, Viewport } from '../../../core/skin';
 import { createFraming, fitText, runWorld, type CameraMode } from '../../../kit';
 import { fillCrisp, hash } from '../../instruments/kit';
 import { BOLT } from './fields';
-import { drawBubble, drawDroid, drawKnight, drawRoller, drawTrooper, type Pose } from './figures';
+import { drawCover, drawFacility, drawTrident, drawVehicle } from './armour';
+import { drawBubble, drawDroid, drawGeonosian, drawKnight, drawMagna, drawRoller, drawTrooper, drawTwilek, drawWookiee, isSmall, type Pose } from './figures';
 import { createHolo } from './holo';
 import { bakeCapital, drawDome, drawFighter, drawGenerator, drawGunship, drawHexa, drawLander, drawSpider, drawWreck, type Lamp } from './machines';
-import { bakeBackdrop, bakeGround, bakeRidge, bakeSky, clamp01, createEnv, hexA, mix, mk, posmod, ridgeTop, vnoise, type GroundBake } from './scene';
+import { bakeBackdrop, bakeGround, bakeHangarWalls, bakeRidge, bakeSky, clamp01, createEnv, hexA, mix, mk, posmod, ridgeTop, vnoise, type GroundBake } from './scene';
 import { createSaberFront, dogfightAt } from './sim';
 import type { Capital, SaberWorld, Side } from './types';
+
+const VEHICLE_KINDS = new Set(['atrt', 'saber', 'barc', 'spha', 'aat', 'dsd', 'mtt', 'hailfire', 'crab']);
 
 export type SaberPaintOptions = { traffic: number; camera: string; field: string; view: string; labels: boolean; hud: boolean };
 
@@ -52,212 +55,21 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
   const seedN = Math.floor(lr() * 1e6);
   const ridgeSide = lr() < 0.5 ? 1 : -1;
   const holo = o.view === 'map' ? createHolo(host, world, { labels: o.labels, hud: o.hud }) : null;
-  let baked: { sky: HTMLCanvasElement; back: HTMLCanvasElement; ground: GroundBake; ridge: HTMLCanvasElement } | null = null;
+  let baked: { sky: HTMLCanvasElement; back: HTMLCanvasElement; ground: GroundBake; ridge: HTMLCanvasElement; walls: HTMLCanvasElement | null } | null = null;
   let grain: HTMLCanvasElement | null = null;
   const caps = new Map<number, ReturnType<typeof bakeCapital> & { len: number }>();
 
   // ---- where things are on the picture -------------------------------------------------------------
   const px = (x: number, d: number) => world.xOf(x, d);
-  const py = (d: number, alt = 0) => world.yOf(d) - alt * world.mOf(d);
+  /** The ground's own height under (x, d): hills and rises. */
+  const gh = (x: number, d: number) => world.terrain.height(x, d);
+  /** Up off the ground at depth d by `alt`, standing on the land's rise when x is given. */
+  const py = (d: number, alt = 0, x?: number) => world.yOf(d) - (alt + (x === undefined ? 0 : gh(x, d))) * world.mOf(d);
   const mOf = (d: number) => world.mOf(d);
   /** Figures and machines are drawn a little larger than true, so they read at their distance. */
   const FIG = 54 * u * (world.phone ? 1.45 : 1);
   const MACH = u * 1.4 * (world.phone ? 1.3 : 1);
   const legion = world.legion.color;
-
-  // ---- the field's furniture: rocks, spires, crystal, trees, crates, set where the fighting is not -----
-  type Prop = { x: number; d: number; kind: string; s: number; seed: number };
-  const props: Prop[] = [];
-  {
-    const n = world.phone ? 9 : 16;
-    for (let i = 0; i < n * 3 && props.length < n; i++) {
-      const d = 0.06 + Math.pow(lr(), 0.8) * 0.62;
-      const sx = lr() * GW;
-      const x = GW / 2 + (sx - GW / 2) / (0.3 + 0.7 * Math.pow(1 - d, 2));
-      if (Math.abs(x - world.front) < world.gap * 0.9) continue;
-      const kinds: Record<string, string[]> = { arena: ['spire', 'rock', 'rock'], crystal: ['crystal', 'crystal', 'pillar'], jungle: ['trunk', 'fern', 'fungus'], platform: ['crate', 'pylon', 'crate'], canyon: ['rock', 'rock', 'wall'] };
-      const ks = kinds[world.style] ?? ['rock'];
-      props.push({ x, d, kind: ks[Math.floor(lr() * ks.length)], s: 0.7 + lr() * 0.7, seed: Math.floor(lr() * 1e6) });
-    }
-  }
-  function drawProp(p: Prop) {
-    const m = mOf(p.d);
-    const x = px(p.x, p.d);
-    const y = py(p.d);
-    const s = p.s * m * u;
-    const g = ctx;
-    const lx = E.lx;
-    const h1 = (k: number) => hash(p.seed, k);
-    if (p.kind === 'spire' || p.kind === 'rock') {
-      const tall = p.kind === 'spire';
-      const w = (tall ? 26 : 40) * s;
-      const h = (tall ? 120 : 26) * s * (0.7 + h1(1) * 0.6);
-      const base = E.tone(world.style === 'canyon' ? '#7a4a34' : '#8a5a3c', p.d, 0.05);
-      const lit = E.tone(world.style === 'canyon' ? '#d08a5a' : '#e0a068', p.d, 0.5);
-      const dark = E.tone('#2a1810', p.d, 0);
-      g.fillStyle = hexA(dark, 0.35 * (1 - E.hazeOf(p.d)));
-      g.beginPath();
-      g.ellipse(x - lx * w * 0.5, y, w * 0.9, w * 0.12, 0, 0, Math.PI * 2);
-      g.fill();
-      const pts: [number, number][] = [];
-      const n = 10;
-      for (let i = 0; i <= n; i++) {
-        const q = i / n;
-        const prof = tall ? 0.55 + 0.3 * Math.sin(q * 5 + p.seed) * 0.5 + (q > 0.8 ? (q - 0.8) * 2 : 0) - q * 0.2 : Math.pow(Math.sin(q * Math.PI), 0.5);
-        pts.push([(tall ? (h1(i + 5) - 0.5) * 0.15 : q - 0.5) * w, tall ? -q * h : -prof * h * (0.8 + h1(i + 9) * 0.3)]);
-      }
-      g.fillStyle = base;
-      g.beginPath();
-      if (tall) {
-        g.moveTo(x - w / 2, y);
-        for (const [qx, qy] of pts) g.lineTo(x + qx - w * 0.35 * (1 - Math.abs(qy) / h * 0.3), y + qy);
-        for (const [qx, qy] of [...pts].reverse()) g.lineTo(x + qx + w * 0.35 * (1 - Math.abs(qy) / h * 0.3), y + qy);
-        g.lineTo(x + w / 2, y);
-      } else {
-        g.moveTo(x - w / 2, y + 2 * s);
-        for (const [qx, qy] of pts) g.lineTo(x + qx, y + qy);
-        g.lineTo(x + w / 2, y + 2 * s);
-      }
-      g.closePath();
-      g.fill();
-      g.save();
-      g.clip();
-      const gr = g.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
-      gr.addColorStop(lx > 0 ? 1 : 0, hexA(lit, 0.8 * (0.4 + L.rim * 0.6)));
-      gr.addColorStop(0.55, hexA(lit, 0));
-      gr.addColorStop(lx > 0 ? 0 : 1, hexA(dark, 0.5));
-      g.fillStyle = gr;
-      g.fillRect(x - w, y - h * 1.1, w * 2, h * 1.2);
-      g.fillStyle = hexA(dark, 0.4);
-      for (let i = 1; i < 5; i++) g.fillRect(x - w, y - h * (i / 5) + h1(i) * 3 * s, w * 2, Math.max(0.5, 1.2 * s));
-      g.restore();
-    } else if (p.kind === 'crystal' || p.kind === 'pillar') {
-      const n = p.kind === 'crystal' ? 5 : 1;
-      for (let i = 0; i < n; i++) {
-        const ox = (h1(i) - 0.5) * 40 * s;
-        const h = (p.kind === 'pillar' ? 90 : 30 + h1(i + 3) * 60) * s;
-        const w = (p.kind === 'pillar' ? 16 : 7 + h1(i + 7) * 7) * s;
-        const lean = p.kind === 'pillar' ? 0 : (h1(i + 11) - 0.5) * 0.6;
-        const tx = x + ox + Math.sin(lean) * h;
-        const body = E.tone(p.kind === 'pillar' ? '#5a6488' : '#4a6ab8', p.d, 0.1);
-        const face = E.tone(p.kind === 'pillar' ? '#9aa4c8' : '#8ab8ff', p.d, 0.5);
-        g.fillStyle = body;
-        g.beginPath();
-        g.moveTo(x + ox - w / 2, y);
-        g.lineTo(tx - w / 2, y - h);
-        g.lineTo(tx, y - h - w * 1.2);
-        g.lineTo(tx + w / 2, y - h);
-        g.lineTo(x + ox + w / 2, y);
-        g.fill();
-        g.fillStyle = hexA(face, 0.6);
-        g.beginPath();
-        g.moveTo(x + ox + (lx > 0 ? 0 : -w / 2), y);
-        g.lineTo(tx + (lx > 0 ? 0 : -w / 2), y - h);
-        g.lineTo(tx, y - h - w * 1.2);
-        g.lineTo(tx + (lx > 0 ? w / 2 : 0), y - h);
-        g.lineTo(x + ox + (lx > 0 ? w / 2 : 0), y);
-        g.fill();
-        if (p.kind === 'crystal') lamps.push({ x: tx, y: y - h * 0.6, r: 26 * s, color: L.accent, a: 0.18 * (0.4 + L.night) });
-      }
-    } else if (p.kind === 'trunk') {
-      const h = 260 * s;
-      const w = 22 * s;
-      const bark = E.tone('#2a2a1e', p.d, 0.05);
-      const lit = E.tone('#5a5a3a', p.d, 0.4);
-      g.fillStyle = bark;
-      g.beginPath();
-      g.moveTo(x - w * 2.2, y);
-      g.quadraticCurveTo(x - w * 0.7, y - h * 0.08, x - w * 0.5, y - h * 0.3);
-      g.lineTo(x - w * 0.4, y - h);
-      g.lineTo(x + w * 0.4, y - h);
-      g.lineTo(x + w * 0.5, y - h * 0.3);
-      g.quadraticCurveTo(x + w * 0.7, y - h * 0.08, x + w * 2.2, y);
-      g.fill();
-      g.fillStyle = hexA(lit, 0.5);
-      g.fillRect(x + (lx > 0 ? w * 0.1 : -w * 0.45), y - h, w * 0.3, h * 0.95);
-      g.strokeStyle = hexA(bark, 0.9);
-      g.lineWidth = Math.max(0.6, 1.5 * s);
-      for (let i = 0; i < 3; i++) {
-        g.beginPath();
-        g.moveTo(x + (h1(i) - 0.5) * w, y - h * 0.9);
-        g.quadraticCurveTo(x + (h1(i + 4) - 0.5) * w * 3, y - h * 0.6, x + (h1(i + 8) - 0.5) * w * 2, y - h * (0.3 + h1(i + 2) * 0.2));
-        g.stroke();
-      }
-    } else if (p.kind === 'fern' || p.kind === 'fungus') {
-      const leaf = E.tone(p.kind === 'fern' ? '#2a4a2a' : '#4a4a5a', p.d, 0.15);
-      const lit = E.tone(p.kind === 'fern' ? '#5a8a4a' : '#8a8aa0', p.d, 0.45);
-      if (p.kind === 'fern') {
-        for (let i = 0; i < 9; i++) {
-          const a = -Math.PI / 2 + (i / 8 - 0.5) * 2.4;
-          const len = (30 + h1(i) * 20) * s;
-          g.strokeStyle = i % 2 ? leaf : lit;
-          g.lineWidth = Math.max(0.8, 4 * s);
-          g.beginPath();
-          g.moveTo(x, y);
-          g.quadraticCurveTo(x + Math.cos(a) * len * 0.6, y + Math.sin(a) * len * 0.8, x + Math.cos(a) * len, y + Math.sin(a) * len * 0.5);
-          g.stroke();
-        }
-      } else {
-        const h = 46 * s;
-        g.fillStyle = leaf;
-        g.fillRect(x - 3 * s, y - h, 6 * s, h);
-        g.beginPath();
-        g.ellipse(x, y - h, 24 * s, 9 * s, 0, Math.PI, Math.PI * 2);
-        g.fill();
-        g.fillStyle = hexA(lit, 0.6);
-        g.beginPath();
-        g.ellipse(x + lx * 6 * s, y - h - 5 * s, 10 * s, 3 * s, 0, 0, Math.PI * 2);
-        g.fill();
-        lamps.push({ x, y: y - h + 2 * s, r: 30 * s, color: L.accent, a: 0.3 * (0.3 + L.night) });
-      }
-    } else if (p.kind === 'crate' || p.kind === 'pylon') {
-      if (p.kind === 'crate') {
-        const w = 36 * s;
-        const h = 22 * s;
-        const side = E.tone('#6a7078', p.d, 0.1);
-        const top = E.tone('#a8b0b8', p.d, 0.45);
-        const stripe = E.tone('#c8a030', p.d, 0.2);
-        g.fillStyle = side;
-        g.fillRect(x - w / 2, y - h, w, h);
-        g.fillStyle = top;
-        g.beginPath();
-        g.moveTo(x - w / 2, y - h);
-        g.lineTo(x - w / 2 + 8 * s, y - h - 5 * s);
-        g.lineTo(x + w / 2 + 8 * s, y - h - 5 * s);
-        g.lineTo(x + w / 2, y - h);
-        g.fill();
-        g.fillStyle = stripe;
-        g.fillRect(x - w / 2, y - h * 0.55, w, 3 * s);
-        g.strokeStyle = hexA('#000000', 0.35);
-        g.lineWidth = Math.max(0.5, s);
-        for (let i = 1; i < 4; i++) {
-          g.beginPath();
-          g.moveTo(x - w / 2 + (i / 4) * w, y - h);
-          g.lineTo(x - w / 2 + (i / 4) * w, y);
-          g.stroke();
-        }
-      } else {
-        const h = 110 * s;
-        g.fillStyle = E.tone('#3a4048', p.d, 0.1);
-        g.fillRect(x - 3 * s, y - h, 6 * s, h);
-        g.fillRect(x - 12 * s, y - h, 24 * s, 4 * s);
-        lamps.push({ x, y: y - h - 2 * s, r: 40 * s, color: L.accent, a: 0.5 * (0.4 + L.night) * (0.6 + 0.4 * Math.sin(E.t * 2 + p.seed)) });
-      }
-    } else if (p.kind === 'wall') {
-      const w = 90 * s;
-      const h = 34 * s;
-      const stone = E.tone('#a07a58', p.d, 0.1);
-      const lit = E.tone('#e0b088', p.d, 0.5);
-      g.fillStyle = stone;
-      g.beginPath();
-      g.moveTo(x - w / 2, y);
-      for (let i = 0; i <= 8; i++) g.lineTo(x - w / 2 + (i / 8) * w, y - h * (0.4 + h1(i) * 0.6));
-      g.lineTo(x + w / 2, y);
-      g.fill();
-      g.fillStyle = hexA(lit, 0.35);
-      g.fillRect(x - w / 2, y - h * 0.4, w, 2 * s);
-    }
-  }
 
   // ---- the armies --------------------------------------------------------------------------------------
   const lamps: Lamp[] = [];
@@ -265,8 +77,8 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
   function drawSoldier(s: SaberWorld['soldiers'][number]) {
     const m = mOf(s.d);
     const x = px(s.x, s.d);
-    const y = py(s.d, s.alt);
-    const h = FIG * m * (s.kind === 'super' ? 1.12 : 1);
+    const y = py(s.d, s.alt, s.x);
+    const h = FIG * m * (s.kind === 'super' ? 1.12 : s.kind === 'wookiee' ? 1.3 : s.kind === 'magna' ? 1.12 : s.kind === 'geonosian' ? 0.95 : 1);
     const age = world.t - s.t0;
     const moving = s.state === 'march' || s.state === 'charge' || s.state === 'retreat' || s.state === 'sneak' ? 1 : s.state === 'line' ? 0.15 * (1 - s.crouch) : 0;
     const p: Pose = { ph: s.ph, moving, crouch: s.crouch, fall: s.state === 'fall' ? Math.min(1, age / 0.6) : 0, dead: s.state === 'dead', firing: world.t - s.fireT < 0.08 ? 1 : 0, seed: s.seed };
@@ -281,22 +93,32 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
       ctx.ellipse(x - E.lx * h * 0.18, y, h * 0.22, h * 0.05, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    if (s.side === 'ga') drawTrooper(E, x, y, h, s.face, s.d, p, { legion, kind: s.kind });
+    if (s.kind === 'wookiee') drawWookiee(E, x, y, h, s.face, s.d, p, s.seed);
+    else if (s.kind === 'twilek') drawTwilek(E, x, y, h, s.face, s.d, p, s.seed);
+    else if (s.kind === 'geonosian') drawGeonosian(E, x, y, h, s.face, s.d, p, s.alt > 4 * u);
+    else if (s.kind === 'magna') {
+      const st = drawMagna(E, x, y, h, s.face, s.d, p);
+      if (s.state !== 'dead') for (const [ex, ey] of [[st[0], st[1]], [st[2], st[3]]]) lamps.push({ x: ex, y: ey, r: h * 0.12, color: '#c8a0ff', a: 0.9 });
+    } else if (s.side === 'ga') drawTrooper(E, x, y, h, s.face, s.d, p, { legion, kind: s.kind });
     else drawDroid(E, x, y, h, s.face, s.d, p, { kind: s.kind });
+    if (s.kind === 'jet' && s.alt > 2 * u && s.state !== 'dead') {
+      lamps.push({ x: x - s.face * h * 0.16, y: y - h * 0.32, r: h * 0.3, color: '#8ad0ff', a: 0.9 });
+      lamps.push({ x: x - s.face * h * 0.16, y: y - h * 0.2, r: h * 0.2, color: '#ffffff', a: 0.7 });
+    }
     ctx.globalAlpha = 1;
     if (p.firing && s.state !== 'dead') lamps.push({ x: x + s.face * h * 0.48, y: y - h * (s.crouch > 0.5 ? 0.42 : 0.6), r: h * 0.35, color: s.side === 'ga' ? BOLT.ga : BOLT.cf, a: 0.9 });
   }
   function drawKnightAt(k: SaberWorld['knights'][number]) {
     const m = mOf(k.d);
     const x = px(k.x, k.d);
-    const y = py(k.d);
-    const h = FIG * m * 1.05;
+    const y = py(k.d, 0, k.x);
+    const h = FIG * m * (isSmall(k.name) ? 0.55 : k.four ? 1.25 : 1.05);
     ctx.fillStyle = hexA('#000000', 0.22 * (1 - E.hazeOf(k.d)));
     ctx.beginPath();
     ctx.ellipse(x, y, h * 0.22, h * 0.05, 0, 0, Math.PI * 2);
     ctx.fill();
     const moving = k.state === 'lead' || k.state === 'withdraw' || (k.state === 'duel' && Math.abs(Math.sin(k.ph)) > 0.1) ? 1 : 0;
-    const segs = drawKnight(E, x, y, h, k.face, k.d, { ph: k.ph, moving, crouch: 0, fall: 0, dead: false, firing: 0, seed: k.seed }, { robe: k.robe, blade: k.blade, swing: k.swing, lead: k.state === 'lead', twin: k.twin, dark: k.side === 'cf' });
+    const segs = drawKnight(E, x, y, h, k.face, k.d, { ph: k.ph, moving, crouch: 0, fall: 0, dead: false, firing: 0, seed: k.seed }, { name: k.name, robe: k.robe, blade: k.blade, swing: k.swing, lead: k.state === 'lead', twin: k.twin, four: k.four, dark: k.side === 'cf' });
     for (const sg of segs) blades.push({ seg: sg, color: k.blade, w: Math.max(1.2, h * 0.05) });
     if (world.t - k.parryT < 0.15) lamps.push({ x: segs[0][2], y: segs[0][3], r: h * 0.5, color: '#ffffff', a: 0.8 });
   }
@@ -308,13 +130,13 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
     if (a <= 0.02) return;
     ctx.fillStyle = hexA('#000000', a);
     ctx.beginPath();
-    ctx.ellipse(px(x, d) - E.lx * alt * m * 0.4, py(d), w * m * 0.5, w * m * 0.09, 0, 0, Math.PI * 2);
+    ctx.ellipse(px(x, d) - E.lx * alt * m * 0.4, py(d, 0, x), w * m * 0.5, w * m * 0.09, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   function drawWalkerAt(w: SaberWorld['walkers'][number]) {
     const m = mOf(w.d);
     const x = px(w.x, w.d);
-    const y = py(w.d, w.alt);
+    const y = py(w.d, w.alt, w.x);
     const s = MACH * m * (w.kind === 'hexa' ? 1 : 1.05);
     const fall = w.state === 'fall' ? clamp01((world.t - w.t0) / 3.4) : 0;
     const dx = px(w.aimX, w.aimD) - x;
@@ -332,6 +154,10 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
     const m = mOf(c.d);
     const x = px(c.x, c.d);
     const y = py(c.d, c.alt);
+    if (c.kind === 'trident') {
+      drawTrident(E, x, py(c.d), MACH * m * 0.9, c.d, clamp01(1 + c.alt / (90 * u)), c.doors, lamps);
+      return;
+    }
     shadow(c.x, c.d, c.alt, c.kind === 'lander' ? 220 * u : 120 * u);
     if (c.kind === 'lander') drawLander(E, x, y, MACH * m * 0.85, c.face, c.d, { ramp: c.doors, alt: c.alt / u, seed: c.seed }, lamps);
     else {
@@ -346,13 +172,24 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
   }
   function drawWreckAt(wk: SaberWorld['wrecks'][number]) {
     const m = mOf(wk.d);
-    drawWreck(E, wk.kind, px(wk.x, wk.d), py(wk.d), MACH * m, wk.face, wk.d, wk.seed, legion);
+    if (VEHICLE_KINDS.has(wk.kind)) {
+      const tone = E.tone;
+      E.tone = (c, d, lift = 0) => mix(tone(c, d, lift * 0.3), '#14100c', 0.6);
+      ctx.save();
+      const x = px(wk.x, wk.d);
+      const y = py(wk.d, 0, wk.x);
+      ctx.translate(x, y);
+      ctx.rotate(0.08 * wk.face);
+      drawVehicle(E, 0, 4 * u * m, MACH * m * 0.9, wk.face, wk.d, { kind: wk.kind, ph: 0, aim: -0.2, fire: 0, legion, doors: 0, seed: wk.seed, hover: 0, dead: true }, []);
+      ctx.restore();
+      E.tone = tone;
+    } else drawWreck(E, wk.kind, px(wk.x, wk.d), py(wk.d, 0, wk.x), MACH * m, wk.face, wk.d, wk.seed, legion);
     if (wk.smoke > 0.3 && L.night > 0.2) lamps.push({ x: px(wk.x, wk.d), y: py(wk.d) - 10 * u * m, r: 60 * u * m, color: '#ff7a30', a: 0.35 * wk.smoke });
   }
   function drawStandard(sd: SaberWorld['standards'][number]) {
     const m = mOf(sd.d);
     const x = px(sd.x, sd.d);
-    const y = py(sd.d);
+    const y = py(sd.d, 0, sd.x);
     const h = FIG * m * 2.4;
     ctx.strokeStyle = E.tone('#2a2622', sd.d);
     ctx.lineWidth = Math.max(0.8, 2 * u * m);
@@ -375,6 +212,33 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
     ctx.fillRect(Math.min(x + fw * 0.25, x + fw * 0.55), y - h + h * 0.13, Math.abs(fw) * 0.3, h * 0.06);
   }
 
+  // ---- the war machines -------------------------------------------------------------------------------------
+  function drawVehicleAt(v: SaberWorld['vehicles'][number]) {
+    const m = mOf(v.d);
+    const x = px(v.x, v.d);
+    const y = py(v.d, 0, v.x);
+    const s = MACH * m * (v.kind === 'atrt' || v.kind === 'dsd' || v.kind === 'barc' ? 0.9 : 1);
+    shadow(v.x, v.d, v.alt, (v.kind === 'mtt' ? 180 : v.kind === 'spha' ? 150 : 70) * u);
+    let aim = 0.05;
+    if (v.aimX) {
+      const dx = px(v.aimX, v.aimD) - x;
+      const dy = py(v.aimD, 0, v.aimX) - y;
+      aim = Math.max(-0.2, Math.min(0.5, Math.atan2(-dy, Math.abs(dx))));
+    }
+    const fire = clamp01(1 - (world.t - v.fireT) / 0.3);
+    const hover = v.alt > 0 ? (v.alt / u) * (0.8 + 0.2 * Math.sin(E.t * 3 + v.seed)) : 0;
+    const muzzle = drawVehicle(E, x, y, s, v.face, v.d, { kind: v.kind, ph: v.ph, aim, fire, legion, doors: v.doors, seed: v.seed, hover }, lamps);
+    if (fire > 0 && v.kind !== 'spha' && v.kind !== 'hailfire') lamps.push({ x: muzzle[0], y: muzzle[1], r: (v.kind === 'aat' || v.kind === 'saber' ? 40 : 18) * s * fire, color: v.side === 'ga' ? BOLT.ga : BOLT.cf, a: fire });
+  }
+  function drawMissile(mi: SaberWorld['missiles'][number], t: number) {
+    const k = (t - mi.t0) / mi.dur;
+    if (k < 0 || k > 1) return;
+    const d = mi.d0 + (mi.d1 - mi.d0) * k;
+    const x = mi.x0 + (mi.x1 - mi.x0) * k;
+    const a = mi.a0 + (mi.a1 - mi.a0) * k + Math.sin(k * Math.PI) * 120 * u;
+    E.glow(px(x, d), py(d, a, x), 12 * u, '#ffb060', 0.9);
+    E.glow(px(x, d), py(d, a, x), 4 * u, '#ffffff', 0.9);
+  }
   // ---- smoke, fire, dust: the air of the battle ------------------------------------------------------------
   function drawFx(f: SaberWorld['fx'][number]) {
     const age = world.t - f.t0;
@@ -382,7 +246,7 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
     const k = age / f.dur;
     const m = mOf(f.d);
     const x = px(f.x, f.d);
-    const y = py(f.d, f.alt);
+    const y = py(f.d, f.alt, f.x);
     const r = f.r * m * 1.8;
     if (f.kind === 'smoke' || f.kind === 'dust') {
       const base = f.kind === 'smoke' ? E.tone(f.color, f.d) : E.tone(mix(L.ground2, L.haze, 0.3), f.d, 0.3);
@@ -412,7 +276,7 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
     const k = age / f.dur;
     const m = mOf(f.d);
     const x = px(f.x, f.d);
-    const y = py(f.d, f.alt);
+    const y = py(f.d, f.alt, f.x);
     if (f.kind === 'fire') {
       E.glow(x, y, f.r * m * 2.6, '#ff8a30', 0.75 * (1 - k));
       E.glow(x, y, f.r * m * 1.1, '#ffe0a0', 0.6 * (1 - k));
@@ -437,7 +301,8 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
     const at = (q: number): [number, number] => {
       const qq = Math.max(0, Math.min(1, q));
       const d = b.d0 + (b.d1 - b.d0) * qq;
-      return [px(b.x0 + (b.x1 - b.x0) * qq, d), py(d, b.a0 + (b.a1 - b.a0) * qq)];
+      const bx = b.x0 + (b.x1 - b.x0) * qq;
+      return [px(bx, d), py(d, b.a0 + (b.a1 - b.a0) * qq, bx)];
     };
     const [x1, y1] = at(k);
     const m = mOf(b.d0 + (b.d1 - b.d0) * k);
@@ -466,7 +331,8 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
     if (k < 0 || k > 1) return;
     const at = (q: number): [number, number] => {
       const d = s.d0 + (s.d1 - s.d0) * q;
-      return [px(s.x0 + (s.x1 - s.x0) * q, d), py(d, 4 * s.apex * q * (1 - q))];
+      const sx2 = s.x0 + (s.x1 - s.x0) * q;
+      return [px(sx2, d), py(d, 4 * s.apex * q * (1 - q), sx2)];
     };
     const [x, y] = at(k);
     const col = s.side === 'ga' ? '#9ad8ff' : '#ffa060';
@@ -780,7 +646,7 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
   // ---- the frame ------------------------------------------------------------------------------------------
   function bake() {
     const r = host.fork('saber-bake');
-    baked = { sky: bakeSky(world, E, r), back: bakeBackdrop(world, E, r), ground: bakeGround(world, E, seedN), ridge: bakeRidge(world, E, ridgeSide, seedN + 7) };
+    baked = { sky: bakeSky(world, E, r), back: bakeBackdrop(world, E, r), ground: bakeGround(world, E, seedN), ridge: bakeRidge(world, E, ridgeSide, seedN + 7), walls: world.style === 'hangar' ? bakeHangarWalls(world, E) : null };
   }
   function paint(t: number) {
     E.t = t;
@@ -831,17 +697,20 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
       const m = mOf(s.d);
       const a = (0.1 + 0.16 * clamp01(1 - age / 300)) * (1 - E.hazeOf(s.d) * 0.6);
       const sx0 = px(s.x, s.d);
-      const sy0 = py(s.d);
+      const sy0 = py(s.d, 0, s.x);
       const rx = s.r * m * 1.2;
       ctx.globalAlpha = a * 2.2;
       ctx.drawImage(E.soft(mix(L.ink, '#1a1410', 0.4)), sx0 - rx, sy0 - rx * 0.24, rx * 2, rx * 0.48);
       ctx.globalAlpha = 1;
       if (age < 60) E.pool(px(s.x, s.d), py(s.d), s.r * m * 0.9, '#ff7a30', 0.2 * (1 - age / 60) * (0.3 + L.night));
     }
+    if (B.walls) ctx.drawImage(B.walls, 0, 0);
     // Everything on the field, far to near.
     type Item = { d: number; draw: () => void };
     const list: Item[] = [];
-    for (const p of props) list.push({ d: p.d, draw: () => drawProp(p) });
+    for (const c of world.terrain.cover) list.push({ d: c.d, draw: () => drawCover(E, c, px(c.x, c.d), py(c.d, 0, c.x), mOf(c.d) * u * 1.2, world.gaDir, legion, lamps) });
+    for (const fc of world.terrain.facilities) list.push({ d: fc.d + 0.004, draw: () => drawFacility(E, fc, px(fc.x, fc.d), py(fc.d, 0, fc.x), mOf(fc.d) * MACH * 0.75, fc.side === 'ga' ? world.gaDir : (-world.gaDir as 1 | -1), legion, t, lamps) });
+    for (const v of world.vehicles) list.push({ d: v.d - 0.001, draw: () => drawVehicleAt(v) });
     for (const sd of world.standards) list.push({ d: sd.d, draw: () => drawStandard(sd) });
     for (const wk of world.wrecks) list.push({ d: wk.d + 0.001, draw: () => drawWreckAt(wk) });
     for (const s of world.soldiers) list.push({ d: s.d, draw: () => drawSoldier(s) });
@@ -882,6 +751,25 @@ export function mountSaberFront(host: SkinHost, o: SaberPaintOptions): SkinInsta
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (const b of world.bolts) drawBolt(b, t);
+    for (const m of world.missiles) drawMissile(m, t);
+    for (const b of world.beams) {
+      const k = (t - b.t0) / b.dur;
+      if (k < 0 || k > 1) continue;
+      const a = Math.sin(k * Math.PI);
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = hexA(b.color, 0.45 * a);
+      ctx.lineWidth = b.w * 3 * u;
+      ctx.beginPath();
+      ctx.moveTo(b.x0, b.y0);
+      ctx.lineTo(b.x1, b.y1);
+      ctx.stroke();
+      ctx.strokeStyle = hexA('#ffe0d0', 0.9 * a);
+      ctx.lineWidth = b.w * 0.8 * u;
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      E.glow(b.x0, b.y0, 40 * u, b.color, a);
+      E.glow(b.x1, b.y1, 60 * u, b.color, a * 0.8);
+    }
     for (const s of world.shells) drawShell(s, t);
     for (const f of world.fx) drawFxLight(f);
     for (const l of lamps) E.glow(l.x, l.y, l.r, l.color, l.a);

@@ -220,7 +220,34 @@ export function bakeSky(world: SaberWorld, E: Env, R: R): HTMLCanvasElement {
     }
   }
   // A planet hanging in the sky: a ringed giant, pale by day.
-  if (field !== 'platform') {
+  if (field === 'hangar') {
+    // Coruscant below the ship: the curve of a world that is all city, lit gold to its edge.
+    const cr = GW * 1.4;
+    const cy = HY * 0.74 + cr;
+    const pg = g.createRadialGradient(GW * 0.5, cy, cr * 0.8, GW * 0.5, cy, cr);
+    pg.addColorStop(0, '#120c10');
+    pg.addColorStop(0.92, '#2a1a20');
+    pg.addColorStop(1, hexA('#8ab8ff', 0.6));
+    g.fillStyle = pg;
+    g.beginPath();
+    g.arc(GW * 0.5, cy, cr, 0, Math.PI * 2);
+    g.fill();
+    g.save();
+    g.beginPath();
+    g.arc(GW * 0.5, cy, cr, 0, Math.PI * 2);
+    g.clip();
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 2600; i++) {
+      const a = -Math.PI / 2 + (R() - 0.5) * 1.3;
+      const rr = cr * (0.86 + R() * 0.14);
+      const x = GW * 0.5 + Math.cos(a) * rr;
+      const y = cy + Math.sin(a) * rr;
+      g.fillStyle = hexA(R() < 0.8 ? '#ffc870' : '#ffe8c0', 0.2 + R() * 0.5);
+      g.fillRect(x, y, 1.2 * u, 1.2 * u);
+    }
+    g.globalCompositeOperation = 'source-over';
+    g.restore();
+  } else if (field !== 'platform') {
     const px = GW * (L.lx > 0 ? 0.12 + R() * 0.2 : 0.68 + R() * 0.2);
     const py = HY * (0.18 + R() * 0.14);
     const pr = (field === 'crystal' ? 120 : 80 + R() * 60) * u;
@@ -320,7 +347,9 @@ export function bakeSky(world: SaberWorld, E: Env, R: R): HTMLCanvasElement {
       const x = R() * GW;
       cloud(g, R, x, y, (260 + R() * 600) * u, (10 + R() * 14) * u, mix(L.mid, L.top, 0.4), litOf(x, 0.9), 0.6, 1);
     }
-  } else if (field === 'canyon') {
+  } else if (field === 'hangar') {
+    // Open space: no clouds, only the flak bursts the painter adds.
+  } else if (field === 'canyon' || field === 'beach') {
     for (let i = 0; i < 9; i++) {
       const y = HY * (0.2 + R() * 0.45);
       const x = R() * GW;
@@ -409,7 +438,9 @@ export function bakeBackdrop(world: SaberWorld, E: Env, R: R): HTMLCanvasElement
       const n = Math.round((k === 0 ? 10 : k === 1 ? 8 : 6) * GW / (1600 * u));
       for (let i = 0; i < n; i++) {
         const x = R() * GW;
-        if (R() < 0.35) fungus(g, R, x, HY + (k * 3 + 3) * u, (60 + R() * 90 + k * 50) * u, far('#3a4a3a', k), far('#6a7a5a', k), L.accent, lx, k);
+        const felucia = world.field === 'felucia';
+        const caps = felucia ? ['#d86a9a', '#e8a040', '#4ab8a8', '#c84a6a'] : ['#2a3a4a', '#3a2a4a'];
+        if (R() < FIELDS[world.field].fungi) fungus(g, R, x, HY + (k * 3 + 3) * u, (60 + R() * 90 + k * 50) * u * (felucia ? 1.4 : 1), far(felucia ? '#c8b8a0' : '#3a4a3a', k), far(caps[Math.floor(R() * caps.length)], k * 0.8 + (felucia ? 0.6 : 0)), L.accent, lx, k);
         else bigTree(g, R, x, HY + (k * 3 + 3) * u, (90 + R() * 140 + k * 70) * u, far('#26382a', k), lit('#4a6a44', k), lx, k);
       }
       // Mist in the trees.
@@ -426,6 +457,81 @@ export function bakeBackdrop(world: SaberWorld, E: Env, R: R): HTMLCanvasElement
       g.fillRect(R() * GW, HY - R() * 120 * u, 1.6 * u, 1.6 * u);
     }
     g.globalCompositeOperation = 'source-over';
+  } else if (field === 'beach') {
+    // The lagoon to the horizon, Wookiee tree-cities on its far shore, the great wroshyr trees.
+    const wg = g.createLinearGradient(0, HY - 6 * u, 0, HY + 4);
+    wg.addColorStop(0, far('#6a8a98', 0.3));
+    wg.addColorStop(1, far('#4a6a78', 0.5));
+    g.fillStyle = wg;
+    g.fillRect(0, HY - 6 * u, GW, 10 * u);
+    for (const k of [0, 1, 2]) {
+      const n = Math.round((k === 0 ? 7 : k === 1 ? 5 : 4) * GW / (1600 * u));
+      for (let i = 0; i < n; i++) wroshyr(g, R, R() * GW, HY - (k === 0 ? 4 : 0) * u + k * 2 * u, (140 + R() * 120 + k * 120) * u, far('#3a3426', k), lit('#7a6a48', k), L.accent, lx, L.night, k);
+      const mg = g.createLinearGradient(0, HY - (60 + k * 40) * u, 0, HY);
+      mg.addColorStop(0, hexA(L.haze, 0));
+      mg.addColorStop(1, hexA(mix(L.haze, '#e0e8e0', 0.2), 0.35));
+      g.fillStyle = mg;
+      g.fillRect(0, HY - (60 + k * 40) * u, GW, (60 + k * 40) * u + 4);
+    }
+  } else if (field === 'hangar') {
+    // The hangar's far end: the ceiling with its light strips and gantries; the mouth open on space, its magnetic field shimmering.
+    const mx0 = GW * 0.14;
+    const mx1 = GW * 0.86;
+    const my0 = HY * 0.22;
+    const metal = mix('#2a2e36', L.ink, 0.3);
+    const metalLit = mix('#5a606c', L.sun, 0.1);
+    g.fillStyle = metal;
+    g.beginPath();
+    g.rect(0, 0, GW, HY + 60 * u);
+    g.rect(mx0, my0, mx1 - mx0, HY - my0);
+    g.fill('evenodd');
+    // Panels and ribs on the back wall and ceiling.
+    g.strokeStyle = hexA('#000000', 0.45);
+    g.lineWidth = 1;
+    for (let x = 0; x < GW; x += 40 * u) {
+      g.beginPath();
+      g.moveTo(x, 0);
+      g.lineTo(x, my0);
+      g.stroke();
+    }
+    for (let y = 10 * u; y < my0; y += 22 * u) {
+      g.beginPath();
+      g.moveTo(0, y);
+      g.lineTo(GW, y);
+      g.stroke();
+    }
+    g.fillStyle = metalLit;
+    g.fillRect(mx0 - 8 * u, my0 - 8 * u, mx1 - mx0 + 16 * u, 8 * u);
+    g.fillRect(mx0 - 8 * u, my0, 8 * u, HY - my0);
+    g.fillRect(mx1, my0, 8 * u, HY - my0);
+    // Light strips along the ceiling, warning stripes round the mouth.
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 4; i++) {
+      const y = my0 * (0.2 + i * 0.2);
+      g.fillStyle = hexA(L.accent, 0.35);
+      g.fillRect(GW * 0.1, y, GW * 0.8, 2 * u);
+    }
+    g.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 30; i++) {
+      g.fillStyle = i % 2 ? '#d8b030' : '#1a1a1a';
+      g.fillRect(mx0 + (i / 30) * (mx1 - mx0), my0 - 3 * u, (mx1 - mx0) / 30, 3 * u);
+    }
+    // The magnetic field across the mouth: a faint blue sheen and its edge.
+    const fg = g.createLinearGradient(0, my0, 0, HY);
+    fg.addColorStop(0, 'rgba(120,180,255,0.06)');
+    fg.addColorStop(1, 'rgba(120,180,255,0.12)');
+    g.fillStyle = fg;
+    g.fillRect(mx0, my0, mx1 - mx0, HY - my0);
+    // Gantries hanging from the ceiling, and a crane.
+    for (let i = 0; i < 3; i++) {
+      const x = GW * (0.2 + i * 0.3);
+      g.fillStyle = mix(metal, '#000000', 0.2);
+      g.fillRect(x - 3 * u, 0, 6 * u, my0 + 20 * u);
+      g.fillRect(x - 40 * u, my0 + 20 * u, 80 * u, 6 * u);
+      g.fillStyle = hexA(L.accent, 0.8);
+      g.fillRect(x - 30 * u, my0 + 26 * u, 6 * u, 3 * u);
+      g.fillRect(x + 24 * u, my0 + 26 * u, 6 * u, 3 * u);
+    }
   } else if (field === 'platform') {
     // The sea at the horizon, and the stilt city standing in it.
     for (const k of [0, 1]) {
@@ -630,6 +736,50 @@ function bigTree(g: CanvasRenderingContext2D, R: R, x: number, base: number, h: 
   }
 }
 
+/** A wroshyr tree of Kashyyyk: a vast trunk rising out of the lagoon, branches spreading like hands, Wookiee platforms and lights in it. */
+function wroshyr(g: CanvasRenderingContext2D, R: R, x: number, base: number, h: number, col: string, lit: string, accent: string, lx: number, night: number, k: number) {
+  const tw = h * (0.07 + R() * 0.03);
+  g.fillStyle = col;
+  g.beginPath();
+  g.moveTo(x - tw * 1.8, base);
+  g.quadraticCurveTo(x - tw * 0.6, base - h * 0.3, x - tw * 0.5, base - h * 0.75);
+  g.lineTo(x + tw * 0.5, base - h * 0.75);
+  g.quadraticCurveTo(x + tw * 0.6, base - h * 0.3, x + tw * 1.8, base);
+  g.fill();
+  g.fillStyle = hexA(lit, 0.45);
+  g.fillRect(x + (lx > 0 ? tw * 0.05 : -tw * 0.45), base - h * 0.72, tw * 0.35, h * 0.7);
+  // Branches spreading up from the top, the canopy on them.
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i - 2) * 0.35;
+    const bx = x + Math.cos(a) * h * 0.3;
+    const by = base - h * 0.72 + Math.sin(a) * h * 0.25;
+    g.strokeStyle = col;
+    g.lineWidth = tw * 0.4;
+    g.beginPath();
+    g.moveTo(x, base - h * 0.7);
+    g.quadraticCurveTo(x + Math.cos(a) * h * 0.12, base - h * 0.85, bx, by);
+    g.stroke();
+    g.fillStyle = col;
+    g.beginPath();
+    g.ellipse(bx, by, h * (0.12 + R() * 0.06), h * 0.06, 0, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = hexA(lit, 0.3);
+    g.beginPath();
+    g.ellipse(bx + lx * h * 0.03, by - h * 0.02, h * 0.07, h * 0.02, 0, 0, Math.PI * 2);
+    g.fill();
+  }
+  // Platforms round the trunk, with lights.
+  for (let i = 0; i < 3; i++) {
+    const py = base - h * (0.2 + i * 0.17);
+    g.fillStyle = col;
+    g.fillRect(x - tw * 2, py, tw * 4, tw * 0.25);
+    g.globalCompositeOperation = 'lighter';
+    g.fillStyle = hexA(accent, (0.25 + night * 0.5) * (0.5 + k * 0.2));
+    for (let j = 0; j < 4; j++) g.fillRect(x - tw * 1.6 + j * tw, py - tw * 0.3, tw * 0.2, tw * 0.2);
+    g.globalCompositeOperation = 'source-over';
+  }
+}
+
 function fungus(g: CanvasRenderingContext2D, R: R, x: number, base: number, h: number, col: string, cap: string, accent: string, lx: number, k: number) {
   const sw = h * 0.07;
   g.fillStyle = col;
@@ -786,17 +936,26 @@ export function bakeGround(world: SaberWorld, E: Env, seed: number): GroundBake 
   const S = 1 / u;
   const fOf = (d: number) => 0.3 + 0.7 * Math.pow(1 - clamp01(d), 2);
   const deckEnd = 0.8;
-  for (let j = 0; j < h; j++) {
-    const y = top + j / res;
-    const k = (y - HY) / (NY - HY);
-    const d = k <= 0 ? 1 : 1 - Math.sqrt(k);
-    const dd = clamp01(d);
-    const detail = clamp01(1.2 - dd * 1.4);
-    const Z = d * 1400;
-    const hz = clamp01(Math.pow(dd, 1.5) * 0.82 * L.hazeK + world.fog * 0.2 * dd);
-    for (let i = 0; i < w; i++) {
-      const sx = i / res;
+  // The ground in perspective, with its rises: each column marched from near to far (a voxel-space
+  // painter), so a hill stands up against what lies behind it and hides it.
+  const Hh = world.terrain.height;
+  const lx = E.lx;
+  for (let i = 0; i < w; i++) {
+    let ymin = h;
+    const sx = i / res;
+    for (let j = h - 1; j >= 0; j--) {
+      const y = top + j / res;
+      const k = (y - HY) / (NY - HY);
+      const d = k <= 0 ? 1 : 1 - Math.sqrt(k);
+      const dd = clamp01(d);
+      const detail = clamp01(1.2 - dd * 1.4);
+      const Z = d * 1400;
+      const hz = clamp01(Math.pow(dd, 1.5) * 0.82 * L.hazeK + world.fog * 0.2 * dd);
       const X = (GW / 2 + (sx - GW / 2) / fOf(d)) * S;
+      const hh = d < 0.98 ? Hh(X * u, d) : 0;
+      const yS = y - hh * (0.06 + 0.94 * Math.pow(1 - dd, 2));
+      const jS = Math.max(0, Math.floor((yS - top) * res));
+      if (jS >= ymin) continue;
       let r = 0;
       let gg = 0;
       let b = 0;
@@ -854,6 +1013,38 @@ export function bakeGround(world: SaberWorld, E: Env, seed: number): GroundBake 
         const root = Math.abs(fbm(X / 150, Z / 90, seed + 6, 3) - 0.5);
         if (root < 0.02) shade *= 0.55;
         if (vnoise(X / 3, Z / 3, seed + 8) > 0.97) glint = 0.6 * detail;
+      } else if (field === 'beach') {
+        // Dry sand near, wet sand, the shallows of the lagoon, a line of foam where they meet.
+        const shore = 0.5 + (fbm(X / 400, 0, seed + 2, 2) - 0.5) * 0.12;
+        const ripple = Math.sin(X / 9 + Z / 40 + fbm(X / 80, Z / 80, seed + 3, 2) * 7);
+        mixK = clamp01(0.4 + (fbm(X / 60, Z / 60, seed + 4, 3, detail) - 0.5) * 1.4);
+        shade = 0.92 + ripple * 0.04 * detail;
+        if (d > shore) {
+          wet = d > shore + 0.03 ? 0.85 : 0.4;
+          shade *= 0.75;
+          if (Math.abs(d - shore - 0.03) < 0.006 + 0.004 * Math.sin(X / 30)) glint = 0.6;
+        } else if (d > shore - 0.08) {
+          wet = 0.3;
+          shade *= 0.85;
+        }
+        if (vnoise(X / 12, Z / 12, seed + 9) > 0.9 && detail > 0.3) shade *= 0.7;
+      } else if (field === 'hangar') {
+        // The hangar deck: plates, rivets, painted guide lanes, oil.
+        const px = X / 110;
+        const pz = Z / 80;
+        const ex = Math.min(px - Math.floor(px), Math.ceil(px) - px);
+        const ez = Math.min(pz - Math.floor(pz), Math.ceil(pz) - pz);
+        const tv = h2(Math.floor(px), Math.floor(pz), seed);
+        mixK = tv * 0.6;
+        shade = 0.84 + (tv - 0.5) * 0.16 + (fbm(X / 30, Z / 30, seed + 1, 3, detail) - 0.5) * 0.14;
+        if (Math.min(ex, ez * 1.4) < 0.025 * (1 + dd * 3)) shade *= 0.6;
+        if (ex < 0.06 && ez < 0.08 && detail > 0.4) shade *= 1.15;
+        const lane = Math.abs((((X % 700) + 700) % 700) - 350);
+        if (lane < 7 && detail > 0.1) r = 2;
+        if (fbm(X / 120, Z / 90, seed + 5, 3) > 0.66) {
+          wet = 0.35;
+          shade *= 0.8;
+        }
       } else if (field === 'platform') {
         if (d > deckEnd) {
           // The sea beyond the deck's edge.
@@ -883,10 +1074,17 @@ export function bakeGround(world: SaberWorld, E: Env, seed: number): GroundBake 
           else wet = 0.18;
         }
       }
+      // The slopes of the rises: lit toward the light, shaded away from it, brighter as they face us.
+      if (hh > 0.3 * u) {
+        const e = 8 * u;
+        const hX = (Hh(X * u + e, d) - Hh(X * u - e, d)) / (2 * e);
+        const hZ = (Hh(X * u, d + 0.006) - Hh(X * u, d - 0.006)) / (0.012 * 1400 * u);
+        shade *= Math.max(0.55, Math.min(1.45, 1 - hX * lx * 2.4 + hZ * 1.4));
+      }
       // The base colour, its second tone, and paint on the deck.
       let base: [number, number, number];
       if (field === 'platform' && r === 1) base = [196, 180, 120];
-      else if (field === 'platform' && r === 2) base = [200, 160, 40];
+      else if ((field === 'platform' || field === 'hangar') && r === 2) base = [200, 160, 40];
       else if (field === 'platform' && r === 3) base = [30, 30, 30];
       else if (field === 'platform' && d > deckEnd) base = [Math.round(sky[0] * 0.5 + ink[0] * 0.5), Math.round(sky[1] * 0.5 + ink[1] * 0.5), Math.round(sky[2] * 0.55 + ink[2] * 0.45)];
       else base = [near[0] + (near2[0] - near[0]) * mixK, near[1] + (near2[1] - near[1]) * mixK, near[2] + (near2[2] - near[2]) * mixK];
@@ -924,11 +1122,14 @@ export function bakeGround(world: SaberWorld, E: Env, seed: number): GroundBake 
         gg += (ink[1] - gg) * sk;
         b += (ink[2] - b) * sk;
       }
-      const o = (j * w + i) * 4;
-      img.data[o] = r;
-      img.data[o + 1] = gg;
-      img.data[o + 2] = b;
-      img.data[o + 3] = 255;
+      for (let jj = jS; jj < ymin; jj++) {
+        const o = (jj * w + i) * 4;
+        img.data[o] = r;
+        img.data[o + 1] = gg;
+        img.data[o + 2] = b;
+        img.data[o + 3] = 255;
+      }
+      ymin = jS;
     }
   }
   g.putImageData(img, 0, 0);
@@ -941,6 +1142,8 @@ export function ridgeTop(world: SaberWorld, x: number, side: number, seed: numbe
   const { GW, NY, u } = world;
   const e = side > 0 ? x / GW : 1 - x / GW;
   const shoulder = Math.pow(clamp01((e - 0.74) / 0.2), 1.3) * 120 * u;
+  // Aboard ship it is a catwalk: straight, stepping up to a gantry at the corner.
+  if (world.style === 'hangar') return NY + 14 * u - (e > 0.8 ? 70 * u : 0);
   return NY + 14 * u - shoulder - (fbm(x / (60 * u), 1, seed, 4) - 0.5) * 22 * u - (vnoise(x / (9 * u), 2, seed + 1) - 0.5) * 5 * u;
 }
 export function bakeRidge(world: SaberWorld, E: Env, side: number, seed: number): HTMLCanvasElement {
@@ -988,6 +1191,38 @@ export function bakeRidge(world: SaberWorld, E: Env, side: number, seed: number)
     else g.lineTo(x, y);
   }
   g.stroke();
+  if (world.style === 'hangar') {
+    // Deck plating on the catwalk's face and a railing along its edge.
+    g.save();
+    g.clip(path);
+    g.fillStyle = mix('#2a2e36', L.ink, 0.3);
+    g.fillRect(0, 0, GW, GH);
+    g.strokeStyle = hexA('#000000', 0.5);
+    for (let x = 0; x < GW; x += 60 * u) {
+      g.beginPath();
+      g.moveTo(x, 0);
+      g.lineTo(x, GH);
+      g.stroke();
+    }
+    g.restore();
+    g.strokeStyle = mix('#5a606c', L.sun, 0.1);
+    g.lineWidth = 2 * u;
+    for (let x = 0; x <= GW; x += 34 * u) {
+      const y = ridgeTop(world, x, side, seed);
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x, y - 26 * u);
+      g.stroke();
+    }
+    g.beginPath();
+    for (let x = 0; x <= GW; x += 4) {
+      const y = ridgeTop(world, x, side, seed) - 26 * u;
+      if (x === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
+    g.stroke();
+    return c;
+  }
   // Sandbags along the lip, a broken droid's head, a helmet and a cracked barricade.
   const bagC = mix(mix('#8a7a5a', L.ink, 0.3 + L.night * 0.45), L.haze, 0.05);
   const bx0 = GW * (side > 0 ? 0.06 : 0.62);
@@ -1010,5 +1245,71 @@ export function bakeRidge(world: SaberWorld, E: Env, side: number, seed: number)
       g.lineTo(x + 9 * u, y);
       g.stroke();
     }
+  return c;
+}
+
+// ---- the hangar's walls -----------------------------------------------------------------------------------
+/** Inside a ship: the bay's side walls running back to its mouth in perspective, panelled, lit, with a control gallery. */
+export function bakeHangarWalls(world: SaberWorld, E: Env): HTMLCanvasElement {
+  const { GW, GH, HY, u } = world;
+  const c = mk(GW, GH);
+  const g = c.getContext('2d')!;
+  const L = E.L;
+  const mx0 = GW * 0.14;
+  const mx1 = GW * 0.86;
+  const my0 = HY * 0.22;
+  const metal = mix('#2e323a', L.ink, 0.25);
+  for (const side of [-1, 1]) {
+    const mx = side < 0 ? mx0 : mx1;
+    const ex = side < 0 ? -GW * 0.12 : GW * 1.12;
+    const sx = side < 0 ? 0 : GW;
+    const wall = new Path2D();
+    wall.moveTo(sx, 0);
+    wall.lineTo(mx, my0);
+    wall.lineTo(mx, HY);
+    wall.lineTo(ex, GH);
+    wall.lineTo(sx, GH);
+    wall.closePath();
+    const wg = g.createLinearGradient(sx, 0, mx, 0);
+    wg.addColorStop(0, mix(metal, '#000000', 0.35));
+    wg.addColorStop(1, mix(metal, L.sun, 0.06));
+    g.fillStyle = wg;
+    g.fill(wall);
+    g.save();
+    g.clip(wall);
+    // Ribs running back to the mouth, and the lines of the panels converging on it.
+    g.strokeStyle = hexA('#000000', 0.5);
+    g.lineWidth = 1.2;
+    for (let i = 1; i < 10; i++) {
+      const q = i / 10;
+      g.beginPath();
+      g.moveTo(sx, GH * q);
+      g.lineTo(mx, my0 + (HY - my0) * q);
+      g.stroke();
+    }
+    for (let i = 1; i < 14; i++) {
+      const q = Math.pow(i / 14, 1.6);
+      const x = mx + (sx - mx) * q;
+      g.strokeStyle = hexA(i % 3 === 0 ? '#5a606c' : '#000000', 0.5);
+      g.lineWidth = i % 3 === 0 ? 3 * u * (0.3 + q) : 1;
+      g.beginPath();
+      g.moveTo(x, my0 * (1 - q));
+      g.lineTo(x, HY + (GH - HY) * q);
+      g.stroke();
+    }
+    // The control gallery's lit windows high on the wall; warning lights low.
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 2; i < 12; i++) {
+      const q = Math.pow(i / 14, 1.6);
+      const x = mx + (sx - mx) * q;
+      const y = my0 * (1 - q) + (HY - my0) * 0.35 + q * GH * 0.12;
+      g.fillStyle = hexA('#9ad0ff', 0.35);
+      g.fillRect(x - 6 * u * (0.3 + q), y, 12 * u * (0.3 + q), 5 * u * (0.3 + q));
+      g.fillStyle = hexA(L.accent, 0.55);
+      g.fillRect(x - 2 * u, HY + (GH - HY) * q * 0.9 - 6 * u, 4 * u * (0.3 + q), 3 * u);
+    }
+    g.globalCompositeOperation = 'source-over';
+    g.restore();
+  }
   return c;
 }
