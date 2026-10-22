@@ -540,7 +540,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
   function spawnWalker(side: Side, x: number, d: number, extra: Partial<Walker> = {}): Walker {
     const w: Walker = {
       id: ids++, side, kind: side === 'ga' ? 'hexa' : 'spider', name: side === 'ga' ? `AT-TE ${pick(['ONE', 'TWO', 'THREE', 'FOUR', 'SEVEN', 'NINE', 'ELEVEN', 'TWELVE'])}` : `OG-9 SPIDER DROID ${Math.floor(r() * 90) + 10}`, x, d,
-      hx: (side === 'ga' ? 230 : 200) * u + r() * 160 * u, state: 'walk', t0: world.t, hp: side === 'ga' ? 120 : 130, cool: 3 + r() * 4, ph: r() * 6, seed: Math.floor(r() * 1e6), face: fwd(side),
+      hx: (side === 'ga' ? 230 : 200) * u + r() * 160 * u, state: 'walk', t0: world.t, hp: side === 'ga' ? 200 : 220, cool: 3 + r() * 4, ph: r() * 6, seed: Math.floor(r() * 1e6), face: fwd(side),
       aimX: 0, aimD: 0, fireT: -9, line: '', lineT: -99, alt: 0, ...extra,
     };
     world.walkers.push(w);
@@ -625,7 +625,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       }
     });
   }
-  const walkerQuota = (s: Side) => (phone ? 1 : s === 'ga' ? 2 : 1 + (world.castIds.includes('spiders') ? 1 : 0));
+  const walkerQuota = (s: Side) => (!F.cast.walkers ? 0 : phone ? 1 : s === 'ga' ? 2 : 1 + (world.castIds.includes('spiders') ? 1 : 0));
 
   // ---- gunships, carriers and landers --------------------------------------------------------------------
   function launchCraft(side: Side, kind: CraftKind, cargo: number): Craft {
@@ -660,6 +660,36 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     for (const c of world.crafts) {
       const age = world.t - c.t0;
       const f = fwd(c.side);
+      if (c.kind === 'trident') {
+        // Up out of the sea at the deck's edge, its claws over the rail; aqua droids out; back down.
+        if (c.state === 'inbound') {
+          c.alt = Math.min(0, c.alt + dt * 30 * u);
+          if (r() < dt * 14) fx('dust', c.x + (r() - 0.5) * 80 * u, c.d, 0, { valt: 30 * u, dur: 2, r: 18 * u, color: '#c8d8e0' });
+          if (c.alt >= 0) {
+            c.state = 'drop';
+            c.t0 = world.t;
+            c.walker = newSquad('cf', c.cargo).id;
+          }
+        } else if (c.state === 'drop') {
+          c.doors = Math.min(1, c.doors + dt);
+          c.cool -= dt;
+          if (c.cargo > 0 && c.cool <= 0) {
+            c.cool = 0.35;
+            const sl = slots('cf', 1, Math.max(0.3, c.d - 0.05 - r() * 0.15))[0];
+            spawnSoldier('cf', 'droid', c.x + (r() - 0.5) * 40 * u, c.d - 0.02, Math.min(sl.hx, maxHx('cf', sl.hd) * 0.6), sl.hd, 'march', c.walker);
+            c.cargo--;
+          }
+          if (c.cargo <= 0 && age > 6) {
+            c.state = 'away';
+            c.t0 = world.t;
+          }
+        } else if (c.state === 'away') {
+          c.doors = Math.max(0, c.doors - dt);
+          c.alt -= dt * 25 * u;
+          if (c.alt < -120 * u) c.state = 'off';
+        }
+        continue;
+      }
       const speed = (c.kind === 'lander' ? 120 : 190) * u;
       const lowAlt = c.kind === 'lander' ? 0 : c.kind === 'carrier' ? 80 * u : 26 * u;
       c.bank += ((c.state === 'strafe' ? 0.08 : c.state === 'away' || c.state === 'inbound' ? 0.04 : 0) - c.bank) * dt;
@@ -1140,14 +1170,16 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       speak(c, 'AIR SUPPORT INBOUND. KEEP YOUR HEADS DOWN');
       emit('airsupport', c.tx, c.d, 0.3);
     }
-    if (world.t > nextLander && !busy('lander') && cfShort >= (phone ? 4 : 6)) {
+    if (world.t > nextLander && style !== 'hangar' && !busy('lander') && !world.vehicles.some((v) => v.kind === 'mtt') && cfShort >= (phone ? 4 : 6)) {
       nextLander = world.t + 16 + r() * 10;
-      launchCraft('cf', 'lander', Math.min(cfShort + 2, phone ? 7 : 12 + Math.floor(r() * 4)));
+      // On open ground the droids sometimes come up in an MTT instead.
+      if (F.cast.tanks && r() < 0.4) spawnVehicle('mtt', true);
+      else launchCraft('cf', 'lander', Math.min(cfShort + 2, phone ? 7 : 12 + Math.floor(r() * 4)));
     }
     // When nothing can fly in, a line walks in from the edge.
     for (const side of ['ga', 'cf'] as Side[]) {
       const short = side === 'ga' ? gaShort : cfShort;
-      if (short < (phone ? 4 : 8) || world.t - lastMarch[side] < 28) continue;
+      if (short < (phone ? 4 : style === 'hangar' && side === 'cf' ? 5 : 8) || world.t - lastMarch[side] < (style === 'hangar' ? 16 : 28)) continue;
       lastMarch[side] = world.t;
       const n = Math.min(short - 2, side === 'ga' ? 5 : 8);
       const special = side === 'ga' ? allies() : undefined;
@@ -1345,7 +1377,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
   let nextArty = { ga: 3 + r() * 4, cf: 5 + r() * 4 };
   function artillery() {
     for (const side of ['ga', 'cf'] as Side[]) {
-      if (world.t < nextArty[side]) continue;
+      if (!F.cast.artillery || world.t < nextArty[side]) continue;
       nextArty[side] = world.t + ((6 + r() * 8) / traffic) * PACE[world.act.phase] * (world.act.phase === 'aftermath' ? 2 : 1);
       const foes = side === 'ga' ? cfAlive : gaAlive;
       const t = foes[Math.floor(r() * foes.length)];
@@ -1565,6 +1597,33 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     if (world.mood !== 'charge' && world.mood !== 'shield' && world.mood !== 'barrage' && retreatUntil.ga < world.t && retreatUntil.cf < world.t - 8) world.mood = Math.abs(world.tide) > 0.35 ? 'push' : 'stalemate';
   }
 
+  // ---- what comes at its own times: Geonosian swarms, speeder runs, the droid tower's orders ---------------
+  function swarm(n: number) {
+    const sq = newSquad('cf', n);
+    sq.name = 'GEONOSIAN WARRIORS';
+    sq.leader = 'POGGLE THE LESSER';
+    for (let k = 0; k < n; k++) {
+      const d = 0.1 + r() * 0.45;
+      spawnSoldier('cf', 'geonosian', rearX('cf', d, (20 + r() * 80) * u), d, (r() * 100) * u, d, 'line', sq.id, (120 + r() * 80) * u);
+    }
+    emit('geonosians', world.front, 0.3, 0.6);
+    look('geonosians', world.front, 0.3, 1.5, 9, 6);
+  }
+  function events() {
+    const ph = world.act.phase;
+    if (F.cast.geonosians && ph !== 'aftermath' && world.t > 40 && world.director.want('swarm', 0.4, 110)) {
+      swarm(phone ? 5 : 9);
+      say('GEONOSIANS! IN THE AIR!', world.front, 0.3, 160 * u, '#ffd0b8');
+    }
+    if (F.cast.speeders && ph === 'clash' && world.director.want('barcrun', 0.35, 140)) {
+      const d = 0.04 + r() * 0.08;
+      for (let k = 0; k < 2; k++) spawnVehicle('barc', false, { x: rearX('ga', d, (100 + k * 60) * u), d: d + k * 0.014, hd: d + k * 0.014, state: 'move' });
+      emit('barcrun', world.front, d, 0.3);
+    }
+    // MagnaGuards aboard ship go for the clones when the fighting is hot.
+    if (style === 'hangar' && ph !== 'aftermath') for (const s2 of world.soldiers) if (s2.kind === 'magna' && s2.state === 'line' && r() < 0.0015) s2.state = 'charge';
+  }
+
   // ---- the story: the battle in acts ----------------------------------------------------------------------
   /**
    * Each engagement: a build-up (the attacker brings in men and machines, the guns range in), the clash
@@ -1578,16 +1637,27 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
   let lastClimax = '';
   function climaxFor(attacker: Side): string {
     const has = (id: string) => world.castIds.includes(id);
+    const tower = world.terrain.facilities.some((f) => f.kind === 'tower' && f.state === 'up');
+    const armour = F.cast.walkers ? 3 : 0;
     const opts: [string, number][] = attacker === 'ga'
-      ? [['armour', 3], ['airassault', 3], ['charge', has('knights') ? 5 : 0], ['shield', has('shield') && world.shield?.state === 'up' ? 6 : 0], ['descent', has('descent') ? 4 : 0], ['bombers', has('bombers') ? 3 : 0], ['duel', has('duelist') && world.act.n >= 2 ? 3 : 0]]
-      : [['armour', 3], ['droidwave', 4], ['rollers', has('rollers') ? 5 : 0], ['bombers', has('bombers') ? 2 : 0], ['duel', has('duelist') && world.act.n >= 2 ? 2 : 0]];
+      ? [
+          ['armour', armour], ['airassault', 3], ['charge', has('knights') ? 5 : 0], ['shield', has('shield') && world.shield?.state === 'up' ? 6 : 0], ['descent', has('descent') ? 4 : 0],
+          ['bombers', has('bombers') ? 3 : 0], ['duel', has('duelist') && world.act.n >= 2 ? 3 : 0], ['spearhead', F.cast.tanks ? 4 : 0], ['flank', F.cast.speeders ? 3 : 0],
+          ['jump', 3], ['tower', tower ? 4 : 0], ['barrage', F.cast.artillery ? 3 : 0],
+        ]
+      : [
+          ['armour', armour], ['droidwave', 4], ['rollers', has('rollers') ? 5 : 0], ['bombers', has('bombers') && F.cast.artillery ? 2 : 0], ['duel', has('duelist') && world.act.n >= 2 ? 2 : 0],
+          ['mtt', F.cast.tanks ? 4 : 0], ['aatpush', F.cast.tanks ? 3 : 0], ['geonosians', F.cast.geonosians ? 5 : 0], ['tridents', F.cast.tridents ? 6 : 0], ['magnaguards', F.cast.magnaguards ? 5 : 0], ['barrage', F.cast.artillery ? 2 : 0],
+        ];
+    // On Geonosis the SPHA-Ts can bring down a core ship as it lifts.
+    if (F.cast.coreships && world.act.n >= 2 && world.capitals.some((c) => c.kind === 'core' && !c.falling) && world.vehicles.some((v) => v.kind === 'spha')) opts.push(['capitalfall', attacker === 'ga' ? 4 : 0]);
     // The rarest: a capital ship brought down, in long battles that have the broadsides.
-    if (has('broadside') && world.act.n >= 3 && !world.hulks.length && world.capitals.some((c) => c.side !== attacker)) opts.push(['capitalfall', 2.5]);
+    if (!F.cast.coreships && has('broadside') && world.act.n >= 3 && !world.hulks.length && world.capitals.some((c) => c.side !== attacker)) opts.push(['capitalfall', 2.5]);
     const pool = opts.filter(([id, w]) => w > 0 && id !== lastClimax);
     const total = pool.reduce((t, [, w]) => t + w, 0);
     let x = r() * total;
     for (const [id, w] of pool) if ((x -= w) <= 0) return id;
-    return 'armour';
+    return 'droidwave';
   }
   function nextAct() {
     const a = world.act;
@@ -1656,6 +1726,125 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     }
     a.fired = true;
     const att = a.attacker;
+    const head = (text: string, side: Side) => sayAt(text, GW / 2, HY - 30 * u, side === 'ga' ? '#d8ecff' : '#ffd0b8');
+    if (id === 'spearhead' || id === 'aatpush') {
+      const kinds: VehicleKind[] = id === 'spearhead' ? ['saber', 'atrt'] : ['aat', 'dsd'];
+      if (!world.vehicles.some((v) => v.kind === kinds[0])) spawnVehicle(kinds[0], true);
+      spawnVehicle(kinds[0], true);
+      for (const v of world.vehicles) if (kinds.includes(v.kind)) v.hx = (20 + r() * 60) * u;
+      head(id === 'spearhead' ? 'THE SABER TANKS SPEARHEAD THE ATTACK' : 'THE DROID TANKS ADVANCE', att);
+      emit(id, world.front, 0.3, 0.8);
+      look(id, world.front, 0.3, 1.6, 12, 7);
+      chronicle(id === 'spearhead' ? 'The saber tanks led the attack in, with the AT-RTs running beside them.' : 'The AATs came forward in a line, firing as they came.');
+      bias += att === 'ga' ? 0.6 : -0.6;
+      after(25, () => {
+        for (const v of world.vehicles) if (kinds.includes(v.kind)) v.hx = (VSPEC[v.kind].hx[0] + r() * (VSPEC[v.kind].hx[1] - VSPEC[v.kind].hx[0])) * u;
+      });
+      return;
+    }
+    if (id === 'flank') {
+      for (let wave = 0; wave < 2; wave++)
+        after(wave * 6, () => {
+          const d = 0.04 + r() * 0.08;
+          for (let k = 0; k < 3; k++) spawnVehicle('barc', false, { x: rearX('ga', d, (100 + k * 50) * u), d: d + k * 0.012, hd: d + k * 0.012, state: 'move' });
+        });
+      head('BARC SPEEDERS SWEEP THE FLANK', 'ga');
+      emit('flank', world.front, 0.08, 0.8);
+      look('flank', world.front, 0.08, 1.7, 10, 7);
+      chronicle('BARC speeders swept down the near flank and shot up the droid line from behind.');
+      bias += 0.5;
+      return;
+    }
+    if (id === 'jump') {
+      const sq = newSquad('ga', 6);
+      sq.name = 'JUMP TROOPERS';
+      for (let k = 0; k < (phone ? 4 : 7); k++) {
+        const d = 0.08 + r() * 0.35;
+        const s2 = spawnSoldier('ga', 'jet', lineX('ga', (80 + r() * 100) * u), d, (10 + r() * 30) * u, d, 'charge', sq.id);
+        s2.jump = world.t - r() * 0.5;
+      }
+      for (const s2 of world.soldiers) if (s2.kind === 'jet' && alive(s2)) {
+        s2.state = 'charge';
+        s2.jump = world.t;
+      }
+      head('JUMP TROOPERS GO OVER THE TOP', 'ga');
+      speak(sq, 'JETPACKS! GO, GO, GO!', true);
+      emit('jump', world.front, 0.25, 0.8);
+      look('jump', world.front, 0.25, 1.8, 10, 7);
+      after(20, () => {
+        for (const s2 of world.soldiers) if (s2.kind === 'jet' && s2.state === 'charge') s2.state = 'march';
+      });
+      bias += 0.6;
+      return;
+    }
+    if (id === 'tower') {
+      const tw = world.terrain.facilities.find((f) => f.kind === 'tower' && f.state === 'up');
+      if (!tw) return;
+      for (let k = 0; k < 9; k++) after(1 + k * 0.8, () => shell('ga', tw.x + (r() - 0.5) * 80 * u, Math.max(0.04, tw.d + (r() - 0.5) * 0.04), 1));
+      for (const v of world.vehicles) if (v.side === 'ga' && v.kind === 'spha') after(2, () => world.beams.push({ x0: xOf(v.x, v.d), y0: yOf(v.d) - 50 * u * mOf(v.d), x1: xOf(tw.x, tw.d), y1: yOf(tw.d) - 120 * u * mOf(tw.d), t0: world.t, dur: 1.4, color: '#ff4030', w: 5 }));
+      head('ALL GUNS ON THE COMMAND TOWER', 'ga');
+      emit('towerattack', tw.x, tw.d, 0.8);
+      look('tower', tw.x, tw.d, 1.6, 14, 7);
+      bias += 0.4;
+      return;
+    }
+    if (id === 'barrage') {
+      const foes = att === 'ga' ? cfAlive : gaAlive;
+      for (let k = 0; k < (phone ? 7 : 13); k++)
+        after(k * 0.45, () => {
+          const t = foes[Math.floor(r() * foes.length)];
+          if (t) shell(att, t.x + (r() - 0.5) * 80 * u, t.d, 1);
+        });
+      head(att === 'ga' ? 'THE REPUBLIC ARTILLERY OPENS UP' : 'THE SEPARATIST GUNS OPEN UP', att);
+      const sq = world.squads.find((q) => q.side === other(att));
+      if (sq) after(2, () => speak(sq, att === 'cf' ? 'INCOMING! GET DOWN!' : 'INCOMING. UH OH.', true));
+      emit('barrage', world.front, 0.3, 0.8);
+      bias += att === 'ga' ? 0.5 : -0.5;
+      return;
+    }
+    if (id === 'mtt') {
+      for (let k = 0; k < (phone ? 1 : 2); k++) after(k * 5, () => spawnVehicle('mtt', true, { hd: 0.15 + r() * 0.3, d: 0.15 + r() * 0.3 }));
+      head('MTTS ROLL UP TO THE DROID LINE', 'cf');
+      emit('mtts', world.front, 0.3, 0.7);
+      chronicle('The droids brought up their MTTs and unloaded a battalion at the line.');
+      bias -= 0.5;
+      return;
+    }
+    if (id === 'geonosians') {
+      swarm(phone ? 8 : 14);
+      head('GEONOSIAN WARRIORS SWARM FROM THE SPIRES', 'cf');
+      chronicle('The Geonosians came out of their spires in a swarm, firing as they flew.');
+      bias -= 0.5;
+      return;
+    }
+    if (id === 'tridents') {
+      for (let k = 0; k < (phone ? 1 : 2); k++)
+        after(k * 4, () => {
+          const d = 0.58 + r() * 0.1;
+          const x = lineX('cf', (120 + r() * 300) * u);
+          const c = launchCraft('cf', 'trident', phone ? 6 : 10);
+          Object.assign(c, { x, d, td: d, tx: x, alt: -90 * u, talt: 0, state: 'inbound', t0: world.t });
+        });
+      head('TRIDENT DRILL SHIPS RISE FROM THE SEA', 'cf');
+      emit('tridents', world.front, 0.6, 0.9);
+      look('tridents', world.front, 0.62, 1.5, 14, 8);
+      chronicle('Trident assault ships came up out of the sea and clamped onto the platform, and aqua droids poured out.');
+      bias -= 0.6;
+      return;
+    }
+    if (id === 'magnaguards') {
+      const sq = newSquad('cf', 6);
+      sq.name = 'GRIEVOUS\'S MAGNAGUARDS';
+      sq.leader = 'IG-100 MAGNAGUARD';
+      for (let k = 0; k < (phone ? 4 : 6); k++) {
+        const d = 0.08 + r() * 0.35;
+        spawnSoldier('cf', 'magna', rearX('cf', d, 40 * u), d, (10 + r() * 30) * u, d, 'charge', sq.id);
+      }
+      head('MAGNAGUARDS CHARGE WITH THEIR ELECTROSTAFFS', 'cf');
+      emit('magnaguards', world.front, 0.25, 0.8);
+      bias -= 0.5;
+      return;
+    }
     if (id === 'armour') {
       for (const w of world.walkers) if (w.state === 'walk') w.hx = w.side === att ? 60 * u : w.hx;
       const def = world.walkers.find((w) => w.side !== att && w.state === 'walk');
@@ -1674,9 +1863,10 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       chronicle('A wave of gunships came in low over the line and put down a whole company at once.');
       bias += 0.5;
     } else if (id === 'droidwave') {
-      for (let k = 0; k < (phone ? 1 : 2); k++) after(k * 4, () => launchCraft('cf', 'lander', phone ? 7 : 12));
+      if (style !== 'hangar') for (let k = 0; k < (phone ? 1 : 2); k++) after(k * 4, () => launchCraft('cf', 'lander', phone ? 7 : 12));
+      else for (let k = 0; k < 3; k++) after(k * 3, () => (lastMarch.cf = -99));
       lastMarch.cf = -99;
-      sayAt('THE CONFEDERACY LANDS ANOTHER LEGION', GW / 2, HY - 30 * u, '#ffd0b8');
+      sayAt(style === 'hangar' ? 'DROIDS POUR THROUGH THE BLAST DOORS' : 'THE CONFEDERACY LANDS ANOTHER LEGION', GW / 2, HY - 30 * u, '#ffd0b8');
       emitAt('droidwave', GW / 2, HY, 0.8);
       chronicle('The Confederacy put down lander after lander behind its line, and a new legion of droids marched out.');
       bias -= 0.5;
@@ -1685,6 +1875,12 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       const killer = world.capitals.find((c) => c.side === att);
       if (!victim) return;
       if (killer) killer.fireUntil = world.t + 14;
+      // On Geonosis it is the SPHA-Ts' beams that do it.
+      for (const v of world.vehicles) if (v.kind === 'spha' && v.side === att)
+        for (let k = 0; k < 4; k++) after(k * 1.6, () => {
+          world.beams.push({ x0: xOf(v.x, v.d) + fwd('ga') * 30 * u * mOf(v.d), y0: yOf(v.d) - 60 * u * mOf(v.d), x1: victim.x + (r() - 0.5) * 40 * u * victim.s, y1: victim.y, t0: world.t, dur: 1.4, color: '#ff4030', w: 6 });
+          victim.hitT = world.t + 0.3;
+        });
       after(6, () => {
         victim.falling = 0.001;
         sayAt(`${victim.name} IS FALLING`, victim.x, victim.y + 70 * u * victim.s, att === 'ga' ? '#d8ecff' : '#ffd0b8');
@@ -1901,7 +2097,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       },
     },
     {
-      id: 'rollers', label: 'shield droids', weight: 7, tags: ['threat'],
+      id: 'rollers', label: 'droidekas', weight: () => (field === 'geonosis' || field === 'coruscant' ? 8 : field === 'christophsis' ? 6 : 4), tags: ['threat'],
       create: (c) => {
         const w = c.world;
         return {
@@ -1960,11 +2156,11 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       },
     },
     {
-      id: 'spiders', label: 'the spider walkers', weight: 4, tags: ['threat'],
+      id: 'spiders', label: 'the homing spider droids', weight: () => (F.cast.walkers ? 4 : 0), tags: ['threat'],
       create: () => ({ id: 'spiders' }),
     },
     {
-      id: 'shield', label: 'the dome shield', weight: (gg: Genome) => (style === 'hangar' ? 0 : style === 'platform' ? 3 : 5) + (style === 'hangar' ? 0 : gg.unit()), tags: ['objective'],
+      id: 'shield', label: 'the shield generator', weight: (gg: Genome) => (style === 'hangar' ? 0 : field === 'christophsis' ? 10 : style === 'platform' ? 2 : 4 + gg.unit()), tags: ['objective'],
       create: (c) => {
         const w = c.world;
         const placeShield = () => {
@@ -2107,7 +2303,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       },
     },
     {
-      id: 'descent', label: 'a cruiser\'s descent', weight: 4, tags: ['sky'],
+      id: 'descent', label: 'a Venator\'s descent', weight: 4, tags: ['sky'],
       create: (c) => {
         const w = c.world;
         let ship: Capital | null = null;
@@ -2145,7 +2341,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       },
     },
     {
-      id: 'bombers', label: 'bomber runs', weight: 4, tags: ['air'],
+      id: 'bombers', label: 'bombing runs', weight: () => (style === 'hangar' ? 0 : 4), tags: ['air'],
       create: (c) => {
         const w = c.world;
         return {
@@ -2203,7 +2399,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
       },
     },
     {
-      id: 'flares', label: 'illumination flares', weight: () => (night ? 6 : 0), tags: ['weather'],
+      id: 'flares', label: 'illumination flares', weight: () => (night && style !== 'hangar' ? 6 : 0), tags: ['weather'],
       create: (c) => {
         const w = c.world;
         let next = 8;
@@ -2322,6 +2518,7 @@ export function createSaberFront(seed: string | number, W: number, H: number, op
     reinforce();
     sky(dt);
     story();
+    events();
     tide(dt);
     for (const s of systems) s.step?.(dt);
     weather(dt);
