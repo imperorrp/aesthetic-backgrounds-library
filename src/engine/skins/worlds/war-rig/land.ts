@@ -285,8 +285,10 @@ export function createLand(E: Env, world: WarWorld, seed: number) {
       const G = world.dist + (x - cx) / m;
       let w = 0;
       for (const [rg, k] of entryMix(G, m)) if (rg === 'canyon') w += k;
-      const notch = pnoise(G / (300 * u), 2, seed + 21);
-      const h = w <= 0 ? 0 : rimH * smooth(clamp01(w * 1.4)) * (notch < 0.18 ? 0.86 : 1) + (pnoise(G / (60 * u), 4, seed + 22) - 0.5) * 30 * u;
+      // The rim: level for long stretches (the bikers ride it), slumped in places, broken at the edge.
+      const slump = smooth(clamp01((0.32 - pnoise(G / (900 * u), 2, seed + 21)) * 4)) * 0.16;
+      const crag = (pnoise(G / (90 * u), 4, seed + 22) - 0.5) * 50 * u + (pnoise(G / (25 * u), 6, seed + 23) - 0.5) * 18 * u;
+      const h = w <= 0 ? 0 : rimH * smooth(clamp01(w * 1.4)) * (1 - slump) + crag * clamp01(w * 2);
       if (h > 0) any = true;
       pts.push([x, base - Math.max(0, h) * m, G]);
     }

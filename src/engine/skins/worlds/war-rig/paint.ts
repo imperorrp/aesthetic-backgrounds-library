@@ -437,7 +437,7 @@ export function mountWarRig(host: SkinHost, o: WarPaintOptions): SkinInstance {
     }
   }
   /** Exhaust flames, headlights and tail-lights, the guitar's flame: the machines' own light. */
-  function machineLight(kind: Kind | 'rig', x: number, z: number, y: number, s: number, boost: number, seed: number, rot: number, extra = 0) {
+  function machineLight(kind: Kind | 'rig', x: number, z: number, y: number, s: number, boost: number, seed: number, rot: number, extra = 0, airborne = false) {
     const P = POINTS[kind];
     const night = E.night;
     const cr = Math.cos(rot);
@@ -464,7 +464,7 @@ export function mountWarRig(host: SkinHost, o: WarPaintOptions): SkinInstance {
         E.glow(lx, ly, 12 * s, '#fff0c8', 0.9 * lit);
         // The beam ahead along the road.
         const m = world.mOf(z);
-        const gy = world.yOf(z);
+        const gy = airborne ? ly + 24 * s : world.yOf(z);
         const len = 260 * u * m * (kind === 'rig' ? 1.4 : 1);
         const g = ctx.createLinearGradient(lx, 0, lx + len, 0);
         g.addColorStop(0, hexA('#ffe8c0', 0.22 * lit));
@@ -530,7 +530,7 @@ export function mountWarRig(host: SkinHost, o: WarPaintOptions): SkinInstance {
         z: v.z,
         draw: () => drawVehicle(v),
         light: v.state === 'stuck' ? undefined : () => {
-          machineLight(v.kind, v.x, v.z, y, s, v.boost, v.seed, v.rot, v.state === 'crash' || v.state === 'flung' ? 0.5 : 0);
+          machineLight(v.kind, v.x, v.z, y, s, v.boost, v.seed, v.rot, v.state === 'crash' || v.state === 'flung' ? 0.5 : 0, v.alt > 5);
           if (v.kind === 'howler') guitarFlame(v.x, y, s, playing);
         },
       });
@@ -583,37 +583,67 @@ export function mountWarRig(host: SkinHost, o: WarPaintOptions): SkinInstance {
       E.glow(gx + q * 70 * s, gy - q * 30 * s + wob, (8 + q * 14) * s, q < 0.3 ? '#fff0b0' : '#ff6a18', 0.9 - q * 0.5);
     }
   }
-  /** The toxic storm: a wall of orange murk, whirlwinds, things in the air. */
+  /**
+   * The toxic storm: a wall of cloud standing from the ground to the top of the sky, black in its
+   * heart and burning orange at its edges, funnels twisting down out of it, and everything under it
+   * in a red-brown murk.
+   */
   function storm() {
     const st = world.storm;
     if (st <= 0.01) return;
-    const col = E.tone('#a8582a', 0.5, 0.4);
-    const dark = E.tone('#3a2014', 0.5, 0);
-    const spr = E.soft(col);
-    const sprD = E.soft(dark);
-    for (let k = 0; k < 26; k++) {
-      const span = GW * 1.5;
-      const x = posmod(hash(k, 1, tseed) * span + E.t * (160 + hash(k, 2, tseed) * 200) * u, span) - GW * 0.25;
-      const y = HY * 0.2 + hash(k, 3, tseed) * GH * 0.8;
-      const r = (160 + hash(k, 4, tseed) * 260) * u;
-      ctx.globalAlpha = st * (0.18 + hash(k, 5, tseed) * 0.2);
-      ctx.drawImage(k % 3 ? spr : sprD, x - r, y - r * 0.5, r * 2, r);
+    const black = E.soft(E.tone('#1c0e08', 0.4, 0));
+    const rust = E.soft(E.tone('#8a3a14', 0.4, 0.3));
+    const lit = E.soft(E.tone('#ff8a3a', 0.2, 1));
+    // The murk first, so the wall stands in front of it.
+    ctx.fillStyle = hexA(E.tone('#5a2410', 0.5, 0.2), st * 0.22);
+    ctx.fillRect(-20, -20, GW + 40, GH + 40);
+    // The wall: towers of cloud stacked over the eye, rolling.
+    const ex = world.stormX;
+    for (let k = 0; k < 40; k++) {
+      const q = hash(k, 1, tseed);
+      const x = ex + (q - 0.5) * GW * 1.3 + Math.sin(E.t * 0.2 + k) * 40 * u;
+      const y = HY * (0.05 + hash(k, 2, tseed) * 1.1);
+      const r = (140 + hash(k, 3, tseed) * 220) * u * (0.8 + st * 0.4);
+      const roll = Math.sin(E.t * (0.15 + q * 0.2) + k) * 0.1;
+      ctx.globalAlpha = st * 0.55;
+      ctx.drawImage(k % 3 === 0 ? rust : black, x - r, y - r * (0.8 + roll), r * 2, r * 1.6);
+      // Lit at the edges where the sun gets through.
+      ctx.globalAlpha = st * 0.3 * (k % 2);
+      ctx.drawImage(lit, x - r * 0.6 + (E.keyX > x ? r * 0.5 : -r * 0.5), y - r * 0.9, r * 1.2, r * 0.6);
     }
-    // Whirlwinds round the eye.
-    for (let w = 0; w < 2; w++) {
-      const cx = world.stormX + (w ? -GW * 0.35 : 0);
-      for (let k = 0; k < 18; k++) {
-        const q = k / 17;
-        const yy = world.yOf(0.3) - q * GH * 0.8;
-        const sw = Math.sin(E.t * 3 + q * 6 + w) * (20 + q * 80) * u;
-        const r = (30 + q * 120) * u;
-        ctx.globalAlpha = st * 0.32 * (1 - q * 0.5);
-        ctx.drawImage(k % 2 ? sprD : spr, cx + sw - r, yy - r * 0.35, r * 2, r * 0.7);
+    // Funnels: twisting columns from the cloud down to the road.
+    for (let w = 0; w < 3; w++) {
+      const cx0 = ex + (w - 1) * GW * 0.38 + Math.sin(E.t * 0.3 + w * 2) * 60 * u;
+      const top = HY * 0.15;
+      const foot = world.yOf(-0.2 + w * 0.35);
+      for (let k = 0; k < 26; k++) {
+        const q = k / 25;
+        const y = top + (foot - top) * q;
+        const sw = Math.sin(E.t * 2.2 + q * 5 + w * 3) * (14 + (1 - q) * 50) * u;
+        const r = (10 + Math.pow(1 - q, 1.6) * 120) * u;
+        ctx.globalAlpha = st * (0.35 + q * 0.3);
+        ctx.drawImage(k % 2 ? black : rust, cx0 + sw - r, y - r * 0.4, r * 2, r * 0.8);
+      }
+      // Debris whirling round the foot.
+      ctx.fillStyle = hexA(E.tone('#2a1a10', 0.3), st * 0.8);
+      for (let d = 0; d < 10; d++) {
+        const a = E.t * (2 + d * 0.3) + d;
+        const rr = (30 + d * 9) * u;
+        ctx.fillRect(cx0 + Math.cos(a) * rr, foot - 40 * u - d * 16 * u + Math.sin(a) * rr * 0.3, 4 * u, 3 * u);
       }
     }
+    // Sand driven sideways across the picture.
+    ctx.strokeStyle = hexA(E.tone('#d08a50', 0.3, 0.6), 0.22 * st);
+    ctx.lineWidth = Math.max(1, 1.4 * u);
+    ctx.beginPath();
+    for (let k = 0; k < 60; k++) {
+      const y = hash(k, 7, tseed) * GH;
+      const x = posmod(hash(k, 8, tseed) * GW * 1.4 - E.t * (500 + hash(k, 9, tseed) * 400) * u, GW * 1.4) - GW * 0.2;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 60 * u, y + 4 * u);
+    }
+    ctx.stroke();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = hexA(E.tone('#4a2410', 0.5), st * 0.3);
-    ctx.fillRect(-20, -20, GW + 40, GH + 40);
   }
 
   function grade(t: number) {
