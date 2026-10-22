@@ -382,9 +382,11 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
     g.lineJoin = 'round';
     g.lineCap = 'round';
     const deck = D.deck;
-    const hullPath = new Path2D();
-    D.hull.forEach(([x, y], i) => (i ? hullPath.lineTo(x, y) : hullPath.moveTo(x, y)));
-    hullPath.closePath();
+    const hullPath = () => {
+      g.beginPath();
+      D.hull.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+      g.closePath();
+    };
     // Behind the hull: the dinghy on its davits, the far turret backs, junk at the stern.
     const back = Math.min(...D.hull.map((p) => p[0]));
     if (D.rear.boat) {
@@ -433,7 +435,8 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
     }
     // The hull, its plates, and the shadow of its own belly.
     g.save();
-    g.clip(hullPath);
+    hullPath();
+    g.clip();
     for (const p of D.plates) texture(g, p.mat, p.x, p.y, p.w + 1, p.h + 1, p.seed);
     const hb = g.createLinearGradient(0, -130, 0, 20);
     hb.addColorStop(0, rgba('#fff0d8', 0.12));
@@ -462,7 +465,8 @@ export function createCastlePainter(world: CastleWorld, E: Env, res: number) {
     g.save();
     g.lineWidth = 1.6;
     g.strokeStyle = rgba(INK, 0.75);
-    g.stroke(hullPath);
+    hullPath();
+    g.stroke();
     g.restore();
     // The deck's rail.
     g.strokeStyle = rgba('#3a2a22', 0.8);

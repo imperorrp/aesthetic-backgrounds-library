@@ -314,7 +314,7 @@ export function drawRainbow(E: Env, GW: number, GH: number, HY: number, side: 1 
 }
 
 // ---- the clouds ----------------------------------------------------------------------------------------
-export type CloudBake = { w: number; h: number; ox: number; oy: number; dw: number; dh: number; body: HTMLCanvasElement; lit: HTMLCanvasElement; rim: HTMLCanvasElement; out: HTMLCanvasElement; stamp: string };
+export type CloudBake = { w: number; h: number; ox: number; oy: number; dw: number; dh: number; body: HTMLCanvasElement; lit: HTMLCanvasElement; rim: HTMLCanvasElement; out: HTMLCanvasElement; tmp: HTMLCanvasElement; stamp: string };
 /**
  * A cumulus, rasterised once: puffs heaped on a flat base. Each pixel takes the normal of the
  * puff on top there (a sphere), lit from the sun's side and above, darker toward the flat belly
@@ -421,10 +421,9 @@ function rasterCloud(seed: number, puffs: [number, number, number][], W: number,
   body.getContext('2d')!.putImageData(ib, 0, 0);
   lit.getContext('2d')!.putImageData(il, 0, 0);
   rim.getContext('2d')!.putImageData(ir, 0, 0);
-  return { w, h, ox, oy, dw: W / res, dh: H / res, body, lit, rim, out: mkM(), stamp: '' };
+  return { w, h, ox, oy, dw: W / res, dh: H / res, body, lit, rim, out: mkM(), tmp: mkM(), stamp: '' };
 }
 
-let tmp: HTMLCanvasElement | null = null;
 /** Colour a cloud's masks for the hour into its `out` picture. */
 export function tintCloud(c: CloudBake, shade: string, litCol: string, rimCol: string, rimA: number) {
   const key = shade + litCol + rimCol + rimA.toFixed(2);
@@ -432,7 +431,7 @@ export function tintCloud(c: CloudBake, shade: string, litCol: string, rimCol: s
   c.stamp = key;
   const W = c.out.width;
   const H = c.out.height;
-  if (!tmp || tmp.width < W || tmp.height < H) tmp = mk(Math.max(W, tmp?.width ?? 0), Math.max(H, tmp?.height ?? 0));
+  const tmp = c.tmp;
   const o = c.out.getContext('2d')!;
   const t = tmp.getContext('2d')!;
   o.globalCompositeOperation = 'source-over';
@@ -451,7 +450,7 @@ export function tintCloud(c: CloudBake, shade: string, litCol: string, rimCol: s
     t.fillStyle = col;
     t.fillRect(0, 0, W, H);
     o.globalAlpha = a;
-    o.drawImage(tmp!, 0, 0, W, H, 0, 0, W, H);
+    o.drawImage(tmp, 0, 0);
     o.globalAlpha = 1;
   };
   layer(c.lit, litCol, 1);

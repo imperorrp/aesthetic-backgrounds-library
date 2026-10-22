@@ -235,7 +235,7 @@ export function mountWalkingCastle(host: SkinHost, o: CastlePaintOptions): SkinI
       const x = world.xOf(nb.L, s);
       if (x < -200 * u || x > GW + 200 * u) continue;
       const [t] = land.midRidge(k, nb.L);
-      drawWalkingHouse(E, nb.kind, x, t + 4 * u, 120 * u * ph * Math.pow(s / 0.31, 0.9), E.t + nb.seed, k === 3 ? 0.06 : 0.03, nb.seed, world.sunSide);
+      drawWalkingHouse(E, nb.kind, x, t + 4 * u, 78 * u * ph * Math.pow(s / 0.31, 0.9), E.t + nb.seed, k === 3 ? 0.06 : 0.03, nb.seed, world.sunSide);
     }
     if (k !== 4) return;
     for (const m of world.struck) {
@@ -363,7 +363,8 @@ export function mountWalkingCastle(host: SkinHost, o: CastlePaintOptions): SkinI
     if (world.wet > 0.05) {
       // Wet grass after rain: the sky's light lying on the hill.
       ctx.save();
-      ctx.clip(np);
+      np(ctx);
+      ctx.clip();
       const g = ctx.createLinearGradient(0, land.GY - 60 * u, 0, GH);
       g.addColorStop(0, rgba(E.L.low, 0.14 * world.wet));
       g.addColorStop(1, rgba(E.L.low, 0));

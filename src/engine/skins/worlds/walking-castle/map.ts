@@ -918,7 +918,7 @@ export function createMapPainter(world: CastleWorld, E: Env, o: { W: () => numbe
     const gm = geom();
     const m = Math.max(10, Math.min(gm.W, gm.H) * 0.025) + 14;
     const fs = Math.round(Math.max(13, Math.min(18, gm.W * 0.0125)));
-    return gm.H - m - (gm.phone ? 60 : 8) - fs * 1.45 * 3 - 18;
+    return gm.H - m - (gm.phone ? 60 : 8) - fs * 1.45 * 3 - 30;
   }
   return { paint, project, unproject, subY };
 }

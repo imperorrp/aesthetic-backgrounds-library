@@ -900,19 +900,22 @@ export function createScenery(world: CastleWorld, E: Env, res: number) {
 
   /** The near crest as a path, across the screen (for clipping the grass's wind and the cloud shadows). */
   function nearPath() {
-    const p = new Path2D();
-    p.moveTo(-40, GH + 10);
-    for (let x = -40; x <= GW + 40; x += 6) p.lineTo(x, land.nearY(world.X + dir * (x - GW / 2)));
-    p.lineTo(GW + 40, GH + 10);
-    p.closePath();
-    return p;
+    /** Trace the near hill (its crest across the screen, down to the foot) into a context, as the path to clip to. */
+    return (ctx: CanvasRenderingContext2D) => {
+      ctx.beginPath();
+      ctx.moveTo(-40, GH + 10);
+      for (let x = -40; x <= GW + 40; x += 6) ctx.lineTo(x, land.nearY(world.X + dir * (x - GW / 2)));
+      ctx.lineTo(GW + 40, GH + 10);
+      ctx.closePath();
+    };
   }
   /** The wind running through the grass: long pale bands rolling over the hill, the gusts of a touch. */
-  function drawGrassWind(ctx: CanvasRenderingContext2D, path: Path2D) {
+  function drawGrassWind(ctx: CanvasRenderingContext2D, path: (ctx: CanvasRenderingContext2D) => void) {
     const wk = clamp01(Math.abs(world.wind) / (24 * u)) * (1 - E.night * 0.6);
     if (wk < 0.05) return;
     ctx.save();
-    ctx.clip(path);
+    path(ctx);
+    ctx.clip();
     const span = GW + 900 * pu;
     const lit = E.lit(mix(hexToStr(PALS.meadow.lit), '#f4ffd0', 0.45));
     const spr = E.soft(lit);
