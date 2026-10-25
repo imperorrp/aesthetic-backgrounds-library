@@ -16,6 +16,7 @@ import { TRACTION_SCHEMA } from './traction/schema';
 import { LAST_LOOP_SCHEMA } from './last-loop/schema';
 import { BLOCKADE_SCHEMA } from './blockade/schema';
 import { TITAN_DOCK_SCHEMA } from './titan-dock/schema';
+import { SABER_FRONT_SCHEMA } from './saber-front/schema';
 
 export const silentRunningSkin = lazySkin(
   {
@@ -180,4 +181,17 @@ export const titanDockSkin = lazySkin(
   },
   () => import('./titan-dock'),
 );
-export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, warRigSkin, tractionSkin, lastLoopSkin, blockadeSkin, titanDockSkin] as const;
+export const saberFrontSkin = lazySkin(
+  {
+    id: 'saber-front',
+    label: 'Saber Front',
+    description:
+      'The ground battles of the Clone Wars seen from a ridge, from Geonosis to Kashyyyk and aboard the Invisible Hand: clone troopers and battle droids trading bolts from cover, AT-TEs and spider droids, saber tanks and AATs, gunships dropping squads, Jedi leading charges, dogfights and Venators overhead.',
+    tags: ['world', 'war', 'sci-fi', 'battle', 'star-wars'],
+    crisp: true,
+    schema: SABER_FRONT_SCHEMA,
+    defaults: { palette: { from: '#58b8ff' }, intensity: 0.85 },
+  },
+  () => import('./saber-front'),
+);
+export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, warRigSkin, tractionSkin, lastLoopSkin, blockadeSkin, titanDockSkin, saberFrontSkin] as const;

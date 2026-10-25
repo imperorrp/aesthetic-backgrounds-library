@@ -33,7 +33,7 @@ The worlds still behave like backgrounds:
 <summary><b>Contents</b></summary>
 
 - [Things happen](#things-happen)
-- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [Deephold](#deephold), [Leylines](#leylines), [Silent Running and Foundry](#silent-running), [ten more worlds](#brasswind), [instruments](#instruments-from-other-worlds), [basics](#basics)
+- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [Deephold](#deephold), [Leylines](#leylines), [Silent Running and Foundry](#silent-running), [eleven more worlds](#brasswind), [instruments](#instruments-from-other-worlds), [basics](#basics)
 - [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
 - [Sound](#sound), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
 - [Put one on your site](#put-one-on-your-site)
@@ -408,6 +408,15 @@ mount(document.body, { skin: 'blockade', options: { view: 'map' } });
 A giant-robot defence base on a stormy coast, in cutaway. Crews and cranes refit the mechs in their bays while the breach clock ticks. Then the alarm sounds and the doors open. A mech is carried out on helicopter cables and dropped into the surf to fight what came out of the rift, in the harbour of the city across the bay. `view: 'map'` is the defence command's radar plot of the coast.
 ```ts
 mount(document.body, { skin: 'titan-dock', options: { view: 'map' } });
+```
+
+### Saber Front
+
+![Saber Front: a Clone Wars battle seen from a ridge, with infantry lines trading bolts, walkers advancing and gunships overhead](docs/media/worlds/saber-front-seeds.jpg)
+
+A ground battle of a galactic civil war, seen from a ridge as a wide diorama. Two lines of infantry trade coloured bolts, walkers advance, gunships drop squads and strafe, starfighters dogfight overhead, artillery arcs across the field, and capital ships hang in the sky. A knight leads a charge with a glowing blade, a walker falls, a gunship is shot down, and the fronts move back and forth without ending. Each seed draws a battlefield, with its own sky, terrain, palette and cast. `view: 'map'` is a commander's holo-table of the same battle.
+```ts
+mount(document.body, { skin: 'saber-front', options: { field: 'kamino' } });
 ```
 
 ### Instruments from other worlds
@@ -1116,13 +1125,13 @@ mount(document.body, {
 
 ## The later worlds' options
 
-Brasswind, Ironhaze, Sandsea, Windtrap, Walking Castle, War Rig, Traction, Last Loop, Blockade, and Titan Dock are lazy chunks built on the world kit. They share most of their options:
+Brasswind, Ironhaze, Sandsea, Windtrap, Saber Front, Walking Castle, War Rig, Traction, Last Loop, Blockade, and Titan Dock are lazy chunks built on the world kit. They share most of their options:
 
 | Option | Default | Effect |
 | --- | --- | --- |
 | `camera` | `'drift'` | `drift`: the whole scene, easing in slowly for the biggest moments only. `still`: never moving. `follow`: closer, going from one subject to the next (**V** in the studio). `director`: the world's director chooses the shot. |
-| `view` | `'scene'` | Walking Castle, War Rig, Traction, Last Loop, Blockade, Titan Dock only. `scene`, or `map`: the same sim painted as a top-down map or plot. |
-| `traffic` | `1` | How busy it is (`0.4` to `2.5`). Brasswind, Ironhaze, Sandsea, War Rig, Traction, Blockade, Titan Dock. |
+| `view` | `'scene'` | Saber Front, Walking Castle, War Rig, Traction, Last Loop, Blockade, Titan Dock only. `scene`, or `map`: the same sim painted as a top-down map or plot. |
+| `traffic` | `1` | How busy it is (`0.4` to `2.5`). Brasswind, Ironhaze, Sandsea, Saber Front, War Rig, Traction, Blockade, Titan Dock. |
 | `labels` | `true` | The world's own text: call-outs, the radio, subtitles. |
 | `hud` | `true` | The title and the chronicle, log, or clock. |
 
@@ -1132,6 +1141,7 @@ A few worlds add one option of their own:
 | --- | --- | --- | --- |
 | Ironhaze | `speed` | `1` | How fast the city drifts past (`0` to `3`). |
 | Windtrap | `people` | `1` | How many people live in the hold (`0.5` to `2`). |
+| Saber Front | `field` | `'seed'` | Which battlefield: `seed` draws one, or `geonosis`, `christophsis`, `felucia`, `umbara`, `kamino`, `ryloth`, `kashyyyk`, `coruscant`. |
 | Walking Castle | `pace` | `1` | How fast the castle walks (`0.5` to `2`). |
 | Last Loop | `loop` | `22` | Minutes in a loop, from waking to the supernova (`4` to `30`). |
 
