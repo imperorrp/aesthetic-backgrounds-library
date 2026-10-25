@@ -101,8 +101,8 @@ export const saberFrontSkin = lazySkin(
     id: 'saber-front',
     label: 'Saber Front',
     description:
-      'A ground battle of a galactic civil war seen from a ridge: troopers in white armour and ranks of battle droids trading bolts, walkers duelling, gunships dropping squads, knights with light-blades turning bolts and leading charges, dogfights overhead, and capital ships hanging in the sky.',
-    tags: ['world', 'war', 'sci-fi', 'battle'],
+      'The ground battles of the Clone Wars seen from a ridge, from Geonosis to Kashyyyk and aboard the Invisible Hand: clone troopers and battle droids trading bolts from cover, AT-TEs and spider droids, saber tanks and AATs, gunships dropping squads, Jedi leading charges, dogfights and Venators overhead.',
+    tags: ['world', 'war', 'sci-fi', 'battle', 'star-wars'],
     crisp: true,
     schema: SABER_FRONT_SCHEMA,
     defaults: { palette: { from: '#58b8ff' }, intensity: 0.85 },

@@ -1,55 +1,59 @@
 /**
- * # Saber Front: a ground battle of the galactic civil war, seen from a ridge as a wide diorama.
+ * # Saber Front: the ground battles of the Clone Wars, each seen from a ridge as a wide diorama.
  *
- * On screen, at a glance: two lines of infantry trading coloured bolts across a strip of open
- * ground (the Grand Army's troopers in white armour with their legion's markings, firing blue; the
- * Confederacy's tan battle droids in ranks, firing red); six-legged assault walkers and spider
- * walkers laying their big guns; troop gunships with bubble turrets coming in low to drop squads;
- * starfighters dogfighting overhead; artillery arcing across; smoke and fire everywhere; wedge
- * cruisers and long-spined frigates hanging in the sky.
- * The camera: on a ridge above the field, the whole battle laid out below, the sky above it.
+ * On screen, at a glance: the Grand Army of the Republic's clone troopers (their legion's colours:
+ * the 501st's blue, the 212th's orange, the 327th's gold) behind sandbags, trenches and plasteel
+ * barricades, trading blue bolts with ranks of tan B1 battle droids, B2 super battle droids and BX
+ * commandos behind their tank traps; AT-TEs and homing spider droids duelling with their main guns;
+ * TX-130 saber tanks against AATs; AT-RTs and dwarf spider droids skirmishing; LAAT gunships with their
+ * bubble turrets dropping squads; C-9979 landers and MTTs unloading droids; hailfire droids firing
+ * rockets at the gunships; SPHA-Ts throwing their great red beams into the sky; ARC-170s and vulture
+ * droids dogfighting overhead; Venators against Munificents, Providences and core ships in the sky.
+ * The Republic's forward command post and bunker behind one line, the Separatist command tower and
+ * anti-air battery (and on Geonosis the droid foundry) behind the other; rises and rocks in between.
+ * The camera: on a ridge (or a catwalk aboard ship) above the field, the whole battle laid out below.
+ *
+ * The battles (one per seed, each with two hours, its own Jedi, legions, leaders, ships and machines):
+ * - The First Battle of Geonosis: the arena and the spire fields at sunset; core ships; Geonosian
+ *   warriors swarming from the spires; SPHA-Ts; Mace Windu, Yoda, Ki-Adi-Mundi; Count Dooku.
+ * - Christophsis: the crystal city by night; the Separatist shield; Anakin, Obi-Wan, Ahsoka; Ventress.
+ * - Felucia: the fungus plains; Aayla Secura and the 327th; crab droids.
+ * - Umbara: the dark jungle lit by tracer fire and glowing plants; the 501st.
+ * - Kamino: Tipoca City's platforms in the storm; trident drill ships rising from the sea.
+ * - Ryloth: the plain below Lessu; Cham Syndulla's Twi'lek fighters beside the clones.
+ * - Kashyyyk: the beach under the wroshyr trees; Yoda, Luminara, the 41st; Wookiee warriors.
+ * - Coruscant: aboard the Invisible Hand, in her hangar; Grievous and his MagnaGuards; the space
+ *   battle through the hangar's mouth, Coruscant below.
  *
  * Always happening (the floor):
- * - Infantry: both lines fire on cooldowns; bolts fly; men and droids fall (and lie where they
- *   fell for a while); squads move up and fall back with the front.
- * - Reinforcements: gunships bring squads (descend, doors open, troopers jump down, then a strafing
- *   run over the droid line); the Confederacy's landers set down columns of droids; a short line
- *   marches in from the edge when nothing can fly.
- * - Walkers advance with the front and duel with their main guns; a hurt one smokes, and falls.
- *   A carrier gunship sets a new one down; a new spider walks in from the rear.
- * - Artillery from both rear lines; starfighters in looping dogfights, one going down in flames;
- *   flights crossing; capital ships hanging in the sky.
- * - The tide: the front moves with the strength of the lines and a slow swell; at its limits one
- *   side breaks and falls back, then regroups. It never ends.
+ * - Infantry fight from cover (fewer hits; troopers take a knee behind low walls), on the rises,
+ *   and in the open when they move; men and droids fall and lie where they fell for a while.
+ * - Reinforcements: gunships bring squads and strafe the droid line; landers and MTTs bring
+ *   droids (through the blast doors aboard ship); a line marches in from the edge when nothing flies.
+ * - Walkers, tanks, scout walkers and war droids hold places behind their lines and fight; the
+ *   ones knocked out burn where they fell, and new ones come. Artillery from both rear lines;
+ *   a bunker's gun, an anti-air battery's flak; dogfights and flights overhead; capital ships.
+ * - The tide: the front moves with the strength of the lines; at its limits a side breaks and
+ *   falls back, then regroups. It never ends.
  *
- * The cast (each seed draws some):
- * - knights [hero] a knight with a light-blade in the line, turning bolts back on the droids;
- *   leads charges across the open ground.
- * - duelist [hero, rare] the Confederacy's blade-master comes out to meet the knight; they duel in
- *   no-man's-land, and the duelist withdraws (requires knights).
- * - rollers [threat] shield droids roll in, unfold behind their bubble shields and pour fire in.
- * - spiders [threat] a second spider walker; the droids' guns are heavier.
- * - shield [objective] a dome shield over the Confederacy's rear; commandos creep along the near
- *   ground to its generator, and it goes down (a barrage follows); a lander brings a new one.
- * - broadside [sky] a capital ship opens its broadside on the enemy ship or the far ground.
- * - descent [sky] a cruiser comes down through the clouds and launches fighters, then climbs.
- * - bombers [air] a bomber flight lays a line of bombs across the enemy ranks.
- * - storm [weather] the field's own weather: a sandstorm, a downpour, the storm breaking.
- * - flares [weather] illumination flares drift down over a night field and light it.
- * Quotas: 4–6 in all; 0–2 hero; 1–2 sky; 0–1 weather.
+ * The story (the director, in engagements): a build-up (the attacker brings in a drop or a
+ * landing), the clash, a climax drawn from what this battle has (a Jedi's charge; the shield
+ * generator blown by commandos; a Venator's descent; a bombing run; a wave of gunships; an AT-TE
+ * push; saber tanks spearheading; BARC speeders down the flank; jump troopers over the top; all guns
+ * on the command tower; a barrage; MTTs at the line; AATs advancing; a Geonosian swarm; trident
+ * ships; MagnaGuards; droidekas; rarely a duel (Grievous, Ventress or Dooku against a Jedi) or a
+ * capital ship (on Geonosis a core ship, to the SPHA-Ts) brought down), and an aftermath (the
+ * loser falls back, the winner plants its standard, the barricades are put back).
  *
- * Events, common to legendary (each a line said on the map):
- * - common: a squad dropped, a lander unloading, a shell landing, a fighter shot down, radio lines.
- * - uncommon: a walker falls, a gunship is shot down, a charge, a retreat and a regroup, a broadside.
- * - rare: the shield goes down, a cruiser's descent, a bomber run.
- * - legendary: the duel in no-man's-land.
+ * The cast (each seed draws some): the Jedi [hero], the duelist [hero, legendary], droidekas
+ * [threat], extra spider droids [threat], the shield generator [objective], broadsides and a
+ * Venator's descent [sky], bombing runs [air], the field's storm and illumination flares [weather].
  *
- * What keeps it going: every loss is replaced, from the drop ships and the landers and from the
- * edge; the front swings with the strength of the lines, and whoever is pushed back regroups.
- * What changes with the seed: the battlefield (arena plains, crystal city, night jungle, ocean
- * platform, walled canyon) and its hour; the legion and its colour; which side holds the left;
- * the cast; the names of every squad, walker, gunship and ship.
- * A touch: marks the ground for the cruiser's guns: a strike comes down where you click.
+ * What keeps it going: every loss is replaced; facilities that fall are rebuilt in time; the
+ * marks stay (scorches, wrecks, standards, ruins, a fallen capital ship's hulk on the horizon).
+ * What changes with the seed: the battle and its hour, the legion, which side holds the left, the
+ * lay of the ground (rises, trenches, rocks), the works, the cast, the machines, the names.
+ * A touch: marks the ground for a Venator's guns; a strike comes down where you click.
  * Phone: the same battle, smaller: fewer men a side, one walker each, two dogfights.
  */
 import { createBus } from '../../../sim/bus';

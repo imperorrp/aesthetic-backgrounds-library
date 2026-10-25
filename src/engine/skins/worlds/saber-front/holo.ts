@@ -399,6 +399,21 @@ export function createHolo(host: SkinHost, world: SaberWorld, o: { labels: boole
       }
       ctx.stroke();
     }
+    // Plotted names never sit on one another: each tries its spot, then just below and above, else
+    // stays unlabelled this frame.
+    const placed: number[][] = [];
+    const label = (text: string, x: number, y: number) => {
+      const w = ctx.measureText(text).width + 6;
+      const lh = 11 + Z * 2;
+      x = Math.min(Math.max(x, box.x + w / 2 + 2), box.x + box.w - w / 2 - 2);
+      for (const dy of [0, lh + 2, -2 * lh - 4]) {
+        const r = [x - w / 2, y + dy - lh, w, lh + 3];
+        if (placed.some((q) => r[0] < q[0] + q[2] && q[0] < r[0] + r[2] && r[1] < q[1] + q[3] && q[1] < r[1] + r[3])) continue;
+        placed.push(r);
+        fillCrisp(ctx, text, x, y + dy);
+        return;
+      }
+    };
     ctx.font = SANS(Math.round(8 + Z * 2), 700);
     ctx.textAlign = 'center';
     for (const fc of world.terrain.facilities) {
@@ -424,7 +439,7 @@ export function createHolo(host: SkinHost, world: SaberWorld, o: { labels: boole
         ctx.stroke();
       }
       ctx.fillStyle = hexA(col, ruin ? 0.4 : 0.8);
-      fillCrisp(ctx, fc.name.replace(/^THE /, ''), x, y + r + 12);
+      label(fc.name.replace(/^THE /, ''), x, y + r + 12);
     }
     // The war machines.
     for (const v of world.vehicles) {
@@ -500,7 +515,7 @@ export function createHolo(host: SkinHost, world: SaberWorld, o: { labels: boole
       ctx.font = SANS(Math.round(8 + Z * 2), 700);
       ctx.textAlign = 'center';
       ctx.fillStyle = hexA(col, 0.75);
-      fillCrisp(ctx, wk.name, x, y + 18 * Z);
+      label(wk.name, x, y + 18 * Z);
       ctx.strokeStyle = hexA(col, 0.18);
       ctx.lineWidth = 1;
       ctx.setLineDash([2, 4]);

@@ -1153,15 +1153,20 @@ export function bakeRidge(world: SaberWorld, E: Env, side: number, seed: number)
   const L = E.L;
   const rock = mix(mix(L.ground, L.ink, 0.62), '#1a1614', 0.3);
   const litC = mix(mix(L.ground2, L.sun, 0.3), L.ink, 0.25 + L.night * 0.4);
-  const path = new Path2D();
-  path.moveTo(-10, GH + 10);
-  for (let x = -10; x <= GW + 10; x += 4) path.lineTo(x, ridgeTop(world, x, side, seed));
-  path.lineTo(GW + 10, GH + 10);
-  path.closePath();
+  // Traced afresh for each fill and clip rather than kept as a Path2D (absent from test canvases).
+  const outline = () => {
+    g.beginPath();
+    g.moveTo(-10, GH + 10);
+    for (let x = -10; x <= GW + 10; x += 4) g.lineTo(x, ridgeTop(world, x, side, seed));
+    g.lineTo(GW + 10, GH + 10);
+    g.closePath();
+  };
   g.fillStyle = rock;
-  g.fill(path);
+  outline();
+  g.fill();
   g.save();
-  g.clip(path);
+  outline();
+  g.clip();
   // Texture: the rock's grain, ledges and cracks; light on the faces toward it.
   const top = Math.min(...Array.from({ length: 40 }, (_, i) => ridgeTop(world, (i / 39) * GW, side, seed)));
   for (let y = top; y < GH; y += 3) {
@@ -1194,7 +1199,8 @@ export function bakeRidge(world: SaberWorld, E: Env, side: number, seed: number)
   if (world.style === 'hangar') {
     // Deck plating on the catwalk's face and a railing along its edge.
     g.save();
-    g.clip(path);
+    outline();
+    g.clip();
     g.fillStyle = mix('#2a2e36', L.ink, 0.3);
     g.fillRect(0, 0, GW, GH);
     g.strokeStyle = hexA('#000000', 0.5);
@@ -1263,20 +1269,24 @@ export function bakeHangarWalls(world: SaberWorld, E: Env): HTMLCanvasElement {
     const mx = side < 0 ? mx0 : mx1;
     const ex = side < 0 ? -GW * 0.12 : GW * 1.12;
     const sx = side < 0 ? 0 : GW;
-    const wall = new Path2D();
-    wall.moveTo(sx, 0);
-    wall.lineTo(mx, my0);
-    wall.lineTo(mx, HY);
-    wall.lineTo(ex, GH);
-    wall.lineTo(sx, GH);
-    wall.closePath();
+    const wall = () => {
+      g.beginPath();
+      g.moveTo(sx, 0);
+      g.lineTo(mx, my0);
+      g.lineTo(mx, HY);
+      g.lineTo(ex, GH);
+      g.lineTo(sx, GH);
+      g.closePath();
+    };
     const wg = g.createLinearGradient(sx, 0, mx, 0);
     wg.addColorStop(0, mix(metal, '#000000', 0.35));
     wg.addColorStop(1, mix(metal, L.sun, 0.06));
     g.fillStyle = wg;
-    g.fill(wall);
+    wall();
+    g.fill();
     g.save();
-    g.clip(wall);
+    wall();
+    g.clip();
     // Ribs running back to the mouth, and the lines of the panels converging on it.
     g.strokeStyle = hexA('#000000', 0.5);
     g.lineWidth = 1.2;
