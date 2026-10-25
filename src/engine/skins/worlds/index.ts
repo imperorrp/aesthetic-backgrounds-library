@@ -15,6 +15,7 @@ import { WAR_RIG_SCHEMA } from './war-rig/schema';
 import { TRACTION_SCHEMA } from './traction/schema';
 import { LAST_LOOP_SCHEMA } from './last-loop/schema';
 import { BLOCKADE_SCHEMA } from './blockade/schema';
+import { TITAN_DOCK_SCHEMA } from './titan-dock/schema';
 
 export const silentRunningSkin = lazySkin(
   {
@@ -166,4 +167,17 @@ export const blockadeSkin = lazySkin(
   },
   () => import('./blockade'),
 );
-export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, warRigSkin, tractionSkin, lastLoopSkin, blockadeSkin] as const;
+export const titanDockSkin = lazySkin(
+  {
+    id: 'titan-dock',
+    label: 'Titan Dock',
+    description:
+      'A giant-robot defence base on a stormy coast, in cutaway: mechs refitted in their bays by crews and cranes, the breach clock ticking; then the alarm, the doors, a mech carried out on helicopter cables and dropped into the surf to fight what came out of the rift, in the harbour of the city across the bay.',
+    tags: ['world', 'mechs', 'monsters', 'sea', 'cutaway'],
+    crisp: true,
+    schema: TITAN_DOCK_SCHEMA,
+    defaults: { palette: { from: '#f0a030' }, intensity: 0.85 },
+  },
+  () => import('./titan-dock'),
+);
+export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, warRigSkin, tractionSkin, lastLoopSkin, blockadeSkin, titanDockSkin] as const;
