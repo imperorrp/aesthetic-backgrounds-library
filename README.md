@@ -33,7 +33,7 @@ The worlds still behave like backgrounds:
 <summary><b>Contents</b></summary>
 
 - [Things happen](#things-happen)
-- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [Deephold](#deephold), [Leylines](#leylines), [instruments](#instruments-from-other-worlds), [basics](#basics)
+- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [Deephold](#deephold), [Leylines](#leylines), [Silent Running and Foundry](#silent-running), [ten more worlds](#brasswind), [instruments](#instruments-from-other-worlds), [basics](#basics)
 - [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
 - [Sound](#sound), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
 - [Put one on your site](#put-one-on-your-site)
@@ -318,6 +318,96 @@ One rule does most of the growing: a machine missing an input gets a supplier. A
 Each seed draws its land and a cast: biters in nests at the edge, drawn by the pollution (they wreck what they reach and go home; the factory answers with turrets), wildfires in the woods, and meteors that leave new ore in their craters. Smoke rises from the furnaces, and at night the factory is lit. A click on an ore field orders a new mine; a click on a machine puts it on overtime.
 ```ts
 mount(document.body, { skin: 'foundry', options: { pace: 1.5 } });
+```
+
+### Brasswind
+
+![Brasswind: a skyport city of brass and steam, with airships at the mooring masts and trams on the viaducts](public/thumbs/brasswind.jpg)
+
+A skyport city of brass and steam. Airships come in to the mooring masts, trams cross the viaducts, and the works send up smoke. Sky pirates raid the cargo ships, the Admiralty's corvettes give chase, storms break on the masts, and at night there are races round the spires and fireworks.
+```ts
+mount(document.body, { skin: 'brasswind', options: { traffic: 1.5 } });
+```
+
+### Ironhaze
+
+![Ironhaze: a city of iron and smoke in five planes of fog, with zeppelins, dreadnoughts and a great spire](public/thumbs/ironhaze.jpg)
+
+A city of iron and smoke, painted in five planes of fog like a matte painting. The Great Spire and its clock stand in the middle. Zeppelins and ironclad dreadnoughts cross at every depth, iron walkers stride through the streets, floating citadels hang on their chains, foundries pour, and trains cross the viaduct. The hour tints every plane.
+```ts
+mount(document.body, { skin: 'ironhaze', options: { speed: 0.6 } });
+```
+
+### Sandsea
+
+![Sandsea: a spice crawler on the dunes under its carryall, with wormsign running at it](public/thumbs/sandsea.jpg)
+
+The open sand, seen from a rock ledge. A crawler works a dark stain of spice under its carryall and spotters, and wormsign runs at it across the dunes. The lift saves the crawler, or it does not. Sandstorms come through, smugglers cross by night, the Company's patrols pass, the desert folk walk without rhythm, and at dawn there are riders on a worm.
+```ts
+mount(document.body, { skin: 'sandsea' });
+```
+
+### Windtrap
+
+![Windtrap: a hold cut into a cliff, in cutaway, with people at work in the chambers and tunnels](public/thumbs/windtrap.jpg)
+
+A hold of the desert folk, cut into a cliff and shown in cutaway. The windtrap breathes on the cliff top and dew drips into the cistern, so the water count rises and falls. People work in the chambers and tunnels. Raiders go out at dusk and come back by dawn, smugglers come to the gate, and storms seal the doors.
+```ts
+mount(document.body, { skin: 'windtrap', options: { people: 1.5 } });
+```
+
+### Walking Castle
+
+![Walking Castle: a patchwork castle on iron hen's legs, walking across painted country](docs/media/worlds/walking-castle-seeds.jpg)
+
+A ramshackle wizard's castle on iron hen's legs, walking across painted country: meadows and moors, mountain lakes, a seaside town of steep roofs. Wind runs through the grass in waves, sheep graze, and big clouds drift. The castle's door opens on other places, a fire spirit lives in the hearth, war airships bomb a distant town, tar men give chase, and storms end in rainbows. Each seed draws its own castle (a heap, a tower, a barge, a farm), its household, and its road. `view: 'map'` is the same walk on a painted travel map, with the castle's footprints.
+```ts
+mount(document.body, { skin: 'walking-castle', options: { view: 'map' } });
+```
+
+### War Rig
+
+![War Rig: a tanker truck on the orange wasteland with a war party on its tail](docs/media/worlds/war-rig.jpg)
+
+A tanker truck runs across an orange wasteland with a war party behind it: spiked hot rods, ram trucks and buggies jockeying in the dust, boarders swung onto the tank on sway poles, explosive lances, and a music truck with a wall of speakers and a flame-throwing guitar. Cars flip, burn, and are left behind, and new ones arrive from the rear. Toxic storms, canyon ambushes, a bog by night, rival clans, and a lull at dawn all come through. `view: 'map'` is the waste from overhead, with the dust wakes.
+```ts
+mount(document.body, { skin: 'war-rig', options: { traffic: 1.5 } });
+```
+
+### Traction
+
+![Traction: a colossal city of stacked tiers on tracks, hunting the small towns of a churned-up plain](docs/media/worlds/traction-seeds.jpg)
+
+Predator cities on tracks, hunting across a churned-up plain. A colossal city of stacked tiers grinds through the mud with its jaws open for the small towns that flee it. When it catches one, the town is dragged into its gut and stripped, and the city raises a new lit chimney. Airships and trader balloons cross above, the anti-traction Accord raids, rival cities duel, weather fronts roll in, searchlights sweep at night, and relics of the ancient world come up out of the mud. `view: 'map'` is the navigator's survey chart of the same hunt.
+```ts
+mount(document.body, { skin: 'traction', options: { view: 'map' } });
+```
+
+### Last Loop
+
+![Last Loop: a tiny handmade solar system with a wooded homeworld, hourglass twins and a stormy giant](docs/media/worlds/last-loop.jpg)
+
+A tiny handmade solar system, in its last twenty-two minutes. A wooden ship flies between a wooded homeworld, the hourglass twins pouring sand into each other, a crumbling world with a black hole at its heart, a stormy ocean giant, and a planet of thorns. Campfires burn and music drifts, the probe cannon fires, and a moon moves when no one is looking. Then the sun goes supernova, the system goes dark, and a traveller wakes by the fire to begin another loop, a little different. `view: 'map'` is a hand-drawn chart from above.
+```ts
+mount(document.body, { skin: 'last-loop', options: { loop: 10 } });
+```
+
+### Blockade
+
+![Blockade: a fleet of wedge cruisers holding a planet from high orbit](public/thumbs/blockade.jpg)
+
+A fleet holds a planet under blockade, seen from high orbit. Wedge cruisers and dreadnoughts stand on station over the lit limb, wings patrol, shuttles burn down into the air, merchants wait at the picket, and now and then a runner makes its dash. There are sorties and broadsides, wrecks that fall and burn, and a station that grows in its frame. `view: 'map'` is the flagship's orbital plot of the same blockade.
+```ts
+mount(document.body, { skin: 'blockade', options: { view: 'map' } });
+```
+
+### Titan Dock
+
+![Titan Dock: a giant-robot defence base on a stormy coast, in cutaway](docs/media/worlds/titan-dock.jpg)
+
+A giant-robot defence base on a stormy coast, in cutaway. Crews and cranes refit the mechs in their bays while the breach clock ticks. Then the alarm sounds and the doors open. A mech is carried out on helicopter cables and dropped into the surf to fight what came out of the rift, in the harbour of the city across the bay. `view: 'map'` is the defence command's radar plot of the coast.
+```ts
+mount(document.body, { skin: 'titan-dock', options: { view: 'map' } });
 ```
 
 ### Instruments from other worlds
@@ -1023,6 +1113,27 @@ mount(document.body, {
 | `pace` | `1` | How fast it works and grows (`0.5` to `3`). |
 | `labels` | `true` | Call-outs for research, new mines, biters, launches, and the rest. |
 | `hud` | `true` | The planet, machines, items on the belts, power, research, stock, the cast, and a short chronicle. |
+
+## The later worlds' options
+
+Brasswind, Ironhaze, Sandsea, Windtrap, Walking Castle, War Rig, Traction, Last Loop, Blockade, and Titan Dock are lazy chunks built on the world kit. They share most of their options:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `camera` | `'drift'` | `drift`: the whole scene, easing in slowly for the biggest moments only. `still`: never moving. `follow`: closer, going from one subject to the next (**V** in the studio). `director`: the world's director chooses the shot. |
+| `view` | `'scene'` | Walking Castle, War Rig, Traction, Last Loop, Blockade, Titan Dock only. `scene`, or `map`: the same sim painted as a top-down map or plot. |
+| `traffic` | `1` | How busy it is (`0.4` to `2.5`). Brasswind, Ironhaze, Sandsea, War Rig, Traction, Blockade, Titan Dock. |
+| `labels` | `true` | The world's own text: call-outs, the radio, subtitles. |
+| `hud` | `true` | The title and the chronicle, log, or clock. |
+
+A few worlds add one option of their own:
+
+| World | Option | Default | Effect |
+| --- | --- | --- | --- |
+| Ironhaze | `speed` | `1` | How fast the city drifts past (`0` to `3`). |
+| Windtrap | `people` | `1` | How many people live in the hold (`0.5` to `2`). |
+| Walking Castle | `pace` | `1` | How fast the castle walks (`0.5` to `2`). |
+| Last Loop | `loop` | `22` | Minutes in a loop, from waking to the supernova (`4` to `30`). |
 
 ## Using it with an AI agent
 
