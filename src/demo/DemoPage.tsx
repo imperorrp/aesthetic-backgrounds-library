@@ -81,6 +81,7 @@ const WORLD_CARDS: WorldCard[] = [
   { key: 'war-rig', source: 'war-rig', name: 'War Rig', tagline: getSkin('war-rig')?.description, thumb: 'war-rig' },
   { key: 'traction', source: 'traction', name: 'Traction', tagline: getSkin('traction')?.description, thumb: 'traction' },
   { key: 'last-loop', source: 'last-loop', name: 'Last Loop', tagline: getSkin('last-loop')?.description, thumb: 'last-loop' },
+  { key: 'blockade', source: 'blockade', name: 'Blockade', tagline: getSkin('blockade')?.description, thumb: 'blockade' },
 ];
 const INSTRUMENT_CARDS: WorldCard[] = [
   ...instrumentSkins.map((s) => ({ key: s.id, source: s.id, name: s.label ?? s.id, tagline: s.description, thumb: s.id })),

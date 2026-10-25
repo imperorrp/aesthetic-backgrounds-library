@@ -14,6 +14,7 @@ import { WALKING_CASTLE_SCHEMA } from './walking-castle/schema';
 import { WAR_RIG_SCHEMA } from './war-rig/schema';
 import { TRACTION_SCHEMA } from './traction/schema';
 import { LAST_LOOP_SCHEMA } from './last-loop/schema';
+import { BLOCKADE_SCHEMA } from './blockade/schema';
 
 export const silentRunningSkin = lazySkin(
   {
@@ -152,4 +153,17 @@ export const lastLoopSkin = lazySkin(
   },
   () => import('./last-loop'),
 );
-export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, warRigSkin, tractionSkin, lastLoopSkin] as const;
+export const blockadeSkin = lazySkin(
+  {
+    id: 'blockade',
+    label: 'Blockade',
+    description:
+      'A fleet holds a planet under blockade, seen from high orbit: wedge cruisers and dreadnoughts on station over the lit limb, wings on patrol, shuttles burning down into the air, merchants held at the picket, runners making their dash, sorties and broadsides, wrecks that fall and burn, and a station growing in its frame. Or the flagship\'s orbital plot of it all.',
+    tags: ['world', 'space', 'fleet', 'war'],
+    crisp: true,
+    schema: BLOCKADE_SCHEMA,
+    defaults: { palette: { from: '#8ab8ff' }, intensity: 0.85 },
+  },
+  () => import('./blockade'),
+);
+export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, warRigSkin, tractionSkin, lastLoopSkin, blockadeSkin] as const;
