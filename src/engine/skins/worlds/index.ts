@@ -11,6 +11,7 @@ import { IRONHAZE_SCHEMA } from './ironhaze/schema';
 import { SANDSEA_SCHEMA } from './sandsea/schema';
 import { WINDTRAP_SCHEMA } from './windtrap/schema';
 import { WALKING_CASTLE_SCHEMA } from './walking-castle/schema';
+import { WAR_RIG_SCHEMA } from './war-rig/schema';
 
 export const silentRunningSkin = lazySkin(
   {
@@ -110,4 +111,17 @@ export const walkingCastleSkin = lazySkin(
   () => import('./walking-castle'),
 );
 
-export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin] as const;
+export const warRigSkin = lazySkin(
+  {
+    id: 'war-rig',
+    label: 'War Rig',
+    description:
+      'A tanker truck runs across the orange wasteland with a war party on its tail: spiked hot rods, ram trucks and buggies jockeying in the dust, boarders swung onto the tank on sway poles, explosive lances, a music truck with a wall of speakers and a flame-throwing guitar, cars flipping and burning and left behind; toxic storms, canyon ambushes, a bog by night, rival clans, and a lull at dawn.',
+    tags: ['world', 'desert', 'chase', 'vehicles', 'war'],
+    crisp: true,
+    schema: WAR_RIG_SCHEMA,
+    defaults: { palette: { from: '#e07a2c' }, intensity: 0.85 },
+  },
+  () => import('./war-rig'),
+);
+export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, warRigSkin] as const;

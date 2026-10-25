@@ -13,12 +13,12 @@ import { instrumentSkins, sonarSkin, atcRadarSkin, seismicSkin, abyssalSkin, mar
 import { undercitySkin, prepareUndercity } from './undercity';
 import { shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin, deepholdSkin, leylinesSkin } from './fantasy';
 import { petriSkin } from './petri';
-import { silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin } from './worlds';
+import { silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, warRigSkin } from './worlds';
 
-export const builtInSkins: readonly BackgroundSkin[] = [voidTacticalSkin, undercitySkin, shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin, deepholdSkin, leylinesSkin, silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, ...instrumentSkins, petriSkin, driftingDustSkin, matrixRainSkin, ...localSkins];
+export const builtInSkins: readonly BackgroundSkin[] = [voidTacticalSkin, undercitySkin, shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin, deepholdSkin, leylinesSkin, silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, warRigSkin, ...instrumentSkins, petriSkin, driftingDustSkin, matrixRainSkin, ...localSkins];
 builtInSkins.forEach((skin) => registerSkin(skin));
 
-export { voidTacticalSkin, undercitySkin, prepareUndercity, shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin, deepholdSkin, leylinesSkin, silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, petriSkin, driftingDustSkin, matrixRainSkin, instrumentSkins, sonarSkin, atcRadarSkin, seismicSkin, abyssalSkin, marsRadarSkin };
+export { voidTacticalSkin, undercitySkin, prepareUndercity, shieldwallSkin, agesSkin, warTableSkin, wyrmspireSkin, deepholdSkin, leylinesSkin, silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin, warRigSkin, petriSkin, driftingDustSkin, matrixRainSkin, instrumentSkins, sonarSkin, atcRadarSkin, seismicSkin, abyssalSkin, marsRadarSkin };
 export type { VoidTacticalOptions } from './void-tactical/runtime';
 export type { NetworkSkinOptions } from './drifting-dust';
 export type { MatrixSkinOptions } from './matrix-rain';
