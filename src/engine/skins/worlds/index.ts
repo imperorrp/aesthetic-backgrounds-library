@@ -10,6 +10,7 @@ import { BRASSWIND_SCHEMA } from './brasswind/schema';
 import { IRONHAZE_SCHEMA } from './ironhaze/schema';
 import { SANDSEA_SCHEMA } from './sandsea/schema';
 import { WINDTRAP_SCHEMA } from './windtrap/schema';
+import { WALKING_CASTLE_SCHEMA } from './walking-castle/schema';
 
 export const silentRunningSkin = lazySkin(
   {
@@ -95,4 +96,18 @@ export const windtrapSkin = lazySkin(
   () => import('./windtrap'),
 );
 
-export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin] as const;
+export const walkingCastleSkin = lazySkin(
+  {
+    id: 'walking-castle',
+    label: 'Walking Castle',
+    description:
+      'A ramshackle wizard\'s castle on iron hen\'s legs, walking across painted country: meadows and moors, mountain lakes, a seaside town of steep roofs; wind in the grass, sheep and big clouds; a door that opens on other places, a fire spirit in the hearth, war airships over a distant town, tar men in pursuit, storms and rainbows, and a big moon at night.',
+    tags: ['world', 'fantasy', 'pastoral', 'castle'],
+    crisp: true,
+    schema: WALKING_CASTLE_SCHEMA,
+    defaults: { palette: { from: '#7fb04a' }, intensity: 0.85 },
+  },
+  () => import('./walking-castle'),
+);
+
+export const worldSkins = [silentRunningSkin, foundrySkin, brasswindSkin, ironhazeSkin, sandseaSkin, windtrapSkin, walkingCastleSkin] as const;
