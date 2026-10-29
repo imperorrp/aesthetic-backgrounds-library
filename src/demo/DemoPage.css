@@ -71,11 +71,102 @@
   color: var(--ink-dim);
 }
 
+.demo-title p.is-clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.demo-more {
+  padding: 0;
+  font: 12px var(--ui);
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.demo-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .demo-seed-row {
   display: flex;
   align-items: center;
   gap: 0.3rem;
   margin-top: 0.7rem;
+}
+
+/* New seed: the one big action in the header, labelled, with its key. */
+.demo-seed-new {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.4rem;
+  height: 32px;
+  padding: 0 0.55rem 0 0.65rem;
+  font: 600 12.5px var(--ui);
+  color: var(--bg, #05070c);
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.demo-seed-new:hover {
+  filter: brightness(1.12);
+}
+
+.demo-seed-new:active .demo-icon {
+  transform: rotate(90deg);
+}
+
+.demo-seed-new .demo-icon {
+  transition: transform 0.15s;
+}
+
+.demo-seed-new kbd {
+  padding: 0 0.3rem;
+  font: 11px var(--mono);
+  line-height: 1.35;
+  color: inherit;
+  background: rgba(0, 0, 0, 0.14);
+  border-radius: 4px;
+}
+
+.demo-seed-hint {
+  margin: 0.3rem 0 0;
+  font-size: 11.5px;
+  color: var(--ink-dim);
+}
+
+/* A toggle with an icon and a word (Follow). */
+.demo-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.3rem;
+  height: 28px;
+  padding: 0 0.5rem;
+  font: 12px var(--ui);
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.demo-chip-btn:hover {
+  color: var(--ink);
+}
+
+.demo-chip-btn[aria-pressed="true"] {
+  color: var(--accent);
+  background: rgb(var(--accent-rgb) / 0.14);
+  border-color: var(--line-strong);
 }
 
 .demo-seed {
@@ -113,6 +204,7 @@
 
 .demo-transport {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.3rem;
   margin-top: 0.45rem;
@@ -1705,4 +1797,11 @@
     animation: none;
     transition: none;
   }
+}
+
+/* The camera row: scene or map, whole or following. */
+.demo-row-label {
+  min-width: 2.6rem;
+  font-size: 12px;
+  color: var(--ink-dim);
 }

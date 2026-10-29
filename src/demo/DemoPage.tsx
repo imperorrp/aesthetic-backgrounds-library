@@ -109,7 +109,7 @@ const SPEEDS = [1, 4, 16] as const;
 const PHONE = { width: 390, height: 844, pixelRatio: 3 };
 
 const SHORTCUTS: [string, string][] = [
-  ['S', 'New seed'],
+  ['S', 'New seed: a fresh take on this world'],
   ['Space', 'Pause or play'],
   ['← →', 'Previous or next world'],
   ['1 2 3', 'Speed ×1, ×4, ×16'],
@@ -279,6 +279,8 @@ export default function DemoPage() {
     return base;
   });
   const [panelOpen, setPanelOpen] = useState(true);
+  /** Long world descriptions are clamped to two lines until asked for. */
+  const [descOpen, setDescOpen] = useState(false);
   const [seedDraft, setSeedDraft] = useState(studio.seed);
   const [copied, setCopied] = useState<string | null>(null);
   const [showContent, setShowContent] = useState(false);
@@ -513,6 +515,10 @@ export default function DemoPage() {
     if (handle && canFollow) handle.setCamera(follow ? 'follow' : 'whole');
   }, [handle, follow, canFollow]);
   const skin = sceneMode ? null : getSkin(studio.source);
+  /** Worlds that can also be drawn as a map from above (the `view` option: scene or map). */
+  const viewField = (skin?.schema as Record<string, { values?: readonly string[]; default?: unknown }> | undefined)?.view;
+  const hasMapView = !!viewField?.values?.includes('map') && !!viewField.values.includes('scene');
+  const view = typeof studio.skinOptions.view === 'string' ? studio.skinOptions.view : String(viewField?.default ?? 'scene');
   const palette = paletteOf(studio);
 
   const exportConfig = useMemo(() => {
@@ -719,6 +725,16 @@ export default function DemoPage() {
     setSeedDraft(value);
     update({ seed: value });
   };
+  /** S, or the New seed button: a fresh seed, announced so it is clear the world changed. */
+  const [seedNote, setSeedNote] = useState<string | null>(null);
+  const seedNoteTimer = useRef(0);
+  const rollSeed = () => {
+    const value = randomSeedString();
+    applySeed(value);
+    setSeedNote(`New seed: ${value}`);
+    window.clearTimeout(seedNoteTimer.current);
+    seedNoteTimer.current = window.setTimeout(() => setSeedNote(null), 1800);
+  };
 
   /** Switch to a source (and universe, for the sector map; or options, for a view), keeping the seed unless given one. */
   const goTo = (source: string, universe?: string, seed?: string, options?: Record<string, unknown>) => {
@@ -761,7 +777,7 @@ export default function DemoPage() {
   };
 
   keys.current = {
-    s: () => applySeed(randomSeedString()),
+    s: () => rollSeed(),
     space: () => setPaused((p) => !p),
     ArrowRight: () => cycleWorld(1),
     ArrowLeft: () => cycleWorld(-1),
@@ -954,7 +970,11 @@ export default function DemoPage() {
         />
       )}
 
-      {(skipNote || keptNote) && <div className="demo-skip">{skipNote ?? keptNote}</div>}
+      {(skipNote || keptNote || seedNote) && (
+        <div className="demo-skip" role="status">
+          {skipNote ?? keptNote ?? seedNote}
+        </div>
+      )}
       {away && !aboutOpen && (
         <WelcomeBack
           away={away}
@@ -976,7 +996,12 @@ export default function DemoPage() {
             <div className="demo-title-row">
               <div className="demo-title">
                 <h2>{title}</h2>
-                {description && <p>{description}</p>}
+                {description && <p className={descOpen ? undefined : 'is-clamped'}>{description}</p>}
+                {description && description.length > 120 && (
+                  <button type="button" className="demo-more" onClick={() => setDescOpen((o) => !o)} aria-expanded={descOpen}>
+                    {descOpen ? 'Less' : 'More about this world'}
+                  </button>
+                )}
               </div>
               <button type="button" className="demo-icon-btn" onClick={() => setPanelOpen(false)} title="Hide the studio (H)" aria-label="Hide the studio">
                 <Icon name="close" />
@@ -998,13 +1023,16 @@ export default function DemoPage() {
                   title="The same seed always plays the same world"
                 />
               </label>
-              <button type="button" className="demo-icon-btn" onClick={() => applySeed(randomSeedString())} title="New seed: same settings, another world (S)" aria-label="New seed">
-                <Icon name="shuffle" />
-              </button>
-              <button type="button" className="demo-icon-btn" onClick={() => copy('link', window.location.href)} title="Copy a link to exactly this" aria-label="Copy link">
+              <button type="button" className="demo-icon-btn" onClick={() => copy('link', window.location.href)} title="Copy a link to this world and seed" aria-label="Copy a link to this world and seed">
                 {copied === 'link' ? <span className="demo-tick">✓</span> : <Icon name="link" />}
               </button>
+              <button type="button" className="demo-seed-new" onClick={rollSeed} title="New seed: a fresh take on this world (S)">
+                <Icon name="dice" />
+                <span>New seed</span>
+                <kbd>S</kbd>
+              </button>
             </div>
+            <p className="demo-seed-hint">{copied === 'link' ? 'Link copied. It opens this exact world.' : 'Each seed is its own world. The same seed, the same story.'}</p>
 
             <div className="demo-transport">
               <button type="button" className="demo-icon-btn" aria-pressed={paused} onClick={() => setPaused((p) => !p)} title={paused ? 'Play (Space)' : 'Pause (Space)'} aria-label={paused ? 'Play' : 'Pause'}>
@@ -1017,18 +1045,6 @@ export default function DemoPage() {
                   </button>
                 ))}
               </span>
-              {canFollow && (
-                <button
-                  type="button"
-                  className="demo-icon-btn"
-                  aria-pressed={follow}
-                  onClick={() => setFollow((f) => !f)}
-                  title={follow ? 'See the whole scene (V)' : 'Follow the action up close (V)'}
-                  aria-label={follow ? 'See the whole scene' : 'Follow the action up close'}
-                >
-                  <Icon name="focus" />
-                </button>
-              )}
               <span className="demo-sound">
                 <button
                   type="button"
@@ -1050,6 +1066,39 @@ export default function DemoPage() {
                 <Icon name="redo" />
               </button>
             </div>
+
+            {(hasMapView || canFollow) && (
+              <div className="demo-transport demo-camera-row">
+                <span className="demo-row-label">View</span>
+                {hasMapView && (
+                  <span className="demo-segmented" role="group" aria-label="View">
+                    {(['scene', 'map'] as const).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        aria-pressed={view === v}
+                        onClick={() => update({ skinOptions: { ...studio.skinOptions, view: v } })}
+                        title={v === 'map' ? 'The same world as a map from above' : 'The world as a scene'}
+                      >
+                        {v === 'map' ? 'Map' : 'Scene'}
+                      </button>
+                    ))}
+                  </span>
+                )}
+                {canFollow && (
+                  <button
+                    type="button"
+                    className="demo-chip-btn"
+                    aria-pressed={follow}
+                    onClick={() => setFollow((f) => !f)}
+                    title={follow ? 'Following the action up close. Press to see the whole scene (V)' : 'Follow the action up close (V)'}
+                  >
+                    <Icon name="focus" />
+                    <span>Follow</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             <nav className="demo-tabs" role="tablist" aria-label="Studio sections">
               {TABS.map(([id, label]) => (
@@ -1472,6 +1521,21 @@ export default function DemoPage() {
             </button>
           )}
           <div className="demo-fab">
+            <button type="button" className="demo-icon-btn" onClick={rollSeed} title="New seed: a fresh take on this world (S)" aria-label="New seed">
+              <Icon name="dice" />
+            </button>
+            {hasMapView && (
+              <button
+                type="button"
+                className="demo-icon-btn"
+                aria-pressed={view === 'map'}
+                onClick={() => update({ skinOptions: { ...studio.skinOptions, view: view === 'map' ? 'scene' : 'map' } })}
+                title={view === 'map' ? 'Back to the scene' : 'See it as a map from above'}
+                aria-label={view === 'map' ? 'Back to the scene' : 'See it as a map'}
+              >
+                <Icon name="map" />
+              </button>
+            )}
             {canFollow && (
               <button type="button" className="demo-icon-btn" aria-pressed={follow} onClick={() => setFollow((f) => !f)} title={follow ? 'See the whole scene (V)' : 'Follow the action up close (V)'} aria-label={follow ? 'See the whole scene' : 'Follow the action up close'}>
                 <Icon name="focus" />

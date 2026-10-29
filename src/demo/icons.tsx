@@ -13,6 +13,8 @@ const paths = {
   grid: 'M2.5 2.5h4.5v4.5H2.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5H2.5zM9 9h4.5v4.5H9z',
   keys: 'M1.5 4.5h13v7h-13zM4 7h1M7 7h1M10 7h1M5 9.5h6',
   info: 'M8 1.5a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13zM8 7.2v4.3M8 4.6v.4',
+  dice: 'M4 2.5h8a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 12V4A1.5 1.5 0 0 1 4 2.5zM5.6 5.6h.01M10.4 5.6h.01M8 8h.01M5.6 10.4h.01M10.4 10.4h.01',
+  map: 'M2 4l4-1.5 4 1.5 4-1.5v9.5l-4 1.5-4-1.5-4 1.5zM6 2.5v9.5M10 4v9.5',
   focus: 'M6.8 2.5a4.3 4.3 0 1 0 0 8.6a4.3 4.3 0 1 0 0-8.6zM10 10l3.5 3.5M5 6.8h3.6M6.8 5v3.6',
 } as const;
 
@@ -20,7 +22,7 @@ export type IconName = keyof typeof paths;
 
 export function Icon({ name, title }: { name: IconName; title?: string }) {
   return (
-    <svg className="demo-icon" viewBox="0 0 16 16" width="16" height="16" fill={name === 'play' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden={title ? undefined : true} role={title ? 'img' : undefined}>
+    <svg className="demo-icon" viewBox="0 0 16 16" width="16" height="16" fill={name === 'play' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={name === 'dice' ? 1.6 : 1.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden={title ? undefined : true} role={title ? 'img' : undefined}>
       {title && <title>{title}</title>}
       <path d={paths[name]} />
     </svg>
