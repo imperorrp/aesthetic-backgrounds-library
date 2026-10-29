@@ -45,5 +45,8 @@ for (const f of files) {
   writeFileSync(resolve(out, f.replace(/\.png$/, '.jpg')), buf);
 }
 await browser.close();
-writeFileSync(resolve(out, 'index.json'), JSON.stringify(files.map((f) => f.replace(/\.png$/, '')), null, 2) + '\n');
+// Index every thumbnail in the folder, not only the ones made here: worlds without an e2e
+// baseline yet ship a hand-made thumb, and the gallery shows only what the index lists.
+const all = readdirSync(out).filter((f) => f.endsWith('.jpg')).map((f) => f.replace(/\.jpg$/, '')).sort();
+writeFileSync(resolve(out, 'index.json'), JSON.stringify(all, null, 2) + '\n');
 console.log(`thumbs: ${files.length} images, ${(bytes / 1024).toFixed(0)} KB -> public/thumbs`);

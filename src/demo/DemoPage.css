@@ -1635,12 +1635,52 @@
   background: rgba(6, 10, 18, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  cursor: pointer;
+  align-content: start;
 }
 
 .demo-card:hover,
-.demo-card:focus-visible {
+.demo-card:focus-within {
   border-color: var(--accent);
+}
+
+.demo-card-pick {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.demo-card-pick:focus-visible {
+  outline: none;
+}
+
+.demo-card em.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.demo-card-more {
+  justify-self: start;
+  margin: -0.15rem 0.75rem 0;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.demo-card-more:hover,
+.demo-card-more:focus-visible {
+  text-decoration: underline;
   outline: none;
 }
 

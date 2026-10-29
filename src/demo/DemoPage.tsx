@@ -1671,17 +1671,36 @@ function Gallery({ onPick, onClose, onAbout, onShortcuts }: { onPick: (source: s
     tags: (p.tags ?? []).filter((t) => t !== 'community'),
     community: (p.tags ?? []).includes('community'),
   }));
-  const card = (e: GalleryEntry & { card?: WorldCard }) => (
-    <button type="button" key={e.key} className="demo-card" onClick={() => onPick(e.source, e.universe, e.card?.options)}>
-      {available?.includes(e.image) ? <img src={`thumbs/${e.image}.jpg`} alt="" loading="lazy" /> : <span className="demo-card-placeholder">No preview yet</span>}
-      <strong>
-        {e.label}
-        {e.community && <span className="demo-badge">community</span>}
-      </strong>
-      <em>{e.description}</em>
-      <span className="demo-card-tags">{e.tags.join(' · ')}</span>
-    </button>
-  );
+  // Long descriptions show two lines until opened.
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  const toggle = (key: string) =>
+    setExpanded((s) => {
+      const n = new Set(s);
+      if (!n.delete(key)) n.add(key);
+      return n;
+    });
+  const card = (e: GalleryEntry & { card?: WorldCard }) => {
+    const long = (e.description?.length ?? 0) > 110;
+    const open = expanded.has(e.key);
+    return (
+      <div key={e.key} className="demo-card">
+        <button type="button" className="demo-card-pick" onClick={() => onPick(e.source, e.universe, e.card?.options)}>
+          {available?.includes(e.image) ? <img src={`thumbs/${e.image}.jpg`} alt="" loading="lazy" /> : <span className="demo-card-placeholder">No preview yet</span>}
+          <strong>
+            {e.label}
+            {e.community && <span className="demo-badge">community</span>}
+          </strong>
+        </button>
+        {e.description && <em className={long && !open ? 'is-clamped' : undefined}>{e.description}</em>}
+        {long && (
+          <button type="button" className="demo-card-more" aria-expanded={open} onClick={() => toggle(e.key)}>
+            {open ? 'Less' : 'Read more'}
+          </button>
+        )}
+        <span className="demo-card-tags">{e.tags.join(' · ')}</span>
+      </div>
+    );
+  };
   return (
     <div className="demo-gallery" role="dialog" aria-label="Gallery">
       <div className="demo-gallery-head">
