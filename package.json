@@ -158,6 +158,7 @@
     "sim": "node scripts/sim.mjs",
     "lab": "node scripts/lab.mjs",
     "media": "node scripts/media.mjs",
+    "clips": "node scripts/clips.mjs",
     "sound-check": "node scripts/sound-check.mjs",
     "thumbs": "node scripts/thumbs.mjs",
     "test:sim": "vitest run src/**/*.sim.test.ts",

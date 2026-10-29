@@ -16,7 +16,7 @@
 
 Vivarium is a set of animated backgrounds for websites. They are not loops. Each one is a small simulation with its own rules, and the rules make things happen.
 
-A war room tracks a front that has not moved in forty years. A city in the rain loses its power one block at a time. Dwarves dig a kingdom into a mountain. Mages raise towers on lines of power. A wyrm sleeps on a spire above a valley, until it wakes.
+A war room tracks a front that has not moved in forty years. A city in the rain loses its power one block at a time. Dwarves dig a kingdom into a mountain. Mages raise towers on lines of power. A wyrm sleeps on a spire above a valley, until it wakes. A factory builds itself, a castle walks across painted country, and a tiny solar system lives out its last twenty-two minutes, over and over.
 
 You can read it two ways:
 - **Living algorithmic art.** Generative pieces that do not stop or repeat. The same seed always plays the same story, so a link is an exact world.
@@ -33,15 +33,15 @@ The worlds still behave like backgrounds:
 <summary><b>Contents</b></summary>
 
 - [Things happen](#things-happen)
-- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [Deephold](#deephold), [Leylines](#leylines), [Silent Running and Foundry](#silent-running), [eleven more worlds](#brasswind), [instruments](#instruments-from-other-worlds), [basics](#basics)
+- [The worlds](#the-worlds): [the sector map](#the-sector-map), [six more universes](#six-more-universes), [Undercity](#undercity), [Shieldwall](#shieldwall), [Ages](#ages), [the War Table](#war-table), [Wyrmspire](#wyrmspire), [Deephold](#deephold), [Leylines](#leylines), [Silent Running](#silent-running), [Foundry](#foundry), [Brasswind](#brasswind), [Ironhaze](#ironhaze), [Sandsea](#sandsea), [Windtrap](#windtrap), [Walking Castle](#walking-castle), [War Rig](#war-rig), [Traction](#traction), [Last Loop](#last-loop), [Blockade](#blockade), [Titan Dock](#titan-dock), [Saber Front](#saber-front), [instruments](#instruments-from-other-worlds), [basics](#basics)
 - [Make it your universe](#make-it-your-universe) and [what happens here](#what-happens-here)
-- [Sound](#sound), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
+- [Sound](#sound), [touching a world](#touching-a-world), [the journal](#the-journal), and [wallpapers](#as-your-wallpaper)
 - [Put one on your site](#put-one-on-your-site)
 - [Reference](#reference):
   - Setup: [installation](#installation), [presets](#presets), [frameworks](#frameworks), [the CLI](#copy-a-background-into-your-project), [community presets](#community-presets), [palette tokens](#palette-tokens-on-your-page)
   - Engine: [configuration](#configuration), [guarantees](#what-the-engine-guarantees), [scenes and layers](#scenes-and-layers), [light and transitions](#light-quiet-zones-moments-transitions), [events and sound](#events-and-sound)
-  - Skins: [the sector map's options](#the-sector-maps-options), [Undercity's options](#undercitys-options)
-  - Building on it: [AI agents](#using-it-with-an-ai-agent), [writing your own skin](#writing-your-own-skin), [local development](#local-development)
+  - Options: [the sector map](#the-sector-maps-options), [Undercity](#undercitys-options), [Shieldwall](#shieldwalls-options), [Ages](#ages-options), [the Petri dish](#the-petri-dishs-options), [the War Table](#the-war-tables-options), [Wyrmspire](#wyrmspires-options), [Deephold](#deepholds-options), [Leylines](#leylines-options), [Silent Running](#silent-runnings-options), [Foundry](#foundrys-options), [the later worlds](#the-later-worlds-options)
+  - Building on it: [AI agents](#using-it-with-an-ai-agent), [making a world](#making-a-world), [writing your own skin](#writing-your-own-skin), [local development](#local-development)
 
 </details>
 
@@ -71,6 +71,8 @@ Every world has its own events, not just its own colors. Here are a few, frame b
 
 ![The sector map: systems, fleets, convoys, gates, and chatter](docs/media/worlds/void.jpg)
 
+![The Void Sector, a few seconds of it running](docs/media/clips/void.gif)
+
 A living tactical chart of a stretch of space:
 - **Fleets.** They fly in formation between structures that actually do things. Some fly on the main plane and some deep behind it.
 - **An economy.** Mines dig ore, docks refine fuel and parts, and habitats grow food. A station that runs short gets a convoy, with the goods glowing in its pods. Shipyards build only from what they hold, and prices tick in the corner.
@@ -87,27 +89,27 @@ The map can belong to any world. A *universe* holds the names, factions, ship cl
 
 <table>
 <tr>
-<td width="48%"><img src="docs/media/worlds/saltwind.jpg" alt="Saltwind Reach: a dusty mining frontier with haulers and warden buoys"></td>
+<td width="48%"><img src="docs/media/clips/saltwind.gif" alt="Saltwind Reach: a dusty mining frontier with haulers and warden buoys"></td>
 <td><b>Saltwind Reach</b><br>A poor mining frontier at the end of an old road. Belts of rock orbit across the map, and stray rocks collide and shatter. Miners argue over claims and haul ore home in their pods. Warden buoys scan ships, and smugglers bolt with cutters behind them. When a dust front blows through, beams go dark and everyone runs for the docks.</td>
 </tr>
 <tr>
-<td><img src="docs/media/worlds/choir.jpg" alt="Choir of Hollow Stars: violet space, a leviathan, and the Mouth"></td>
+<td><img src="docs/media/clips/choir.gif" alt="Choir of Hollow Stars: violet space, a leviathan, and the Mouth"></td>
 <td><b>Choir of Hollow Stars</b><br>Every star here has been emptied, and something sings inside. A song that reaches another hollow star makes it answer, and the chorus spreads. Leviathans migrate through, and the Mouth reaches for ships with tendrils. The words in the background rearrange themselves. An eye opens in the dark and follows your pointer, and now and then a star goes out for good.</td>
 </tr>
 <tr>
-<td><img src="docs/media/worlds/siege.jpg" alt="The Long Siege: a front line of hex cells with ASCII walls"></td>
+<td><img src="docs/media/clips/siege.gif" alt="The Long Siege: a front line of hex cells with ASCII walls"></td>
 <td><b>The Long Siege</b><br>A war older than anyone fighting it, held hex by hex along a front the camera travels. Each side saves up and then attacks, and supply convoys run to the line while the enemy hunts them. Spotters paint targets before the artillery arcs in, monitors duel, and minefields go off in chains. Now and then a truce holds, and the memorial beacon counts the names.</td>
 </tr>
 <tr>
-<td><img src="docs/media/worlds/hive.jpg" alt="Hive Bloom: green creep spreading from pulsing hive nodes"></td>
+<td><img src="docs/media/clips/hive.gif" alt="Hive Bloom: green creep spreading from pulsing hive nodes"></td>
 <td><b>Hive Bloom</b><br>Something is growing over the colonies, and it is beautiful. The creep is a cellular automaton that spreads from pulsing hive nodes, and the structures it covers turn to biomass glyph by glyph. Spore flocks swirl out to seed new growth. Colonies evacuate, and purge fleets answer with fire.</td>
 </tr>
 <tr>
-<td><img src="docs/media/worlds/lastfleet.jpg" alt="The Last Fleet: a long segmented ark surrounded by hundreds of small ships"></td>
+<td><img src="docs/media/clips/lastfleet.gif" alt="The Last Fleet: a long segmented ark surrounded by hundreds of small ships"></td>
 <td><b>The Last Fleet</b><br>Everyone left alive, moving together. A twelve-segment ark crosses the map, with habitat rings whose windows go round, farm domes, and engines trailing plumes. Hundreds of small ships keep station around it. Stragglers fall behind and tugs go back for them, pursuers jump in at the trailing edge, and skimmers dive into gas giants for fuel. Children are born aboard.</td>
 </tr>
 <tr>
-<td><img src="docs/media/worlds/cradle.jpg" alt="Cradle of Suns: young stars with planets, and a supernova"></td>
+<td><img src="docs/media/clips/cradle.gif" alt="Cradle of Suns: young stars with planets, and a supernova"></td>
 <td><b>Cradle of Suns</b><br>A cosmic time-lapse. Gas collapses, and stars ignite with jets and wind bubbles. Disks clump into planets, and planets light up with cities and send out their first ships. Then come colonies and first contact, and sometimes silence. The age of the universe runs along the top, in billions of years.</td>
 </tr>
 </table>
@@ -115,6 +117,8 @@ The map can belong to any world. A *universe* holds the names, factions, ship cl
 ### Undercity
 
 ![Undercity: a rainy cyberpunk skyline with neon, corp towers, flying cars, and an open megastructure](docs/media/worlds/undercity.jpg)
+
+![Undercity, a few seconds of it running](docs/media/clips/undercity.gif)
 
 A cyberpunk city at night, in the rain, in 2.5D. Three parallax layers drift past:
 - a far skyline of megatowers, with blinking masts and searchlights in the smog
@@ -132,6 +136,8 @@ mount(document.body, { skin: 'undercity', options: { rain: 1, net: 1.5 } });
 ### Shieldwall
 
 ![Shieldwall from the side and from above: two armies of pixel soldiers meeting at a ford](docs/media/worlds/shieldwall.jpg)
+
+![Shieldwall, a few seconds of it running](docs/media/clips/shieldwall.gif)
 
 Pitched battles between peoples, in pixel sprites drawn by code. Four peoples, each with its own look, its own magic, and its own way of fighting:
 - **a kingdom** of steel and banners, whose mages raise wards against arrows and call sunfire
@@ -170,6 +176,8 @@ Two ways to watch: `view: 'side'`, a field under a moody sky with mountains, a k
 
 ![Ages: an island continent at year 70, its first villages among the woods, and at year 685, stone cities, wonders, and wandering borders](docs/media/worlds/ages.jpg)
 
+![Ages, a few seconds of it running](docs/media/clips/ages.gif)
+
 A thousand years of a continent, from above, at dusk. A few peoples light their first hearths. Their settlements grow with the food of the land around them, from hamlet to village, town, city, and capital, and send settlers walking out to found new ones, with roads behind them. Each kingdom's land is its towns' reach, washed in its color, with a border that wanders the way real ones do. The land is drawn from its own height and wetness: hillshade, shallows, a traced coastline, rivers that meander and widen downstream, woods where it is wet, and peaks on the ridges.
 
 Neighbors grow tense along long borders, and in time there is war: armies march along the roads, meet in the field, and sit down outside walls for years. Towns change hands and kingdoms fall. Plague travels the roads. Hordes come out of the wild, and sometimes take a town and settle. Kingdoms grown too big split in civil war, and now and then a dragon wakes in the mountains. When the last era ends, the age ends, and a new land rises.
@@ -192,6 +200,8 @@ mount(document.body, { skin: 'ages', options: { speed: 1.5, kingdoms: 6 } });
 
 ![The War Table: a parchment map with an inked coast, towns, painted tokens, orders in ink, and a wax seal on the peace](docs/media/worlds/war-table.jpg)
 
+![The War Table, a few seconds of it running](docs/media/clips/war-table.gif)
+
 One war's campaign, played out on a parchment map by a hand you never see. The map is drawn in ink: a coast with contour ripples, hatched hills, little woods, dotted roads, castle towns with their names in an italic hand, a compass rose, and a serpent noted in the margin. Two or three realms wash their towns in watercolor.
 
 Each month the orders go out. An arrow is drawn in ink, and then a painted wooden token, stacked by strength and carved with a sword, a horseshoe, or a crown, slides along it. Tokens that meet fight, and the loser falls back or is tipped over. A token left at an enemy town lays siege, and the days are counted in ticks around it until the town falls and its pennant changes color. Battles leave crossed swords and a note with the date, and some towns burn. In winter, frost creeps in from the edges and the armies go into winter quarters. When a realm loses its seat, or everyone is worn out, the peace is sealed in red wax, and the next campaign is unrolled.
@@ -211,6 +221,8 @@ mount(document.body, { skin: 'war-table', options: { realms: 3 } });
 ### Wyrmspire
 
 ![Wyrmspire: four views; a wyrm raiding a village as the beacons burn, a fjord with its boats and mills, the walled town under the spire, the ashlands by night](docs/media/worlds/wyrmspire.jpg)
+
+![Wyrmspire, a few seconds of it running](docs/media/clips/wyrmspire.gif)
 
 A valley seen in depth from a hillside, wider than the screen. At its far end a spire of rock rises with a cave high in it, a path cut up its face, and the wyrm coiled on top with its brood on the ledges.
 
@@ -234,6 +246,8 @@ mount(document.body, { skin: 'wyrmspire', options: { valley: 'fen', wrath: 2 } }
 ### Deephold
 
 ![Deephold: four kingdoms; a dragon burning a hold's gate, one hold sacking another, a range of holds with a king's face carved on the mountain, a lich rising in the old halls](docs/media/worlds/deephold.jpg)
+
+![Deephold, a few seconds of it running](docs/media/clips/deephold.gif)
 
 A range of mountains cut through like a glass ant farm, wider than the screen, with two to four dwarf holds inside it, each its own clan with its own banner, king, and way of building:
 - how it goes down: ladder shafts, a lift riding its ropes, or flights of stairs that zigzag from deep to deep
@@ -272,6 +286,8 @@ mount(document.body, { skin: 'deephold', options: { mountain: 'ember', holds: '4
 
 ![Leylines: four realms; rival mages dueling by a tower, a dragon over the villages, a rift pouring out demons as the orders close it, an order's great ritual under the converging moons](docs/media/worlds/leylines.jpg)
 
+![Leylines, a few seconds of it running](docs/media/clips/leylines.gif)
+
 A realm seen from high up, wider than the screen, the way a mapmaker draws it: hills and snowcapped peaks, forests, lakes or sea, villages with their fields and roads, the ruins of an older age, and stone circles on the wells where the ley lines meet. Power runs along the lines into the towers built on them.
 
 Orders of mages hold the wells. Each has a school (fire, frost, storm, the green, shadow, light, stone) that decides its spells and its summons, a tower style (spires, ziggurats, crystal clusters, great trees, obelisks), its colours, an archmage, and a temper. Their mages are out on the land all the time, walking the roads and the lines (storm mages ride the air):
@@ -298,6 +314,8 @@ mount(document.body, { skin: 'leylines', options: { land: 'mountains', orders: 5
 
 ![Silent Running: a sea chart with depth bands and ports; convoys on the lanes, a destroyer calling a contact, a raider firing on a merchant and releasing a decoy as the merchant goes down](e2e/__screenshots__/chromium/silent-running.png)
 
+![Silent Running, a few seconds of it running](docs/media/clips/silent-running.gif)
+
 The sonar instrument, grown into a world: a sea at war, on the chart table of a listening station. The chart shows coasts and islands, depth bands, two to four ports, and the shipping lanes between them. The station's sweep turns over all of it.
 
 Convoys of merchants and tankers sail the lanes from port to port, some with a destroyer as escort. Destroyers patrol and ping, and a ping can hear a submarine. Raiders are faint shapes under the water until they are heard. They stalk the lanes, come up to periscope depth, and fire on merchants. A destroyer that hears one hunts it: depth charges over the contact, a decoy, a lost contact, sometimes a kill. Sunk ships stay on the chart as named wrecks, with an oil slick that drifts. Whales migrate through the sound and sing, and now and then a destroyer mistakes one for a boat.
@@ -310,6 +328,8 @@ mount(document.body, { skin: 'silent-running', options: { traffic: 1.5 } });
 ### Foundry
 
 ![Foundry: a factory from above, with miners on the ore fields, furnaces, assemblers and labs around the headquarters, red belts full of ore and plates, turrets facing a biter nest, lakes and woods](docs/media/worlds/foundry.jpg)
+
+![Foundry, a few seconds of it running](docs/media/clips/foundry.gif)
 
 A factory that builds itself, seen from above. A headquarters lands on a seeded planet of grass, lakes, woods, and ore fields: iron, copper, coal and stone. Construction bots fly out from it, lay belts tile by tile, and raise machines. The belts fill with ore, plates, gears and circuits.
 
@@ -324,7 +344,9 @@ mount(document.body, { skin: 'foundry', options: { pace: 1.5 } });
 
 ![Brasswind: a skyport city of brass and steam, with airships at the mooring masts and trams on the viaducts](public/thumbs/brasswind.jpg)
 
-A skyport city of brass and steam. Airships come in to the mooring masts, trams cross the viaducts, and the works send up smoke. Sky pirates raid the cargo ships, the Admiralty's corvettes give chase, storms break on the masts, and at night there are races round the spires and fireworks.
+![Brasswind, a few seconds of it running](docs/media/clips/brasswind.gif)
+
+A skyport city of brass and steam, seen from across the river. Airships come in to the mooring masts, unload, and leave. Trams cross the viaducts, cable cars and pneumatic capsules run between the towers, and the city builds itself higher a floor at a time. A day is four minutes, and the seasons and the years turn. Each seed draws the city's site (a crag, a canal, or stacked decks), its name and year, and three to five events from: sky pirates chased by the Admiralty's corvettes, storms on the masts, air races round the spires, festival fireworks, a hull that grows in the shipyard until it launches, a walking engine, and a great comet.
 ```ts
 mount(document.body, { skin: 'brasswind', options: { traffic: 1.5 } });
 ```
@@ -333,7 +355,9 @@ mount(document.body, { skin: 'brasswind', options: { traffic: 1.5 } });
 
 ![Ironhaze: a city of iron and smoke in five planes of fog, with zeppelins, dreadnoughts and a great spire](public/thumbs/ironhaze.jpg)
 
-A city of iron and smoke, painted in five planes of fog like a matte painting. The Great Spire and its clock stand in the middle. Zeppelins and ironclad dreadnoughts cross at every depth, iron walkers stride through the streets, floating citadels hang on their chains, foundries pour, and trains cross the viaduct. The hour tints every plane.
+![Ironhaze, a few seconds of it running](docs/media/clips/ironhaze.gif)
+
+A city of iron and smoke in five planes of fog, painted like a matte painting and tinted by the hour. The view drifts sideways forever through a city streamed from the seed, and every so often the Great Spire passes with its clock, whose automata come out at noon. Airships of a dozen kinds come and go at every depth, trains run on the viaduct, and foundries pour. Each seed draws the city's layout (canyon, harbour, heights, or tiers), its mood and name, where you stand (a balcony, a station, a bridge, a gantry), and five to seven events from: fleet battles, night air raids, walkers at the gates, armadas, a walking fortress, a floating citadel on its chains, parades, sky lanterns, a district on fire, workers rising with red flags, storms, a pea-souper, and a great moon.
 ```ts
 mount(document.body, { skin: 'ironhaze', options: { speed: 0.6 } });
 ```
@@ -342,7 +366,9 @@ mount(document.body, { skin: 'ironhaze', options: { speed: 0.6 } });
 
 ![Sandsea: a spice crawler on the dunes under its carryall, with wormsign running at it](public/thumbs/sandsea.jpg)
 
-The open sand, seen from a rock ledge. A crawler works a dark stain of spice under its carryall and spotters, and wormsign runs at it across the dunes. The lift saves the crawler, or it does not. Sandstorms come through, smugglers cross by night, the Company's patrols pass, the desert folk walk without rhythm, and at dawn there are riders on a worm.
+![Sandsea, a few seconds of it running](docs/media/clips/sandsea.gif)
+
+The open sand, seen from a rock ledge with watchers on it. Spotters find spice, a carryall sets a crawler down on the stain, and the crawler works until the carryall lifts it away full, unless wormsign comes first and the lift is too late. The desert folk cross the near dunes, and the day (sixteen minutes) ends under two moons. Each seed draws the colour of the air, the region, and three to five events. Worms are always in the cast; the rest come from sandstorms, smugglers by night, the Company's patrols, riders on a worm at dawn, spice blows, dust devils, the folk stripping a wreck, and, very rarely, the old one rising at the horizon.
 ```ts
 mount(document.body, { skin: 'sandsea' });
 ```
@@ -351,7 +377,9 @@ mount(document.body, { skin: 'sandsea' });
 
 ![Windtrap: a hold cut into a cliff, in cutaway, with people at work in the chambers and tunnels](public/thumbs/windtrap.jpg)
 
-A hold of the desert folk, cut into a cliff and shown in cutaway. The windtrap breathes on the cliff top and dew drips into the cistern, so the water count rises and falls. People work in the chambers and tunnels. Raiders go out at dusk and come back by dawn, smugglers come to the gate, and storms seal the doors.
+![Windtrap, a few seconds of it running](docs/media/clips/windtrap.gif)
+
+A hold of the desert folk cut into a cliff, in cutaway, with the open desert beside it. The windtrap stands on the cliff top and the cistern at the bottom, and the people work, eat, learn, and sleep in the chambers by the hours of a fifteen-minute day. Dew fills the cistern at dawn, everyone drinks from it, and the water count is read at dusk; when it runs low, rations are halved. Each seed draws the cliff, the hold's name, its chambers, and four to six events from: raids out at dusk and back by dawn, the Company's patrols (every lamp goes out), storms that seal the doors, a dry wind, smugglers at the gate, worm riders, namings, funerals where the water of the dead goes to the cistern, strangers from the sand, the hidden garden coming into leaf, and feasts.
 ```ts
 mount(document.body, { skin: 'windtrap', options: { people: 1.5 } });
 ```
@@ -360,7 +388,13 @@ mount(document.body, { skin: 'windtrap', options: { people: 1.5 } });
 
 ![Walking Castle: a patchwork castle on iron hen's legs, walking across painted country](docs/media/worlds/walking-castle-seeds.jpg)
 
-A ramshackle wizard's castle on iron hen's legs, walking across painted country: meadows and moors, mountain lakes, a seaside town of steep roofs. Wind runs through the grass in waves, sheep graze, and big clouds drift. The castle's door opens on other places, a fire spirit lives in the hearth, war airships bomb a distant town, tar men give chase, and storms end in rainbows. Each seed draws its own castle (a heap, a tower, a barge, a farm), its household, and its road. `view: 'map'` is the same walk on a painted travel map, with the castle's footprints.
+![Walking Castle, a few seconds of it running](docs/media/clips/walking-castle.gif)
+
+A wizard's ramshackle castle on iron hen's legs, walking across painted country, seen from the next hill. The land scrolls under it in five planes through meadows, moors, lakes, coasts, mountains, flower fields, and towns, each with a title card. The household goes about its day on the balconies, the fire spirit in the hearth talks in subtitles, and the door's dial turns to open on a port, a royal city, a flower field, or a city at war. Each seed draws the homeland and season, the castle itself (a heap, a tower, a barge, or a farm, with its own roofs and colours), and four to six events from: the war fleet bombing a far town, tar men in pursuit, storms and showers that end in rainbows, a lake at sundown, a mountain top, market day, falling stars, fireflies, and another walking house on the road.
+
+`view: 'map'` is the same walk on a traveller's map in ink and watercolour, with the road walked so far in red ink and the diary in the corner.
+
+![Walking Castle's map view: the walk on a painted travel map](docs/media/worlds/walking-castle-map.jpg)
 ```ts
 mount(document.body, { skin: 'walking-castle', options: { view: 'map' } });
 ```
@@ -369,7 +403,13 @@ mount(document.body, { skin: 'walking-castle', options: { view: 'map' } });
 
 ![War Rig: a tanker truck on the orange wasteland with a war party on its tail](docs/media/worlds/war-rig.jpg)
 
-A tanker truck runs across an orange wasteland with a war party behind it: spiked hot rods, ram trucks and buggies jockeying in the dust, boarders swung onto the tank on sway poles, explosive lances, and a music truck with a wall of speakers and a flame-throwing guitar. Cars flip, burn, and are left behind, and new ones arrive from the rear. Toxic storms, canyon ambushes, a bog by night, rival clans, and a lull at dawn all come through. `view: 'map'` is the waste from overhead, with the dust wakes.
+![War Rig, a few seconds of it running](docs/media/clips/war-rig.gif)
+
+A tanker truck runs across the wasteland with a war party on its tail, seen side-on with the whole chase in frame. Hot rods, ram trucks, bikes, and buggies jockey in the dust, trade gunfire and explosive lances with the rig's crew, and ram its flanks. A car hit enough flips and burns and is left behind, and another comes up from the rear. The chase comes in waves, up to an all-out assault, then the dust settles, and there is a lull at first light. Each seed draws the colour grade, the rig and its cargo (fuel or water), the clans, the regions of the road, and four to seven events from: boarders on sway poles, ram trucks, spiked cars, buggies, the war-drums truck with its flame-throwing guitar, toxic storms, canyon ambushes, a bog by night, a rival clan, a drifter who fights beside the rig, and the warlord's own car.
+
+`view: 'map'` is the chase from overhead, with braided tyre tracks, dust wakes, and long shadows.
+
+![War Rig's map view: the chase from overhead with its dust wakes](docs/media/worlds/war-rig-map.jpg)
 ```ts
 mount(document.body, { skin: 'war-rig', options: { traffic: 1.5 } });
 ```
@@ -378,7 +418,13 @@ mount(document.body, { skin: 'war-rig', options: { traffic: 1.5 } });
 
 ![Traction: a colossal city of stacked tiers on tracks, hunting the small towns of a churned-up plain](docs/media/worlds/traction-seeds.jpg)
 
-Predator cities on tracks, hunting across a churned-up plain. A colossal city of stacked tiers grinds through the mud with its jaws open for the small towns that flee it. When it catches one, the town is dragged into its gut and stripped, and the city raises a new lit chimney. Airships and trader balloons cross above, the anti-traction Accord raids, rival cities duel, weather fronts roll in, searchlights sweep at night, and relics of the ancient world come up out of the mud. `view: 'map'` is the navigator's survey chart of the same hunt.
+![Traction, a few seconds of it running](docs/media/clips/traction.gif)
+
+Predator cities on tracks, hunting across a churned-up plain, seen from alongside as if from a scout airship. A colossal city of stacked tiers grinds through the mud. When it sights a town it sounds its horn and gives chase, and either takes it in its jaws (the town is stripped in the gut, and a new chimney is lit) or loses it over the ridge. Airships, trader balloons, and crows go overhead, and the ruins of the ancient world lie in the mud. Each seed draws the air and the land (mud, salt, steppe, or snow), the city's crown, tiers, and tracks, the names, and four to six events from: raids by the Accord's airships, a duel with a rival city, the shield-wall's guns, weather fronts, searchlights at night, breakdowns, a sky harbour, a relic heaving up out of the mud, scavenger towns, and herds of suburbs.
+
+`view: 'map'` is the navigator's survey chart of the same hunt: the city in plan, the towns as named symbols, the pursuit in red, and pencilled notes where things happened.
+
+![Traction's map view: the navigator's survey chart](docs/media/worlds/traction-map.jpg)
 ```ts
 mount(document.body, { skin: 'traction', options: { view: 'map' } });
 ```
@@ -387,16 +433,28 @@ mount(document.body, { skin: 'traction', options: { view: 'map' } });
 
 ![Last Loop: a tiny handmade solar system with a wooded homeworld, hourglass twins and a stormy giant](docs/media/worlds/last-loop.jpg)
 
-A tiny handmade solar system, in its last twenty-two minutes. A wooden ship flies between a wooded homeworld, the hourglass twins pouring sand into each other, a crumbling world with a black hole at its heart, a stormy ocean giant, and a planet of thorns. Campfires burn and music drifts, the probe cannon fires, and a moon moves when no one is looking. Then the sun goes supernova, the system goes dark, and a traveller wakes by the fire to begin another loop, a little different. `view: 'map'` is a hand-drawn chart from above.
+![Last Loop, a few seconds of it running](docs/media/clips/last-loop.gif)
+
+A tiny handmade solar system, like a model on a desk, in the last twenty-two minutes before its sun goes supernova. A wooden ship flies from the wooded homeworld to five to seven places each loop, and writes a line in its log at each. The hourglass twins pour sand into each other, a crumbling world falls into the black hole at its heart, and travellers play music by their campfires. At the end the sun collapses, the shockwave crosses everything, the dark comes, and the traveller wakes by the fire to begin the next loop. Each seed draws the star, the orbits, and the names, and a cast that always has the probe cannon and a moon that moves when no one is looking, plus some of: meteors, lights in the thorn fog, tornadoes on the ocean giant, hard landings, solar flares, a signal from a far camp, and rare ones such as falling into the black hole and coming out of a white hole.
+
+`view: 'map'` is the system drawn from above in the back of the ship's log, with the loop clock round its rim and the bearings of past loops' probes.
+
+![Last Loop's map view, two seeds: orbits on navy paper, the loop clock round the rim](docs/media/worlds/last-loop-map.jpg)
 ```ts
 mount(document.body, { skin: 'last-loop', options: { loop: 10 } });
 ```
 
 ### Blockade
 
-![Blockade: a fleet of wedge cruisers holding a planet from high orbit](public/thumbs/blockade.jpg)
+![Blockade: a fleet holding a planet, seen from high orbit, across several seeds](docs/media/blockade/seeds.jpg)
 
-A fleet holds a planet under blockade, seen from high orbit. Wedge cruisers and dreadnoughts stand on station over the lit limb, wings patrol, shuttles burn down into the air, merchants wait at the picket, and now and then a runner makes its dash. There are sorties and broadsides, wrecks that fall and burn, and a station that grows in its frame. `view: 'map'` is the flagship's orbital plot of the same blockade.
+![Blockade, a few seconds of it running](docs/media/clips/blockade.gif)
+
+A fleet holds a planet under blockade, seen from high orbit, looking down the line of ships toward the lit limb. Capital ships hold station, frigates patrol, fighter wings loop, shuttles burn down into the air, merchants are scanned at the picket, and a station grows in its frame. The planet turns through day and night, and the blockade wears on the planet's stores and anger and on the fleet's resolve, which decide when the big events come. Each seed draws the planet (ocean, desert, ice, gas giant, lava, or a capital world), its star, moons, and rings, the blockading fleet and its style of hull, and five to seven events: blockade runners always, plus some of sorties, jumps, broadsides, bombardment, solar flares, eclipses, convoys, the planet's great gun, the flagship's pass, salvage, and defections.
+
+`view: 'map'` is the flagship's orbital plot of the same blockade, from above the pole, with stores, anger, and resolve as gauges.
+
+![Blockade's scene and its map view side by side](docs/media/blockade/scene-and-map.jpg)
 ```ts
 mount(document.body, { skin: 'blockade', options: { view: 'map' } });
 ```
@@ -405,7 +463,13 @@ mount(document.body, { skin: 'blockade', options: { view: 'map' } });
 
 ![Titan Dock: a giant-robot defence base on a stormy coast, in cutaway](docs/media/worlds/titan-dock.jpg)
 
-A giant-robot defence base on a stormy coast, in cutaway. Crews and cranes refit the mechs in their bays while the breach clock ticks. Then the alarm sounds and the doors open. A mech is carried out on helicopter cables and dropped into the surf to fight what came out of the rift, in the harbour of the city across the bay. `view: 'map'` is the defence command's radar plot of the coast.
+![Titan Dock, a few seconds of it running](docs/media/clips/titan-dock.gif)
+
+A giant-robot defence base on a stormy coast, cut open like a section drawing, with the city across the bay and the rift glowing far out at sea. Crews and cranes refit the mechs in their bays while the breach clock counts down. At zero the alarm sounds, a monster surfaces, the door rolls up, and helicopters carry the fittest mech out on cables and drop it in the surf. It kills the monster, blows its reactor to take it down, or is lost, and afterwards it is mended or rebuilt. Each seed draws the mood, the setting (a harbour, a fjord, a refinery, or an island), the mechs (names, builds, liveries, weapons), which monsters this coast gets, and four to six events from: squalls, sea fog, convoys, bone merchants, weapons tests, refits, double events, skitters on the beach, fireworks, the rift lab, whales, and shelter drills.
+
+`view: 'map'` is the defence command's radar plot of the bay, with each monster's projected course to the harbour.
+
+![Titan Dock's map view: the radar plot of the bay](docs/media/worlds/titan-dock-map.jpg)
 ```ts
 mount(document.body, { skin: 'titan-dock', options: { view: 'map' } });
 ```
@@ -414,7 +478,13 @@ mount(document.body, { skin: 'titan-dock', options: { view: 'map' } });
 
 ![Saber Front: a Clone Wars battle seen from a ridge, with infantry lines trading bolts, walkers advancing and gunships overhead](docs/media/worlds/saber-front-seeds.jpg)
 
-A ground battle of a galactic civil war, seen from a ridge as a wide diorama. Two lines of infantry trade coloured bolts, walkers advance, gunships drop squads and strafe, starfighters dogfight overhead, artillery arcs across the field, and capital ships hang in the sky. A knight leads a charge with a glowing blade, a walker falls, a gunship is shot down, and the fronts move back and forth without ending. Each seed draws a battlefield, with its own sky, terrain, palette and cast. `view: 'map'` is a commander's holo-table of the same battle.
+![Saber Front, a few seconds of it running](docs/media/clips/saber-front.gif)
+
+A ground battle of the Clone Wars, seen from a ridge as a wide diorama. Clone troopers and battle droids trade bolts from cover, walkers and tanks hold behind the lines, gunships and landers bring reinforcements, and fighters and capital ships fight overhead. The battle runs in engagements: a build-up, a clash, a climax (the walkers go in, a Jedi leads a charge, gunships come in low, the shield generator is blown), and an aftermath, and the front moves back and forth without ending. Each seed draws one of eight battles (Geonosis, Christophsis, Felucia, Umbara, Kamino, Ryloth, Kashyyyk, or the hangar of the Invisible Hand), its hour, the legion and the Jedi, and four to six events from: the Jedi, a duelist, droidekas, spider droids, a shield generator, broadsides, a Venator's descent, bombing runs, storms, and illumination flares.
+
+`view: 'map'` is a commander's holo-table of the same battle, with the front a glowing line between blue and amber.
+
+![Saber Front's map view: the battle on a holo-table](docs/media/worlds/saber-front-map.jpg)
 ```ts
 mount(document.body, { skin: 'saber-front', options: { field: 'kamino' } });
 ```
@@ -523,15 +593,27 @@ sound.attach(handle);
 playButton.onclick = () => sound.start(); // browsers allow audio only after a click
 ```
 
-Explosions boom where they happen across the screen. A raid brings a siren and a capture rings a bell. In the Choir, the songs are low voices answering each other, and in Undercity the thunder comes a moment late. Every world has its own palette and drone. In the studio, press the speaker (or **M**).
+Explosions boom where they happen across the screen. A raid brings a siren and a capture rings a bell. In the Choir, the songs are low voices answering each other, and in Undercity the thunder comes a moment late. Most worlds have their own palette and drone (the eleven newest borrow the sector map's for now). In the studio, press the speaker (or **M**).
 
 ## Touching a world
 
-In Wyrmspire, Deephold and Leylines a click nudges the world, and the nearest thing answers in its own way. A ring shows where you touched; the world says what happened in its own text.
+In Wyrmspire, Deephold, Leylines, and every world built on the world kit (Silent Running, Foundry, and the eleven after them), a click nudges the world, and the nearest thing answers in its own way. A ring shows where you touched; the world says what happened in its own text.
 
 - **Wyrmspire.** Click the spire and a stone wakes the wyrm (it may come down angry). Click a raiding wyrm and the bells turn it for home. The town rings for a feast, a village goes out for wood and builds, and the open land sends a caravan down the road.
 - **Deephold.** Click the slopes and traders set out for the nearest hold. Click a hold's rooms and the bell rings for a feast. Click plain rock and a vein of iron, gold or gems shows itself; the miners will find it (one every half minute).
 - **Leylines.** Click a tower and light runs down its lines. A village builds a cottage. Open land gathers an arcane storm, where this realm has storms.
+- **Silent Running.** A sonobuoy drops and listens; if it hears a submarine, the nearest destroyer comes.
+- **Foundry.** A click on an ore field orders a new mine; a click on a machine puts it on overtime.
+- **Brasswind.** A factory blows its whistle, other buildings ring their bells, and a flare in the sky brings the nearest ship in to a free mast.
+- **Ironhaze.** A ship sounds its horn, a walker its siren, and a clock strikes. The near rooftops set the foundries pouring; anywhere else, a flare goes up and a ship turns its searchlight on.
+- **Sandsea** and **Windtrap.** A click on the sand plants a thumper, and something may come. In Sandsea, a worm already showing sign turns for it. In Windtrap, a click in a chamber makes the people there look up.
+- **Walking Castle.** The castle's door turns to the next place and opens. The near grass sends up larks (fireflies at night), the far fields get a gust, and the sky a shooting star at night or a smoke ring from the castle.
+- **War Rig.** The rig's lancer throws at the nearest car, or a flare goes up.
+- **Traction.** A roaming town becomes the city's next prey, the mud sends up a flare that brings a town to look, and the sky scatters the crows.
+- **Last Loop.** The shy moon jumps, the sun flares where you clicked, a click near a world sets the traveller's course for it, and empty space gets a sweep of the signalscope.
+- **Blockade.** On the planet, the nearest capital ship sends a shuttle down to the mark. In space, a fighter wing (or a frigate) goes to investigate.
+- **Titan Dock.** A mech in its bay runs a systems check, a monster draws the shore guns, and the water gets a flare that turns the patrols' lights on it.
+- **Saber Front.** A capital ship fires a strike on the ground where you clicked.
 
 The world waits a few seconds between nudges. Nudges are not part of the seed, so a replay of the same seed does not repeat them. On your own site, turn them on with `nudges: true`; on the wallpaper page, `&i=1` turns them on with zoom and pan.
 
@@ -628,6 +710,7 @@ mount('#hero', { skin: 'matrix-rain' });
 | `/skins/undercity` | Undercity's shell. The city itself loads on first mount. |
 | `/skins/fantasy` | Shieldwall, Ages, the War Table, Wyrmspire, Deephold, and Leylines: shells; each world loads on first mount. |
 | `/skins/petri` | The Petri dish's shell; the dish loads on first mount. |
+| (none yet) | The kit worlds (Silent Running, Foundry, and the eleven after them) have no entry of their own. They come with the bare import, and each loads on first mount. |
 | `/skins/drifting-dust`, `/skins/matrix-rain` | The small skins. |
 | `/layers`, `/presets` | The layer library and the curated presets. |
 | `/shader` | `createShaderLayer` for GPU layers. |
@@ -742,7 +825,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | Option | Default | Description |
 | --- | --- | --- |
 | `seed` | random | PRNG seed. The same seed replays the same world, frame for frame. |
-| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `wyrmspire`, `deephold`, `leylines`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `petri`, `drifting-dust`, `matrix-rain`, and every preset id. |
+| `skin` | `'void-tactical'` | A skin object or a registered id. Skins: `void-tactical`, `undercity`, `shieldwall`, `ages`, `war-table`, `wyrmspire`, `deephold`, `leylines`, `silent-running`, `foundry`, `brasswind`, `ironhaze`, `sandsea`, `windtrap`, `walking-castle`, `war-rig`, `traction`, `last-loop`, `blockade`, `titan-dock`, `saber-front`, `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `petri`, `drifting-dust`, `matrix-rain`, and every preset id. |
 | `options` | `{}` | Skin-specific options; see each skin's section below. |
 | `palette` | `'void-cyan'` | One of: <ul><li>a built-in id (`void-cyan`, `amber`, `violet`)</li><li>a full token object</li><li>a bare hex color</li><li>`{ from: '#hex', theme: 'dark' \| 'light', harmony }`, which derives a palette in OKLCH. `harmony` (`analogous`, `complementary`, `split`, `triadic`, `mono`) sets the secondary hues `accent2` and `accent3`.</li></ul> |
 | `exposeTokens` | `false` | Also write the palette as `--bge-*` variables on `<html>` (or a given element) for your own UI. |
@@ -755,7 +838,7 @@ To share the palette with design tools, use `space-background-engine/tokens`. `p
 | `detail` | `'low'` | Label and HUD budget for the sector map (`none`, `low`, `medium`, `high`). |
 | `cameraSpeed` | `0.25` | Base drift speed, in world units per frame at 60 fps. Real speed is time-based. |
 | `interactive` | `false` | Wheel zoom and drag pan on empty parts of the page, for skins with a camera. |
-| `nudges` | `false` | A click on an empty part of the page nudges the world there (Wyrmspire, Deephold, Leylines): a ring shows where, and the world answers. Also `handle.nudge(x, y)`. |
+| `nudges` | `false` | A click on an empty part of the page nudges the world there (the worlds in [Touching a world](#touching-a-world)): a ring shows where, and the world answers. Also `handle.nudge(x, y)`. |
 | `targetFps` | `60` | Frame cap for the render loop. Lowering it does not slow the animation. |
 | `pixelRatio` | device | Backing pixels per CSS pixel, fixed. By default the device's, capped at 1.5 (2 for text-heavy skins) and lowered by the quality governor. Set it for exports and wallpapers: `3` renders a phone-sized viewport at a phone's own resolution. |
 | `adaptiveQuality` | `true` | Lowers `host.quality` when frames run over budget, and raises it back when they recover. |
@@ -894,7 +977,7 @@ bg = transition(bg, { skin: 'aurora-night' }, { kind: 'iris', duration: 1.4 }).h
 - `pan`: -1 to 1, where across the screen it happened
 - `near`: 1 when it is on screen and up front
 
-The sector map, Undercity, and the five instruments report what happens: torpedoes, quakes, emergencies, storms, and more. Skins also send `ambience` (0 to 1: the sector's tension, how hard it is raining), which sound uses for its beds. Events are silent during `fastForward` and cost nothing while nobody listens. At a time scale above 1, every step reports, since that is live time running faster.
+The sector map, Undercity, the fantasy worlds, the kit worlds, the Petri dish, and the five instruments report what happens: torpedoes, quakes, emergencies, storms, and more. Skins also send `ambience` (0 to 1: the sector's tension, how hard it is raining), which sound uses for its beds. Events are silent during `fastForward` and cost nothing while nobody listens. At a time scale above 1, every step reports, since that is live time running faster.
 
 Sound is a separate, opt-in entry. Every sound is synthesized, so there are no assets to load:
 
@@ -908,9 +991,11 @@ sound.attach(bg);
 button.onclick = () => sound.start(); // browsers allow audio only after a click or key press
 ```
 
-A **sound palette** maps event types to cues (boom, ping, bell, sweep, whoosh, thump, choir, crackle). It also sets a drone and a noise bed underneath: rain in Undercity, wind on Saltwind, the hull's hum in the Last Fleet, the deep in Sonar. There is one per world and instrument:
-- worlds: `void`, `saltwind`, `choir`, `siege`, `hive`, `lastfleet`, `cradle`, `undercity`
-- instruments: `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`
+A **sound palette** maps event types to cues (boom, ping, bell, sweep, whoosh, thump, choir, crackle). It also sets a drone and a noise bed underneath: rain in Undercity, wind on Saltwind, the hull's hum in the Last Fleet, the deep in Sonar. The built-in palettes:
+- worlds: `void`, `saltwind`, `choir`, `siege`, `hive`, `lastfleet`, `cradle`, `undercity`, `shieldwall`, `ages`, `war-table`, `wyrmspire`, `deephold`, `leylines`, `silent-running`, `foundry`
+- instruments: `sonar`, `atc-radar`, `seismograph`, `abyssal`, `mars-radar`, `petri`
+
+The eleven newest worlds (Brasswind to Saber Front) have no palette of their own yet, so they fall back to `void`.
 
 `registerSoundPalette()` adds your own.
 
@@ -1107,7 +1192,7 @@ mount(document.body, {
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `camera` | `'drift'` | `drift`: the whole chart, easing in slowly for the biggest moments only. `still`: never moving. `follow`: closer, going from ship to ship and to each moment (**V** in the studio). |
+| `camera` | `'drift'` | `drift`: the whole chart, easing in slowly for the biggest moments only. `still`: never moving. `follow`: closer, going from ship to ship and to each moment (**V** in the studio). `director`: every shot the director asks for, at that shot's own zoom. |
 | `traffic` | `1` | How busy the lanes are (`0.4` to `2`): how often convoys sail, and how big they are. |
 | `labels` | `true` | Call-outs for contacts, torpedoes, sinkings, and the rest. |
 | `hud` | `true` | The sea, ships at sea, contacts, wrecks, and a short chronicle. |
@@ -1118,32 +1203,36 @@ mount(document.body, {
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `camera` | `'drift'` | `drift`: the whole factory, easing in slowly for the biggest moments only. `still`: never moving. `follow`: closer, going from machine to machine and to each moment, near enough to read the belts (**V** in the studio). |
+| `camera` | `'drift'` | `drift`: the whole factory, easing in slowly for the biggest moments only. `still`: never moving. `follow`: closer, going from machine to machine and to each moment, near enough to read the belts (**V** in the studio). `director`: every shot the director asks for, at that shot's own zoom. |
 | `pace` | `1` | How fast it works and grows (`0.5` to `3`). |
 | `labels` | `true` | Call-outs for research, new mines, biters, launches, and the rest. |
 | `hud` | `true` | The planet, machines, items on the belts, power, research, stock, the cast, and a short chronicle. |
 
 ## The later worlds' options
 
-Brasswind, Ironhaze, Sandsea, Windtrap, Saber Front, Walking Castle, War Rig, Traction, Last Loop, Blockade, and Titan Dock are lazy chunks built on the world kit. They share most of their options:
+Brasswind, Ironhaze, Sandsea, Windtrap, Walking Castle, War Rig, Traction, Last Loop, Blockade, Titan Dock, and Saber Front are lazy chunks built on the world kit, like Silent Running and Foundry. Every one of them has these three:
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `camera` | `'drift'` | `drift`: the whole scene, easing in slowly for the biggest moments only. `still`: never moving. `follow`: closer, going from one subject to the next (**V** in the studio). `director`: the world's director chooses the shot. |
-| `view` | `'scene'` | Saber Front, Walking Castle, War Rig, Traction, Last Loop, Blockade, Titan Dock only. `scene`, or `map`: the same sim painted as a top-down map or plot. |
-| `traffic` | `1` | How busy it is (`0.4` to `2.5`). Brasswind, Ironhaze, Sandsea, Saber Front, War Rig, Traction, Blockade, Titan Dock. |
-| `labels` | `true` | The world's own text: call-outs, the radio, subtitles. |
-| `hud` | `true` | The title and the chronicle, log, or clock. |
+| `camera` | `'drift'` | `drift`: the whole scene, easing in slowly for the biggest moments only. `still`: the whole scene, never moving. `follow`: closer, going where the director looks (**V** in the studio switches between this and the whole scene, live). `director`: every shot the director asks for, at that shot's own zoom, moving faster. |
+| `labels` | `true` | The world's own text on the scene: call-outs, the radio, subtitles (by world below). |
+| `hud` | `true` | The title and the corner text (by world below). |
 
-A few worlds add one option of their own:
+And these by world. `view` is `'scene'` (the default) or `'map'`, the top-down view described in each world's section. Number options are given as default, then range.
 
-| World | Option | Default | Effect |
+| World | Own options | `labels` shows | `hud` shows |
 | --- | --- | --- | --- |
-| Ironhaze | `speed` | `1` | How fast the city drifts past (`0` to `3`). |
-| Windtrap | `people` | `1` | How many people live in the hold (`0.5` to `2`). |
-| Saber Front | `field` | `'seed'` | Which battlefield: `seed` draws one, or `geonosis`, `christophsis`, `felucia`, `umbara`, `kamino`, `ryloth`, `kashyyyk`, `coruscant`. |
-| Walking Castle | `pace` | `1` | How fast the castle walks (`0.5` to `2`). |
-| Last Loop | `loop` | `22` | Minutes in a loop, from waking to the supernova (`4` to `30`). |
+| Brasswind (`brasswind`) | `traffic` (`1`, `0.4` to `2.5`): how busy the sky is. | Call-outs. | The brass plaque: the city, the season and year, ships aloft and at the masts, the cast, and the chronicle. |
+| Ironhaze (`ironhaze`) | `speed` (`1`, `0` to `3`): how fast the city drifts past. `traffic` (`1`, `0.4` to `2.5`): how busy the sky is. | Call-outs, and name tags on the near ships and walkers. | The city, the season and hour, ships aloft and moored, the cast, and the chronicle. |
+| Sandsea (`sandsea`) | `traffic` (`1`, `0.4` to `2.5`): how busy the sand is. | Call-outs, the radio, and name tags on the machines. | The region, the hour and the weather, the spice brought in and the crawlers lost, and the log. |
+| Windtrap (`windtrap`) | `people` (`1`, `0.5` to `2`): how many live in the hold, and so how big the cistern is. | Call-outs over the chambers. | The hold, the hour, the water count, the souls, and the log. |
+| Walking Castle (`walking-castle`) | `view`. `pace` (`1`, `0.5` to `2`): how fast the castle walks. | What is said, as subtitles. | Title cards; on the map, the diary. |
+| War Rig (`war-rig`) | `view`. `traffic` (`1`, `0.4` to `2.5`): how big the war party is. | Title cards and shouted lines. | The rig's plate: its name, an hour dial, the odometer, the fuel or water gauge, and a tally of the cars put over. |
+| Traction (`traction`) | `view`. `traffic` (`1`, `0.4` to `2.5`): how busy the plain is. | The rangefinder lock on the prey, intertitles, and the radio. | The city's plaque (its region, the hour, what it has eaten) and the navigator's log. |
+| Last Loop (`last-loop`) | `view`. `loop` (`22`, `4` to `30`): minutes from waking to the supernova. `traffic` (`1`, `0.4` to `2.5`): how busy the system is. | Subtitles, and the name of what they are about. | The title, the ship's log, and the loop clock. |
+| Blockade (`blockade`) | `view`. `traffic` (`1`, `0.4` to `2.5`): how busy the lanes are. | Event cards and the radio. | The title, the day and the planet's stores, the fleet's alert, and the log (on wide screens). |
+| Titan Dock (`titan-dock`) | `view`. `traffic` (`1`, `0.4` to `2.5`): how many crews are on the dock floor. | Title cards and the radio. | The dock's name, in the corner. The breach clock is painted on the dock's wall either way. The map view is always `still` and shows its own console regardless of `labels` and `hud`. |
+| Saber Front (`saber-front`) | `view`. `field` (`'seed'`): `seed` draws the battle, or pick `geonosis`, `christophsis`, `felucia`, `umbara`, `kamino`, `ryloth`, `kashyyyk`, or `coruscant`. `traffic` (`1`, `0.4` to `2.5`): how big the battle is. | The radio as subtitles, and the biggest moments as titles. | The place, the engagement and its phase, and the tug of war between the lines; on the map, the clock and the chronicle. |
 
 ## Using it with an AI agent
 
@@ -1158,7 +1247,7 @@ Claude Code picks it up from `.claude/skills/`. For other tools, paste the skill
 
 ## Making a world
 
-A *world* is a seeded simulation with a painter, built on the kit (`src/engine/kit`): the kind of thing Wyrmspire and Deephold are. [docs/AUTHORING.md](docs/AUTHORING.md) has the kit for making one: the bar a world must clear (the wallpaper test), a brief to fill in, and the house rules.
+A *world* is a seeded simulation with a painter, built on the kit (`src/engine/kit`): the kind of thing Foundry, Titan Dock, and the other worlds in `src/engine/skins/worlds` are. [docs/AUTHORING.md](docs/AUTHORING.md) has the kit for making one: the bar a world must clear (the wallpaper test), a brief to fill in, and the house rules.
 
 ```bash
 pnpm create-world tidepool --label "Tide pool"   # copies the template world (the Pond) and registers it
