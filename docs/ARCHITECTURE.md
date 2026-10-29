@@ -1,7 +1,7 @@
 # Architecture
 
 How the engine is put together, for anyone (or any agent) extending it. The README
-says what it does and, in its [Reference](../README.md#reference) half, lists the API. This page explains how the
+says what it does and, in its [Reference](REFERENCE.md) half, lists the API. This page explains how the
 pieces fit, and the conventions that keep them fitting.
 
 ## Layers
